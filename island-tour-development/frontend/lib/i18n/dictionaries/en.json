@@ -50,6 +50,7 @@
     },
     "search": {
         "title": "Search",
+        "closeSearch": "Close search",
         "placeholder": "Search tours, activities, places",
         "resultsFor": "{count} results for “{query}”",
         "resultFor": "{count} result for “{query}”",
@@ -267,7 +268,9 @@
             "toursActivities": "tours & activities",
             "subtitle": "Tours picked by locals who know every reef, route, and sunset spot",
             "searchPlaceholder": "What do you want to do?",
+            "searchPlaceholderShort": "What?",
             "selectDate": "Select date",
+            "selectDateShort": "When?",
             "clearDate": "Clear date",
             "popularLabel": "Popular"
         },

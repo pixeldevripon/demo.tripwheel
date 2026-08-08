@@ -41,8 +41,14 @@ export type NavDict = {
 
 /** Strings used by the search typeahead (the `search` dict + a few card labels). */
 export type SearchDict = {
-    /** "Search" - the hero pill's labeled submit button (+ /search page title). */
+    /** "Search" - the pill's submit button (+ /search page title). */
     title: string;
+    /**
+     * Accessible name of the mobile search layer's close control. Here rather
+     * than in any one surface's dictionary because three of them open that same
+     * layer - the hero, the homepage and the navbar icon.
+     */
+    closeSearch: string;
     searching: string;
     seeAll: string;
     noResults: string;

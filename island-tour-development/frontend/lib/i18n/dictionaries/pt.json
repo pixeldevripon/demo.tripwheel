@@ -50,6 +50,7 @@
     },
     "search": {
         "title": "Pesquisar",
+        "closeSearch": "Fechar pesquisa",
         "placeholder": "Pesquise passeios, atividades, locais",
         "resultsFor": "{count} resultados para “{query}”",
         "resultFor": "{count} resultado para “{query}”",
@@ -267,7 +268,9 @@
             "toursActivities": "tours e atividades",
             "subtitle": "Tours escolhidos por locais que conhecem cada recife, rota e pôr do sol",
             "searchPlaceholder": "O que quer fazer?",
+            "searchPlaceholderShort": "O quê?",
             "selectDate": "Selecionar data",
+            "selectDateShort": "Quando?",
             "clearDate": "Limpar data",
             "popularLabel": "Popular"
         },

@@ -50,6 +50,7 @@
     },
     "search": {
         "title": "Zoeken",
+        "closeSearch": "Zoeken sluiten",
         "placeholder": "Zoek tours, activiteiten, plaatsen",
         "resultsFor": "{count} resultaten voor “{query}”",
         "resultFor": "{count} resultaat voor “{query}”",
@@ -267,7 +268,9 @@
             "toursActivities": "tours & activiteiten",
             "subtitle": "Tours geselecteerd door locals die elk rif, elke route en elke zonsondergangsplek kennen",
             "searchPlaceholder": "Wat wil je doen?",
+            "searchPlaceholderShort": "Wat?",
             "selectDate": "Selecteer datum",
+            "selectDateShort": "Wanneer?",
             "clearDate": "Datum wissen",
             "popularLabel": "Populair"
         },

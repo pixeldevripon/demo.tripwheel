@@ -2,16 +2,9 @@
 
 import { format } from 'date-fns';
 import { AnimatePresence, motion } from 'framer-motion';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
-import { Calendar } from '@/components/ui/calendar';
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from '@/components/ui/popover';
 // Reused presentational typeahead panel (shared with the navbar search). Candidate
 // to promote to a shared `search/` folder once a third consumer appears.
 import type { SearchDict } from '@/components/frontend/navbar/lib/navbar.types';
@@ -19,6 +12,13 @@ import {
     SearchTypeahead,
     type SearchZeroState,
 } from '@/components/frontend/navbar/search-typeahead';
+import { MobileSearchLayer } from '@/components/frontend/search/mobile-search-layer';
+import {
+    SearchPill,
+    type SearchPillDict,
+} from '@/components/frontend/search/search-pill';
+import { useHeroDock } from '@/components/frontend/search/use-hero-dock';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { searchSuggestClient, searchToursClient } from '@/lib/api/search';
 import {
     LOCALE_CURRENCY,
@@ -27,7 +27,6 @@ import {
     type Locale,
 } from '@/lib/constants/locales';
 import { currencyFromCookie } from '@/lib/currency/current';
-import { springPop } from '@/lib/motion';
 import type {
     SearchHit,
     SuggestCategory,
@@ -41,6 +40,15 @@ import type {
  * this island, with an optional date that narrows to tours available that day.
  * Submit / "See all" goes to the full results page carrying q + destination +
  * date.
+ *
+ * THE BAR IS THE SHARED `SearchPill` (Pastel #51) in three positions: over the
+ * hero, docked under the nav once the hero scrolls past on mobile, and at the
+ * top of the mobile full-screen layer. One component, so the docked pill cannot
+ * drift from the hero pill it came from.
+ *
+ * ON MOBILE THE PANEL IS A FULL-SCREEN LAYER (Pastel #57), not a dropdown: the
+ * inline panel had no close control and the keyboard covered all but its first
+ * two rows. Desktop keeps the dropdown, which has neither problem.
  */
 export function DestinationHeroSearch({
     locale,
@@ -51,7 +59,7 @@ export function DestinationHeroSearch({
 }: {
     locale: Locale;
     destinationSlug: string;
-    dict: { searchPlaceholder: string; selectDate: string; clearDate: string };
+    dict: SearchPillDict;
     search: SearchDict;
     /**
      * What the panel offers BEFORE anything is typed (master 5.10). Built on the
@@ -80,11 +88,17 @@ export function DestinationHeroSearch({
     const [focused, setFocused] = useState(false);
     const [date, setDate] = useState<Date | undefined>(undefined);
     const [dateOpen, setDateOpen] = useState(false);
+    /** Mobile only: the full-screen layer, and whether it is showing the calendar. */
+    const [layerOpen, setLayerOpen] = useState(false);
+    const [layerCalendar, setLayerCalendar] = useState(false);
     const [currency, setCurrency] = useState<Currency>(
         LOCALE_CURRENCY[locale] ?? 'EUR'
     );
 
     const ref = useRef<HTMLDivElement>(null);
+    const layerInputRef = useRef<HTMLInputElement>(null);
+    const isMobile = useIsMobile();
+    const docked = useHeroDock(ref);
     const trimmed = query.trim();
     // Focus alone is enough to open the panel once there is a zero state to
     // show: the point of 5.10 is the visitor who does not yet know what to type.
@@ -99,18 +113,45 @@ export function DestinationHeroSearch({
         setCurrency(currencyFromCookie(document.cookie, locale));
     }, [locale]);
 
-    // Close the typeahead on an outside pointerdown (the date popover is portalled,
-    // so clicks inside it don't count as outside).
+    /*
+     * Close the typeahead on an outside pointerdown.
+     *
+     * THE DATE POPOVER IS PORTALLED TO `document.body`, so `ref` does not
+     * contain it and every click on a calendar day counted as "outside". The
+     * comment here used to claim the opposite, and the bug was exactly what
+     * that wrong claim predicted would not happen: with the panel open, the
+     * FIRST click on a day only closed the panel and the day had to be clicked
+     * again. A date picker that needs two clicks the first time and one
+     * thereafter is not a picker anyone can learn.
+     *
+     * So a portalled overlay counts as inside. `data-slot="popover-content"` is
+     * what `components/ui/popover` stamps on it, and the dialog role covers the
+     * mobile layer for the same reason.
+     */
     useEffect(() => {
         if (!focused) return;
         function onPointerDown(event: PointerEvent) {
-            if (ref.current && !ref.current.contains(event.target as Node)) {
+            const target = event.target as Element | null;
+            if (
+                target?.closest?.(
+                    '[data-slot="popover-content"],[role="dialog"]'
+                )
+            ) {
+                return;
+            }
+            if (ref.current && !ref.current.contains(target)) {
                 setFocused(false);
             }
         }
         document.addEventListener('pointerdown', onPointerDown);
         return () => document.removeEventListener('pointerdown', onPointerDown);
     }, [focused]);
+
+    // The layer's field takes focus on open, so the keyboard comes up against
+    // the list rather than the visitor having to tap a second time.
+    useEffect(() => {
+        if (layerOpen && !layerCalendar) layerInputRef.current?.focus();
+    }, [layerOpen, layerCalendar]);
 
     // Live previews as the user types (debounced 250ms, abortable). Re-runs when
     // the date changes so the preview reflects availability.
@@ -214,157 +255,160 @@ export function DestinationHeroSearch({
     function submit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setFocused(false);
+        closeLayer();
         router.push(trimmed ? searchHref(trimmed) : allToursHref());
     }
 
+    /** Mobile: the pill hands off to the full-screen layer, on the tapped half. */
+    function openLayer(target: 'query' | 'date') {
+        setLayerCalendar(target === 'date');
+        setLayerOpen(true);
+    }
+
+    function closeLayer() {
+        setLayerOpen(false);
+        setLayerCalendar(false);
+    }
+
+    const panel = (inline: boolean) => (
+        <SearchTypeahead
+            // Tour rows come from the date-aware tour search; the entity rows
+            // from /search/suggest. `beyondTours` stays empty on purpose - this
+            // search is scoped to the island whose page you are on.
+            suggest={{
+                query: trimmed,
+                total,
+                categories: entities.categories,
+                hubs: entities.hubs,
+                collections: entities.collections,
+                tours: hits,
+                beyondTours: [],
+            }}
+            loading={loading}
+            query={trimmed}
+            locale={locale}
+            currency={currency}
+            dict={search}
+            islandName={null}
+            searchHref={searchHref}
+            tourHref={tourHref}
+            categoryHref={slug =>
+                localizeHref(locale, `/${destinationSlug}/${slug}`)
+            }
+            hubHref={(destSlug, slug) => localizeHref(locale, `/${destSlug}/${slug}`)}
+            zeroState={zeroState}
+            inline={inline}
+            onSelect={() => {
+                setFocused(false);
+                closeLayer();
+            }}
+        />
+    );
+
     return (
         <div ref={ref} className='relative w-full'>
-            <form
-                onSubmit={submit}
-                role='search'
-                className='flex w-full gap-2 rounded-it-lg bg-it-white p-2 shadow-[0_18px_44px_rgba(0,0,0,0.3)] max-md:flex-col max-md:gap-1.5'>
-                {/* Search field (design v2 .hs-field): icon + text, the whole
-                    region focuses the input. Text is 16px below `md`: iOS
-                    Safari force-zooms the entire viewport when a focused input
-                    computes under 16px, and never zooms back out - which is
-                    the Pastel #29 report against this exact field. The date
-                    control beside it is a button, so it never triggered the
-                    zoom; it is bumped only to keep the pill's two halves
-                    type-matched. */}
-                <label className='flex min-w-0 flex-1 cursor-text items-center gap-2.5 rounded-it-sm py-2.5 pl-3.5 pr-2 transition-colors hover:bg-it-bg'>
-                    <Image
-                        src='/icons/search-soft.svg'
-                        alt=''
-                        width={24}
-                        height={24}
-                        className='size-4.5 shrink-0'
-                    />
-                    <input
-                        type='search'
-                        value={query}
-                        onChange={e => setQuery(e.target.value)}
-                        onFocus={() => setFocused(true)}
-                        placeholder={dict.searchPlaceholder}
-                        aria-label={dict.searchPlaceholder}
-                        className='min-w-0 w-full bg-transparent border-none outline-none text-[16px] md:text-[15.5px] font-semibold leading-[1.6] text-it-ink placeholder:font-bold placeholder:text-it-ink-muted [&::-webkit-search-cancel-button]:appearance-none'
-                    />
-                </label>
+            {/* The pill in the hero. Hidden on mobile once the docked copy
+                takes over - by then the hero is off screen, so nothing moves. */}
+            <div className={docked ? 'max-md:invisible' : undefined}>
+                <SearchPill
+                    variant='hero'
+                    dict={dict}
+                    compact={isMobile}
+                    query={query}
+                    onQueryChange={setQuery}
+                    onFocus={() => setFocused(true)}
+                    date={date}
+                    onDateChange={setDate}
+                    dateOpen={dateOpen}
+                    onDateOpenChange={setDateOpen}
+                    onSubmit={submit}
+                    // Mobile taps hand off to the layer instead of focusing in
+                    // place; desktop keeps the inline dropdown.
+                    onOpenLayer={openLayer}
+                />
+            </div>
 
-                {/* Vertical divider between the two fields (desktop only). */}
-                <span className='my-1.5 w-px shrink-0 bg-it-divider max-md:hidden' />
-
-                {/* Date picker - "Select date" text on both mobile and desktop.
-                    h-full + flex-1 on desktop (absorbing the old spacer): the
-                    whole region between the divider and the action button opens
-                    the calendar. */}
-                <Popover open={dateOpen} onOpenChange={setDateOpen}>
-                    {/* Clear control as a SIBLING of the trigger - a button's
-                        descendants are presentational to the accessibility
-                        tree, so a nested control would be unreachable. With no
-                        date the trigger absorbs the whole region (flex-1);
-                        with one it hugs the text so the clear sits beside it. */}
-                    <div className='flex shrink-0 items-center gap-1.5 rounded-it-sm transition-colors hover:bg-it-bg md:w-[190px]'>
-                        <PopoverTrigger asChild>
-                            <motion.button
-                                type='button'
-                                aria-label={dict.selectDate}
-                                transition={springPop}
-                                className={`flex flex-1 cursor-pointer items-center gap-2.5 whitespace-nowrap border-none bg-transparent py-2.5 pl-3.5 pr-2 text-left text-[16px] md:text-[15.5px] leading-[1.6] transition-colors duration-300 ${date ? 'font-semibold text-it-ink' : 'font-bold text-it-ink-muted'}`}>
-                                <Image
-                                    src='/icons/calendar-soft.svg'
-                                    alt=''
-                                    width={24}
-                                    height={24}
-                                    className='size-4.5 shrink-0'
-                                />
-                                {date
-                                    ? format(date, 'd MMM yyyy')
-                                    : dict.selectDate}
-                            </motion.button>
-                        </PopoverTrigger>
-                        {date && (
-                            <motion.button
-                                type='button'
-                                aria-label={dict.clearDate}
-                                whileTap={{ scale: 0.9 }}
-                                transition={springPop}
-                                onClick={() => setDate(undefined)}
-                                className='grid h-full shrink-0 cursor-pointer place-items-center border-none bg-transparent p-0'>
-                                <Image
-                                    src='/icons/filters/close-circle.svg'
-                                    alt=''
-                                    width={20}
-                                    height={20}
-                                    className='size-5 shrink-0'
-                                />
-                            </motion.button>
-                        )}
-                    </div>
-                    <PopoverContent
-                        align='start'
-                        sideOffset={28}
-                        className='w-auto rounded-[8px] bg-it-white p-0 text-it-heading duration-300 ease-[cubic-bezier(0.21,0.47,0.32,0.98)]'>
-                        <Calendar
-                            mode='single'
-                            selected={date}
-                            onSelect={selected => {
-                                setDate(selected);
-                                setDateOpen(false);
-                            }}
-                            disabled={{ before: new Date() }}
-                            autoFocus
-                            className='bg-it-white [--cell-radius:8px]'
-                        />
-                    </PopoverContent>
-                </Popover>
-
-                {/* Orange labeled action button (design v2 .searchgo). */}
-                <motion.button
-                    type='submit'
-                    aria-label={search.title}
-                    whileTap={{ scale: 0.97 }}
-                    transition={springPop}
-                    className='flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-it-md border-none bg-it-primary px-6 py-3 text-[16px] md:text-[19px] font-bold text-it-white transition-colors hover:bg-it-primary-hover'>
-                    {search.title}
-                </motion.button>
-            </form>
-
+            {/* Docked (mobile, hero scrolled past): the same pill fixed under
+                the nav inside a 12px gutter.
+                
+                A SEPARATE INSTANCE, so it can be ANIMATED IN. Toggling the
+                original between static and fixed teleports it - there is no
+                start frame to transition from, and a bar that materialises
+                mid-scroll reads as a glitch. This one slides down from behind
+                the navbar, which is where it is coming from. Both share the
+                parent's state, so the query and date carry across untouched. */}
             <AnimatePresence>
-                {showPanel && (
-                    <SearchTypeahead
-                        // Tour rows come from the date-aware tour search; the
-                        // entity rows from /search/suggest. `beyondTours` stays
-                        // empty on purpose - this search is scoped to the island
-                        // whose page you are on.
-                        suggest={{
-                            query: trimmed,
-                            total,
-                            categories: entities.categories,
-                            hubs: entities.hubs,
-                            collections: entities.collections,
-                            tours: hits,
-                            beyondTours: [],
+                {docked && (
+                    <motion.div
+                        initial={{ y: -16, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: -16, opacity: 0 }}
+                        transition={{
+                            duration: 0.22,
+                            ease: [0.21, 0.47, 0.32, 0.98],
                         }}
-                        loading={loading}
-                        query={trimmed}
-                        locale={locale}
-                        currency={currency}
-                        dict={search}
-                        islandName={null}
-                        searchHref={searchHref}
-                        tourHref={tourHref}
-                        categoryHref={slug =>
-                            localizeHref(locale, `/${destinationSlug}/${slug}`)
-                        }
-                        hubHref={(destSlug, slug) =>
-                            localizeHref(locale, `/${destSlug}/${slug}`)
-                        }
-                        zeroState={zeroState}
-                        onSelect={() => setFocused(false)}
-                    />
+                        className='fixed left-3 right-3 top-[72px] z-60 md:hidden'>
+                        <SearchPill
+                            variant='docked'
+                            dict={dict}
+                            compact
+                            query={query}
+                            onQueryChange={setQuery}
+                            date={date}
+                            onDateChange={setDate}
+                            onSubmit={submit}
+                            onOpenLayer={openLayer}
+                        />
+                    </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* Desktop dropdown. Hidden below md, where the layer owns it. */}
+            <AnimatePresence>
+                {showPanel && (
+                    <div className='max-md:hidden'>{panel(false)}</div>
+                )}
+            </AnimatePresence>
+
+            <MobileSearchLayer
+                open={layerOpen}
+                onClose={closeLayer}
+                closeLabel={search.closeSearch}
+                calendarOpen={layerCalendar}
+                date={date}
+                onDateSelect={selected => {
+                    setDate(selected);
+                    setLayerCalendar(false);
+                }}
+                pill={
+                    <SearchPill
+                        ref={layerInputRef}
+                        variant='layer'
+                        dict={dict}
+                        compact
+                        query={query}
+                        onQueryChange={value => {
+                            setQuery(value);
+                            setLayerCalendar(false);
+                        }}
+                        // Tapping back into the field is a change of mind about
+                        // WHICH question is being answered, so the calendar
+                        // gives the space back to the suggestions - waiting for
+                        // a keystroke would leave the visitor typing behind a
+                        // calendar.
+                        onFocus={() => setLayerCalendar(false)}
+                        date={date}
+                        onDateChange={setDate}
+                        // Inside the layer the calendar replaces the list in
+                        // the same space rather than opening a popover over it.
+                        inlineCalendar
+                        dateOpen={layerCalendar}
+                        onDateOpenChange={setLayerCalendar}
+                        onSubmit={submit}
+                    />
+                }
+                panel={panel(true)}
+            />
         </div>
     );
 }
-

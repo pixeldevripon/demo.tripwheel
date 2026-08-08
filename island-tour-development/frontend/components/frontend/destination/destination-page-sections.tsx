@@ -45,6 +45,9 @@ interface HeroSectionProps {
  * Hero band + "Explore by type" row. Needs the destination's hubs + categories
  * (hubs lead) for the hero's "Popular" quick links and the explore cards.
  */
+/** Hero "Popular" quick links (master 5.2 locks the top 3). */
+const POPULAR_LINKS_MAX = 3;
+
 export async function DestinationHeroSection({
     destination,
     locale,
@@ -161,12 +164,23 @@ export async function DestinationHeroSection({
         ...categories.map(c => ({ name: c.name, slug: c.slug })),
     ].slice(0, 4);
 
+    /*
+     * TOP THREE, not four. The live build showed four and master 5.2 locks the
+     * top 3 of the curated discovery list - the spec catch the client flagged
+     * at the top of his S4h handoff while we were in this file.
+     *
+     * Applied to BOTH paths on purpose. Capping only the automatic list would
+     * let a curated row of four slip through, which is the state the client was
+     * looking at when he reported it.
+     */
     const activities = (
         curatedPopular.length > 0 ? curatedPopular : automaticPopular
-    ).map(item => ({
-        label: item.name,
-        href: localizeHref(locale, `/${destination}/${item.slug}`),
-    }));
+    )
+        .slice(0, POPULAR_LINKS_MAX)
+        .map(item => ({
+            label: item.name,
+            href: localizeHref(locale, `/${destination}/${item.slug}`),
+        }));
 
     /*
      * Zero-state panel for the hero search (master 5.10): what the field offers

@@ -50,6 +50,7 @@
     },
     "search": {
         "title": "Recherche",
+        "closeSearch": "Fermer la recherche",
         "placeholder": "Rechercher des excursions, activités, lieux",
         "resultsFor": "{count} résultats pour “{query}”",
         "resultFor": "{count} résultat pour “{query}”",
@@ -267,7 +268,9 @@
             "toursActivities": "circuits et activités",
             "subtitle": "Des circuits choisis par des locaux qui connaissent chaque récif, route et coucher de soleil",
             "searchPlaceholder": "Que voulez-vous faire ?",
+            "searchPlaceholderShort": "Quoi ?",
             "selectDate": "Sélectionner une date",
+            "selectDateShort": "Quand ?",
             "clearDate": "Effacer la date",
             "popularLabel": "Populaire"
         },

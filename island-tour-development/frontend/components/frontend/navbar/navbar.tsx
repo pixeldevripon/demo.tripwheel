@@ -9,6 +9,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useWishlist } from '@/components/frontend/wishlist-provider';
 import { fetchDestinationCategoriesClient } from '@/lib/api/categories-public';
+import { fetchDestinationPopularLinksClient } from '@/lib/api/popular-links-public';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 
 import { AccountMenu } from './account-menu';
@@ -19,6 +20,7 @@ import { MobileMenu } from './mobile-menu';
 import { NavSearch } from './nav-search';
 import { iconPress, pressSpring } from './lib/navbar.constants';
 import type { Category, Island, NavDict, SearchDict } from './lib/navbar.types';
+import type { DestinationPopularLink } from '@/types/destination';
 import { WishlistLink } from './wishlist-link';
 
 /** localStorage key for the last-viewed island (persists the navbar selection). */
@@ -135,6 +137,49 @@ export function Navbar({
         };
     }, [currentIsland?.slug, locale]);
 
+    /*
+     * The island's CURATED discovery list (SEARCH_PANEL placement) - what the
+     * mobile search layer offers before anything is typed.
+     *
+     * Fetched here rather than passed down from the layout because the active
+     * island is a client-side choice that changes without a navigation, exactly
+     * like the categories above; same cache-by-island-and-locale, same
+     * fail-to-empty. Empty is a MEANINGFUL answer: `buildDiscoveryLinks` reads
+     * it as "nothing curated" and falls back to the island's own categories.
+     */
+    const [popularLinks, setPopularLinks] = useState<DestinationPopularLink[]>(
+        []
+    );
+    const popularCache = useRef<Map<string, DestinationPopularLink[]>>(
+        new Map()
+    );
+    useEffect(() => {
+        const slug = currentIsland?.slug;
+        if (!slug) {
+            setPopularLinks([]);
+            return;
+        }
+        const cacheKey = `${locale}:${slug}`;
+        const cached = popularCache.current.get(cacheKey);
+        if (cached) {
+            setPopularLinks(cached);
+            return;
+        }
+        let ignore = false;
+        fetchDestinationPopularLinksClient(slug, locale)
+            .then(rows => {
+                if (ignore) return;
+                popularCache.current.set(cacheKey, rows);
+                setPopularLinks(rows);
+            })
+            .catch(() => {
+                if (!ignore) setPopularLinks([]);
+            });
+        return () => {
+            ignore = true;
+        };
+    }, [currentIsland?.slug, locale]);
+
     return (
         <header className='fixed top-0 left-0 right-0 z-100 h-16 bg-(--it-navbar-bg) backdrop-blur-[12px] backdrop-saturate-[1.3] shadow-it-navbar'>
             <div className='it-container h-full flex items-center gap-3.5'>
@@ -192,6 +237,7 @@ export function Navbar({
                     search={search}
                     currentIsland={currentIsland}
                     categories={categories}
+                    popularLinks={popularLinks}
                     showDesktop={!isHome}
                     mobileOpen={mobileSearchOpen}
                     onMobileClose={() => setMobileSearchOpen(false)}
@@ -218,7 +264,14 @@ export function Navbar({
                             aria-label={dict.search}
                             aria-expanded={mobileSearchOpen}
                             {...iconPress}
-                            className='flex items-center bg-transparent border-none cursor-pointer p-0'>
+                            // Hidden while a hero pill is docked right beneath
+                            // it (`body.hsdock`, set by `useHeroDock`): the
+                            // docked pill IS the search entry there, and two of
+                            // them in the same band is what Pastel #51 calls
+                            // "a second search bar left behind". Already hidden
+                            // on the homepage for the same reason - its hero
+                            // owns the search.
+                            className='flex items-center bg-transparent border-none cursor-pointer p-0 [.hsdock_&]:hidden'>
                             <Image
                                 src='/icons/nav-search.svg'
                                 alt=''

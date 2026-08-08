@@ -50,6 +50,7 @@
     },
     "search": {
         "title": "Buscar",
+        "closeSearch": "Cerrar búsqueda",
         "placeholder": "Busca tours, actividades, lugares",
         "resultsFor": "{count} resultados para “{query}”",
         "resultFor": "{count} resultado para “{query}”",
@@ -267,7 +268,9 @@
             "toursActivities": "tours y actividades",
             "subtitle": "Tours elegidos por locales que conocen cada arrecife, ruta y rincón al atardecer",
             "searchPlaceholder": "¿Qué quieres hacer?",
+            "searchPlaceholderShort": "¿Qué?",
             "selectDate": "Seleccionar fecha",
+            "selectDateShort": "¿Cuándo?",
             "clearDate": "Borrar fecha",
             "popularLabel": "Popular"
         },

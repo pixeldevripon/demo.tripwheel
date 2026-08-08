@@ -7,6 +7,7 @@ import type { Locale } from '@/lib/constants/locales';
 import type { SearchZeroState } from '@/components/frontend/navbar/search-typeahead';
 
 import { DestinationHeroSearch } from './destination-hero-search';
+import { HeroPopularLinks } from './hero-popular-links';
 import type {
     ActivityLink,
     DestinationHeroDict,
@@ -88,31 +89,21 @@ export function DestinationHero({
                         <DestinationHeroSearch
                             locale={locale}
                             destinationSlug={destinationSlug}
-                            dict={dict}
+                            // The round button's accessible name is the search
+                            // dictionary's own word, not a second copy of it.
+                            dict={{ ...dict, searchLabel: search.title }}
                             search={search}
                             zeroState={searchZeroState}
                         />
 
-                        {/* Activities (top categories/hubs) - quick links */}
-                        {activities.length > 0 && (
-                            <p className='m-0 text-center text-[13.5px] font-semibold leading-[1.6] text-it-white/90 [text-shadow:0_1px_10px_rgba(0,0,0,0.3)]'>
-                                {dict.popularLabel}:{' '}
-                                {activities.map((item, i) => (
-                                    <span key={item.href}>
-                                        {i > 0 && (
-                                            <span className='mx-1.5 opacity-60'>
-                                                ·
-                                            </span>
-                                        )}
-                                        <Link
-                                            href={item.href}
-                                            className='text-it-white underline underline-offset-[3px] decoration-white/50 transition-colors duration-300 hover:text-it-primary-subtle'>
-                                            {item.label}
-                                        </Link>
-                                    </span>
-                                ))}
-                            </p>
-                        )}
+                        {/* Activities (top categories/hubs) - quick links.
+                            Its own client leaf: the row measures its own
+                            overflow to fade the scrollable edge, and the hero
+                            around it stays in the static shell. */}
+                        <HeroPopularLinks
+                            label={dict.popularLabel}
+                            activities={activities}
+                        />
                     </div>
                 </div>
             </div>

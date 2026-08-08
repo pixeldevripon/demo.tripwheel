@@ -1,12 +1,14 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
+import { MobileSearchLayer } from '@/components/frontend/search/mobile-search-layer';
+import { SearchPill } from '@/components/frontend/search/search-pill';
 import { searchSuggestClient } from '@/lib/api/search';
+import { buildDiscoveryLinks } from '@/lib/destination/discovery-links';
 import {
     LOCALE_CURRENCY,
     localizeHref,
@@ -14,9 +16,10 @@ import {
     type Locale,
 } from '@/lib/constants/locales';
 import { currencyFromCookie } from '@/lib/currency/current';
+import type { DestinationPopularLink } from '@/types/destination';
 import type { SearchHit, SearchSuggest } from '@/types/search';
 
-import { iconPress, pressSpring } from './lib/navbar.constants';
+import { iconPress } from './lib/navbar.constants';
 import type { Category, Island, NavDict, SearchDict } from './lib/navbar.types';
 import { useClickOutside } from './lib/use-click-outside';
 import { RotatingSearchPlaceholder } from './rotating-search-placeholder';
@@ -37,6 +40,7 @@ export function NavSearch({
     search,
     currentIsland,
     categories,
+    popularLinks,
     showDesktop,
     mobileOpen,
     onMobileClose,
@@ -47,6 +51,12 @@ export function NavSearch({
     currentIsland: Island | null;
     /** Destination-scoped categories - feed the rotating placeholder. */
     categories: Category[] | null;
+    /**
+     * The island's CURATED discovery list (SEARCH_PANEL). Empty means nothing
+     * has been curated for this island, which is the signal to fall back to the
+     * categories above - not an error.
+     */
+    popularLinks: DestinationPopularLink[];
     showDesktop: boolean;
     mobileOpen: boolean;
     onMobileClose: () => void;
@@ -103,7 +113,8 @@ export function NavSearch({
         };
     }, [query, locale, currency, currentIsland?.slug]);
 
-    // Focus the mobile field as soon as the overlay expands.
+    // Focus the layer's field as soon as it opens, so the keyboard comes up
+    // against the list rather than needing a second tap.
     useEffect(() => {
         if (mobileOpen) mobileInputRef.current?.focus();
     }, [mobileOpen]);
@@ -144,7 +155,72 @@ export function NavSearch({
     const categoryNames = (categories ?? []).map(c => c.name);
     const rotating = categoryNames.length > 0;
 
-    const panel = (
+    /*
+     * What the LAYER offers before anything is typed.
+     *
+     * THE CURATED LIST FIRST, the island's own categories only as the fallback -
+     * `buildDiscoveryLinks` is the same function the destination hero panel and
+     * the search recovery band call, so all three surfaces answer "what is
+     * popular here" identically. Curation is an editorial claim an admin makes
+     * per island; reading straight from the category table, as an earlier pass
+     * did here, quietly overruled it.
+     *
+     * Hubs and collections are empty because the navbar has neither to hand in
+     * the browser: the fallback is categories, which is what this layer showed
+     * before. Curated entries carry their own kind, so a curated hub or
+     * collection still renders correctly.
+     *
+     * The dropdown can afford to stay closed until two characters - it is a
+     * small panel under a small bar - but the layer is a whole screen, and it
+     * opened on "No results for “”", a verdict on a search nobody had run.
+     */
+    const discovery = currentIsland
+        ? buildDiscoveryLinks({
+              curated: popularLinks,
+              hubs: [],
+              categories: (categories ?? []).map(category => ({
+                  name: category.name,
+                  slug: category.slug,
+                  publishedTourCount: category.tours ?? 0,
+                  heroImage: category.image ?? null,
+              })),
+              collections: [],
+          })
+        : [];
+
+    const layerZeroState =
+        currentIsland && discovery.length > 0
+            ? {
+                  categoriesAndHubs: discovery
+                      .filter(link => link.kind !== 'collection')
+                      .map(link => ({
+                          name: link.name,
+                          href: localizeHref(
+                              locale,
+                              `/${currentIsland.slug}/${link.slug}`
+                          ),
+                          kind: link.kind,
+                          tours: link.tours ?? undefined,
+                          image: link.image,
+                      })),
+                  collections: discovery
+                      .filter(link => link.kind === 'collection')
+                      .map(link => ({
+                          name: link.name,
+                          href: localizeHref(
+                              locale,
+                              `/${currentIsland.slug}/${link.slug}`
+                          ),
+                          kind: link.kind,
+                          tours: link.tours ?? undefined,
+                          image: link.image,
+                      })),
+                  topTours: [],
+                  allTours: null,
+              }
+            : undefined;
+
+    const panel = (inline: boolean) => (
         <SearchTypeahead
             suggest={suggest}
             loading={loading}
@@ -164,6 +240,8 @@ export function NavSearch({
             hubHref={(destinationSlug: string, slug: string) =>
                 localizeHref(locale, `/${destinationSlug}/${slug}`)
             }
+            zeroState={inline ? layerZeroState : undefined}
+            inline={inline}
             onSelect={onSelect}
         />
     );
@@ -213,68 +291,59 @@ export function NavSearch({
                         </span>
                     </form>
                     <AnimatePresence>
-                        {showDesktopPanel && panel}
+                        {showDesktopPanel && panel(false)}
                     </AnimatePresence>
                 </div>
             )}
 
-            {/* Mobile overlay - expands over the bar when the search icon is tapped. */}
-            <AnimatePresence>
-                {mobileOpen && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.18 }}
-                        className='absolute inset-0 z-50 flex items-center gap-3 bg-it-white px-4 md:hidden'>
-                        <motion.button
-                            type='button'
-                            onClick={onMobileClose}
-                            aria-label={nav.close}
-                            whileTap={{ scale: 0.9, x: -2 }}
-                            transition={pressSpring}
-                            className='flex items-center bg-transparent border-none cursor-pointer p-0 text-it-heading'>
-                            <ArrowLeft size={24} strokeWidth={1.5} />
-                        </motion.button>
-                        <form
-                            onSubmit={submit}
-                            role='search'
-                            className='flex flex-1 items-center gap-2 rounded-it-full border border-it-heading-subtle px-4 py-2.5 bg-it-white'>
-                            <span className='relative flex-1 min-w-0'>
-                                <input
-                                    ref={mobileInputRef}
-                                    type='search'
-                                    value={query}
-                                    onChange={e => setQuery(e.target.value)}
-                                    placeholder={rotating ? '' : nav.search}
-                                    aria-label={nav.search}
-                                    className='w-full bg-transparent border-none outline-none text-[16px] md:text-[15px] font-semibold text-it-ink placeholder:font-bold placeholder:text-it-ink-muted [&::-webkit-search-cancel-button]:appearance-none'
-                                />
-                                {rotating && query === '' && (
-                                    <RotatingSearchPlaceholder
-                                        prefix={nav.search}
-                                        names={categoryNames}
-                                    />
-                                )}
-                            </span>
-                            <motion.button
-                                type='submit'
-                                aria-label={nav.search}
-                                {...iconPress}
-                                className='flex items-center bg-transparent border-none cursor-pointer p-0'>
-                                <Image
-                                    src='/icons/nav-search.svg'
-                                    alt=''
-                                    width={18}
-                                    height={18}
-                                    className='size-4.5 shrink-0'
-                                />
-                            </motion.button>
-                        </form>
-                        {trimmed.length >= 2 && panel}
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            {/* Mobile: the SHARED full-screen layer (Pastel #57), not a
+                second panel. The nav icon and the hero pill are two ways into
+                one component - the issue is explicit that the nav must not grow
+                its own. What it replaced was an in-bar overlay whose only exit
+                was a back arrow and whose suggestions were still an inline
+                dropdown under it, so the keyboard covered them exactly as it
+                did in the hero. */}
+            <MobileSearchLayer
+                open={mobileOpen}
+                onClose={onMobileClose}
+                closeLabel={search.closeSearch}
+                pill={
+                    <SearchPill
+                        ref={mobileInputRef}
+                        variant='layer'
+                        compact
+                        dict={{
+                            // Blank while the rotating overlay is running, so
+                            // the two do not print on top of each other.
+                            searchPlaceholder: rotating ? '' : nav.search,
+                            searchPlaceholderShort: rotating ? '' : nav.search,
+                            ariaLabel: nav.search,
+                            searchLabel: search.title,
+                        }}
+                        query={query}
+                        onQueryChange={setQuery}
+                        // NO DATE. The navbar search never had one and gaining
+                        // one from the shared pill would be a feature nobody
+                        // asked for - the date belongs to the hero, where the
+                        // island is already chosen.
+                        showDate={false}
+                        onSubmit={submit}>
+                        {rotating && query === '' && (
+                            <RotatingSearchPlaceholder
+                                prefix={nav.search}
+                                names={categoryNames}
+                            />
+                        )}
+                    </SearchPill>
+                }
+                // Unscoped (no active island) there is no gated list to offer,
+                // so an untouched field shows an empty sheet rather than "No
+                // results for “”" - which is a verdict on a search nobody ran.
+                panel={
+                    trimmed.length >= 2 || layerZeroState ? panel(true) : null
+                }
+            />
+
         </>
     );
 }
