@@ -739,7 +739,7 @@ Pages/CMS module, observability (Sentry/backups/deep health), and founder-gated 
 - [x] Star-distribution chart (histogram in `tour-reviews-section.tsx`)
 - [x] Per-review machine translation with a show-original toggle (LD32) — `isMachineTranslated`/`showingOriginal` in `tour-reviews-section.tsx`
 - [ ] Related Tours as **two** independent rows ("More {category} in {Destination}" / "More to explore in {Destination}"), 3 cards each, rendering at ≥2 matches, firing `related_tour_click` (LD33)
-- [ ] Demand card below the widget ("Likely to sell out" / "Book today to secure your spot.") gated on the single §3.7 trigger
+- [x] Demand card below the widget ("Likely to sell out" / "Book today to secure your spot.") gated on the single §3.7 trigger (2026-08-08, GitHub #121+#122 / Pastel #52+#53): the slot under the booking widget now holds the demand card and nothing else. **Instant confirmation** is gone from it — LD5 names it as an exclusion and conflict log 42 had already rejected it there once; the claim keeps its page-level home as "Confirmed in seconds" on the All Tours trust strip. The **Sponsored** disclosure is gone from the tour page too: it discloses a paid POSITION inside a ranked list, and a tour's own page has no position to disclose, so it stays on the listing cards and in the results-counter ranking tooltip where the position actually is. `BookingNoticeKind` is down to `likelyToSellOut | mostPopular`; the four dictionary keys the removed cards owned are deleted in all 7 locales and `sellOutSubtitle` now carries the master-locked full stop. Styling was already §5.7-correct (white card, brand-orange border at 30%, flame SVG, plain `<div>` — never red, never animated, not clickable). Backend §3.7 rule was already built (90 days old · ≥3 sell-outs in 60d · <40% seats open across REAL DEPARTURES in the next 30d, never calendar days) with `likelyToSellOutOverride` as the launch flag; this pass closed the sell-out-counting gap — an operator **date closure** now counts as a sell-out alongside departures that filled with us, and a **bulk blackout counts once** via a new `availability_exceptions.closureBatchId` stamped per `closeRange()` call (counting per closed date would let one two-week haul-out clear the three-event bar and badge a tour that is not scarce). At launch the manual override IS the signal and must be set on a handful of tours only, never catalog-wide
 - [x] Product/Offer + Review + AggregateRating JSON-LD (`lib/seo/tour-review-jsonld.ts`), plus TouristTrip + BreadcrumbList on the tour page (§2.6)
 - [ ] Confirm no per-tour FAQ section and no closing trust block ship (LD21, B.7)
 
@@ -775,7 +775,7 @@ Pages/CMS module, observability (Sentry/backups/deep health), and founder-gated 
 - [x] `spectators-panel` rendered only on tours with spectator pricing
 - [x] `price-header` + `price-summary` with server-quoted totals (S4)
 - [x] `booking-cta` with CTA progression into checkout (S5)
-- [x] `sell-out-notice`
+- [x] `sell-out-notice` → `booking-notices`: the demand card and "Most popular", each rendering only when the tour has earned it (Pastel #52/#53 removed the Instant confirmation and Sponsored cards from this stack)
 - [x] `policy-modal` (cancellation / deposit trust modals)
 - [x] `collapse` behaviour + `lib/booking.utils`
 - [x] Live availability sync against real departures and a real `POST /bookings/quote`

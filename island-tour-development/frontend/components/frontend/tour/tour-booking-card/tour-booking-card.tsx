@@ -144,8 +144,10 @@ function TourBookingCardLayout() {
                 )}
             </div>
 
-            {/* Earned notices (sell-out / most popular / sponsored) — flow
-                below the capped card. Renders nothing when the tour has none. */}
+            {/* Earned notices (demand card / most popular) — flow below the
+                capped card. Renders nothing when the tour has none, which is
+                the common case: the demand signal is deliberately selective
+                (~5-10% of catalog, master §3.7). */}
             <BookingNotices />
 
             {/* Phone-only stand-in for the card once it has scrolled away

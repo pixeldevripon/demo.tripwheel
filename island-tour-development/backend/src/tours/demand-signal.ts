@@ -5,7 +5,8 @@
  * daily:
  *
  *   1. tour_age_days >= 90
- *   2. recent_sellouts >= 3 in the past 60 days   (departures.sold_out_at, E.9)
+ *   2. recent_sellouts >= 3 in the past 60 days   (departures.sold_out_at, E.9,
+ *      plus operator date closures - one event per bulk blackout)
  *   3. upcoming_availability_ratio < 0.40 over the next 30 days
  *
  * A manual CMS override (`tour.likelyToSellOutOverride`) exists for the launch
@@ -19,7 +20,7 @@
  *
  * Companion doc: technical-doc/03-implementation/TOUR-BADGES.md.
  */
-import { DepartureStatus } from '@prisma/client';
+import { AvailabilityExceptionType, DepartureStatus } from '@prisma/client';
 
 import type { PrismaService } from '@/prisma/prisma.service';
 
@@ -38,6 +39,56 @@ function startOfUtcDay(d: Date): Date {
   );
 }
 
+/** The Prisma surface `evaluateLikelyToSellOut` needs - small enough that both
+ *  the NestJS service and the standalone demo seed can pass their own client. */
+type DemandPrisma = Pick<
+  PrismaService,
+  'tour' | 'departure' | 'availabilityException'
+>;
+
+/**
+ * Sell-out EVENTS for a tour in the window. A departure counts in two cases,
+ * and both feed the same number (client clarification, Aug 7 2026):
+ *
+ *  1. it fills to capacity with us - `departures.sold_out_at`;
+ *  2. the operator closes the date, which is how a sell-out on the operator's
+ *     own channels reaches us - a whole-day CLOSE_DATE exception.
+ *
+ * A bulk blackout is ONE operator action however many dates it spans, so rows
+ * sharing a `closureBatchId` collapse to a single event. Counting per closed
+ * date would let one two-week haul-out clear the 3-event bar by itself and put
+ * a scarcity badge on a tour that is not scarce at all.
+ *
+ * The closure is counted at the moment the operator acted (`createdAt`), not by
+ * the date closed: that mirrors `soldOutAt`, and a closure written for a date
+ * six months out is still evidence about demand today.
+ */
+async function countRecentSellouts(
+  prisma: DemandPrisma,
+  tourId: string,
+  windowStart: Date,
+  now: Date,
+): Promise<number> {
+  const [filledWithUs, closures] = await Promise.all([
+    prisma.departure.count({
+      where: { tourId, soldOutAt: { gte: windowStart, lte: now } },
+    }),
+    prisma.availabilityException.findMany({
+      where: {
+        tourId,
+        type: AvailabilityExceptionType.CLOSE_DATE,
+        createdAt: { gte: windowStart, lte: now },
+      },
+      select: { id: true, closureBatchId: true },
+    }),
+  ]);
+  // A null batch id is a one-date closure - its own event, so it keys on the
+  // row id and can never merge with another.
+  const closureEvents = new Set(closures.map((c) => c.closureBatchId ?? c.id))
+    .size;
+  return filledWithUs + closureEvents;
+}
+
 /**
  * Returns the COMPUTED §3.7 demand signal for a tour (ignores the manual
  * override - the caller applies `override ?? computed`). A minimal Prisma client
@@ -45,7 +96,7 @@ function startOfUtcDay(d: Date): Date {
  * pass their own instance.
  */
 export async function evaluateLikelyToSellOut(
-  prisma: Pick<PrismaService, 'tour' | 'departure'>,
+  prisma: DemandPrisma,
   tourId: string,
   now: Date = new Date(),
 ): Promise<boolean> {
@@ -61,17 +112,23 @@ export async function evaluateLikelyToSellOut(
   const ageDays = (now.getTime() - since.getTime()) / DAY_MS;
   if (ageDays < DEMAND_MIN_AGE_DAYS) return false;
 
-  // 2. >= 3 sellouts in the past 60 days (departures stamped sold_out_at).
+  // 2. >= 3 sellouts in the past 60 days - departures that filled with us, plus
+  //    operator date closures (one per bulk blackout). See countRecentSellouts.
   const windowStart = new Date(
     now.getTime() - DEMAND_SELLOUT_WINDOW_DAYS * DAY_MS,
   );
-  const recentSellouts = await prisma.departure.count({
-    where: { tourId, soldOutAt: { gte: windowStart, lte: now } },
-  });
+  const recentSellouts = await countRecentSellouts(
+    prisma,
+    tourId,
+    windowStart,
+    now,
+  );
   if (recentSellouts < DEMAND_MIN_SELLOUTS_60D) return false;
 
   // 3. Upcoming availability ratio < 0.40 over the next 30 days. Ratio = remaining
-  //    seats / total capacity across non-cancelled departures in the window.
+  //    seats / total capacity across REAL DEPARTURES in the window - never
+  //    calendar days, so a tour that sails three days a week is not judged on
+  //    the four it does not sail.
   const today = startOfUtcDay(now);
   const horizon = new Date(
     today.getTime() + DEMAND_AVAILABILITY_WINDOW_DAYS * DAY_MS,

@@ -2,7 +2,6 @@
 
 import { useBooking } from '@/hooks/tours/use-booking';
 import type { BookingNoticeKind } from '@/lib/tours/booking';
-import { cn } from '@/lib/utils';
 import Image from 'next/image';
 
 /**
@@ -11,11 +10,16 @@ import Image from 'next/image';
  * Was `sell-out-notice.tsx`, which rendered "Likely to sell out"
  * UNCONDITIONALLY - every tour page claimed scarcity whether or not the demand
  * signal was true. The layout is byte-for-byte the original; the change is that
- * a card now appears only when the tour has earned it, and that two more
- * signals can appear in the same shape.
+ * a card now appears only when the tour has earned it.
+ *
+ * The stack once held two more cards, both removed by the client (Pastel
+ * #52/#53): Instant confirmation, which repeated a page-level claim the trust
+ * strip already makes and which LD5 names as an exclusion, and the Sponsored
+ * disclosure, which belongs beside a ranked position and has none here. The
+ * slot is the demand card's; see `deriveBookingNotices`.
  */
 
-/** Icon + copy per notice. All three read from the shared booking dict. */
+/** Icon + copy per notice. Both read from the shared booking dict. */
 const NOTICE_ICON: Record<BookingNoticeKind, { src: string; size: number }> = {
     // The flame, unchanged.
     likelyToSellOut: { src: '/icons/sell-out.svg', size: 24 },
@@ -24,28 +28,11 @@ const NOTICE_ICON: Record<BookingNoticeKind, { src: string; size: number }> = {
     // the 24px the other notices sit at. Keep both pointing here until a
     // dedicated 24px Figma icon exists.
     mostPopular: { src: '/icons/sell-out.svg', size: 24 },
-    // Instant confirmation (master 6.1). Deliberately NOT a trust-strip line
-    // (LD5 locks the strip to exactly two); the green check the trust lines use
-    // is the honest glyph for "confirmed the moment payment completes".
-    instantConfirmation: { src: '/icons/booking-check.svg', size: 20 },
-    // PLACEHOLDER - there is no "sponsored"/disclosure glyph in public/icons/
-    // and a Figma icon must never be substituted with a lucide stand-in, so this
-    // borrows the closest informational one. Swap in the real export when it
-    // exists; nothing else about the card needs to change.
-    sponsored: { src: '/icons/tip-bulb.svg', size: 24 },
 };
 
 function BookingNotice({ kind }: { kind: BookingNoticeKind }) {
     const { dict } = useBooking();
     const icon = NOTICE_ICON[kind];
-    // Paid-placement disclosure, desktop only (Pastel #35): phone screen height
-    // is scarce and this card pushed the real content down. Hidden with CSS
-    // rather than a `useIsMobile()` branch, which would render it server-side
-    // and then blink it away on hydration - and the card carries no impression
-    // call, so the only thing worth not fetching is its glyph. That is what the
-    // `loading` swap below is for: inside `display: none` a lazy image never
-    // intersects, so on a phone it is never requested at all.
-    const sponsored = kind === 'sponsored';
     const copy = {
         likelyToSellOut: {
             title: dict.sellOutTitle,
@@ -55,28 +42,17 @@ function BookingNotice({ kind }: { kind: BookingNoticeKind }) {
             title: dict.mostPopularTitle,
             subtitle: dict.mostPopularSubtitle,
         },
-        instantConfirmation: {
-            title: dict.instantConfirmationTitle,
-            subtitle: dict.instantConfirmationSubtitle,
-        },
-        sponsored: {
-            title: dict.sponsoredTitle,
-            subtitle: dict.sponsoredSubtitle,
-        },
     }[kind];
 
     return (
+        // White card, brand-orange border at 30% - master §5.7 locks this for
+        // the demand card: never red, never animated, and a plain <div> because
+        // it is not clickable in v1.
+        //
         // `shrink-0`: the strip below scrolls as a whole when the rail is
         // squeezed, so an individual notice must keep its own height rather
         // than squashing its two lines of text.
-        <div
-            className={cn(
-                'shrink-0 items-start gap-[11px] rounded-it-md border border-it-primary/30 bg-it-white px-4 py-3.5',
-                // `hidden md:flex` rather than `flex max-md:hidden`: one
-                // display utility per breakpoint, so which wins never depends
-                // on the order Tailwind emits them in.
-                sponsored ? 'hidden md:flex' : 'flex'
-            )}>
+        <div className='flex shrink-0 items-start gap-[11px] rounded-it-md border border-it-primary/30 bg-it-white px-4 py-3.5'>
             <Image
                 src={icon.src}
                 alt=''
@@ -89,12 +65,7 @@ function BookingNotice({ kind }: { kind: BookingNoticeKind }) {
                 // rendering as text with a blank gap where the glyph belongs.
                 // `eager`, not `priority` - no preload link, so nothing
                 // competes with the gallery LCP.
-                //
-                // The sponsored card is the exception: eager would fetch its
-                // glyph on a phone, where the card is not rendered at all.
-                // Lazy still loads it promptly on desktop (the rail is in the
-                // first viewport), and never on mobile.
-                loading={sponsored ? 'lazy' : 'eager'}
+                loading='eager'
             />
             <div className='flex flex-col gap-0.5'>
                 <span className='text-[14px] font-bold leading-[1.5] text-it-ink'>
@@ -111,10 +82,10 @@ function BookingNotice({ kind }: { kind: BookingNoticeKind }) {
 /** Renders nothing when the tour has earned no notices - the common case. */
 export function BookingNotices() {
     const { data } = useBooking();
+    // Returning null rather than an empty stack: the parent lays these out with
+    // `gap-3.5`, which an empty child still collects as a dead band under the
+    // card.
     if (data.notices.length === 0) return null;
-    // A sponsored-ONLY tour has nothing to show on a phone, and an empty stack
-    // still collects the parent's `gap-3.5` - a dead band under the card.
-    const hasMobileNotice = data.notices.some(kind => kind !== 'sponsored');
     return (
         // `shrink-0`, and deliberately NOT a scroll container. Inside the
         // capped sticky rail the card is the only thing that scrolls: it holds
@@ -123,11 +94,7 @@ export function BookingNotices() {
         // second scrollbar to reach the last line reads as broken, and clipping
         // them mid-sentence reads worse. They keep their full height and simply
         // sit where they land.
-        <div
-            className={cn(
-                'shrink-0 flex-col gap-3.5',
-                hasMobileNotice ? 'flex' : 'hidden md:flex'
-            )}>
+        <div className='flex shrink-0 flex-col gap-3.5'>
             {data.notices.map(kind => (
                 <BookingNotice key={kind} kind={kind} />
             ))}

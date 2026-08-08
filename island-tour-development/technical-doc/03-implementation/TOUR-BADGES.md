@@ -75,9 +75,27 @@ ONE algorithm powers both the card badge and the tour-page demand card. All thre
 conditions must hold, **evaluated daily**:
 
 1. `tour_age_days >= 90`
-2. `recent_sellouts >= 3` in the past 60 days (from `departures.sold_out_at`, E.9)
+2. `recent_sellouts >= 3` in the past 60 days
 3. `upcoming_availability_ratio < 0.40` over the next 30 days
    (`Σ remaining_seats / Σ capacity` across non-cancelled departures in the window)
+
+Condition 3 measures **departures, never calendar days** — a tour that sails three
+days a week must not qualify (or fail) on the four it does not sail.
+
+### What counts as a sell-out (client clarification, 2026-08-07)
+
+Two things, both feeding the same count:
+
+| Event | Source |
+|---|---|
+| The departure fills to capacity with us | `departures.sold_out_at` (E.9) |
+| The operator closes the date (it sold out on their own channels) | whole-day `CLOSE_DATE` row in `availability_exceptions`, counted at `created_at` |
+
+**A bulk blackout is one operator action, so it counts once, not once per closed
+date.** Every row written by one `closeRange()` call shares an
+`availability_exceptions.closure_batch_id`; the count collapses on it, and a null
+batch id (a single-date close) is its own event. Without this a two-week haul-out
+would clear the three-event bar by itself and badge a tour that is not scarce.
 
 Implemented in `backend/src/tours/demand-signal.ts` (`evaluateLikelyToSellOut`) -
 the **single source of truth** shared by the production recompute job and the demo
@@ -98,7 +116,7 @@ launch override (no tour has 90 days of history at launch). Read-time logic is
 | Badge | Fields read |
 |---|---|
 | `sponsored` | `tour.isSponsored` (← ACTIVE `SpotlightRequest`) |
-| `likelyToSellOut` | `tour.likelyToSellOut` / `tour.likelyToSellOutOverride` (← `departures.soldOutAt`, capacity vs bookedCount, `firstPublishedAt`) |
+| `likelyToSellOut` | `tour.likelyToSellOut` / `tour.likelyToSellOutOverride` (← `departures.soldOutAt`, `availability_exceptions` CLOSE_DATE + `closureBatchId`, capacity vs bookedCount, `firstPublishedAt`) |
 | `mostPopular` | `tour.aggregateReviewCount`, `tour.aggregateRating`, `tour.isSponsored` |
 | `new` | `tour.publishedAt`, `tour.aggregateReviewCount` |
 
