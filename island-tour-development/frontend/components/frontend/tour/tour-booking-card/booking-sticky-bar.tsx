@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom';
 
 import { useBooking } from '@/hooks/tours/use-booking';
 import { useBookingCta } from '@/hooks/tours/use-booking-cta';
-import { crossFade, springPop, swapFade } from '@/lib/motion';
+import { springPop, swapFade } from '@/lib/motion';
 import { bookingUnitLabel } from '@/lib/tours/booking';
 
 /**
@@ -16,6 +16,14 @@ import { bookingUnitLabel } from '@/lib/tours/booking';
  * traveller cannot see is still technically "in view".
  */
 const NAVBAR_HEIGHT = 64;
+
+/**
+ * The bar's entrance, shared with its spacer so the two move as one thing.
+ * Matches the docked hero search pill (Pastel #51) - both are a bar arriving
+ * from off screen to stand in for something that has scrolled away, and two
+ * different curves for that would read as two different mechanisms.
+ */
+const barMotion = { duration: 0.22, ease: [0.21, 0.47, 0.32, 0.98] } as const;
 
 /**
  * Mobile sticky "Check availability" bar (Pastel #37).
@@ -140,18 +148,32 @@ export function BookingStickyBar({
 
     return createPortal(
         <div className='lg:hidden'>
-            {scrolledPast && (
-                <div aria-hidden='true' style={{ height: barHeight }} />
-            )}
+            {/* The footer clearance, GROWN WITH THE BAR rather than switched on
+                with it. Toggling it outright moved the whole page by the bar's
+                height in one frame while the bar was still sliding up - and on
+                the very first appearance it moved twice, because the height is
+                measured from the bar and is 0 until the bar exists. `initial={false}`
+                so arriving already scrolled past (a reload, a back-navigation)
+                does not animate the page open. */}
+            <motion.div
+                aria-hidden='true'
+                initial={false}
+                animate={{ height: scrolledPast ? barHeight : 0 }}
+                transition={barMotion}
+            />
             <AnimatePresence>
                 {scrolledPast && (
                     <motion.div
                         key='booking-sticky-bar'
                         ref={setBar}
-                        initial={{ y: '100%' }}
-                        animate={{ y: 0 }}
-                        exit={{ y: '100%' }}
-                        transition={crossFade}
+                        // Fades as well as slides, and on the site's own easing
+                        // curve - the same entrance the docked hero pill uses,
+                        // because they are the same idea: a bar arriving from
+                        // off screen to stand in for something scrolled away.
+                        initial={{ y: '100%', opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: '100%', opacity: 0 }}
+                        transition={barMotion}
                         /* z-40 clears the page's own sticky bands (the tour tab
                            nav is z-30) and sits under every overlay: the filter
                            modal, the gallery lightbox and the navbar are z-100,
