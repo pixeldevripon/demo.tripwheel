@@ -223,16 +223,40 @@ export class AvailabilityService {
    * operator's "Add departure" toast would lie. Reconciling the exception's
    * own day as well closes that gap; it is idempotent and single-day cheap,
    * so no horizon/timezone arithmetic is needed to decide whether to run it.
+   *
+   * **Never throws.** Every caller runs this AFTER its own write has already
+   * committed, so letting a projection failure escape turns a successful write
+   * into a 500 - and the caller then reports "could not be added" for a row
+   * that is sitting in the database. That is not hypothetical: an unapplied
+   * migration (`closureBatchId`, 2026-08-08) made `materializeTour` throw on
+   * every call, so the dashboard's schedule form said "0 added, 2 could not be
+   * added" while creating both rows, and the operator's retry hit duplicate-key
+   * errors on schedules they had been told did not exist.
+   *
+   * Projection is eventually-consistent by design - the nightly materializer
+   * reconciles the same rows from the same schedules - so the honest failure
+   * mode is a logged error and a departure grid that catches up, not a lost
+   * write the UI denies making. The log is ERROR, not a swallow: a materializer
+   * that cannot run is a real incident, it just is not this request's failure.
    */
   private async syncTourAvailability(
     tourId: string,
     targetDate?: string,
   ): Promise<void> {
-    await this.materializer.materializeTour(tourId);
-    if (targetDate) {
-      await this.materializer.materializeTour(tourId, targetDate, targetDate);
+    try {
+      await this.materializer.materializeTour(tourId);
+      if (targetDate) {
+        await this.materializer.materializeTour(tourId, targetDate, targetDate);
+      }
+      await this.refreshIsBookable(tourId);
+    } catch (err) {
+      this.logger.error(
+        `Availability projection failed for tour ${tourId}${
+          targetDate ? ` (${targetDate})` : ''
+        } - the write is committed and the nightly materializer will reconcile it`,
+        err instanceof Error ? err.stack : String(err),
+      );
     }
-    await this.refreshIsBookable(tourId);
   }
 
   async updateSchedule(
