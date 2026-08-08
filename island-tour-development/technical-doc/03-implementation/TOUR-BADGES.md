@@ -23,6 +23,17 @@ exact same badge with zero client-side logic. The frontend just paints
 | `mostPopular` | Organic: `aggregateReviewCount >= 10` AND `aggregateRating >= 4.5`, not sponsored. | Rounded rect, **brand orange** `#e8611a` |
 | `new` | `publishedAt` < 30 days ago AND `aggregateReviewCount == 0`. Replaces the rating row. | Rounded rect, cream `#fdf6f0` |
 
+These four are **listing-card** badges. The tour detail page is not a listing —
+the only card in its right rail is the §5.7 demand card, and none of the other
+three has a tour-page form (Pastel #52/#53, 2026-08-07):
+
+- `sponsored` discloses a paid **position** inside a ranked list. A tour's own
+  page has no position to disclose.
+- `mostPopular` is a card badge capped at *"max 1 per category"*. On the tour
+  page the real rating already sits in the meta row, above a review preview
+  module and a full Reviews section, so a card repeating it is badge inflation.
+- `new` replaces the rating row on a card; the tour page shows the real rating.
+
 Not card badges (handled elsewhere, intentionally **not** in `deriveTourBadge`):
 - **Numbered rank 01-10** - circle, Best Things to Do / Top 10 collections only.
 - **Locals' favorite ✦** - meta-row element on the tour page; manual
@@ -75,9 +86,27 @@ ONE algorithm powers both the card badge and the tour-page demand card. All thre
 conditions must hold, **evaluated daily**:
 
 1. `tour_age_days >= 90`
-2. `recent_sellouts >= 3` in the past 60 days (from `departures.sold_out_at`, E.9)
+2. `recent_sellouts >= 3` in the past 60 days
 3. `upcoming_availability_ratio < 0.40` over the next 30 days
    (`Σ remaining_seats / Σ capacity` across non-cancelled departures in the window)
+
+Condition 3 measures **departures, never calendar days** — a tour that sails three
+days a week must not qualify (or fail) on the four it does not sail.
+
+### What counts as a sell-out (client clarification, 2026-08-07)
+
+Two things, both feeding the same count:
+
+| Event | Source |
+|---|---|
+| The departure fills to capacity with us | `departures.sold_out_at` (E.9) |
+| The operator closes the date (it sold out on their own channels) | whole-day `CLOSE_DATE` row in `availability_exceptions`, counted at `created_at` |
+
+**A bulk blackout is one operator action, so it counts once, not once per closed
+date.** Every row written by one `closeRange()` call shares an
+`availability_exceptions.closure_batch_id`; the count collapses on it, and a null
+batch id (a single-date close) is its own event. Without this a two-week haul-out
+would clear the three-event bar by itself and badge a tour that is not scarce.
 
 Implemented in `backend/src/tours/demand-signal.ts` (`evaluateLikelyToSellOut`) -
 the **single source of truth** shared by the production recompute job and the demo
@@ -98,7 +127,7 @@ launch override (no tour has 90 days of history at launch). Read-time logic is
 | Badge | Fields read |
 |---|---|
 | `sponsored` | `tour.isSponsored` (← ACTIVE `SpotlightRequest`) |
-| `likelyToSellOut` | `tour.likelyToSellOut` / `tour.likelyToSellOutOverride` (← `departures.soldOutAt`, capacity vs bookedCount, `firstPublishedAt`) |
+| `likelyToSellOut` | `tour.likelyToSellOut` / `tour.likelyToSellOutOverride` (← `departures.soldOutAt`, `availability_exceptions` CLOSE_DATE + `closureBatchId`, capacity vs bookedCount, `firstPublishedAt`) |
 | `mostPopular` | `tour.aggregateReviewCount`, `tour.aggregateRating`, `tour.isSponsored` |
 | `new` | `tour.publishedAt`, `tour.aggregateReviewCount` |
 

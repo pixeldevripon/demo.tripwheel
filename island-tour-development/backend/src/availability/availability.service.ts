@@ -20,6 +20,7 @@ import {
   type AvailabilitySchedule,
   type Departure,
 } from '@prisma/client';
+import { randomUUID } from 'node:crypto';
 import { PrismaService } from '@/prisma/prisma.service';
 import { resolveOperatorId } from '@/common/utils/operator.util';
 import { assertDateRangeOrder } from '@/common/utils/date-range.util';
@@ -1067,6 +1068,10 @@ export class AvailabilityService {
    * action instead of fourteen forms. Dates already carrying a whole-day
    * closure are skipped, so re-running an overlapping range never duplicates.
    * The paired {@link reopenRange} with the same bounds is the one-unit Undo.
+   *
+   * Every row written by ONE call shares a `closureBatchId`, because the demand
+   * signal reads operator closures as sell-out evidence (§3.7) and this is one
+   * operator action, not one per date - see `countRecentSellouts`.
    */
   async closeRange(
     userId: string,
@@ -1087,6 +1092,7 @@ export class AvailabilityService {
     // Read + write in one transaction so two overlapping range-closes (a
     // double submit, or racing the agenda's close-day) cannot both see "not
     // closed yet" and write duplicate audit rows.
+    const closureBatchId = randomUUID();
     const rows = await this.prisma.$transaction(async (tx) => {
       const existing = await tx.availabilityException.findMany({
         where: {
@@ -1108,6 +1114,7 @@ export class AvailabilityService {
           type: AvailabilityExceptionType.CLOSE_DATE,
           note: dto.note ?? null,
           createdBy: userId,
+          closureBatchId,
         });
       }
       if (data.length > 0) await tx.availabilityException.createMany({ data });

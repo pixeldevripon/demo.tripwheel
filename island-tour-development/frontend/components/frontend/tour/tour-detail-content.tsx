@@ -564,14 +564,14 @@ export async function TourDetailContent({
                         {/* The viewport cap lives on the CARD, not here (see
                             tour-booking-card.tsx). Capping this rail instead
                             and flexing the card inside it looks tidier - the
-                            notices then sit inside the cap too - but it makes
-                            the card and the notices compete for the same
-                            height: on a 720px screen the notices won, the card
+                            demand card then sits inside the cap too - but it
+                            makes the two compete for the same height: on a
+                            720px screen the demand card won, the booking card
                             was crushed past its own contents, and the CTA
-                            printed straight over them. The notices are static
-                            copy and come back into view when the sticky rail
-                            releases at the end of the page; the card is the
-                            thing that must always be whole. */}
+                            printed straight over it. The demand card is static
+                            copy and comes back into view when the sticky rail
+                            releases at the end of the page; the booking card is
+                            the thing that must always be whole. */}
                         <div className='lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:sticky lg:top-24'>
                             {/* Live tour pricing / party bands / start times.
                                 Real availability (remaining spots, sold-out) still

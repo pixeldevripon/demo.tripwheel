@@ -102,15 +102,10 @@ export type TourBookingDict = {
     payLater: string;
     /** Clickable/underlined phrase inside the deposit trust line (opens the modal). */
     payLaterLink: string;
+    /** Demand card copy, LOCKED by master §5.7 - headline + "Book today to
+     *  secure your spot." Shown only when the §3.7 trigger fires. */
     sellOutTitle: string;
     sellOutSubtitle: string;
-    /** "Most popular" notice - earned by reviews (master §3.6). */
-    mostPopularTitle: string;
-    mostPopularSubtitle: string;
-    /** Paid-placement disclosure. Master calls transparency a brand pillar, so
-     *  this is a statement of fact, never a selling point. */
-    sponsoredTitle: string;
-    sponsoredSubtitle: string;
     // Booking Widget V2
     selectDate: string;
     checkAvailability: string;
@@ -142,9 +137,6 @@ export type TourBookingDict = {
     addOnsTitle: string;
     /** Price suffix for a FLAT add-on ("/per booking"); PER_PERSON reuses perPersonShort. */
     perBookingShort: string;
-    /** "Instant confirmation" notice (master 6.1; NOT in the trust strip per LD5). */
-    instantConfirmationTitle: string;
-    instantConfirmationSubtitle: string;
     /** Aria-label for the policy-modal close button. */
     policyClose: string;
     /**
@@ -231,55 +223,26 @@ export interface BookingSlot {
     seatsLeft?: number | null;
 }
 
-/** Everything the booking widget needs, resolved from a single tour fetch. */
 /**
- * Notices stacked beneath the booking card. A subset of the master §3.6 badge
- * set - `new` is deliberately excluded: on a listing card it REPLACES the rating
- * row, but the detail page already shows the real rating and review list, so all
- * "New" would add next to a Check Availability button is "nobody has reviewed
- * this yet".
- */
-export type BookingNoticeKind =
-    'likelyToSellOut' | 'mostPopular' | 'instantConfirmation' | 'sponsored';
-
-/** Master §3.6: `mostPopular` is earned at >=10 reviews AND >=4.5 rating. */
-const MOST_POPULAR_MIN_REVIEWS = 10;
-const MOST_POPULAR_MIN_RATING = 4.5;
-
-/**
- * Which notices this tour has earned, in display order.
+ * Whether the §3.7 demand card renders below the widget - the ONE thing master
+ * §5.7 puts in that slot, and nothing else. The client emptied the rest of the
+ * stack out of it (Pastel #52/#53): Instant confirmation (LD5 exclusion, already
+ * page-level on the All Tours trust strip), Sponsored (discloses a paid POSITION
+ * in a ranked list; a tour's own page has no position to disclose) and Most
+ * popular (a §3.6 LISTING-CARD badge, never part of §5.7 - the page already
+ * carries the real rating, a review preview and a Reviews section).
  *
- * NOT the same call as `deriveTourBadge`. That one picks a SINGLE winner for a
- * listing card, where there is one badge slot and sponsored outranks everything
- * for transparency. Here there is room to stack, so a tour shows every signal it
- * genuinely carries and none it does not.
- *
- * Order is shopper-first rather than the master's priority order: urgency, then
- * social proof, then the paid-placement disclosure last. Sponsored ranks first
- * on a card because it must not be crowded out of the only slot - that reason
- * disappears once nothing can crowd it out.
+ * `override ?? computed`: the CMS override is authoritative when set, and
+ * `false` is a meaningful override (suppress), so `??` not `||`. At launch the
+ * override IS the signal - no tour has 90 days of history yet - and it is set on
+ * a handful of tours by hand, never catalog-wide. Expected coverage ~5-10%;
+ * selectivity is the feature.
  */
-function deriveBookingNotices(detail: PublicTourDetail): BookingNoticeKind[] {
-    const notices: BookingNoticeKind[] = [];
-    // `override ?? computed` - the CMS override is authoritative when set, and
-    // `false` is a meaningful override (suppress), so `??` not `||`.
-    if (detail.likelyToSellOutOverride ?? detail.likelyToSellOut) {
-        notices.push('likelyToSellOut');
-    }
-    if (
-        detail.aggregateReviewCount >= MOST_POPULAR_MIN_REVIEWS &&
-        (detail.aggregateRating ?? 0) >= MOST_POPULAR_MIN_RATING
-    ) {
-        notices.push('mostPopular');
-    }
-    // "Instant confirmation" affordance (master 6.1). Deliberately NOT a trust
-    // line - LD5 locks the strip to exactly two lines - so it earns a notice
-    // card beneath the widget instead, in the same shape as the other signals.
-    if (detail.instantConfirmation) notices.push('instantConfirmation');
-    if (detail.isSponsored) notices.push('sponsored');
-    return notices;
+function deriveShowDemandCard(detail: PublicTourDetail): boolean {
+    return detail.likelyToSellOutOverride ?? detail.likelyToSellOut;
 }
 
+/** Everything the booking widget needs, resolved from a single tour fetch. */
 export interface TourBookingData {
     /**
      * Display currency CODE, not a glyph.
@@ -333,8 +296,8 @@ export interface TourBookingData {
     pickupRequired: boolean;
     /** Pickup zones for the checkout dropdown (display order, converted prices). */
     pickupOptions: BookingPickupOption[];
-    /** Which notices render beneath the card, already in display order. */
-    notices: BookingNoticeKind[];
+    /** Whether the §5.7 demand card renders beneath the card (master §3.7 gate). */
+    showDemandCard: boolean;
 }
 
 /**
@@ -426,13 +389,9 @@ export const DUMMY_BOOKING_DATA: TourBookingData = {
         { id: 'demo-hotel-zone', label: 'Hotel zone pickup', price: 12 },
         { id: 'demo-cruise', label: 'Cruise terminal pickup', price: 17 },
     ],
-    // All of them, so the design/demo card exercises the full notice stack.
-    notices: [
-        'likelyToSellOut',
-        'mostPopular',
-        'instantConfirmation',
-        'sponsored',
-    ],
+    // Both of them, so the design/demo card exercises the full notice stack.
+    // On, so the design/demo card exercises the slot at all.
+    showDemandCard: true,
 };
 
 const CURRENCY_SYMBOLS: Record<string, string> = { USD: '$', EUR: '€' };
@@ -641,6 +600,6 @@ export function buildTourBookingData(
         pickupModel: detail.pickupModel,
         pickupRequired: detail.pickupRequired,
         pickupOptions,
-        notices: deriveBookingNotices(detail),
+        showDemandCard: deriveShowDemandCard(detail),
     };
 }

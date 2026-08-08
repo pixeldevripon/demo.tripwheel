@@ -37,6 +37,12 @@ model AvailabilityException {
   note      String?
   createdBy String?
 
+  // One id shared by every row a single bulk blackout wrote (closeRange), null
+  // for a one-date closure. The demand signal counts operator closures as
+  // sell-outs (§3.7), and a two-week haul-out is ONE operator action - without
+  // this it would count as fourteen and trip the badge on its own.
+  closureBatchId String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -44,6 +50,8 @@ model AvailabilityException {
 
   @@index([tourId, date])
   @@index([tourId, date, startTime])
+  // Demand signal: whole-day closures for a tour inside the 60-day window.
+  @@index([tourId, type, createdAt])
   @@map("availability_exceptions")
 }
 
