@@ -94,6 +94,13 @@ interface ToursFilterBarProps {
     shown: number;
     total: number;
     /**
+     * Render the "{shown} of {total} tours" counter. Off on the SEARCH page,
+     * whose heading already states the count - master 3.12's dual count is a
+     * listing-page rule and repeating it there just says the same number twice.
+     * The Sort control stays put either way (it is right-pinned).
+     */
+    showCount?: boolean;
+    /**
      * Current filter/sort state, derived server-side from the URL. The bar is
      * controlled by these props and navigates (`?...`) on change; the server then
      * refetches. Time-of-day flows through `activeFilters.times` (the modal).
@@ -342,6 +349,7 @@ export function ToursFilterBar({
     lockCategory = false,
     shown,
     total,
+    showCount = true,
     selectedCategories,
     selectedDate,
     guests,
@@ -794,9 +802,11 @@ export function ToursFilterBar({
                     above is the category track's alone and the chips get the
                     full width. */}
                 <div className='it-container flex flex-wrap items-center gap-3 gap-y-2.5 pt-3.5'>
-                    <p className='m-0 shrink-0 whitespace-nowrap text-[14px] font-bold leading-[1.6] text-it-ink tabular-nums'>
-                        {counterLabel} {dict.toursWord}
-                    </p>
+                    {showCount && (
+                        <p className='m-0 shrink-0 whitespace-nowrap text-[14px] font-bold leading-[1.6] text-it-ink tabular-nums'>
+                            {counterLabel} {dict.toursWord}
+                        </p>
+                    )}
 
                     {/* Sort - right edge of the counter row. */}
                     <div className='ml-auto flex shrink-0 items-center'>

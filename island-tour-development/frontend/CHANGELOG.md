@@ -1,5 +1,80 @@
 # Frontend changelog
 
+## 2026-08-08 — Search results screen rebuilt to the client mockup (mck-12)
+
+The client's own render of `/search` (mck-12, supplied as screenshots — the HTML
+is still not in this repo) turned out to be a different screen from the one we
+had shipped, not a restyle of it. Three things changed shape.
+
+### The head states the outcome
+
+Was: a static `h1` reading **"Search"**, with a small grey count line beneath it.
+It told a traveller who had just searched nothing they did not already know.
+
+Now: a scope pill, then the `h1` **"12 results for “boat”"** / **"No results for
+“boat”"**, then one line saying what to do next — on zero with a date, *"Nothing
+matches this search on 25 Aug."*, which names the constraint instead of shrugging.
+
+The `h1` therefore **moved out of the prerendered shell** into the streamed
+section: it carries the result count, which no prerender can know. The page is
+`noindex`, so no crawler needs it in the shell, and the skeleton holds its place.
+
+**The island is the pill, not the heading.** Both had been tried and each was
+wrong on its own: a separate removable "Curaçao ✕" chip read as a stray filter
+and offered an escape to an all-islands search the spec does not have, while
+folding it into the sentence *and* keeping a chip said it twice. The mockup
+splits it — scope above, result sentence below — and that is now enforced by a
+test.
+
+### The recovery block became a section, not a card
+
+Was: a centred bordered card holding a few pill links.
+
+Now: a full-bleed tinted band carrying, in the mockup's order — kicker and
+heading with **"See all 25 Curaçao tours →"** pinned right; the removable date
+chip and its sentence; the inline **Popular searches** run; the category/hub tile
+rail; and the island's **Locals' favorites** grid, so the band ends on something
+bookable rather than another list of links.
+
+**"Drop the date and 12 “boat” tours come back"** is a real second search, not a
+guess — the section re-runs the query without the date and prints the count it
+gets. When that count is **0 the whole line is withheld**: it promises tours come
+back, and a link straight back to the same empty page is worse than no link.
+
+**Popular searches falls back to an automatic row.** Curated `SEARCH_PANEL`
+first, the hero's curated row second, then hubs → lead collection → categories,
+capped at five — the same ladder the destination hero already uses. Without it
+the group renders empty on **every island today**, because nothing is curated
+yet. Each entry is gated on its target page rendering upstream, so a link that
+cannot open is never in the list.
+
+### Reuse, rather than a second copy of everything
+
+The band mounts the site's real components: `ExploreTypesRail` was **extracted**
+from `DestinationExploreTypes` so both surfaces share one carousel, and
+`SectionHead` (kicker + `h2` + optional right action) replaces the third
+hand-written copy of that markup. The tile fallback background is now a prop —
+the default `bg-it-bg` is invisible against the band's `bg-it-surface`, which is
+exactly what it looked like: a title and a tour count floating over nothing.
+
+### Kept against the mockup
+
+**The toolbar stays hidden on zero results**, which mck-12 does not do. A filter
+row over an empty grid offers to sort nothing and narrow nothing. Because that
+would otherwise trap anyone whose filter emptied the page, the band leads with
+`Clear all filters` whenever one is active. The toolbar's own *"{shown} of
+{total} tours"* counter is off on this page (new `showCount` prop) — the heading
+is the count, and the mockup's own annotation says so.
+
+### Also
+
+- `Only 1 match`, not `Only 1 matches` — the plural was showing on any 1-result
+  search.
+- 28 new unit tests over the two new components, covering each state and, as
+  much, what each state must *withhold*.
+- Nine dictionary keys added and four removed across all seven locales;
+  `DICTIONARY_VERSION` bumped.
+
 ## 2026-08-02 — Wave 3: tour detail, listings, SEO output
 
 ~56 components, 6 routes and the SEO libs. Two subagents; every finding verified

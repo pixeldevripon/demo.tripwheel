@@ -30,16 +30,22 @@ export async function generateMetadata({
 
 /**
  * Global tour search results — `/[locale]/search?q=…`. The shell resolves the
- * dictionary (a fast cached loader) and renders the static heading; the
- * result-count line, destination-scope chip, filter/sort toolbar and paginated
- * result grid all read the query from `searchParams`, so they stream into their
- * own `<Suspense>` boundary (Cache Components PPR) instead of blocking the whole
- * page. When `?destination=` is set (carried over from the navbar's active
- * island), results are scoped to it.
+ * dictionary (a fast cached loader) and opens the Suspense boundary; the scope
+ * pill, heading, filter/sort toolbar, result grid and recovery band all read the
+ * query from `searchParams`, so they stream into that boundary (Cache Components
+ * PPR) instead of blocking the whole page. When `?destination=` is set (carried
+ * over from the navbar's active island), results are scoped to it.
  *
- * Only the heading is inside a container here: the streamed section mounts the
- * shared listing toolbar, whose sticky band bleeds edge to edge and owns its own
- * containers (same split as the All Tours page).
+ * THE `h1` IS STREAMED, not prerendered: it states the outcome ("12 results for
+ * “boat”" / "No results for “boat”"), which is not knowable until the search has
+ * run. A static "Search" heading above it was the alternative and it told a
+ * traveller who had just searched nothing at all. The skeleton holds its place
+ * so nothing shifts, and the page is `noindex`, so there is no crawler that
+ * needs the heading in the shell.
+ *
+ * Nothing here is inside a container: the streamed section mounts the shared
+ * listing toolbar, whose sticky band bleeds edge to edge, and the recovery band
+ * does the same - both own their own containers (as on the All Tours page).
  */
 export default async function SearchPage({
     params,
@@ -55,13 +61,6 @@ export default async function SearchPage({
 
     return (
         <section className='it-section bg-it-white'>
-            {/* ── Heading (static shell) ───────────────────────────────────── */}
-            <div className='it-container mb-6'>
-                <h1 className='m-0 text-[clamp(28px,4vw,40px)] font-bold leading-[1.1] tracking-[-0.018em] text-it-heading'>
-                    {dict.search.title}
-                </h1>
-            </div>
-
             {/* ── Streamed, request-time results ───────────────────────────── */}
             <Suspense fallback={<SearchResultsSkeleton />}>
                 <SearchResultsSection

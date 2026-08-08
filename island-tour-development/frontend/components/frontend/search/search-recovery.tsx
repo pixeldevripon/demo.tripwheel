@@ -1,6 +1,18 @@
+import { CalendarDays, X } from 'lucide-react';
 import Link from 'next/link';
 
+import {
+    ExploreTypesRail,
+    type ExploreType,
+} from '@/components/frontend/destination/explore-types-rail';
+import { SectionHead } from '@/components/frontend/section-head';
+import {
+    TourCard,
+    type TourCardDict,
+    type TourListing,
+} from '@/components/frontend/tour-card';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
+import { TOUR_CARD_GRID } from '@/lib/tours/listing';
 import type { DestinationPopularLink } from '@/types/destination';
 
 /**
@@ -18,218 +30,302 @@ import type { DestinationPopularLink } from '@/types/destination';
 export const THIN_RESULTS_MAX = 4;
 
 export type SearchRecoveryDict = {
-    /** Zero state heading, carries `{query}`. */
-    noResults: string;
-    /** Zero state lead-in under the heading. */
+    /** Zero-state kicker when a DATE is what emptied the search. */
+    noMatchesOnDate: string;
+    /** Zero-state kicker with no date in play. */
+    noMatches: string;
+    /** Zero-state heading. */
     tryOneOfThese: string;
-    /** Thin state kicker, carries `{count}`. */
+    /** Thin-state kicker, carries `{count}`. */
     onlyMatches: string;
-    /** Thin state heading. */
+    /** Singular of the above - "Only 1 match", not "Only 1 matches". */
+    onlyMatchesOne: string;
+    /** Thin-state heading. */
     keepLooking: string;
-    /** The date-less retry, carries `{query}`. */
-    searchAnyDate: string;
-    /** Heading above the popular-search chips. */
-    popularSearches: string;
-    /** Heading above the category quick links. */
-    browseByType: string;
-    /** Carries `{destination}`. */
-    seeAllDestinationTours: string;
+    /** The date-drop line, carries `{count}` and `{query}`. */
+    dropDate: string;
     /** Reset every active filter, keeping the term. */
     clearFilters: string;
+    /** Inline label before the popular-search links. */
+    popularSearches: string;
+    /** Carries `{destination}`. */
+    seeAllDestinationTours: string;
+    /** Carries `{count}` and `{destination}`. */
+    seeAllDestinationToursCount: string;
 };
 
-/** A category quick link - the shape the search section already has to hand. */
-export type RecoveryCategory = { name: string; slug: string };
+/** The "Locals' favorites" head - borrowed whole from the destination page. */
+export type LocalsFavouritesDict = {
+    kicker: string;
+    title: string;
+};
 
-function Chip({ href, label }: { href: string; label: string }) {
+/**
+ * Below this many island tours, the "See all" link drops the number - a small
+ * count reads as scarcity and works against the link. Same rule, same threshold
+ * as the destination page's browse CTA.
+ */
+const COUNT_LINK_THRESHOLD = 20;
+
+/** A removable constraint: the thing that emptied the page, with a way to drop it. */
+function ConstraintChip({
+    href,
+    label,
+    icon,
+}: {
+    href: string;
+    label: string;
+    icon?: React.ReactNode;
+}) {
     return (
         <Link
             href={href}
-            className='inline-flex items-center rounded-it-full border border-it-border bg-it-white px-3.5 py-2 text-[13.5px] font-semibold leading-none text-it-heading no-underline transition-colors hover:border-it-heading/40 hover:bg-it-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary'>
+            className='inline-flex shrink-0 items-center gap-2 rounded-it-full border border-it-primary bg-it-white py-2 pl-3.5 pr-3 text-[13.5px] font-bold leading-none text-it-primary-hover no-underline transition-colors hover:bg-it-primary-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary'>
+            {icon}
             {label}
+            <X className='size-3.5 shrink-0' strokeWidth={2.5} aria-hidden='true' />
         </Link>
     );
 }
 
-function Group({
-    title,
-    children,
-}: {
-    title: string;
-    children: React.ReactNode;
-}) {
-    return (
-        <div className='flex flex-col gap-2.5'>
-            <span className='text-[12.5px] font-bold uppercase tracking-[0.08em] text-it-text-muted'>
-                {title}
-            </span>
-            <div className='flex flex-wrap gap-2'>{children}</div>
-        </div>
-    );
-}
-
 /**
- * The search recovery block - the way out of a search that found little or
+ * The search recovery band - the way out of a search that found little or
  * nothing (Pastel #46; the content set is locked in APPLICATION-FEATURES §D.12:
  * "popular-search chips, the Category Quick Links row, and See all {Destination}
  * tours").
  *
  * ONE component for BOTH the thin and the zero state, because they differ only
- * in their intro line and in whether a grid sits above them. Building them
- * separately is how the two drift into saying different things about the same
- * dead end.
+ * in their kicker and heading and in whether a grid sits above them. Building
+ * them separately is how the two drift into saying different things about the
+ * same dead end.
  *
- * THE DATE-LESS RETRY COMES FIRST, and only when a date was actually part of
- * the query: a date is usually what emptied the result set, so offering
- * anything else first asks the traveller to re-plan their trip before offering
- * to simply widen it. With no date in the query the option is meaningless and
- * is omitted entirely rather than rendered disabled.
+ * Laid out as a full-bleed tinted band rather than a card, per the client
+ * mockup (mck-12): head + a removable-constraint line, then the popular-search
+ * links, the category/hub tile rail, and the island's Locals' favorites. It is
+ * a section of the page in its own right, not a notice box floating in one.
+ *
+ * THE DATE-DROP LINE COMES FIRST, and only when dropping the date would
+ * actually bring tours back - the caller re-runs the search without it and
+ * passes the real count. Offering "drop the date" when the date is not the
+ * problem sends the traveller round a loop to the same empty page.
  */
 export function SearchRecovery({
     locale,
     dict,
+    localsDict,
+    cardDict,
+    /** Plural noun after a tile's tour count - the rail's own label ("tours"). */
+    toursLabel,
     query,
-    /** The current search minus its date, or null when the query had no date. */
+    /** Formatted date currently filtering the search (e.g. "6 Aug"); null if none. */
+    dateLabel,
+    /** The same search minus its date, or null when the query had no date. */
     withoutDateHref,
+    /** How many tours that date-less search returns. 0 hides the line. */
+    withoutDateCount,
     /** The bare term with every filter dropped; null when none are active. */
     clearFiltersHref,
     popular,
-    categories,
+    exploreTypes,
+    localsFavourites,
     destinationSlug,
     destinationName,
+    /** Live tours on the island - numbers the "See all" link when it is worth it. */
+    destinationTourCount,
     /** Result count - present for the thin state, omitted for the zero state. */
     thinCount,
 }: {
     locale: Locale;
     dict: SearchRecoveryDict;
+    localsDict: LocalsFavouritesDict;
+    cardDict: TourCardDict;
+    toursLabel: string;
     query: string;
+    dateLabel: string | null;
     withoutDateHref: string | null;
+    withoutDateCount: number;
     clearFiltersHref: string | null;
     popular: DestinationPopularLink[];
-    categories: RecoveryCategory[];
+    exploreTypes: ExploreType[];
+    localsFavourites: TourListing[];
     destinationSlug?: string;
     destinationName?: string | null;
+    destinationTourCount?: number;
     thinCount?: number;
 }) {
     const isThin = thinCount != null;
 
-    // A category link resolves under the scoped island when there is one. An
-    // all-islands search has no destination to hang a category URL on, so those
-    // chips are dropped rather than pointed somewhere arbitrary.
-    const categoryHref = (slug: string) =>
-        destinationSlug ? localizeHref(locale, `/${destinationSlug}/${slug}`) : null;
+    const kicker = isThin
+        ? thinCount === 1
+            ? dict.onlyMatchesOne
+            : dict.onlyMatches.replace('{count}', String(thinCount))
+        : dateLabel
+          ? dict.noMatchesOnDate
+          : dict.noMatches;
+    const heading = isThin ? dict.keepLooking : dict.tryOneOfThese;
 
-    const categoryChips = destinationSlug
-        ? categories
-              .map(c => ({ ...c, href: categoryHref(c.slug) }))
-              .filter((c): c is RecoveryCategory & { href: string } => !!c.href)
-        : [];
+    // "See all N Curacao tours" - the closing move of the locked content set,
+    // and the one link here that always leads somewhere with tours on it.
+    const seeAllHref =
+        destinationSlug && destinationName
+            ? localizeHref(locale, `/${destinationSlug}/tours`)
+            : null;
+    const seeAllLabel =
+        destinationName == null
+            ? null
+            : destinationTourCount && destinationTourCount >= COUNT_LINK_THRESHOLD
+              ? dict.seeAllDestinationToursCount
+                    .replace('{count}', String(destinationTourCount))
+                    .replace('{destination}', destinationName)
+              : dict.seeAllDestinationTours.replace(
+                    '{destination}',
+                    destinationName
+                );
+
+    // Dropping the date only helps if tours actually come back. When it would
+    // land on the same empty page the line is omitted rather than shown as a
+    // dead promise.
+    const showDateDrop =
+        withoutDateHref != null && dateLabel != null && withoutDateCount > 0;
 
     return (
         <section
-            aria-label={isThin ? dict.keepLooking : dict.tryOneOfThese}
-            className={
-                isThin
-                    ? 'rounded-[16px] border border-it-border bg-it-surface p-5 sm:p-7'
-                    : // Zero: a centred card carrying the WHOLE state, since
-                      // there is no grid for it to sit under - so it is sized to
-                      // hold the page on its own rather than float in it.
-                      //
-                      // Scales rather than jumping: full width inside the
-                      // container's gutter on a phone, then a wider measure and
-                      // more padding at each step up. `max-w-4xl` keeps the chip
-                      // rows to a readable line length instead of letting them
-                      // stretch the full 1200px container.
-                      'mx-auto my-6 w-full max-w-4xl rounded-[16px] border border-it-border bg-it-surface p-6 text-center sm:my-10 sm:p-10 lg:p-14'
-            }>
-            {/* Intro - the only thing that differs between the two states. */}
-            <div className={`flex flex-col gap-1 ${isThin ? '' : 'items-center'}`}>
-                {isThin ? (
-                    <>
-                        <span className='text-[12.5px] font-bold uppercase tracking-[0.08em] text-it-primary-hover'>
-                            {dict.onlyMatches.replace(
-                                '{count}',
-                                String(thinCount)
-                            )}
-                        </span>
-                        <p className='m-0 font-it-display text-[19px] font-bold leading-[1.2] tracking-[-0.012em] text-it-ink sm:text-[21px]'>
-                            {dict.keepLooking}
-                        </p>
-                    </>
-                ) : (
-                    <>
-                        <p className='m-0 font-it-display text-[24px] font-bold leading-[1.15] tracking-[-0.015em] text-it-ink sm:text-[30px] lg:text-[34px]'>
-                            {dict.noResults.replace('{query}', query)}
-                        </p>
-                        <p className='m-0 mt-1 text-[15px] leading-[1.68] text-it-text-muted sm:text-[16px]'>
-                            {dict.tryOneOfThese}
-                        </p>
-                    </>
-                )}
-            </div>
+            aria-label={heading}
+            className='mt-9 bg-it-surface py-11 md:mt-12 md:py-14'>
+            <div className='it-container flex flex-col gap-7 md:gap-9'>
+                <SectionHead
+                    kicker={kicker}
+                    title={heading}
+                    action={
+                        seeAllHref && seeAllLabel ? (
+                            <Link
+                                href={seeAllHref}
+                                className='whitespace-nowrap text-sm font-bold text-it-primary-hover underline underline-offset-[3px] max-sm:hidden'>
+                                {seeAllLabel} →
+                            </Link>
+                        ) : undefined
+                    }
+                />
 
-            <div
-                className={`flex flex-col gap-5 ${isThin ? 'mt-6' : 'mt-8 items-center sm:mt-10'}`}>
-                {/* 0. When a FILTER emptied the page, the way back is to drop
-                    it. Offered above everything else because nothing below can
-                    help while the filter is still applied - and because the
-                    toolbar is hidden on the zero state, this is the only way
-                    out. */}
-                {clearFiltersHref && (
-                    <Link
-                        href={clearFiltersHref}
-                        className='inline-flex w-fit items-center gap-2 rounded-it-full border border-it-heading/20 bg-it-white px-5 py-2.5 text-[14px] font-bold leading-none text-it-heading no-underline transition-colors hover:border-it-heading/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary'>
-                        {dict.clearFilters}
-                    </Link>
-                )}
-
-                {/* 1. The same search, without the date. */}
-                {withoutDateHref && (
-                    <Link
-                        href={withoutDateHref}
-                        className='inline-flex w-fit items-center gap-2 rounded-it-full bg-it-primary px-5 py-2.5 text-[14px] font-bold leading-none text-it-primary-fg no-underline transition-colors hover:bg-it-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary'>
-                        {dict.searchAnyDate.replace('{query}', query)}
-                    </Link>
-                )}
-
-                {/* 2. Popular searches. */}
-                {popular.length > 0 && destinationSlug && (
-                    <Group title={dict.popularSearches}>
-                        {popular.map(p => (
-                            <Chip
-                                key={`${p.kind}-${p.slug}`}
-                                href={localizeHref(
-                                    locale,
-                                    `/${destinationSlug}/${p.slug}`
-                                )}
-                                label={p.name}
-                            />
-                        ))}
-                    </Group>
-                )}
-
-                {/* 3. Category Quick Links. */}
-                {categoryChips.length > 0 && (
-                    <Group title={dict.browseByType}>
-                        {categoryChips.map(c => (
-                            <Chip key={c.slug} href={c.href} label={c.name} />
-                        ))}
-                    </Group>
-                )}
-
-                {/* 4. See all {Destination} tours. */}
-                {destinationSlug && destinationName && (
-                    <Link
-                        href={localizeHref(
-                            locale,
-                            `/${destinationSlug}/tours`
+                {/* ── The constraint that emptied the page, and the way to drop
+                    it. The date first: it is usually what did it, and it is the
+                    only one we can put a number on. */}
+                {(showDateDrop || clearFiltersHref) && (
+                    <div className='flex flex-col gap-3'>
+                        {showDateDrop && (
+                            <div className='flex flex-wrap items-center gap-x-4 gap-y-2'>
+                                <ConstraintChip
+                                    href={withoutDateHref}
+                                    label={dateLabel}
+                                    icon={
+                                        <CalendarDays
+                                            className='size-4 shrink-0'
+                                            strokeWidth={2}
+                                            aria-hidden='true'
+                                        />
+                                    }
+                                />
+                                <p className='m-0 text-[14px] leading-[1.6] text-it-ink md:text-[15px]'>
+                                    {dict.dropDate
+                                        .replace(
+                                            '{count}',
+                                            String(withoutDateCount)
+                                        )
+                                        .replace('{query}', query)}
+                                </p>
+                            </div>
                         )}
-                        className='w-fit text-[14px] font-bold leading-[1.6] text-it-primary-hover underline underline-offset-[3px] transition-colors hover:text-it-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary'>
-                        {dict.seeAllDestinationTours.replace(
-                            '{destination}',
-                            destinationName
-                        )}{' '}
-                        →
+
+                        {/* A filter can empty the page just as easily, and the
+                            toolbar's own "Clear all" is a long way up the page
+                            by the time a traveller has read this far. */}
+                        {clearFiltersHref && (
+                            <ConstraintChip
+                                href={clearFiltersHref}
+                                label={dict.clearFilters}
+                            />
+                        )}
+                    </div>
+                )}
+
+                {/* ── Popular searches: one inline run of links, not a chip
+                    row. They are alternative TERMS, and reading them as a
+                    sentence is faster than scanning a grid of pills. */}
+                {popular.length > 0 && destinationSlug && (
+                    <p className='m-0 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[14px] leading-[1.6]'>
+                        <span className='font-bold text-it-ink'>
+                            {dict.popularSearches}
+                        </span>
+                        <span aria-hidden='true' className='text-it-text-muted'>
+                            :
+                        </span>
+                        {popular.map((p, i) => (
+                            <span
+                                key={`${p.kind}-${p.slug}`}
+                                className='inline-flex items-center gap-2'>
+                                {i > 0 && (
+                                    <span
+                                        aria-hidden='true'
+                                        className='text-it-text-muted'>
+                                        ·
+                                    </span>
+                                )}
+                                <Link
+                                    href={localizeHref(
+                                        locale,
+                                        `/${destinationSlug}/${p.slug}`
+                                    )}
+                                    className='font-semibold text-it-ink no-underline underline-offset-[3px] transition-colors hover:text-it-primary-hover hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary'>
+                                    {p.name}
+                                </Link>
+                            </span>
+                        ))}
+                    </p>
+                )}
+
+                {/* ── Category Quick Links, as the site's own tile rail. */}
+                {exploreTypes.length > 0 && destinationSlug && (
+                    <ExploreTypesRail
+                        locale={locale}
+                        destinationSlug={destinationSlug}
+                        categories={exploreTypes}
+                        toursLabel={toursLabel}
+                        // The band is `bg-it-surface`; the rail's default
+                        // fallback is the same grey, so an image-less tile
+                        // would disappear into it entirely.
+                        tileFallbackClassName='bg-it-white'
+                    />
+                )}
+
+                {/* ── Locals' favorites: the one group here that is actual
+                    tours, so the band ends on something bookable rather than on
+                    another list of links. */}
+                {localsFavourites.length > 0 && (
+                    <div className='mt-2 flex flex-col gap-5'>
+                        <SectionHead
+                            kicker={localsDict.kicker}
+                            title={localsDict.title}
+                        />
+                        <div className={TOUR_CARD_GRID}>
+                            {localsFavourites.map(tour => (
+                                <TourCard
+                                    key={tour.id}
+                                    tour={tour}
+                                    dict={cardDict}
+                                    mobileRow
+                                />
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* The head's "See all" link is desktop-only (it would crowd the
+                    heading on a phone); this is its mobile home. */}
+                {seeAllHref && seeAllLabel && (
+                    <Link
+                        href={seeAllHref}
+                        className='w-fit text-[14px] font-bold leading-[1.6] text-it-primary-hover underline underline-offset-[3px] sm:hidden'>
+                        {seeAllLabel} →
                     </Link>
                 )}
             </div>

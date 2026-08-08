@@ -55,11 +55,18 @@ export function ToursBrowser({
     header,
     toolbar,
     results,
+    footer,
 }: {
     /** Optional block ABOVE the sticky toolbar; supplies its own container. */
     header?: ReactNode;
     toolbar: ReactNode;
     results: ReactNode;
+    /**
+     * Optional block BELOW the grid, outside the results container - for
+     * full-bleed sections such as the search recovery band. Dims with the grid
+     * during a filter navigation, since it is part of the same answer.
+     */
+    footer?: ReactNode;
 }) {
     const [isPending, startTransition] = useTransition();
     const startNav = (fn: () => void) => startTransition(fn);
@@ -74,10 +81,11 @@ export function ToursBrowser({
             {toolbar}
             <div
                 aria-busy={busy}
-                className={`it-container transition-opacity duration-200 ${
+                className={`transition-opacity duration-200 ${
                     busy ? 'pointer-events-none opacity-50' : 'opacity-100'
                 }`}>
-                {results}
+                <div className='it-container'>{results}</div>
+                {footer}
             </div>
         </ToursNavContext.Provider>
     );
