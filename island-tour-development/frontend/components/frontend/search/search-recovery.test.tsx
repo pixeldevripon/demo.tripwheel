@@ -165,8 +165,51 @@ describe('SearchRecovery — clearing filters', () => {
         ).toHaveAttribute('href', '/en/search?q=boat');
     });
 
+    it('renders it as a link, not a constraint chip', () => {
+        // A chip stands for one constraint that is ON, with an x to take it
+        // off. This removes all of them - and as a chip it also stretched the
+        // full width of the band, being a direct child of a flex column.
+        render(
+            <SearchRecovery {...base} clearFiltersHref='/en/search?q=boat' />,
+        );
+        const link = screen.getByRole('link', { name: 'Clear all filters' });
+        expect(link.className).not.toContain('rounded-it-full');
+        expect(link.className).toContain('w-fit');
+    });
+
+    it('never lets a constraint chip stretch to full width', () => {
+        render(
+            <SearchRecovery
+                {...base}
+                dateLabel='6 Aug'
+                dateParam='2026-08-06'
+                withoutDateHref='/en/search?q=boat'
+                withoutDateCount={12}
+            />,
+        );
+        expect(
+            screen.getByRole('link', { name: /6 Aug/ }).className,
+        ).toContain('w-fit');
+    });
+
     it('omits it when no filter is narrowing anything', () => {
         render(<SearchRecovery {...base} />);
+        expect(
+            screen.queryByRole('link', { name: 'Clear all filters' }),
+        ).not.toBeInTheDocument();
+    });
+
+    it('omits it on the THIN state, where the toolbar still offers it', () => {
+        // The toolbar is only hidden at zero. On thin it is still up the page
+        // with its own "Clear all" beside the chips it would remove, so this
+        // would be a second button for the same job, in the wrong place.
+        render(
+            <SearchRecovery
+                {...base}
+                thinCount={2}
+                clearFiltersHref='/en/search?q=boat'
+            />,
+        );
         expect(
             screen.queryByRole('link', { name: 'Clear all filters' }),
         ).not.toBeInTheDocument();

@@ -80,7 +80,7 @@ function ConstraintChip({
     return (
         <Link
             href={href}
-            className='inline-flex shrink-0 items-center gap-2 rounded-it-full border border-it-primary bg-it-white py-2 pl-3.5 pr-3 text-[13.5px] font-bold leading-none text-it-primary-hover no-underline transition-colors hover:bg-it-primary-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary'>
+            className='inline-flex w-fit shrink-0 self-start items-center gap-2 rounded-it-full border border-it-primary bg-it-white py-2 pl-3.5 pr-3 text-[13.5px] font-bold leading-none text-it-primary-hover no-underline transition-colors hover:bg-it-primary-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary'>
             {icon}
             {label}
             <X className='size-3.5 shrink-0' strokeWidth={2.5} aria-hidden='true' />
@@ -239,7 +239,7 @@ export function SearchRecovery({
                 {/* ── The constraint that emptied the page, and the way to drop
                     it. The date first: it is usually what did it, and it is the
                     only one we can put a number on. */}
-                {(showDateDrop || clearFiltersHref) && (
+                {(showDateDrop || (clearFiltersHref && !isThin)) && (
                     <div className='flex flex-col gap-3'>
                         {showDateDrop && (
                             <div className='flex flex-wrap items-center gap-x-4 gap-y-2'>
@@ -267,14 +267,24 @@ export function SearchRecovery({
                             </div>
                         )}
 
-                        {/* A filter can empty the page just as easily, and the
-                            toolbar's own "Clear all" is a long way up the page
-                            by the time a traveller has read this far. */}
-                        {clearFiltersHref && (
-                            <ConstraintChip
+                        {/* ZERO STATE ONLY, because that is the only state
+                            that needs it: the toolbar is hidden there, so this
+                            is the sole way back for someone whose filter
+                            emptied the page. On the thin state the toolbar is
+                            still up the page with its own "Clear all" beside
+                            the chips it would remove - repeating it here is a
+                            second button for the same job, in the wrong place.
+
+                            NOT a chip either. A chip stands for one constraint
+                            that is currently ON, with an x to take it off; this
+                            is the single action that removes all of them, so it
+                            reads as the band's other actions do. */}
+                        {clearFiltersHref && !isThin && (
+                            <Link
                                 href={clearFiltersHref}
-                                label={dict.clearFilters}
-                            />
+                                className='w-fit self-start text-[14px] font-bold leading-[1.6] text-it-primary-hover underline underline-offset-[3px] transition-colors hover:text-it-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary'>
+                                {dict.clearFilters}
+                            </Link>
                         )}
                     </div>
                 )}

@@ -78,6 +78,19 @@ hand-written copy of that markup. The tile fallback background is now a prop —
 the default `bg-it-bg` is invisible against the band's `bg-it-surface`, which is
 exactly what it looked like: a title and a tour count floating over nothing.
 
+### Two fixes on client review
+
+**`Clear all filters` was a full-width pill.** `inline-flex` does not save an
+element that is a direct child of a flex **column** — `align-items: stretch`
+blew it edge to edge. It is a link now, not a chip: a chip stands for one
+constraint that is *on*, with an ✕ to take it off, and this is the single action
+that removes all of them.
+
+**And it only appears on the zero state.** On thin, the toolbar is still up the
+page with its own `Clear all` beside the chips it would remove — a second button
+for the same job, in the wrong place. Only zero hides the toolbar, and only zero
+needs this.
+
 ### Kept against the mockup
 
 **The toolbar stays hidden on zero results**, which mck-12 does not do. A filter
