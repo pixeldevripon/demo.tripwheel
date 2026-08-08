@@ -1,4 +1,5 @@
 import { JsonLd } from '@/components/frontend/seo/json-ld';
+import { StepNumberBadge } from '@/components/frontend/step-number-badge';
 import {
     TourRelatedSkeleton,
     TourReviewsPreviewSkeleton,
@@ -773,9 +774,14 @@ export async function TourDetailContent({
                                                                             className='absolute top-9 bottom-0 left-[15px] w-px -translate-x-1/2 bg-it-divider'
                                                                         />
                                                                     )}
-                                                                    <span className='relative z-10 grid size-[30px] shrink-0 place-items-center rounded-it-full bg-it-primary-subtle text-[13px] font-bold text-it-primary-hover tabular-nums'>
-                                                                        {i + 1}
-                                                                    </span>
+                                                                    <StepNumberBadge
+                                                                        step={
+                                                                            i +
+                                                                            1
+                                                                        }
+                                                                        // Above the connector line.
+                                                                        className='relative z-10'
+                                                                    />
                                                                     <div className='flex flex-col gap-0.5'>
                                                                         <span className='text-[14.5px] font-bold leading-[1.6] text-it-ink'>
                                                                             {
