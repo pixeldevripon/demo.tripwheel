@@ -84,7 +84,16 @@ export function ToursBrowser({
                 className={`transition-opacity duration-200 ${
                     busy ? 'pointer-events-none opacity-50' : 'opacity-100'
                 }`}>
-                <div className='it-container'>{results}</div>
+                {/* Breathing room under the toolbar's divider. The band ends in
+                    a hairline border and the first card sat flush against it,
+                    which read as the grid being part of the toolbar rather than
+                    the answer to it. Here rather than in each caller, so the
+                    listing pages and search keep ONE gap under one band - and
+                    skipped when there is no grid (search's zero state), where it
+                    would only pad an empty div above the recovery band. */}
+                {results && (
+                    <div className='it-container pt-6 md:pt-8'>{results}</div>
+                )}
                 {footer}
             </div>
         </ToursNavContext.Provider>
