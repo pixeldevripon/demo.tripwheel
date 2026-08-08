@@ -25,6 +25,7 @@ import {
 } from '@/lib/api/public';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 import { getServerCurrency } from '@/lib/currency/server';
+import { buildDiscoveryLinks } from '@/lib/destination/discovery-links';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import type { DestinationPopularLink } from '@/types/destination';
 import {
@@ -305,47 +306,21 @@ export async function SearchResultsSection({
     ];
 
     /*
-     * "Popular searches" - CURATED first, automatic as the fallback, exactly as
-     * the destination hero and the search zero-state panel already do it.
+     * "Popular searches" - the island's discovery set, cut to a single line.
      *
-     * The curated list is an editorial claim an admin makes per island
-     * (SEARCH_PANEL placement, hero row as the second choice). The automatic
-     * row below is NOT dead code: it is what every uncurated island gets, so a
-     * dead-end search never loses the group entirely just because nobody has
-     * curated that island yet - which is the state every island is in today.
-     *
-     * Same shape as the hero's: the island's landmark hubs, then its LEAD
-     * collection, then activity types. Every entry is gated on its page
-     * rendering upstream - a category needs >= 3 published tours here, a
-     * collection must be published - so a link that cannot open is simply not
-     * in any of these lists.
+     * THE SAME LIST THE HERO SEARCH PANEL SHOWS, from the same builder: the
+     * client's requirement is that this line "exactly represents" the curated
+     * search items, and the only way to guarantee that is for both surfaces to
+     * call one function rather than each assemble its own idea of popular.
+     * Curated (SEARCH_PANEL, then the hero's row) wins; otherwise it is the
+     * island's hubs, then activity types, then collections.
      */
-    const popularLinks: DestinationPopularLink[] = popular.length
-        ? popular
-        : [
-              ...hubs.map(h => ({
-                  name: h.name,
-                  slug: h.slug,
-                  kind: 'hub' as const,
-                  tours: h.publishedTourCount,
-                  image: h.heroImage,
-              })),
-              ...collections.slice(0, 1).map(c => ({
-                  name: c.name,
-                  slug: c.slug,
-                  kind: 'collection' as const,
-                  // Editorial, not a count - the type says so too.
-                  tours: null,
-                  image: c.heroImage,
-              })),
-              ...(islandCategories ?? []).map(c => ({
-                  name: c.name,
-                  slug: c.slug,
-                  kind: 'category' as const,
-                  tours: c.publishedTourCount,
-                  image: c.heroImage,
-              })),
-          ].slice(0, POPULAR_MAX);
+    const popularLinks: DestinationPopularLink[] = buildDiscoveryLinks({
+        curated: popular,
+        hubs,
+        categories: islandCategories ?? [],
+        collections,
+    }).slice(0, POPULAR_MAX);
 
     const recovery = (thinCount?: number) => (
         <SearchRecovery
@@ -356,14 +331,17 @@ export async function SearchResultsSection({
             toursLabel={dict.destination.exploreTypes.tours}
             query={query}
             dateLabel={dateLabel}
+            dateParam={filters.date ?? null}
             withoutDateHref={withoutDateHref}
             withoutDateCount={withoutDateResults?.total ?? 0}
             clearFiltersHref={clearFiltersHref}
             popular={popularLinks}
             exploreTypes={exploreTypes}
             localsFavourites={
-                favourites?.data.map(hit => searchHitToListing(hit, locale, t)) ??
-                []
+                favourites?.data.map(hit =>
+                    // Same date on the tour page the card opens.
+                    searchHitToListing(hit, locale, t, filters.date ?? undefined)
+                ) ?? []
             }
             destinationSlug={destination}
             destinationName={destinationName}

@@ -119,6 +119,8 @@ export function SearchRecovery({
     query,
     /** Formatted date currently filtering the search (e.g. "6 Aug"); null if none. */
     dateLabel,
+    /** The same date as `YYYY-MM-DD` - carried onto every link out of here. */
+    dateParam,
     /** The same search minus its date, or null when the query had no date. */
     withoutDateHref,
     /** How many tours that date-less search returns. 0 hides the line. */
@@ -142,6 +144,7 @@ export function SearchRecovery({
     toursLabel: string;
     query: string;
     dateLabel: string | null;
+    dateParam: string | null;
     withoutDateHref: string | null;
     withoutDateCount: number;
     clearFiltersHref: string | null;
@@ -154,6 +157,24 @@ export function SearchRecovery({
     thinCount?: number;
 }) {
     const isThin = thinCount != null;
+
+    /*
+     * THE CHOSEN DATE TRAVELS WITH THE TRAVELLER.
+     *
+     * Every link in this band leaves the search page, and without this the date
+     * they picked is silently dropped at the door: they land on a category or
+     * an island listing showing every departure, re-pick the same date, and
+     * wonder why the site forgot. The listing pages all read `?date=` (it is
+     * the same filter model the toolbar writes), so appending it is enough to
+     * keep the whole journey on one date.
+     *
+     * The one link that deliberately does NOT get it is the date-drop chip -
+     * removing the date is its entire purpose.
+     */
+    const withDate = (href: string) =>
+        dateParam
+            ? `${href}${href.includes('?') ? '&' : '?'}date=${dateParam}`
+            : href;
 
     const kicker = isThin
         ? thinCount === 1
@@ -168,7 +189,7 @@ export function SearchRecovery({
     // and the one link here that always leads somewhere with tours on it.
     const seeAllHref =
         destinationSlug && destinationName
-            ? localizeHref(locale, `/${destinationSlug}/tours`)
+            ? withDate(localizeHref(locale, `/${destinationSlug}/tours`))
             : null;
     const seeAllLabel =
         destinationName == null
@@ -271,9 +292,11 @@ export function SearchRecovery({
                                     </span>
                                 )}
                                 <Link
-                                    href={localizeHref(
-                                        locale,
-                                        `/${destinationSlug}/${p.slug}`
+                                    href={withDate(
+                                        localizeHref(
+                                            locale,
+                                            `/${destinationSlug}/${p.slug}`
+                                        )
                                     )}
                                     className='font-semibold text-it-ink no-underline underline-offset-[3px] transition-colors hover:text-it-primary-hover hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary'>
                                     {p.name}
@@ -294,6 +317,7 @@ export function SearchRecovery({
                         // fallback is the same grey, so an image-less tile
                         // would disappear into it entirely.
                         tileFallbackClassName='bg-it-white'
+                        linkQuery={dateParam ? `date=${dateParam}` : undefined}
                     />
                 )}
 

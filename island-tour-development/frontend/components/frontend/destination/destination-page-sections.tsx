@@ -14,6 +14,7 @@ import {
 } from '@/lib/api/public';
 import { getMediaSeo, normalizeUrl } from '@/lib/api/public/media';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
+import { buildDiscoveryLinks } from '@/lib/destination/discovery-links';
 import { getServerCurrency } from '@/lib/currency/server';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { searchHitToListing } from '@/lib/tours/listing';
@@ -194,42 +195,22 @@ export async function DestinationHeroSection({
 
     const categoryNameById = new Map(categories.map(c => [c.id, c.name]));
 
-    const curatedZeroEntries = curatedSearchPanel.map(link => ({
-        name: link.name,
-        href: zeroHref(link.slug),
-        kind: link.kind,
-        // A curated collection carries no count (membership is editorial), and
+    // The SAME builder the search recovery band's "Popular searches" run uses,
+    // so the two surfaces can never answer "what is popular here" differently.
+    const zeroEntries = buildDiscoveryLinks({
+        curated: curatedSearchPanel,
+        hubs,
+        categories,
+        collections,
+    }).map(entry => ({
+        name: entry.name,
+        href: zeroHref(entry.slug),
+        kind: entry.kind,
+        // A collection carries no count (membership is editorial), and
         // `undefined` is what the row reads as "print no subtitle".
-        tours: link.tours ?? undefined,
-        image: link.image,
+        tours: entry.tours ?? undefined,
+        image: entry.image,
     }));
-
-    const automaticZeroEntries = [
-        ...hubs.map(hub => ({
-            name: hub.name,
-            href: zeroHref(hub.slug),
-            kind: 'hub' as const,
-            tours: hub.publishedTourCount,
-            image: hub.heroImage,
-        })),
-        ...categories.map(category => ({
-            name: category.name,
-            href: zeroHref(category.slug),
-            kind: 'category' as const,
-            tours: category.publishedTourCount,
-            image: category.heroImage,
-        })),
-        ...collections.map(collection => ({
-            name: collection.name,
-            href: zeroHref(collection.slug),
-            kind: 'collection' as const,
-            tours: undefined,
-            image: collection.heroImage,
-        })),
-    ];
-
-    const zeroEntries =
-        curatedZeroEntries.length > 0 ? curatedZeroEntries : automaticZeroEntries;
 
     const searchZeroState = {
         // Grouped by what the row OPENS rather than by two curated lists: the

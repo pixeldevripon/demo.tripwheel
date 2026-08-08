@@ -67,6 +67,7 @@ const base = {
     toursLabel: 'tours',
     query: 'boat',
     dateLabel: null,
+    dateParam: null,
     withoutDateHref: null,
     withoutDateCount: 0,
     clearFiltersHref: null,
@@ -122,6 +123,7 @@ describe('SearchRecovery — the date drop', () => {
     const withDate = {
         ...base,
         dateLabel: '6 Aug',
+        dateParam: '2026-08-06',
         withoutDateHref: '/en/search?q=boat&destination=curacao',
     };
 
@@ -194,6 +196,48 @@ describe('SearchRecovery — the content groups', () => {
             screen.getByRole('heading', { name: "Locals' favorites" }),
         ).toBeInTheDocument();
         expect(screen.getByText('Catamaran Day Trip')).toBeInTheDocument();
+    });
+});
+
+describe('SearchRecovery — the chosen date travels with the traveller', () => {
+    const dated = { ...base, dateLabel: '6 Aug', dateParam: '2026-08-06' };
+
+    it('carries the date onto every popular search', () => {
+        // Otherwise the date they picked is dropped at the door and the
+        // listing they land on shows every departure.
+        render(<SearchRecovery {...dated} popular={POPULAR} />);
+        expect(
+            screen.getByRole('link', { name: 'Klein Curaçao' }),
+        ).toHaveAttribute('href', '/en/curacao/klein-curacao?date=2026-08-06');
+    });
+
+    it('carries it onto "See all {destination} tours"', () => {
+        render(<SearchRecovery {...dated} />);
+        expect(
+            screen.getAllByRole('link', { name: /See all 25 Curaçao tours/ })[0],
+        ).toHaveAttribute('href', '/en/curacao/tours?date=2026-08-06');
+    });
+
+    it('leaves the links bare when no date is in play', () => {
+        render(<SearchRecovery {...base} popular={POPULAR} />);
+        expect(
+            screen.getByRole('link', { name: 'Klein Curaçao' }),
+        ).toHaveAttribute('href', '/en/curacao/klein-curacao');
+    });
+
+    it('does NOT put it back on the date-drop chip', () => {
+        // Removing the date is that chip's entire purpose.
+        render(
+            <SearchRecovery
+                {...dated}
+                withoutDateHref='/en/search?q=boat&destination=curacao'
+                withoutDateCount={12}
+            />,
+        );
+        expect(screen.getByRole('link', { name: /6 Aug/ })).toHaveAttribute(
+            'href',
+            '/en/search?q=boat&destination=curacao',
+        );
     });
 });
 

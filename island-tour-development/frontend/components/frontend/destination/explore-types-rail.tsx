@@ -39,6 +39,7 @@ export function ExploreTypesRail({
     categories,
     toursLabel,
     tileFallbackClassName = 'bg-it-bg',
+    linkQuery,
 }: {
     locale: Locale;
     destinationSlug: string;
@@ -53,6 +54,13 @@ export function ExploreTypesRail({
      * the same grey - leaving a title and a count floating over nothing.
      */
     tileFallbackClassName?: string;
+    /**
+     * Already-encoded query string (no leading `?`) appended to every tile
+     * href - the search recovery band uses it to carry the traveller's chosen
+     * DATE onto whatever page they open, so the date they picked does not
+     * silently reset the moment they follow a suggestion.
+     */
+    linkQuery?: string;
 }) {
     // Auto-advance: one card every AUTO_ADVANCE_MS. Pauses on hover
     // (stopOnMouseEnter) and while dragging, resumes after (stopOnInteraction:
@@ -104,7 +112,9 @@ export function ExploreTypesRail({
                             <MotionLink
                                 href={localizeHref(
                                     locale,
-                                    `/${destinationSlug}/${cat.slug}`
+                                    `/${destinationSlug}/${cat.slug}${
+                                        linkQuery ? `?${linkQuery}` : ''
+                                    }`
                                 )}
                                 whileTap={{ scale: 0.98 }}
                                 transition={springPop}

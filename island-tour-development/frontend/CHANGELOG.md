@@ -41,12 +41,24 @@ guess — the section re-runs the query without the date and prints the count it
 gets. When that count is **0 the whole line is withheld**: it promises tours come
 back, and a link straight back to the same empty page is worse than no link.
 
-**Popular searches falls back to an automatic row.** Curated `SEARCH_PANEL`
-first, the hero's curated row second, then hubs → lead collection → categories,
-capped at five — the same ladder the destination hero already uses. Without it
-the group renders empty on **every island today**, because nothing is curated
-yet. Each entry is gated on its target page rendering upstream, so a link that
-cannot open is never in the list.
+**Popular searches is the hero panel's list, from the same function.** The
+requirement is that this line *exactly represents* the curated search items, and
+the two had already disagreed: the band led with a hub then jumped to the lead
+collection before naming a single activity type, while the hero panel listed
+hubs, then activity types, then collections — same island, same moment, two
+answers to "what is popular here". `buildDiscoveryLinks()` is now the one place
+that decides, and both surfaces call it. Curated `SEARCH_PANEL` wins outright,
+the hero's curated row is the second choice, and the automatic fallback is hubs →
+activity types → collections. Without that fallback the group renders empty on
+**every island today**, because nothing is curated yet. Each entry is gated on
+its target page rendering upstream, so a link that cannot open is never listed.
+
+**The chosen date travels with the traveller.** Every link out of the band —
+popular searches, the tile rail, the "See all" links, and each Locals' favorites
+card — carries `?date=`. Without it the date they picked was dropped at the door:
+they landed on a listing showing every departure, re-picked the same date, and
+the site looked like it had forgotten. The one link deliberately left bare is the
+date-drop chip, since removing the date is its whole purpose.
 
 ### Reuse, rather than a second copy of everything
 
@@ -70,8 +82,8 @@ is the count, and the mockup's own annotation says so.
 
 - `Only 1 match`, not `Only 1 matches` — the plural was showing on any 1-result
   search.
-- 28 new unit tests over the two new components, covering each state and, as
-  much, what each state must *withhold*.
+- 39 new unit tests over the two new components and the shared link builder,
+  covering each state and, as much, what each state must *withhold*.
 - Nine dictionary keys added and four removed across all seven locales;
   `DICTIONARY_VERSION` bumped.
 
