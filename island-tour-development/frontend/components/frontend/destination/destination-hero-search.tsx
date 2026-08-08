@@ -113,12 +113,33 @@ export function DestinationHeroSearch({
         setCurrency(currencyFromCookie(document.cookie, locale));
     }, [locale]);
 
-    // Close the typeahead on an outside pointerdown (the date popover is portalled,
-    // so clicks inside it don't count as outside).
+    /*
+     * Close the typeahead on an outside pointerdown.
+     *
+     * THE DATE POPOVER IS PORTALLED TO `document.body`, so `ref` does not
+     * contain it and every click on a calendar day counted as "outside". The
+     * comment here used to claim the opposite, and the bug was exactly what
+     * that wrong claim predicted would not happen: with the panel open, the
+     * FIRST click on a day only closed the panel and the day had to be clicked
+     * again. A date picker that needs two clicks the first time and one
+     * thereafter is not a picker anyone can learn.
+     *
+     * So a portalled overlay counts as inside. `data-slot="popover-content"` is
+     * what `components/ui/popover` stamps on it, and the dialog role covers the
+     * mobile layer for the same reason.
+     */
     useEffect(() => {
         if (!focused) return;
         function onPointerDown(event: PointerEvent) {
-            if (ref.current && !ref.current.contains(event.target as Node)) {
+            const target = event.target as Element | null;
+            if (
+                target?.closest?.(
+                    '[data-slot="popover-content"],[role="dialog"]'
+                )
+            ) {
+                return;
+            }
+            if (ref.current && !ref.current.contains(target)) {
                 setFocused(false);
             }
         }
@@ -339,6 +360,12 @@ export function DestinationHeroSearch({
                             setQuery(value);
                             setLayerCalendar(false);
                         }}
+                        // Tapping back into the field is a change of mind about
+                        // WHICH question is being answered, so the calendar
+                        // gives the space back to the suggestions - waiting for
+                        // a keystroke would leave the visitor typing behind a
+                        // calendar.
+                        onFocus={() => setLayerCalendar(false)}
                         date={date}
                         onDateChange={setDate}
                         // Inside the layer the calendar replaces the list in

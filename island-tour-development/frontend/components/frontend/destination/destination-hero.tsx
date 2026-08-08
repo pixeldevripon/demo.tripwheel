@@ -95,25 +95,43 @@ export function DestinationHero({
                             zeroState={searchZeroState}
                         />
 
-                        {/* Activities (top categories/hubs) - quick links */}
+                        {/* Activities (top categories/hubs) - quick links.
+                            ONE LINE THAT SCROLLS ON MOBILE, not a wrapping
+                            paragraph: three island names do not fit 375px, and
+                            wrapping pushed a second line of links over the hero
+                            photo and down onto the fold. The client's own rule
+                            (handoff, `@media (max-width:767px)`) is
+                            `flex-wrap:nowrap; white-space:nowrap; overflow-x:auto;
+                            justify-content:flex-start` - left-aligned so the
+                            first link starts where the eye already is, rather
+                            than centred with both ends cut off.
+
+                            Desktop keeps the centred wrapping row, where three
+                            links fit on one line anyway. */}
                         {activities.length > 0 && (
-                            <p className='m-0 text-center text-[13.5px] font-semibold leading-[1.6] text-it-white/90 [text-shadow:0_1px_10px_rgba(0,0,0,0.3)]'>
-                                {dict.popularLabel}:{' '}
+                            <div className='flex w-full items-center gap-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden text-[13.5px] font-semibold leading-[1.6] text-it-white/90 max-md:flex-nowrap max-md:justify-start max-md:overflow-x-auto max-md:whitespace-nowrap md:flex-wrap md:justify-center [text-shadow:0_1px_10px_rgba(0,0,0,0.3)]'>
+                                <span className='shrink-0'>
+                                    {dict.popularLabel}:
+                                </span>
                                 {activities.map((item, i) => (
-                                    <span key={item.href}>
+                                    <span
+                                        key={item.href}
+                                        className='flex shrink-0 items-center gap-1.5'>
                                         {i > 0 && (
-                                            <span className='mx-1.5 opacity-60'>
+                                            <span
+                                                aria-hidden='true'
+                                                className='opacity-60'>
                                                 ·
                                             </span>
                                         )}
                                         <Link
                                             href={item.href}
-                                            className='text-it-white underline underline-offset-[3px] decoration-white/50 transition-colors duration-300 hover:text-it-primary-subtle'>
+                                            className='text-it-white underline decoration-white/50 underline-offset-[3px] transition-colors duration-300 hover:text-it-primary-subtle'>
                                             {item.label}
                                         </Link>
                                     </span>
                                 ))}
-                            </p>
+                            </div>
                         )}
                     </div>
                 </div>
