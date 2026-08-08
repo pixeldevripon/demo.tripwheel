@@ -7,6 +7,15 @@
 #   builder  - full deps + `prisma generate` + `nest build`
 #   runner   - same node_modules (kept whole, see note) + dist + prisma schema
 #
+# Ownership is set BY EACH COPY (`--chown=node:node`), never by a trailing
+# `RUN chown -R node:node /app`. That single line cost 25 MINUTES per build on
+# the VPS (run #61: step 32/32 started 11:44:30, still going at the 12:09:24
+# timeout, while all 31 other steps together took ~14 min) and wrote a fresh
+# ~850MB layer every deploy, because chmod/chown metadata changes copy the whole
+# tree into a new layer. Recursing over a full node_modules is hundreds of
+# thousands of inodes; `--chown` sets ownership as the bytes land, for free.
+# Do not reintroduce a recursive chown here.
+#
 # Why we keep the full node_modules in the runner instead of pruning to --prod:
 # deploys run `prisma migrate deploy` (needs the `prisma` CLI, a devDependency)
 # and an optional `prisma db seed` (needs `ts-node` + `tsconfig-paths`, also
@@ -56,25 +65,28 @@ RUN apt-get update \
 RUN corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
 
 WORKDIR /app
+# The workdir itself - ONE directory, not a recursive walk. Its contents arrive
+# already owned by node via `COPY --chown` below.
+RUN chown node:node /app
 
 # node_modules (incl. the generated Prisma client + prisma/ts-node CLIs).
-COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder --chown=node:node /app/node_modules ./node_modules
 # Compiled app.
-COPY --from=builder /app/dist ./dist
+COPY --from=builder --chown=node:node /app/dist ./dist
 # Prisma schema + migrations + seed scripts + config (needed by migrate/seed).
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
+COPY --from=builder --chown=node:node /app/prisma ./prisma
+COPY --from=builder --chown=node:node /app/prisma.config.ts ./prisma.config.ts
 # Manifests + TS config (ts-node reads tsconfig.json for the seed).
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/pnpm-lock.yaml ./pnpm-lock.yaml
-COPY --from=builder /app/tsconfig.json ./tsconfig.json
-COPY --from=builder /app/tsconfig.build.json ./tsconfig.build.json
+COPY --from=builder --chown=node:node /app/package.json ./package.json
+COPY --from=builder --chown=node:node /app/pnpm-lock.yaml ./pnpm-lock.yaml
+COPY --from=builder --chown=node:node /app/tsconfig.json ./tsconfig.json
+COPY --from=builder --chown=node:node /app/tsconfig.build.json ./tsconfig.build.json
 # Source is required only because prisma/seed.ts imports ../src/* via ts-node.
-COPY --from=builder /app/src ./src
+COPY --from=builder --chown=node:node /app/src ./src
 # Seed images for `home:media:seed`, vendored here because the frontend repo is
 # NOT in this build context and the VPS runs no frontend (it is on Vercel).
 # ~7MB, uploaded to Cloudinary once and then never read again at runtime.
-COPY --from=builder /app/assets ./assets
+COPY --from=builder --chown=node:node /app/assets ./assets
 # Maintenance scripts, so `docker compose exec backend pnpm <script>` works:
 #   pnpm media:backfill      backfill media-gallery metadata
 #   pnpm email:icons:upload  push the email icon set to Cloudinary
@@ -82,13 +94,11 @@ COPY --from=builder /app/assets ./assets
 #   pnpm home:media:seed     homepage media + copy  (ALSO needs the frontend
 #                            tree mounted at /frontend - see docker-compose.yml)
 # They import ../src/* via ts-node, which is why src/ above is not optional.
-COPY --from=builder /app/scripts ./scripts
+COPY --from=builder --chown=node:node /app/scripts ./scripts
 # Entrypoint: migrate (+ optional seed) then start.
-COPY --from=builder /app/docker-entrypoint.sh ./docker-entrypoint.sh
-RUN chmod +x ./docker-entrypoint.sh
+COPY --from=builder --chown=node:node --chmod=755 /app/docker-entrypoint.sh ./docker-entrypoint.sh
 
 # Run as the unprivileged `node` user that ships with the base image.
-RUN chown -R node:node /app
 USER node
 
 EXPOSE 5050
