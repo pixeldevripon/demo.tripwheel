@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MCK-14 · Mobile search layer (destination hero, S4h pill)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<!--
+  MCK-14 v3 · Destination hero search on mobile
+
+  v1 took only the query field into the layer and left the date and Search behind on the card. Founder objection, correct:
+       you cannot pick a date without closing the layer, and it reads as two search bars.
+  v2 took the whole stacked card into the layer, with a bottom Search bar.
+  v3 rebuilds on the CURRENT search bar: the S4h one-pill design in mck-02 (2026-08-06, DIT-19 provisional),
+       which v1 and v2 both missed. The build screenshotted on August 7 still shows the pre-S4h stacked card.
+
+  What v3 takes from mck-02 verbatim: one segmented pill (query, divider, date, round orange search circle),
+  the mobile placeholders "What?" and "When?" from the founder call of 2026-08-06 (desktop keeps the full question,
+  aria-labels stay full at both breakpoints), and the existing mobile dock behaviour (body.hsdock fixes the pill
+  below the nav once the hero scrolls past). The layer is that same docked pill with the panel underneath,
+  so this is an extension of a decision already taken rather than a new pattern.
+
+  Two adaptations, both flagged: inside the layer the pill sits on white, so the hero's heavy drop shadow is
+  replaced by a hairline border; and an X is added to the left of the pill to close the layer. The X sits outside
+  the pill on purpose, an X inside a search field reads as clear-the-text.
+
+  No bottom Search bar: the pill's own orange circle is the search action, as in the hero.
+  Panel content and order follow the founder rebuild of August 5: Categories & Hubs, Collections, Best selling trips,
+  closing all-tours row. mck-02 itself has no zero-state panel yet, so this is the first render of it.
+  Thumbnails are flat placeholders. Collection names use US spelling per conflict log 54 (see R1-74).
+  Desktop is unchanged: the pill keeps its dropdown and the nav search stays the persistent entry.
+-->
+<style>
+:root{
+  --white:#FFFFFF; --paper:#F7F7F5; --dark:#23201B;
+  --ink:#1F2937; --soft:#6B7280; --faint:#9CA3AF;
+  --border:#E5E7EB; --divider:#F3F4F6;
+  --cta:#E8611A; --cta-deep:#C7500F; --amber:#E5A230;
+  --r-sm:10px; --r-md:12px; --r-lg:16px; --r-pill:999px;
+  --sans:'Source Sans 3',system-ui,sans-serif;
+  --display:'Bricolage Grotesque',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);color:var(--ink);background:#FBFBFA;font-size:15px;line-height:1.6}
+.wrap{max-width:1560px;margin:0 auto;padding:30px 24px 90px}
+.kicker{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:700}
+h1{font-family:var(--display);font-size:24px;font-weight:800;letter-spacing:-.02em;margin:4px 0 6px}
+.lede{color:var(--soft);font-size:14px;max-width:920px}
+.frames{display:flex;gap:30px;flex-wrap:wrap;margin-top:28px}
+.frame{width:340px}
+.frame h3{font-family:var(--display);font-size:13px;font-weight:700;margin-bottom:4px}
+.frame .cap{font-size:12.5px;color:var(--soft);min-height:74px;margin-bottom:10px}
+.bad h3{color:#B4341C}
+.good h3{color:#15803D}
+.screen{position:relative;width:340px;height:690px;overflow:hidden;background:var(--white);
+  border:1px solid var(--border);border-radius:26px;box-shadow:0 4px 10px rgba(31,41,55,.06),0 24px 56px rgba(31,41,55,.10)}
+.statusbar{height:26px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;
+  font-size:11px;font-weight:700;color:var(--ink)}
+.nav{height:46px;display:flex;align-items:center;gap:9px;padding:0 12px;border-bottom:1px solid var(--divider);background:var(--white)}
+.logo{font-family:var(--display);font-size:12px;font-weight:800;line-height:.95;letter-spacing:-.02em}
+.destpill{display:flex;align-items:center;gap:5px;border:1px solid var(--border);border-radius:var(--r-pill);
+  padding:4px 10px;font-size:11.5px;font-weight:600}
+.navicons{margin-left:auto;display:flex;gap:11px;color:var(--soft)}
+.icon{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.hero{position:absolute;left:0;right:0;top:72px;height:270px;
+  background:linear-gradient(160deg,#E9A06B 0%,#D9743F 45%,#7C4A32 100%)}
+
+/* --- old build: stacked card --- */
+.card{position:absolute;left:12px;right:12px;top:96px;background:var(--white);border-radius:var(--r-lg);
+  padding:12px;box-shadow:0 4px 10px rgba(31,41,55,.08),0 18px 40px rgba(31,41,55,.14)}
+.field{display:flex;align-items:center;gap:9px;padding:9px 4px;font-size:14px;color:var(--faint)}
+.field + .field{border-top:1px solid var(--divider)}
+.field .icon{color:var(--soft)}
+.gobtn{margin-top:9px;background:var(--cta);color:#fff;border-radius:var(--r-md);text-align:center;
+  padding:11px 0;font-weight:700;font-size:14.5px}
+.caret{width:1.5px;height:14px;background:var(--cta);display:inline-block;margin-left:-4px}
+
+/* --- S4h pill (from mck-02 .herosearch) --- */
+.pill{display:flex;align-items:center;gap:6px;background:var(--white);border-radius:var(--r-pill);
+  padding:4px 4px 4px 10px;position:relative}
+.pill.onhero{box-shadow:0 14px 34px rgba(0,0,0,.3)}
+.pill.inlayer{border:1px solid var(--border);box-shadow:0 1px 2px rgba(31,41,55,.05)}
+.hsf{flex:1;display:flex;align-items:center;gap:7px;padding:9px 2px 9px 6px;border-radius:var(--r-pill);
+  min-width:0;font-size:13.5px;font-weight:600;color:var(--faint);white-space:nowrap;overflow:hidden}
+.hsf .icon{stroke:var(--soft);flex:none}
+.hsf.on{background:var(--paper);color:var(--ink)}
+.hsf.filled{color:var(--ink)}
+.hsdate{flex:0 0 100px}
+.hsdiv{width:1px;align-self:stretch;background:var(--divider);margin:6px 0}
+.go{background:var(--cta);border-radius:50%;width:44px;height:44px;flex:none;display:flex;align-items:center;justify-content:center}
+.go .icon{stroke:#fff;stroke-width:2.4;width:17px;height:17px}
+
+/* --- suggestion panel --- */
+.panel{background:var(--white);border-radius:var(--r-lg);box-shadow:0 4px 10px rgba(31,41,55,.08),0 18px 40px rgba(31,41,55,.14)}
+.ghead{font-size:13px;font-weight:700;padding:12px 14px 6px}
+.row{display:flex;align-items:center;gap:11px;padding:7px 14px;text-decoration:none;color:inherit}
+.row .th{width:42px;height:42px;border-radius:var(--r-sm);flex:none;background:linear-gradient(150deg,#8FD3E8,#3FA9CE)}
+.row .th.b{background:linear-gradient(150deg,#7FD8C8,#2F9E8A)}
+.row .th.c{background:linear-gradient(150deg,#E4B77E,#B9793C)}
+.row .th.d{background:linear-gradient(150deg,#9FD79A,#4C9E63)}
+.row .th.e{background:linear-gradient(150deg,#F0C4A0,#D18A5C)}
+.row .th.f{background:linear-gradient(150deg,#A9C8EE,#5B87C4)}
+.row .th.g{background:linear-gradient(150deg,#E8AFA6,#C4685C)}
+.row b{font-size:14px;font-weight:600;display:block;color:var(--ink);line-height:1.35}
+.row span{font-size:12px;color:var(--soft);line-height:1.35}
+.row .chev{margin-left:auto;color:var(--faint)}
+.row .meta .st{color:var(--amber);font-weight:700}
+.sep{height:1px;background:var(--divider);margin:8px 0}
+.allrow{display:flex;align-items:center;justify-content:space-between;padding:13px 14px;
+  font-size:13.5px;font-weight:700;color:var(--cta-deep);border-top:1px solid var(--divider)}
+
+/* --- keyboard --- */
+.kb{position:absolute;left:0;right:0;bottom:0;height:236px;background:#D1D4DA;padding:9px 5px 20px}
+.kb .krow{display:flex;justify-content:center;gap:5px;margin-bottom:9px}
+.kb i{display:block;height:36px;flex:1;background:var(--white);border-radius:5px;box-shadow:0 1px 0 rgba(0,0,0,.25)}
+.kb .krow.two{padding:0 16px}
+.kb .krow.three i.w{flex:1.5;background:#ADB3BC}
+.kb .space{height:36px;display:flex;gap:5px}
+.kb .space i.sp{flex:5}
+.kb .space i.n{flex:1.4;background:#ADB3BC}
+.kb .space i.srch{flex:1.6;background:var(--cta);box-shadow:none}
+.kbtag{position:absolute;left:0;right:0;bottom:246px;text-align:center;font-size:10.5px;color:#fff;
+  background:rgba(35,32,27,.72);padding:3px 0;letter-spacing:.04em;font-weight:700}
+
+/* --- layer --- */
+.layer{position:absolute;inset:0;background:var(--white);display:flex;flex-direction:column}
+.layertop{padding:9px 10px;border-bottom:1px solid var(--divider);flex:none;display:flex;align-items:center;gap:8px}
+.close{width:30px;height:30px;flex:none;display:flex;align-items:center;justify-content:center;color:var(--ink)}
+.close .icon{width:18px;height:18px;stroke-width:2}
+.layertop .pill{flex:1;min-width:0}
+.layerbody{flex:1;overflow:hidden;position:relative}
+.scroller{position:absolute;left:0;right:0;top:0}
+.scroller.down{top:-300px}
+.hint{position:absolute;right:8px;top:8px;bottom:8px;width:3px;border-radius:2px;background:var(--border)}
+.hint i{position:absolute;left:0;right:0;top:5%;height:44%;background:#C6CAD1;border-radius:2px;display:block}
+.hint.d i{top:42%}
+
+/* --- calendar --- */
+.cal{padding:12px 14px}
+.mrow{display:flex;align-items:center;justify-content:space-between;font-weight:700;font-size:14px;margin-bottom:10px}
+.mrow .mb{color:var(--faint)}
+.cgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.cgrid .dow{font-size:10.5px;color:var(--faint);font-weight:700;padding-bottom:2px}
+.cgrid .d{font-size:13px;padding:8px 0;border-radius:var(--r-sm)}
+.cgrid .d.mut{color:var(--faint)}
+.cgrid .d.out{color:var(--faint);text-decoration:line-through}
+.cgrid .d.sel{background:var(--cta);color:#fff;font-weight:700}
+.calnote{font-size:11.5px;color:var(--soft);margin-top:10px}
+
+.legend{margin-top:30px;border-left:3px solid var(--cta);background:var(--white);
+  border-radius:0 var(--r-md) var(--r-md) 0;padding:14px 18px;font-size:13.5px;color:var(--soft);max-width:980px}
+.legend b{color:var(--ink)}
+.legend ul{margin:6px 0 0 18px}
+.legend li{margin-top:3px}
+.legend + .legend{margin-top:14px;border-left-color:var(--faint)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">MCK-14</div>
+  <h1>Destination hero search, mobile</h1>
+  <p class="lede">Built on the S4h one-pill search bar from mck-02, with the mobile placeholders What? and When?. Frame 1 is the build as screenshotted, which still carries the older stacked card. Frames 2 to 4 are the proposal: the pill moves into one full-screen layer, so the date is never out of reach and there is always a way out.</p>
+
+  <div class="frames">
+
+    <!-- 1 -->
+    <div class="frame bad">
+      <h3>As built</h3>
+      <div class="cap">The panel opens inline under the card. The keyboard covers everything past the second row, and there is no control anywhere to close it again. Note the bar itself is still the pre-S4h stacked card.</div>
+      <div class="screen">
+        <div class="statusbar"><span>11:51</span><span>&#9679;&#9679;&#9679;</span></div>
+        <div class="nav">
+          <div class="logo">ISLAND<br>TOURS</div>
+          <div class="destpill"><svg class="icon" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 1 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>Cura&ccedil;ao</div>
+          <div class="navicons">
+            <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/></svg>
+            <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M5 21v-1a7 7 0 0 1 14 0v1"/></svg>
+          </div>
+        </div>
+        <div class="hero"></div>
+        <div class="card">
+          <div class="field"><svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span class="caret"></span>What do you want to do?</div>
+          <div class="field"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Select date</div>
+          <div class="gobtn">Search</div>
+        </div>
+        <div class="panel" style="position:absolute;left:12px;right:12px;top:278px">
+          <div class="ghead">Categories &amp; Hubs</div>
+          <a class="row"><span class="th"></span><span><b>Klein Cura&ccedil;ao</b><span>10 tours</span></span><svg class="icon chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+          <a class="row"><span class="th b"></span><span><b>Boat Tours &amp; Cruises</b><span>13 tours</span></span><svg class="icon chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+        </div>
+        <div class="kbtag">NO WAY TO CLOSE &middot; EVERYTHING BELOW IS UNREACHABLE</div>
+        <div class="kb">
+          <div class="krow"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="krow two"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="krow three"><i class="w"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="w"></i></div>
+          <div class="space"><i class="n"></i><i class="sp"></i><i class="srch"></i></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2 -->
+    <div class="frame good">
+      <h3>Proposed &middot; layer opens</h3>
+      <div class="cap">The S4h pill moves up into the layer, exactly as it already docks under the nav on scroll. What? and When? sit side by side, so the date is one tap away at any moment. An X on the left closes the layer.</div>
+      <div class="screen">
+        <div class="statusbar"><span>11:51</span><span>&#9679;&#9679;&#9679;</span></div>
+        <div class="layer">
+          <div class="layertop">
+            <span class="close"><svg class="icon" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span>
+            <span class="pill inlayer">
+              <span class="hsf on"><svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><span class="caret"></span>What?</span>
+              <span class="hsdiv"></span>
+              <span class="hsf hsdate"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>When?</span>
+              <span class="go"><svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></span>
+            </span>
+          </div>
+          <div class="layerbody">
+            <div class="scroller">
+              <div class="ghead">Categories &amp; Hubs</div>
+              <a class="row"><span class="th"></span><span><b>Klein Cura&ccedil;ao</b><span>10 tours</span></span><svg class="icon chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+              <a class="row"><span class="th b"></span><span><b>Boat Tours &amp; Cruises</b><span>13 tours</span></span><svg class="icon chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+              <a class="row"><span class="th c"></span><span><b>Off-Road Tours</b><span>4 tours</span></span><svg class="icon chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+              <a class="row"><span class="th d"></span><span><b>Day Trips</b><span>9 tours</span></span><svg class="icon chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+              <div class="sep"></div>
+              <div class="ghead">Collections</div>
+              <a class="row"><span class="th e"></span><span><b>Best Things to Do in Cura&ccedil;ao</b></span><svg class="icon chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+              <a class="row"><span class="th f"></span><span><b>Family Favorites in Cura&ccedil;ao</b></span><svg class="icon chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+              <a class="row"><span class="th g"></span><span><b>Locals' Favorites in Cura&ccedil;ao</b></span><svg class="icon chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+              <div class="sep"></div>
+              <div class="ghead">Best selling trips</div>
+              <a class="row"><span class="th b"></span><span><b>Full-Day Catamaran</b><span class="meta"><span class="st">&#9733; 4.3</span> (4) &middot; from $135</span></span><svg class="icon chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+              <a class="row"><span class="th c"></span><span><b>Buggy Safari West</b><span class="meta"><span class="st">&#9733; 4.8</span> (61) &middot; from $95</span></span><svg class="icon chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+              <a class="row"><span class="th e"></span><span><b>Sunset Sail &amp; Snorkel</b><span class="meta"><span class="st">&#9733; 4.7</span> (28) &middot; from $69</span></span><svg class="icon chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+              <div class="allrow"><span>See all 32 Cura&ccedil;ao tours</span><span>&rarr;</span></div>
+            </div>
+            <div class="hint"><i></i></div>
+          </div>
+        </div>
+        <div class="kb">
+          <div class="krow"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="krow two"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="krow three"><i class="w"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="w"></i></div>
+          <div class="space"><i class="n"></i><i class="sp"></i><i class="srch"></i></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3 -->
+    <div class="frame good">
+      <h3>Proposed &middot; scrolled</h3>
+      <div class="cap">Scrolling the list with the keyboard still up reaches the best selling trips and the closing link. Nothing has to be dismissed to get there, and the pill stays put at the top.</div>
+      <div class="screen">
+        <div class="statusbar"><span>11:52</span><span>&#9679;&#9679;&#9679;</span></div>
+        <div class="layer">
+          <div class="layertop">
+            <span class="close"><svg class="icon" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span>
+            <span class="pill inlayer">
+              <span class="hsf on"><svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><span class="caret"></span>What?</span>
+              <span class="hsdiv"></span>
+              <span class="hsf hsdate"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>When?</span>
+              <span class="go"><svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></span>
+            </span>
+          </div>
+          <div class="layerbody">
+            <div class="scroller down">
+              <div class="ghead">Categories &amp; Hubs</div>
+              <a class="row"><span class="th"></span><span><b>Klein Cura&ccedil;ao</b><span>10 tours</span></span><svg class="icon chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+              <a class="row"><span class="th b"></span><span><b>Boat Tours &amp; Cruises</b><span>13 tours</span></span><svg class="icon chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+              <a class="row"><span class="th c"></span><span><b>Off-Road Tours</b><span>4 tours</span></span><svg class="icon chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+              <a class="row"><span class="th d"></span><span><b>Day Trips</b><span>9 tours</span></span><svg class="icon chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+              <div class="sep"></div>
+              <div class="ghead">Collections</div>
+              <a class="row"><span class="th e"></span><span><b>Best Things to Do in Cura&ccedil;ao</b></span><svg class="icon chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+              <a class="row"><span class="th f"></span><span><b>Family Favorites in Cura&ccedil;ao</b></span><svg class="icon chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+              <a class="row"><span class="th g"></span><span><b>Locals' Favorites in Cura&ccedil;ao</b></span><svg class="icon chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+              <div class="sep"></div>
+              <div class="ghead">Best selling trips</div>
+              <a class="row"><span class="th b"></span><span><b>Full-Day Catamaran</b><span class="meta"><span class="st">&#9733; 4.3</span> (4) &middot; from $135</span></span><svg class="icon chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+              <a class="row"><span class="th c"></span><span><b>Buggy Safari West</b><span class="meta"><span class="st">&#9733; 4.8</span> (61) &middot; from $95</span></span><svg class="icon chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+              <a class="row"><span class="th e"></span><span><b>Sunset Sail &amp; Snorkel</b><span class="meta"><span class="st">&#9733; 4.7</span> (28) &middot; from $69</span></span><svg class="icon chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+              <div class="allrow"><span>See all 32 Cura&ccedil;ao tours</span><span>&rarr;</span></div>
+            </div>
+            <div class="hint d"><i></i></div>
+          </div>
+        </div>
+        <div class="kb">
+          <div class="krow"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="krow two"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="krow three"><i class="w"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="w"></i></div>
+          <div class="space"><i class="n"></i><i class="sp"></i><i class="srch"></i></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4 -->
+    <div class="frame good">
+      <h3>Proposed &middot; When? tapped</h3>
+      <div class="cap">Tapping When? drops the keyboard and puts the calendar in the same space. Both answers now sit in the pill and the orange circle is the next step. No second search bar was left behind on the page.</div>
+      <div class="screen">
+        <div class="statusbar"><span>11:52</span><span>&#9679;&#9679;&#9679;</span></div>
+        <div class="layer">
+          <div class="layertop">
+            <span class="close"><svg class="icon" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span>
+            <span class="pill inlayer">
+              <span class="hsf filled"><svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>catamaran</span>
+              <span class="hsdiv"></span>
+              <span class="hsf hsdate on"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Thu, Jul 16</span>
+              <span class="go"><svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></span>
+            </span>
+          </div>
+          <div class="layerbody">
+            <div class="cal">
+              <div class="mrow"><span class="mb">&#8249;</span><span>July 2026</span><span>&#8250;</span></div>
+              <div class="cgrid">
+                <span class="dow">Mo</span><span class="dow">Tu</span><span class="dow">We</span><span class="dow">Th</span><span class="dow">Fr</span><span class="dow">Sa</span><span class="dow">Su</span>
+                <span class="d mut"></span><span class="d mut"></span><span class="d mut">1</span><span class="d mut">2</span><span class="d mut">3</span><span class="d mut">4</span><span class="d mut">5</span>
+                <span class="d mut">6</span><span class="d mut">7</span><span class="d mut">8</span><span class="d mut">9</span><span class="d mut">10</span><span class="d mut">11</span><span class="d mut">12</span>
+                <span class="d">13</span><span class="d">14</span><span class="d out">15</span><span class="d sel">16</span><span class="d">17</span><span class="d">18</span><span class="d">19</span>
+                <span class="d">20</span><span class="d out">21</span><span class="d">22</span><span class="d">23</span><span class="d">24</span><span class="d">25</span><span class="d">26</span>
+                <span class="d">27</span><span class="d">28</span><span class="d">29</span><span class="d">30</span><span class="d">31</span><span class="d mut"></span><span class="d mut"></span>
+              </div>
+              <div class="calnote">Single month, twelve months forward. Struck dates are sold out.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="legend">
+    <b>What changes</b>
+    <ul>
+      <li>On mobile the search opens as one full-screen layer instead of a panel hanging under the bar, so the keyboard no longer eats the suggestions.</li>
+      <li>The whole pill goes into the layer, not just the query segment. What? and When? stay side by side, so a visitor who wants a date never has to close anything first, and there is never a second search bar behind the layer.</li>
+      <li>An X on the left of the pill closes the layer. Today the panel has no close control at all.</li>
+      <li>The body switches between the suggestions and the calendar, depending on which segment is active. The orange circle stays the search action, as in the hero.</li>
+      <li>All four groups stay reachable while typing: categories and hubs, collections, best selling trips, and the closing link to every tour.</li>
+      <li>Closing returns the visitor to the same spot on the page with anything they picked still filled in. The nav search icon on mobile should open the same layer, so there is one panel with two entry points.</li>
+      <li>Desktop is unchanged: the pill keeps its dropdown and the nav search stays the persistent entry.</li>
+    </ul>
+  </div>
+
+  <div class="legend">
+    <b>Open points for the founder</b>
+    <ul>
+      <li>DIT-19 is still marked PROVISIONAL in mck-02, awaiting a one-word confirm or revert. This mockup assumes it is confirmed.</li>
+      <li>The build screenshotted on August 7 still carries the pre-S4h stacked card, so the bar itself has to be handed over separately from this panel work.</li>
+      <li>mck-02 has no zero-state panel of its own yet. The content and order here follow the founder rebuild of August 5 and should be folded back into mck-02 once agreed.</li>
+    </ul>
+  </div>
+</div>
+</body>
+</html>
