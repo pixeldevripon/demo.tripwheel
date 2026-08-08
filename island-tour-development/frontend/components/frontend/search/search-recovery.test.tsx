@@ -137,11 +137,13 @@ describe('SearchRecovery — the date drop', () => {
         ).toBeInTheDocument();
     });
 
-    it('WITHHOLDS it when dropping the date would change nothing', () => {
-        // The line promises tours come back. Zero of them is a lie, and a link
-        // straight back to the same empty page.
+    it('still shows the PILL when nothing would come back, minus the promise', () => {
+        // The pill is the state: with the toolbar hidden on zero, it is the
+        // only place the traveller can see - and drop - the date that emptied
+        // the page. But "and 0 tours come back" is a promise we cannot keep,
+        // so the sentence goes and the pill stands alone.
         render(<SearchRecovery {...withDate} withoutDateCount={0} />);
-        expect(screen.queryByRole('link', { name: /6 Aug/ })).not.toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /6 Aug/ })).toBeInTheDocument();
         expect(screen.queryByText(/Drop the date/)).not.toBeInTheDocument();
     });
 

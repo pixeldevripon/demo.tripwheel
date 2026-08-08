@@ -42,9 +42,6 @@ const PAGE_SIZE = 12;
 /** Locals' favorites shown inside the recovery band - one row on every breakpoint. */
 const RECOVERY_FAVOURITES = 4;
 
-/** Links in the band's "Popular searches" run, curated or automatic. */
-const POPULAR_MAX = 5;
-
 interface SearchResultsSectionProps {
     locale: Locale;
     dict: Dictionary;
@@ -320,7 +317,7 @@ export async function SearchResultsSection({
         hubs,
         categories: islandCategories ?? [],
         collections,
-    }).slice(0, POPULAR_MAX);
+    });
 
     const recovery = (thinCount?: number) => (
         <SearchRecovery

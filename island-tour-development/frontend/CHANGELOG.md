@@ -47,11 +47,20 @@ the two had already disagreed: the band led with a hub then jumped to the lead
 collection before naming a single activity type, while the hero panel listed
 hubs, then activity types, then collections — same island, same moment, two
 answers to "what is popular here". `buildDiscoveryLinks()` is now the one place
-that decides, and both surfaces call it. Curated `SEARCH_PANEL` wins outright,
-the hero's curated row is the second choice, and the automatic fallback is hubs →
-activity types → collections. Without that fallback the group renders empty on
-**every island today**, because nothing is curated yet. Each entry is gated on
-its target page rendering upstream, so a link that cannot open is never listed.
+that decides, and both surfaces call it. Curated `SEARCH_PANEL` wins outright and
+is rendered **whole, in the admin's order** — an editorial list that the UI then
+truncates is not the list the admin wrote. The hero's curated row is the second
+choice, and the automatic fallback is hubs → activity types → collections, which
+is what an uncurated island gets rather than an empty group. Each entry is gated
+on its target page rendering upstream, so a link that cannot open is never
+listed.
+
+**The date pill is the state; its sentence is the incentive.** The pill shows
+whenever a date is narrowing the search — with the toolbar hidden on zero it is
+the only place a traveller can see, and drop, the thing that emptied the page.
+*"and 12 “boat” tours come back"* is a real second search and prints only when
+tours really do come back; on 0 the pill stands alone rather than making a
+promise we cannot keep.
 
 **The chosen date travels with the traveller.** Every link out of the band —
 popular searches, the tile rail, the "See all" links, and each Locals' favorites

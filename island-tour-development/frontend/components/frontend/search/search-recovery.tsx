@@ -203,11 +203,19 @@ export function SearchRecovery({
                     destinationName
                 );
 
-    // Dropping the date only helps if tours actually come back. When it would
-    // land on the same empty page the line is omitted rather than shown as a
-    // dead promise.
-    const showDateDrop =
-        withoutDateHref != null && dateLabel != null && withoutDateCount > 0;
+    /*
+     * THE PILL IS THE STATE; THE SENTENCE IS THE INCENTIVE.
+     *
+     * The pill shows whenever a date is narrowing this search, because that is
+     * the single most likely reason the page is empty and the traveller has to
+     * be able to SEE the constraint before they can drop it - the toolbar that
+     * would otherwise show it is hidden on the zero state.
+     *
+     * "and N tours come back" is only printed when tours really do come back.
+     * Promising a number we then cannot deliver is worse than saying nothing,
+     * so on 0 the pill stands alone and simply offers to remove the date.
+     */
+    const showDateDrop = withoutDateHref != null && dateLabel != null;
 
     return (
         <section
@@ -246,14 +254,16 @@ export function SearchRecovery({
                                         />
                                     }
                                 />
-                                <p className='m-0 text-[14px] leading-[1.6] text-it-ink md:text-[15px]'>
-                                    {dict.dropDate
-                                        .replace(
-                                            '{count}',
-                                            String(withoutDateCount)
-                                        )
-                                        .replace('{query}', query)}
-                                </p>
+                                {withoutDateCount > 0 && (
+                                    <p className='m-0 text-[14px] leading-[1.6] text-it-ink md:text-[15px]'>
+                                        {dict.dropDate
+                                            .replace(
+                                                '{count}',
+                                                String(withoutDateCount)
+                                            )
+                                            .replace('{query}', query)}
+                                    </p>
+                                )}
                             </div>
                         )}
 
