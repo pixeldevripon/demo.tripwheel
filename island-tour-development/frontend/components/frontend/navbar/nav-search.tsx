@@ -292,7 +292,12 @@ export function NavSearch({
                         )}
                     </SearchPill>
                 }
-                panel={panel(true)}
+                // Unscoped (no active island) there is no gated list to offer,
+                // so an untouched field shows an empty sheet rather than "No
+                // results for “”" - which is a verdict on a search nobody ran.
+                panel={
+                    trimmed.length >= 2 || layerZeroState ? panel(true) : null
+                }
             />
 
         </>

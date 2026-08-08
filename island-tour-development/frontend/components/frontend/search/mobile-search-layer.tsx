@@ -109,7 +109,7 @@ export function MobileSearchLayer({
             // leaves the last row of the list under the fold for good.
             className='fixed inset-0 z-100 flex h-[100dvh] flex-col bg-it-white md:hidden'>
             {/* Bar row: close ✕ OUTSIDE the pill, on its left. */}
-            <div className='flex shrink-0 items-center gap-2 border-b border-it-divider px-2.5 py-[9px]'>
+            <div className='flex shrink-0 items-center gap-2 border-b border-it-divider px-2.5 py-1.5'>
                 <motion.button
                     type='button'
                     onClick={onClose}

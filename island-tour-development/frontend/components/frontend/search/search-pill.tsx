@@ -186,7 +186,7 @@ export const SearchPill = forwardRef<HTMLInputElement, {
                 against this exact field). */}
             <label
                 className={`flex min-w-0 flex-1 cursor-text items-center gap-2 rounded-it-full px-1 transition-colors hover:bg-it-bg ${
-                    variant === 'layer' ? 'py-2' : 'py-2.5'
+                    variant === 'layer' ? 'py-1.5' : 'py-2.5'
                 }`}>
                 <Image
                     src={icon}
@@ -294,7 +294,7 @@ export const SearchPill = forwardRef<HTMLInputElement, {
                 transition={springPop}
                 className={`flex shrink-0 cursor-pointer items-center justify-center rounded-full border-none bg-it-primary p-0 transition-colors hover:bg-it-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary-hover ${
                     variant === 'layer'
-                        ? 'size-9'
+                        ? 'size-8'
                         : compact
                           ? 'size-12'
                           : 'size-[50px]'
