@@ -264,7 +264,14 @@ export function Navbar({
                             aria-label={dict.search}
                             aria-expanded={mobileSearchOpen}
                             {...iconPress}
-                            className='flex items-center bg-transparent border-none cursor-pointer p-0'>
+                            // Hidden while a hero pill is docked right beneath
+                            // it (`body.hsdock`, set by `useHeroDock`): the
+                            // docked pill IS the search entry there, and two of
+                            // them in the same band is what Pastel #51 calls
+                            // "a second search bar left behind". Already hidden
+                            // on the homepage for the same reason - its hero
+                            // owns the search.
+                            className='flex items-center bg-transparent border-none cursor-pointer p-0 [.hsdock_&]:hidden'>
                             <Image
                                 src='/icons/nav-search.svg'
                                 alt=''

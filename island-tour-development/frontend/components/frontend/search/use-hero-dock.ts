@@ -20,6 +20,14 @@ const NAV_HEIGHT = 64;
  *
  * Measured on scroll AND resize, and re-measured rather than cached, because
  * the mobile URL bar collapsing changes the hero's rendered height mid-scroll.
+ *
+ * IT ALSO MARKS THE DOCUMENT. `body.hsdock` is the class the client's own
+ * handoff specifies, and it is what lets the NAVBAR hide its mobile search icon
+ * while the pill is docked - otherwise the two sit in the same band, one directly
+ * under the other, and the page offers two ways to start the same search
+ * (Pastel #51: "does not leave a second search bar behind"). A class beats
+ * threading this through a context: the navbar is global, the hero is one page,
+ * and they are otherwise strangers.
  */
 export function useHeroDock(ref: RefObject<HTMLElement | null>): boolean {
     const [docked, setDocked] = useState(false);
@@ -30,13 +38,18 @@ export function useHeroDock(ref: RefObject<HTMLElement | null>): boolean {
 
         const mq = window.matchMedia('(max-width: 767px)');
 
+        const mark = (on: boolean) => {
+            setDocked(on);
+            document.body.classList.toggle('hsdock', on);
+        };
+
         const update = () => {
             if (!mq.matches) {
-                setDocked(false);
+                mark(false);
                 return;
             }
             const bottom = hero.offsetTop + hero.offsetHeight - NAV_HEIGHT;
-            setDocked(window.scrollY > bottom);
+            mark(window.scrollY > bottom);
         };
 
         update();
@@ -47,6 +60,9 @@ export function useHeroDock(ref: RefObject<HTMLElement | null>): boolean {
             window.removeEventListener('scroll', update);
             window.removeEventListener('resize', update);
             mq.removeEventListener('change', update);
+            // Navigating away from a destination page while docked would
+            // otherwise leave the navbar's search icon hidden for good.
+            document.body.classList.remove('hsdock');
         };
     }, [ref]);
 
