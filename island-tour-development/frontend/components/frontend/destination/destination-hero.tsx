@@ -7,6 +7,7 @@ import type { Locale } from '@/lib/constants/locales';
 import type { SearchZeroState } from '@/components/frontend/navbar/search-typeahead';
 
 import { DestinationHeroSearch } from './destination-hero-search';
+import { HeroPopularLinks } from './hero-popular-links';
 import type {
     ActivityLink,
     DestinationHeroDict,
@@ -96,43 +97,13 @@ export function DestinationHero({
                         />
 
                         {/* Activities (top categories/hubs) - quick links.
-                            ONE LINE THAT SCROLLS ON MOBILE, not a wrapping
-                            paragraph: three island names do not fit 375px, and
-                            wrapping pushed a second line of links over the hero
-                            photo and down onto the fold. The client's own rule
-                            (handoff, `@media (max-width:767px)`) is
-                            `flex-wrap:nowrap; white-space:nowrap; overflow-x:auto;
-                            justify-content:flex-start` - left-aligned so the
-                            first link starts where the eye already is, rather
-                            than centred with both ends cut off.
-
-                            Desktop keeps the centred wrapping row, where three
-                            links fit on one line anyway. */}
-                        {activities.length > 0 && (
-                            <div className='flex w-full items-center gap-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden text-[13.5px] font-semibold leading-[1.6] text-it-white/90 max-md:flex-nowrap max-md:justify-start max-md:overflow-x-auto max-md:whitespace-nowrap md:flex-wrap md:justify-center [text-shadow:0_1px_10px_rgba(0,0,0,0.3)]'>
-                                <span className='shrink-0'>
-                                    {dict.popularLabel}:
-                                </span>
-                                {activities.map((item, i) => (
-                                    <span
-                                        key={item.href}
-                                        className='flex shrink-0 items-center gap-1.5'>
-                                        {i > 0 && (
-                                            <span
-                                                aria-hidden='true'
-                                                className='opacity-60'>
-                                                ·
-                                            </span>
-                                        )}
-                                        <Link
-                                            href={item.href}
-                                            className='text-it-white underline decoration-white/50 underline-offset-[3px] transition-colors duration-300 hover:text-it-primary-subtle'>
-                                            {item.label}
-                                        </Link>
-                                    </span>
-                                ))}
-                            </div>
-                        )}
+                            Its own client leaf: the row measures its own
+                            overflow to fade the scrollable edge, and the hero
+                            around it stays in the static shell. */}
+                        <HeroPopularLinks
+                            label={dict.popularLabel}
+                            activities={activities}
+                        />
                     </div>
                 </div>
             </div>
