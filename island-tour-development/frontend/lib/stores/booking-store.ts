@@ -719,17 +719,25 @@ export function parseLocalDateParam(
 }
 
 /**
- * The one bookable time, when a tour offers exactly one - otherwise null.
+ * The one bookable time, when the date offers exactly one departure - else null.
  *
- * A tour with a single departure shows no chip row at all (Pastel #58: "the
+ * A date with a single departure shows no chip row at all (Pastel #58: "the
  * picker only belongs on tours with more than one"), so nothing on screen can
  * make that choice and the widget has to make it. Without this the CTA sat on
  * "Check availability" forever - a question the widget had already answered -
  * because a departure was chosen everywhere except in the state.
+ *
+ * Counts DEPARTURES, not bookable ones, and so does the row's own
+ * `slots.length > 1` gate - the two have to agree or they contradict each
+ * other. A date with one open departure and one sold out shows the row (the
+ * sold-out chip is worth saying: mck-15 §3 draws exactly that) and therefore
+ * has a chip to click, so auto-picking would be choosing on the traveller's
+ * behalf while a control sat right there. A lone SOLD-OUT departure picks
+ * nothing either: there is nothing to pick.
  */
 export function loneSlotTime(slots: BookingSlot[]): string | null {
-    const open = slots.filter(sl => sl.status !== 'sold_out');
-    return open.length === 1 ? open[0].time : null;
+    if (slots.length !== 1) return null;
+    return slots[0].status === 'sold_out' ? null : slots[0].time;
 }
 
 export function createBookingStore(init: BookingInit) {

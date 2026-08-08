@@ -305,14 +305,24 @@ describe('a lone departure', () => {
         expect(deriveBooking(store.getState()).ready).toBe(false);
     });
 
-    it('ignores a sold-out sibling when deciding there is only one', () => {
+    it('leaves the choice alone when a sold-out sibling puts a row on screen', () => {
+        // Two departures means the chip row renders, so there IS a control to
+        // click - picking for the traveller while it sits there would be the
+        // widget answering a question it had not been asked.
         const store = storeWith({
             slots: [
                 { time: '09:00', status: 'available', remaining: null },
                 { time: '14:00', status: 'sold_out', remaining: 0 },
             ],
         });
-        expect(store.getState().selectedTime).toBe('09:00');
+        expect(store.getState().selectedTime).toBeNull();
+    });
+
+    it('picks nothing when the only departure is sold out', () => {
+        const store = storeWith({
+            slots: [{ time: '09:00', status: 'sold_out', remaining: 0 }],
+        });
+        expect(store.getState().selectedTime).toBeNull();
     });
 });
 
