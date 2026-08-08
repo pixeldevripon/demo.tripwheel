@@ -505,7 +505,11 @@ export function ApiGetPopularLinksDocs() {
     }),
     ApiParam({ name: 'slug', example: 'curacao' }),
     ApiQuery({ name: 'locale', enum: Locale, required: false }),
-    ApiQuery({ name: 'placement', enum: PopularLinkPlacement, required: false }),
+    ApiQuery({
+      name: 'placement',
+      enum: PopularLinkPlacement,
+      required: false,
+    }),
     ApiResponse({ status: 200, type: [PopularLinkResponseDto] }),
     ApiResponse({
       status: 404,
@@ -522,7 +526,11 @@ export function ApiGetPopularLinksAdminDocs() {
       summary: 'The raw curated slots for one placement, ungated (Admin)',
     }),
     ApiParam({ name: 'id', description: 'Destination UUID' }),
-    ApiQuery({ name: 'placement', enum: PopularLinkPlacement, required: false }),
+    ApiQuery({
+      name: 'placement',
+      enum: PopularLinkPlacement,
+      required: false,
+    }),
     ApiResponse({ status: 200, type: [PopularLinkAdminResponseDto] }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...adminErrors,
@@ -541,7 +549,11 @@ export function ApiReplacePopularLinksDocs() {
         'the curation and restores the automatic list.',
     }),
     ApiParam({ name: 'id', description: 'Destination UUID' }),
-    ApiQuery({ name: 'placement', enum: PopularLinkPlacement, required: false }),
+    ApiQuery({
+      name: 'placement',
+      enum: PopularLinkPlacement,
+      required: false,
+    }),
     ApiResponse({ status: 200, type: [PopularLinkAdminResponseDto] }),
     ApiResponse({
       status: 400,
