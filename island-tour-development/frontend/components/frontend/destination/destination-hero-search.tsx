@@ -1,7 +1,7 @@
 'use client';
 
 import { format } from 'date-fns';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
@@ -259,6 +259,12 @@ export function DestinationHeroSearch({
         router.push(trimmed ? searchHref(trimmed) : allToursHref());
     }
 
+    /** Mobile: the pill hands off to the full-screen layer, on the tapped half. */
+    function openLayer(target: 'query' | 'date') {
+        setLayerCalendar(target === 'date');
+        setLayerOpen(true);
+    }
+
     function closeLayer() {
         setLayerOpen(false);
         setLayerCalendar(false);
@@ -301,18 +307,11 @@ export function DestinationHeroSearch({
 
     return (
         <div ref={ref} className='relative w-full'>
-            {/* Docked (mobile, hero scrolled past): the same pill, fixed under
-                the nav inside a 12px gutter. No spacer is left behind - by the
-                time it docks the hero is off screen, so there is nothing to
-                hold open. */}
-            <div
-                className={
-                    docked
-                        ? 'fixed left-3 right-3 top-[72px] z-60 md:static md:z-auto'
-                        : undefined
-                }>
+            {/* The pill in the hero. Hidden on mobile once the docked copy
+                takes over - by then the hero is off screen, so nothing moves. */}
+            <div className={docked ? 'max-md:invisible' : undefined}>
                 <SearchPill
-                    variant={docked ? 'docked' : 'hero'}
+                    variant='hero'
                     dict={dict}
                     compact={isMobile}
                     query={query}
@@ -325,12 +324,44 @@ export function DestinationHeroSearch({
                     onSubmit={submit}
                     // Mobile taps hand off to the layer instead of focusing in
                     // place; desktop keeps the inline dropdown.
-                    onOpenLayer={target => {
-                        setLayerCalendar(target === 'date');
-                        setLayerOpen(true);
-                    }}
+                    onOpenLayer={openLayer}
                 />
             </div>
+
+            {/* Docked (mobile, hero scrolled past): the same pill fixed under
+                the nav inside a 12px gutter.
+                
+                A SEPARATE INSTANCE, so it can be ANIMATED IN. Toggling the
+                original between static and fixed teleports it - there is no
+                start frame to transition from, and a bar that materialises
+                mid-scroll reads as a glitch. This one slides down from behind
+                the navbar, which is where it is coming from. Both share the
+                parent's state, so the query and date carry across untouched. */}
+            <AnimatePresence>
+                {docked && (
+                    <motion.div
+                        initial={{ y: -16, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: -16, opacity: 0 }}
+                        transition={{
+                            duration: 0.22,
+                            ease: [0.21, 0.47, 0.32, 0.98],
+                        }}
+                        className='fixed left-3 right-3 top-[72px] z-60 md:hidden'>
+                        <SearchPill
+                            variant='docked'
+                            dict={dict}
+                            compact
+                            query={query}
+                            onQueryChange={setQuery}
+                            date={date}
+                            onDateChange={setDate}
+                            onSubmit={submit}
+                            onOpenLayer={openLayer}
+                        />
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Desktop dropdown. Hidden below md, where the layer owns it. */}
             <AnimatePresence>
