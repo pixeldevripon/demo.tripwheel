@@ -15,6 +15,19 @@ The Tripwheel marketing site and its login door. Next.js 16 on **:3002**. Today 
 | `island-tour-development` | **`pixelvega`** | `prod` |
 | `tripwheel-x-islandtours-dashboard` | **`pixelvega`** | `main` |
 
+**Every change goes on its OWN BRANCH and lands as a PR. Never commit straight to
+the base branch.** Branch off the fetched base, push that branch to `pixelvega`,
+open the PR against the base — one branch per PR, no exceptions and no batching
+of unrelated work onto a shared branch.
+
+```bash
+git fetch pixelvega main
+git switch -c <branch> pixelvega/main
+# ... commit ...
+git push -u pixelvega <branch>
+gh pr create --base main --head <branch>
+```
+
 This repo also has an `origin` (devripon-tr/tripwheel.app) that is **not** the push target. Name the
 remote explicitly on every push — a bare `git push`, or assuming `origin`, sends work to the wrong
 GitHub org.
