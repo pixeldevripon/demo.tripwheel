@@ -7,11 +7,15 @@ import type { DestinationPopularLink } from '@/types/destination';
  * How few results still counts as "thin" (Pastel #46).
  *
  * ONE named constant so the threshold can be tuned without hunting through
- * components. Deliberately generous: two or three matches for a broad term like
- * "boat" is a dead end even though the grid is not empty, which is the whole
- * point of the issue.
+ * components - which is exactly what it was for: it started at 3 and moved to 4
+ * on review, a one-line change with no component touched.
+ *
+ * Deliberately generous. Four matches for a broad term like "boat" is still a
+ * dead end even though the grid is not empty, and that is the whole point of
+ * the issue - the grid being non-empty is not the same as the traveller having
+ * somewhere to go.
  */
-export const THIN_RESULTS_MAX = 3;
+export const THIN_RESULTS_MAX = 4;
 
 export type SearchRecoveryDict = {
     /** Zero state heading, carries `{query}`. */
@@ -30,6 +34,8 @@ export type SearchRecoveryDict = {
     browseByType: string;
     /** Carries `{destination}`. */
     seeAllDestinationTours: string;
+    /** Reset every active filter, keeping the term. */
+    clearFilters: string;
 };
 
 /** A category quick link - the shape the search section already has to hand. */
@@ -85,6 +91,8 @@ export function SearchRecovery({
     query,
     /** The current search minus its date, or null when the query had no date. */
     withoutDateHref,
+    /** The bare term with every filter dropped; null when none are active. */
+    clearFiltersHref,
     popular,
     categories,
     destinationSlug,
@@ -96,6 +104,7 @@ export function SearchRecovery({
     dict: SearchRecoveryDict;
     query: string;
     withoutDateHref: string | null;
+    clearFiltersHref: string | null;
     popular: DestinationPopularLink[];
     categories: RecoveryCategory[];
     destinationSlug?: string;
@@ -122,10 +131,19 @@ export function SearchRecovery({
             className={
                 isThin
                     ? 'rounded-[16px] border border-it-border bg-it-surface p-5 sm:p-7'
-                    : 'py-10'
+                    : // Zero: a centred card carrying the WHOLE state, since
+                      // there is no grid for it to sit under - so it is sized to
+                      // hold the page on its own rather than float in it.
+                      //
+                      // Scales rather than jumping: full width inside the
+                      // container's gutter on a phone, then a wider measure and
+                      // more padding at each step up. `max-w-4xl` keeps the chip
+                      // rows to a readable line length instead of letting them
+                      // stretch the full 1200px container.
+                      'mx-auto my-6 w-full max-w-4xl rounded-[16px] border border-it-border bg-it-surface p-6 text-center sm:my-10 sm:p-10 lg:p-14'
             }>
             {/* Intro - the only thing that differs between the two states. */}
-            <div className='flex flex-col gap-1'>
+            <div className={`flex flex-col gap-1 ${isThin ? '' : 'items-center'}`}>
                 {isThin ? (
                     <>
                         <span className='text-[12.5px] font-bold uppercase tracking-[0.08em] text-it-primary-hover'>
@@ -140,18 +158,32 @@ export function SearchRecovery({
                     </>
                 ) : (
                     <>
-                        <p className='m-0 font-it-display text-[21px] font-bold leading-[1.2] tracking-[-0.012em] text-it-ink sm:text-[24px]'>
+                        <p className='m-0 font-it-display text-[24px] font-bold leading-[1.15] tracking-[-0.015em] text-it-ink sm:text-[30px] lg:text-[34px]'>
                             {dict.noResults.replace('{query}', query)}
                         </p>
-                        <p className='m-0 text-[14.5px] leading-[1.68] text-it-text-muted'>
+                        <p className='m-0 mt-1 text-[15px] leading-[1.68] text-it-text-muted sm:text-[16px]'>
                             {dict.tryOneOfThese}
                         </p>
                     </>
                 )}
             </div>
 
-            <div className='mt-5 flex flex-col gap-5'>
-                {/* 1. The same search, without the date. Always first. */}
+            <div
+                className={`flex flex-col gap-5 ${isThin ? 'mt-6' : 'mt-8 items-center sm:mt-10'}`}>
+                {/* 0. When a FILTER emptied the page, the way back is to drop
+                    it. Offered above everything else because nothing below can
+                    help while the filter is still applied - and because the
+                    toolbar is hidden on the zero state, this is the only way
+                    out. */}
+                {clearFiltersHref && (
+                    <Link
+                        href={clearFiltersHref}
+                        className='inline-flex w-fit items-center gap-2 rounded-it-full border border-it-heading/20 bg-it-white px-5 py-2.5 text-[14px] font-bold leading-none text-it-heading no-underline transition-colors hover:border-it-heading/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary'>
+                        {dict.clearFilters}
+                    </Link>
+                )}
+
+                {/* 1. The same search, without the date. */}
                 {withoutDateHref && (
                     <Link
                         href={withoutDateHref}

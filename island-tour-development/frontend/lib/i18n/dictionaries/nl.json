@@ -58,6 +58,7 @@
         "noResults": "Geen resultaten voor “{query}”",
         "noResultsHint": "Controleer de spelling of probeer een algemenere term.",
         "tryOneOfThese": "Probeer een van deze.",
+        "clearFilters": "Alle filters wissen",
         "onlyMatches": "Slechts {count} resultaten",
         "keepLooking": "Blijf zoeken",
         "searchAnyDate": "Zoek “{query}” op elke datum",

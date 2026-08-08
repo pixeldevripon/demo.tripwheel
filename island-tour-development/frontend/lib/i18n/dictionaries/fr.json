@@ -58,6 +58,7 @@
         "noResults": "Aucun résultat pour “{query}”",
         "noResultsHint": "Vérifiez l'orthographe ou essayez un terme plus général.",
         "tryOneOfThese": "Essayez l’une de ces options.",
+        "clearFilters": "Effacer tous les filtres",
         "onlyMatches": "Seulement {count} résultats",
         "keepLooking": "Continuez à explorer",
         "searchAnyDate": "Rechercher « {query} » à n’importe quelle date",

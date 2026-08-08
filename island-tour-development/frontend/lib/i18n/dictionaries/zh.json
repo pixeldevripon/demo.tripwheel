@@ -58,6 +58,7 @@
         "noResults": "没有找到 “{query}” 的结果",
         "noResultsHint": "请检查拼写或尝试更宽泛的关键词。",
         "tryOneOfThese": "试试以下选项。",
+        "clearFilters": "清除所有筛选",
         "onlyMatches": "仅 {count} 个结果",
         "keepLooking": "继续查找",
         "searchAnyDate": "搜索“{query}”（不限日期）",

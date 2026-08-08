@@ -58,6 +58,7 @@
         "noResults": "Keine Ergebnisse für “{query}”",
         "noResultsHint": "Überprüfe die Schreibweise oder versuche einen allgemeineren Begriff.",
         "tryOneOfThese": "Probieren Sie eine dieser Optionen.",
+        "clearFilters": "Alle Filter zurücksetzen",
         "onlyMatches": "Nur {count} Treffer",
         "keepLooking": "Weitersuchen",
         "searchAnyDate": "„{query}“ an einem beliebigen Datum suchen",

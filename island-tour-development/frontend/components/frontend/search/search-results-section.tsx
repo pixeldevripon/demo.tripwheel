@@ -154,12 +154,38 @@ export async function SearchResultsSection({
           })()
         : null;
 
+    // Anything beyond the bare term that is narrowing the result set. The date
+    // is excluded - it has its own, better-worded action above.
+    const hasActiveFilters =
+        filters.categories.length > 0 ||
+        filters.rating != null ||
+        filters.durations.length > 0 ||
+        filters.timeOfDay.length > 0 ||
+        filters.cancellation != null ||
+        filters.pickup ||
+        filters.price[0] > 0 ||
+        filters.price[1] < priceMax ||
+        Object.keys(filters.attributes).length > 0;
+
+    // The bare term (and island), every filter dropped.
+    const clearFiltersHref = hasActiveFilters
+        ? (() => {
+              const params = new URLSearchParams();
+              if (query) params.set('q', query);
+              if (destination) params.set('destination', destination);
+              const qs = params.toString();
+              const path = localizeHref(locale, '/search');
+              return qs ? `${path}?${qs}` : path;
+          })()
+        : null;
+
     const recovery = (thinCount?: number) => (
         <SearchRecovery
             locale={locale}
             dict={t}
             query={query}
             withoutDateHref={withoutDateHref}
+            clearFiltersHref={clearFiltersHref}
             popular={popular}
             categories={categories}
             destinationSlug={destination}
@@ -211,6 +237,13 @@ export async function SearchResultsSection({
                 </div>
             }
             toolbar={
+                // NOTHING TO FILTER. A toolbar over an empty grid offers to
+                // sort nothing and narrow nothing, and "0 of 0 tours" beside a
+                // Sort control reads as broken. The recovery block below owns
+                // the way out instead - including `Clear all filters` when a
+                // filter is what emptied the page, so hiding the toolbar can
+                // never trap anyone.
+                total === 0 ? null : (
                 <ToursFilterBar
                     dict={dict.destination.allTours.toolbar}
                     sortDict={dict.destination.allTours.sort}
@@ -241,6 +274,7 @@ export async function SearchResultsSection({
                         pickupAvailable: filters.pickup,
                     }}
                 />
+                )
             }
             results={
                 total === 0 ? (

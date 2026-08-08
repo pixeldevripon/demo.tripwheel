@@ -58,6 +58,7 @@
         "noResults": "No results for “{query}”",
         "noResultsHint": "Check your spelling or try a more general term.",
         "tryOneOfThese": "Try one of these.",
+        "clearFilters": "Clear all filters",
         "onlyMatches": "Only {count} matches",
         "keepLooking": "Keep looking",
         "searchAnyDate": "Search “{query}” on any date",
