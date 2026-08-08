@@ -88,7 +88,9 @@ export function DestinationHero({
                         <DestinationHeroSearch
                             locale={locale}
                             destinationSlug={destinationSlug}
-                            dict={dict}
+                            // The round button's accessible name is the search
+                            // dictionary's own word, not a second copy of it.
+                            dict={{ ...dict, searchLabel: search.title }}
                             search={search}
                             zeroState={searchZeroState}
                         />

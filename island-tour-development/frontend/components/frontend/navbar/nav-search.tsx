@@ -1,11 +1,12 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
+import { MobileSearchLayer } from '@/components/frontend/search/mobile-search-layer';
+import { SearchPill } from '@/components/frontend/search/search-pill';
 import { searchSuggestClient } from '@/lib/api/search';
 import {
     LOCALE_CURRENCY,
@@ -16,7 +17,7 @@ import {
 import { currencyFromCookie } from '@/lib/currency/current';
 import type { SearchHit, SearchSuggest } from '@/types/search';
 
-import { iconPress, pressSpring } from './lib/navbar.constants';
+import { iconPress } from './lib/navbar.constants';
 import type { Category, Island, NavDict, SearchDict } from './lib/navbar.types';
 import { useClickOutside } from './lib/use-click-outside';
 import { RotatingSearchPlaceholder } from './rotating-search-placeholder';
@@ -103,7 +104,8 @@ export function NavSearch({
         };
     }, [query, locale, currency, currentIsland?.slug]);
 
-    // Focus the mobile field as soon as the overlay expands.
+    // Focus the layer's field as soon as it opens, so the keyboard comes up
+    // against the list rather than needing a second tap.
     useEffect(() => {
         if (mobileOpen) mobileInputRef.current?.focus();
     }, [mobileOpen]);
@@ -144,7 +146,7 @@ export function NavSearch({
     const categoryNames = (categories ?? []).map(c => c.name);
     const rotating = categoryNames.length > 0;
 
-    const panel = (
+    const panel = (inline: boolean) => (
         <SearchTypeahead
             suggest={suggest}
             loading={loading}
@@ -164,6 +166,7 @@ export function NavSearch({
             hubHref={(destinationSlug: string, slug: string) =>
                 localizeHref(locale, `/${destinationSlug}/${slug}`)
             }
+            inline={inline}
             onSelect={onSelect}
         />
     );
@@ -213,68 +216,45 @@ export function NavSearch({
                         </span>
                     </form>
                     <AnimatePresence>
-                        {showDesktopPanel && panel}
+                        {showDesktopPanel && panel(false)}
                     </AnimatePresence>
                 </div>
             )}
 
-            {/* Mobile overlay - expands over the bar when the search icon is tapped. */}
-            <AnimatePresence>
-                {mobileOpen && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.18 }}
-                        className='absolute inset-0 z-50 flex items-center gap-3 bg-it-white px-4 md:hidden'>
-                        <motion.button
-                            type='button'
-                            onClick={onMobileClose}
-                            aria-label={nav.close}
-                            whileTap={{ scale: 0.9, x: -2 }}
-                            transition={pressSpring}
-                            className='flex items-center bg-transparent border-none cursor-pointer p-0 text-it-heading'>
-                            <ArrowLeft size={24} strokeWidth={1.5} />
-                        </motion.button>
-                        <form
-                            onSubmit={submit}
-                            role='search'
-                            className='flex flex-1 items-center gap-2 rounded-it-full border border-it-heading-subtle px-4 py-2.5 bg-it-white'>
-                            <span className='relative flex-1 min-w-0'>
-                                <input
-                                    ref={mobileInputRef}
-                                    type='search'
-                                    value={query}
-                                    onChange={e => setQuery(e.target.value)}
-                                    placeholder={rotating ? '' : nav.search}
-                                    aria-label={nav.search}
-                                    className='w-full bg-transparent border-none outline-none text-[16px] md:text-[15px] font-semibold text-it-ink placeholder:font-bold placeholder:text-it-ink-muted [&::-webkit-search-cancel-button]:appearance-none'
-                                />
-                                {rotating && query === '' && (
-                                    <RotatingSearchPlaceholder
-                                        prefix={nav.search}
-                                        names={categoryNames}
-                                    />
-                                )}
-                            </span>
-                            <motion.button
-                                type='submit'
-                                aria-label={nav.search}
-                                {...iconPress}
-                                className='flex items-center bg-transparent border-none cursor-pointer p-0'>
-                                <Image
-                                    src='/icons/nav-search.svg'
-                                    alt=''
-                                    width={18}
-                                    height={18}
-                                    className='size-4.5 shrink-0'
-                                />
-                            </motion.button>
-                        </form>
-                        {trimmed.length >= 2 && panel}
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            {/* Mobile: the SHARED full-screen layer (Pastel #57), not a
+                second panel. The nav icon and the hero pill are two ways into
+                one component - the issue is explicit that the nav must not grow
+                its own. What it replaced was an in-bar overlay whose only exit
+                was a back arrow and whose suggestions were still an inline
+                dropdown under it, so the keyboard covered them exactly as it
+                did in the hero. */}
+            <MobileSearchLayer
+                open={mobileOpen}
+                onClose={onMobileClose}
+                closeLabel={search.closeSearch}
+                pill={
+                    <SearchPill
+                        ref={mobileInputRef}
+                        variant='layer'
+                        compact
+                        dict={{
+                            searchPlaceholder: nav.search,
+                            searchPlaceholderShort: nav.search,
+                            searchLabel: search.title,
+                        }}
+                        query={query}
+                        onQueryChange={setQuery}
+                        // NO DATE. The navbar search never had one and gaining
+                        // one from the shared pill would be a feature nobody
+                        // asked for - the date belongs to the hero, where the
+                        // island is already chosen.
+                        showDate={false}
+                        onSubmit={submit}
+                    />
+                }
+                panel={panel(true)}
+            />
+
         </>
     );
 }

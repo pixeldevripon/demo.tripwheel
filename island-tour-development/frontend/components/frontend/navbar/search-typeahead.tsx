@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { ChevronRight, Folder, MapPin, Search } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 
 import {
     isCurrency,
@@ -59,27 +59,39 @@ function EntityRow({
     // covers every caller at once, so one bad row degrades to the flat square
     // instead of taking down the panel.
     const src = safeRemoteImage(image);
+    const compact = useContext(CompactRows);
     return (
         <li>
             <Link
                 href={href}
                 onClick={onSelect}
-                className='flex items-center gap-3 px-4 py-2.5 no-underline transition-colors hover:bg-it-surface'>
+                className={`flex items-center no-underline transition-colors hover:bg-it-surface ${
+                    compact
+                        ? 'gap-[11px] px-3.5 py-[7px]'
+                        : 'gap-3 px-4 py-2.5'
+                }`}>
                 <span
-                    className={`relative flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-it-md text-it-heading ${icon ? 'bg-it-surface' : 'bg-it-bg'}`}>
+                    className={`relative flex shrink-0 items-center justify-center overflow-hidden rounded-it-md text-it-heading ${
+                        compact ? 'size-[42px]' : 'size-14'
+                    } ${icon ? 'bg-it-surface' : 'bg-it-bg'}`}>
                     {src && (
                         <Image
                             src={src}
                             alt=''
                             fill
-                            sizes='56px'
+                            sizes={compact ? '42px' : '56px'}
                             className='object-cover'
                         />
                     )}
                     {icon}
                 </span>
                 <span className='min-w-0 flex-1'>
-                    <span className='block truncate text-sm font-normal text-it-ink'>
+                    <span
+                        className={`block truncate text-it-ink ${
+                            compact
+                                ? 'text-[14px] font-semibold leading-[1.35]'
+                                : 'text-sm font-normal'
+                        }`}>
                         {label}
                     </span>
                     {subtitle && (
@@ -97,6 +109,17 @@ function EntityRow({
         </li>
     );
 }
+
+/**
+ * Dense rows, for the mobile full-screen layer only (mck-14: 42px thumbnails,
+ * 7px/14px padding). Passed by context rather than threaded as a prop through
+ * six call sites of `Row`, none of which otherwise care where they are.
+ *
+ * The dropdown keeps its 56px rows: it shows a handful under a bar with room to
+ * spare, while the layer is a full screen of them and the same size there costs
+ * two visible results.
+ */
+const CompactRows = createContext(false);
 
 /** Section header ("Tours in Aruba" / "Beyond Aruba"). */
 function SectionHeader({ children }: { children: React.ReactNode }) {
@@ -132,7 +155,20 @@ const PANEL_BOTTOM_GUTTER = 16;
  * and because `scroll` is one of the measured events, scrolling the page to
  * lift the input grows the panel on the way up.
  */
-function Panel({ children }: { children: React.ReactNode }) {
+function Panel({
+    children,
+    inline,
+}: {
+    children: React.ReactNode;
+    /**
+     * Render as a plain block in the flow instead of a dropdown anchored under
+     * the bar - for the mobile full-screen layer, which owns the scroll itself.
+     * Measuring the space "below the panel" is meaningless there: the panel IS
+     * the space, and a second scroller inside the layer's scroller is what
+     * traps rows behind the keyboard.
+     */
+    inline?: boolean;
+}) {
     const ref = useRef<HTMLDivElement>(null);
     const [maxHeight, setMaxHeight] = useState<number | null>(null);
 
@@ -173,6 +209,14 @@ function Panel({ children }: { children: React.ReactNode }) {
             window.visualViewport?.removeEventListener('scroll', measure);
         };
     }, []);
+
+    if (inline) {
+        return (
+            <CompactRows.Provider value={true}>
+                <div className='bg-it-white'>{children}</div>
+            </CompactRows.Provider>
+        );
+    }
 
     return (
         <motion.div
@@ -400,6 +444,7 @@ export function SearchTypeahead({
     destinationHref,
     zeroState,
     onSelect,
+    inline = false,
 }: {
     suggest: SearchSuggest | null;
     loading: boolean;
@@ -433,6 +478,13 @@ export function SearchTypeahead({
      */
     zeroState?: SearchZeroState;
     onSelect: () => void;
+    /**
+     * Render in the flow rather than as a dropdown - the mobile search layer
+     * (Pastel #57) mounts this same panel full-height inside its own scroller.
+     * ONE panel, two shells: building a second one for the layer is exactly
+     * what the issue forbids.
+     */
+    inline?: boolean;
 }) {
     const destinationMatches = destinationHref ? (destinations ?? []) : [];
     const hasAnything =
@@ -466,7 +518,7 @@ export function SearchTypeahead({
         ].filter(group => group.entries.length > 0);
 
         return (
-            <Panel>
+            <Panel inline={inline}>
                 <>
                     {groups.map(({ heading, entries }, groupIndex) => (
                         <div key={heading}>
@@ -541,7 +593,7 @@ export function SearchTypeahead({
     }
 
     return (
-        <Panel>
+        <Panel inline={inline}>
             {loading && !hasAnything ? (
                 <p className='m-0 px-5 py-4 text-sm text-it-ink-muted'>
                     {dict.searching}

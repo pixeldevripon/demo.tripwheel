@@ -1,7 +1,6 @@
 'use client';
 
-import { AnimatePresence, motion } from 'framer-motion';
-import Image from 'next/image';
+import { AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -9,6 +8,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 // hero searches) so all three surface identical result rows.
 import type { SearchDict } from '@/components/frontend/navbar/lib/navbar.types';
 import { SearchTypeahead } from '@/components/frontend/navbar/search-typeahead';
+import { MobileSearchLayer } from '@/components/frontend/search/mobile-search-layer';
+import { SearchPill } from '@/components/frontend/search/search-pill';
 import { searchSuggestClient } from '@/lib/api/search';
 import {
     LOCALE_CURRENCY,
@@ -17,7 +18,6 @@ import {
     type Locale,
 } from '@/lib/constants/locales';
 import { currencyFromCookie } from '@/lib/currency/current';
-import { springPop } from '@/lib/motion';
 import type { SearchHit, SearchSuggest } from '@/types/search';
 
 import type { HeroDestination } from './lib/hero.types';
@@ -51,12 +51,15 @@ export function HeroSearch({
     const [suggest, setSuggest] = useState<SearchSuggest | null>(null);
     const [loading, setLoading] = useState(false);
     const [focused, setFocused] = useState(false);
+    /** Mobile only: the shared full-screen search layer (Pastel #57). */
+    const [layerOpen, setLayerOpen] = useState(false);
     // Display currency for the typeahead prices. Starts from the locale default
     // (matches SSR) and syncs to the shopper's cookie once mounted.
     const [currency, setCurrency] = useState<Currency>(
         LOCALE_CURRENCY[locale] ?? 'EUR'
     );
     const ref = useRef<HTMLDivElement>(null);
+    const layerInputRef = useRef<HTMLInputElement>(null);
 
     const trimmed = query.trim();
 
@@ -69,6 +72,11 @@ export function HeroSearch({
     useEffect(() => {
         setCurrency(currencyFromCookie(document.cookie, locale));
     }, [locale]);
+
+    // Focus the layer's field on open, so the keyboard rises against the list.
+    useEffect(() => {
+        if (layerOpen) layerInputRef.current?.focus();
+    }, [layerOpen]);
 
     // Close the panel on an outside pointerdown.
     useEffect(() => {
@@ -123,6 +131,7 @@ export function HeroSearch({
     function submit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setFocused(false);
+        setLayerOpen(false);
         // Destinations first: Enter lands on the top island match when there is
         // one, otherwise on the full results page.
         const topIsland = islandMatches[0];
@@ -136,83 +145,81 @@ export function HeroSearch({
     const showPanel =
         focused && (islandMatches.length > 0 || trimmed.length >= 2);
 
+    const pillDict = {
+        searchPlaceholder: placeholder,
+        // The homepage asks one short question already ("Which island?"), so
+        // there is nothing to shorten on mobile.
+        searchPlaceholderShort: placeholder,
+        searchLabel: search.title,
+    };
+
+    const panel = (inline: boolean) => (
+        <SearchTypeahead
+            suggest={suggest}
+            loading={loading}
+            query={trimmed}
+            locale={locale}
+            currency={currency}
+            dict={search}
+            islandName={null}
+            searchHref={searchHref}
+            tourHref={tourHref}
+            categoryHref={null}
+            hubHref={(destSlug, slug) => localizeHref(locale, `/${destSlug}/${slug}`)}
+            destinations={islandMatches}
+            destinationHref={destinationHref}
+            inline={inline}
+            onSelect={() => {
+                setFocused(false);
+                setLayerOpen(false);
+            }}
+        />
+    );
+
     return (
         <div ref={ref} className='relative w-full'>
-            <form
+            {/* THE SAME PILL AS THE DESTINATION HERO (Pastel #51 requires it),
+                minus the date half: this field searches ISLANDS, and "which
+                island, on which day" is not a question the homepage can answer -
+                availability is per tour, and there is no island chosen yet. */}
+            <SearchPill
+                dict={pillDict}
+                query={query}
+                onQueryChange={value => {
+                    setQuery(value);
+                    setFocused(true);
+                }}
+                onFocus={() => setFocused(true)}
+                showDate={false}
+                icon='/icons/hero-location.svg'
                 onSubmit={submit}
-                role='search'
-                className='flex items-center justify-between gap-2 w-full bg-it-white border border-it-white/70 rounded-it-full h-14 md:h-[62px] pl-3.5 md:pl-[22px] pr-2 shadow-[0_18px_44px_rgba(0,0,0,0.3)]'>
-                <div className='flex items-center gap-2 flex-1 min-w-0'>
-                    <Image
-                        src='/icons/hero-location.svg'
-                        alt=''
-                        width={24}
-                        height={24}
-                        className='size-5 shrink-0'
-                    />
-                    <input
-                        type='text'
-                        value={query}
-                        onChange={e => {
-                            setQuery(e.target.value);
-                            setFocused(true);
-                        }}
-                        onFocus={() => setFocused(true)}
-                        placeholder={placeholder}
-                        aria-label={placeholder}
-                        className='flex-1 min-w-0 border-none outline-none bg-transparent text-[16px] md:text-[16.5px] font-semibold text-it-ink placeholder:font-bold placeholder:text-it-ink-muted'
-                    />
-                </div>
-                <motion.button
-                    type='submit'
-                    aria-label={search.title}
-                    className='shrink-0 flex items-center justify-center gap-2 h-10 md:h-12 px-4 md:px-[26px] rounded-it-full bg-it-primary hover:bg-it-primary-hover transition-colors border-none cursor-pointer'
-                    initial='rest'
-                    whileTap='tap'
-                    animate='rest'
-                    variants={{ rest: { scale: 1 }, tap: { scale: 0.97 } }}
-                    transition={springPop}>
-                    <motion.span
-                        className='inline-flex'
-                        variants={{ rest: { x: 0 }, tap: { x: 3 } }}
-                        transition={springPop}>
-                        <Image
-                            src='/icons/hero-search-white.svg'
-                            alt=''
-                            width={24}
-                            height={24}
-                            className='size-4'
-                        />
-                    </motion.span>
-                    <span className='text-[15px] md:text-[16px] font-bold text-it-white'>
-                        {search.title}
-                    </span>
-                </motion.button>
-            </form>
+                onOpenLayer={() => setLayerOpen(true)}
+            />
 
+            {/* Desktop dropdown; below md the layer owns it. */}
             <AnimatePresence>
-                {showPanel && (
-                    <SearchTypeahead
-                        suggest={suggest}
-                        loading={loading}
-                        query={trimmed}
-                        locale={locale}
-                        currency={currency}
-                        dict={search}
-                        islandName={null}
-                        searchHref={searchHref}
-                        tourHref={tourHref}
-                        categoryHref={null}
-                        hubHref={(destSlug, slug) =>
-                            localizeHref(locale, `/${destSlug}/${slug}`)
-                        }
-                        destinations={islandMatches}
-                        destinationHref={destinationHref}
-                        onSelect={() => setFocused(false)}
-                    />
-                )}
+                {showPanel && <div className='max-md:hidden'>{panel(false)}</div>}
             </AnimatePresence>
+
+            <MobileSearchLayer
+                open={layerOpen}
+                onClose={() => setLayerOpen(false)}
+                closeLabel={search.closeSearch}
+                pill={
+                    <SearchPill
+                        ref={layerInputRef}
+                        variant='layer'
+                        dict={pillDict}
+                        compact
+                        query={query}
+                        onQueryChange={setQuery}
+                        showDate={false}
+                        icon='/icons/hero-location.svg'
+                        onSubmit={submit}
+                    />
+                }
+                panel={panel(true)}
+            />
         </div>
     );
 }
-

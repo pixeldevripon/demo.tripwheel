@@ -50,6 +50,7 @@
     },
     "search": {
         "title": "搜索",
+        "closeSearch": "关闭搜索",
         "placeholder": "搜索行程、活动、地点",
         "resultsFor": "“{query}” 的 {count} 个结果",
         "resultFor": "“{query}” 的 {count} 个结果",
@@ -267,7 +268,9 @@
             "toursActivities": "旅游与活动",
             "subtitle": "由熟悉每一处珊瑚礁、路线和日落点的当地人精选的旅游",
             "searchPlaceholder": "想做点什么？",
+            "searchPlaceholderShort": "玩什么？",
             "selectDate": "选择日期",
+            "selectDateShort": "哪天？",
             "clearDate": "清除日期",
             "popularLabel": "热门"
         },

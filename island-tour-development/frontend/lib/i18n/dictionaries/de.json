@@ -50,6 +50,7 @@
     },
     "search": {
         "title": "Suche",
+        "closeSearch": "Suche schließen",
         "placeholder": "Touren, Aktivitäten, Orte suchen",
         "resultsFor": "{count} Ergebnisse für “{query}”",
         "resultFor": "{count} Ergebnis für “{query}”",
@@ -267,7 +268,9 @@
             "toursActivities": "Touren & Aktivitäten",
             "subtitle": "Touren ausgewählt von Einheimischen, die jedes Riff, jede Route und jeden Sonnenuntergang kennen",
             "searchPlaceholder": "Was möchtest du unternehmen?",
+            "searchPlaceholderShort": "Was?",
             "selectDate": "Datum wählen",
+            "selectDateShort": "Wann?",
             "clearDate": "Datum löschen",
             "popularLabel": "Beliebt"
         },
