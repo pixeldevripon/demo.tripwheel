@@ -1,5 +1,9 @@
 import { Reveal } from '@/components/frontend/reveal';
 import { SearchPagination } from '@/components/frontend/search-pagination';
+import {
+    SearchRecovery,
+    THIN_RESULTS_MAX,
+} from '@/components/frontend/search/search-recovery';
 import { TourCard } from '@/components/frontend/tour-card';
 import { ToursBrowser } from '@/components/frontend/tours/tours-browser';
 import { ToursFilterBar } from '@/components/frontend/tours/tours-filter-bar';
@@ -9,9 +13,10 @@ import {
     getActiveDestinations,
     getDestinationCategories,
     getDestinationFacets,
+    getDestinationPopularLinks,
     searchTours,
 } from '@/lib/api/public';
-import type { Locale } from '@/lib/constants/locales';
+import { localizeHref, type Locale } from '@/lib/constants/locales';
 import { getServerCurrency } from '@/lib/currency/server';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import {
@@ -68,14 +73,22 @@ export async function SearchResultsSection({
     // to the static ceiling and every ACTIVE category. Resolve the scoped
     // island's display name for the chip in the same pass - all independent
     // cached loaders, so they run together rather than serially.
-    const [destinations, facets, categories, currency] = await Promise.all([
-        destination ? getActiveDestinations(locale) : Promise.resolve(null),
-        destination ? getDestinationFacets(destination) : Promise.resolve(null),
-        destination
-            ? getDestinationCategories(destination, locale)
-            : getActiveCategories(locale),
-        getServerCurrency(locale),
-    ]);
+    const [destinations, facets, categories, currency, popular] =
+        await Promise.all([
+            destination ? getActiveDestinations(locale) : Promise.resolve(null),
+            destination
+                ? getDestinationFacets(destination)
+                : Promise.resolve(null),
+            destination
+                ? getDestinationCategories(destination, locale)
+                : getActiveCategories(locale),
+            getServerCurrency(locale),
+            // The recovery block's "popular searches" row. Island-scoped by
+            // nature, so an all-islands search simply has none.
+            destination
+                ? getDestinationPopularLinks(destination, locale, 'SEARCH_PANEL')
+                : Promise.resolve([]),
+        ]);
     const destinationName =
         destinations?.find(d => d.slug === destination)?.name ?? null;
     const priceMax =
@@ -122,6 +135,38 @@ export async function SearchResultsSection({
         ) ?? [];
     const total = results?.total ?? 0;
     const totalPages = results ? Math.max(1, Math.ceil(total / PAGE_SIZE)) : 0;
+
+    // The same search with the date dropped - the first thing the recovery
+    // block offers, because a date is usually what emptied the result set.
+    // Null when the query carried no date, in which case the option is
+    // meaningless and is not rendered at all.
+    const withoutDateHref = filters.date
+        ? (() => {
+              const params = new URLSearchParams();
+              for (const [key, value] of Object.entries(sp)) {
+                  if (key === 'date' || key === 'page') continue;
+                  const v = first(value);
+                  if (v) params.set(key, v);
+              }
+              const qs = params.toString();
+              const path = localizeHref(locale, '/search');
+              return qs ? `${path}?${qs}` : path;
+          })()
+        : null;
+
+    const recovery = (thinCount?: number) => (
+        <SearchRecovery
+            locale={locale}
+            dict={t}
+            query={query}
+            withoutDateHref={withoutDateHref}
+            popular={popular}
+            categories={categories}
+            destinationSlug={destination}
+            destinationName={destinationName}
+            thinCount={thinCount}
+        />
+    );
 
     // Below the 2-character floor there is nothing to filter, so the toolbar
     // would only offer controls that cannot change anything.
@@ -199,10 +244,9 @@ export async function SearchResultsSection({
             }
             results={
                 total === 0 ? (
-                    <EmptyState
-                        title={t.noResults.replace('{query}', query)}
-                        hint={t.noResultsHint}
-                    />
+                    // Zero: the block REPLACES the grid - there is nothing to
+                    // list, so the way out is the whole content of the state.
+                    <div className='it-container'>{recovery()}</div>
                 ) : (
                     <Reveal className='flex flex-col gap-12 sm:gap-18'>
                         <div className={TOUR_CARD_GRID}>
@@ -219,6 +263,11 @@ export async function SearchResultsSection({
                                 />
                             ))}
                         </div>
+
+                        {/* Thin: the matches are still listed, with the way
+                            out BENEATH them. A search with two hits is a dead
+                            end even though the grid is not empty. */}
+                        {total <= THIN_RESULTS_MAX && recovery(total)}
 
                         <SearchPagination pageCount={totalPages} />
                     </Reveal>
