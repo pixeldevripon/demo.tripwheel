@@ -219,10 +219,20 @@ export const SearchPill = forwardRef<HTMLInputElement, {
 
             {showDate && (
                 <>
-                    {/* The divider stays visible on mobile now - it is what
-                        makes one row read as two fields rather than one long
-                        input (handoff §4: the old `display:none` is gone). */}
-                    <span className='my-1.5 w-px shrink-0 bg-it-divider' />
+                    {/* The divider is what makes ONE ROW read as TWO FIELDS
+                        rather than one long input - the handoff kept it visible
+                        on mobile for exactly that reason (§4: the old
+                        `display:none` is gone).
+
+                        A fixed 24px on `bg-it-border`, not `my-1.5` on
+                        `bg-it-divider`: the margin form derived its height from
+                        the bar, so it shrank with the bar on mobile and in the
+                        layer, and the lighter token then disappeared into the
+                        white at the size that was left. */}
+                    <span
+                        aria-hidden='true'
+                        className='h-6 w-px shrink-0 self-center bg-it-border'
+                    />
 
                     {/* Sized to its CONTENT on mobile, not to the handoff's
                         flat 100px: that budget assumed no clear button, and
