@@ -159,7 +159,7 @@ export const SearchPill = forwardRef<HTMLInputElement, {
                       ? () => onDateOpenChange?.(true)
                       : undefined
             }
-            className={`flex shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap rounded-it-full border-none bg-transparent py-2.5 pl-2.5 pr-1 text-left leading-[1.6] transition-colors hover:bg-it-bg md:min-w-0 md:flex-1 ${
+            className={`flex min-w-0 flex-1 cursor-pointer items-center gap-2 whitespace-nowrap rounded-it-full border-none bg-transparent py-2.5 pl-2.5 pr-1 text-left leading-[1.6] transition-colors hover:bg-it-bg ${
                 compact ? 'text-[15px]' : 'text-[15.5px]'
             } ${date ? 'font-semibold text-it-ink' : 'font-bold text-it-ink-muted'}`}>
             <Image
@@ -185,7 +185,7 @@ export const SearchPill = forwardRef<HTMLInputElement, {
                 under 16px and never zooms back out (Pastel #29 was filed
                 against this exact field). */}
             <label
-                className={`flex min-w-0 flex-1 cursor-text items-center gap-2 rounded-it-full px-1 transition-colors hover:bg-it-bg ${
+                className={`flex min-w-0 flex-[3_1_0%] cursor-text items-center gap-2 rounded-it-full px-1 transition-colors hover:bg-it-bg ${
                     variant === 'layer' ? 'py-1.5' : 'py-2.5'
                 }`}>
                 <Image
@@ -234,12 +234,14 @@ export const SearchPill = forwardRef<HTMLInputElement, {
                         className='h-6 w-px shrink-0 self-center bg-it-border'
                     />
 
-                    {/* Sized to its CONTENT on mobile, not to the handoff's
-                        flat 100px: that budget assumed no clear button, and
-                        "21 Aug ✕" truncated to "21 …" - a date field that
-                        cannot show the date it holds. `d MMM` is six characters
-                        at its longest, so it never crowds the query half. */}
-                    <div className='flex shrink-0 items-center gap-1 rounded-it-full md:w-[170px]'>
+                    {/* 40% of the row, against the query field's 60%.
+                        Two earlier attempts were both wrong: the handoff's flat
+                        100px assumed no clear button, so "21 Aug ✕" truncated
+                        to "21 …" - a date field that could not show the date it
+                        held - and sizing it to its content instead left the
+                        placeholder crowded against the divider. A share of the
+                        row is stable whatever it holds. */}
+                    <div className='flex min-w-0 flex-[2_1_0%] items-center gap-1 rounded-it-full'>
                         {/* No popover when the layer is going to take over:
                             a calendar popover would open behind it. */}
                         {inlineCalendar || handOff ? (

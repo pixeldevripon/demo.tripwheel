@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from 'react';
 import { MobileSearchLayer } from '@/components/frontend/search/mobile-search-layer';
 import { SearchPill } from '@/components/frontend/search/search-pill';
 import { searchSuggestClient } from '@/lib/api/search';
+import { buildDiscoveryLinks } from '@/lib/destination/discovery-links';
 import {
     LOCALE_CURRENCY,
     localizeHref,
@@ -15,6 +16,7 @@ import {
     type Locale,
 } from '@/lib/constants/locales';
 import { currencyFromCookie } from '@/lib/currency/current';
+import type { DestinationPopularLink } from '@/types/destination';
 import type { SearchHit, SearchSuggest } from '@/types/search';
 
 import { iconPress } from './lib/navbar.constants';
@@ -38,6 +40,7 @@ export function NavSearch({
     search,
     currentIsland,
     categories,
+    popularLinks,
     showDesktop,
     mobileOpen,
     onMobileClose,
@@ -48,6 +51,12 @@ export function NavSearch({
     currentIsland: Island | null;
     /** Destination-scoped categories - feed the rotating placeholder. */
     categories: Category[] | null;
+    /**
+     * The island's CURATED discovery list (SEARCH_PANEL). Empty means nothing
+     * has been curated for this island, which is the signal to fall back to the
+     * categories above - not an error.
+     */
+    popularLinks: DestinationPopularLink[];
     showDesktop: boolean;
     mobileOpen: boolean;
     onMobileClose: () => void;
@@ -147,30 +156,65 @@ export function NavSearch({
     const rotating = categoryNames.length > 0;
 
     /*
-     * What the LAYER offers before anything is typed. The dropdown can afford
-     * to stay closed until two characters - it is a small panel under a small
-     * bar - but the layer is a whole screen, and it opened on "No results for
-     * “”", which is a verdict on a search nobody had run.
+     * What the LAYER offers before anything is typed.
      *
-     * Built from the island's own categories, the same list the rotating
-     * placeholder cycles, so the words the field is suggesting are the rows
-     * underneath it. Unscoped (no island) there is nothing gated to offer, and
-     * the layer simply waits for a query.
+     * THE CURATED LIST FIRST, the island's own categories only as the fallback -
+     * `buildDiscoveryLinks` is the same function the destination hero panel and
+     * the search recovery band call, so all three surfaces answer "what is
+     * popular here" identically. Curation is an editorial claim an admin makes
+     * per island; reading straight from the category table, as an earlier pass
+     * did here, quietly overruled it.
+     *
+     * Hubs and collections are empty because the navbar has neither to hand in
+     * the browser: the fallback is categories, which is what this layer showed
+     * before. Curated entries carry their own kind, so a curated hub or
+     * collection still renders correctly.
+     *
+     * The dropdown can afford to stay closed until two characters - it is a
+     * small panel under a small bar - but the layer is a whole screen, and it
+     * opened on "No results for “”", a verdict on a search nobody had run.
      */
+    const discovery = currentIsland
+        ? buildDiscoveryLinks({
+              curated: popularLinks,
+              hubs: [],
+              categories: (categories ?? []).map(category => ({
+                  name: category.name,
+                  slug: category.slug,
+                  publishedTourCount: category.tours ?? 0,
+                  heroImage: category.image ?? null,
+              })),
+              collections: [],
+          })
+        : [];
+
     const layerZeroState =
-        currentIsland && (categories?.length ?? 0) > 0
+        currentIsland && discovery.length > 0
             ? {
-                  categoriesAndHubs: (categories ?? []).map(category => ({
-                      name: category.name,
-                      href: localizeHref(
-                          locale,
-                          `/${currentIsland.slug}/${category.slug}`
-                      ),
-                      kind: 'category' as const,
-                      tours: category.tours,
-                      image: category.image,
-                  })),
-                  collections: [],
+                  categoriesAndHubs: discovery
+                      .filter(link => link.kind !== 'collection')
+                      .map(link => ({
+                          name: link.name,
+                          href: localizeHref(
+                              locale,
+                              `/${currentIsland.slug}/${link.slug}`
+                          ),
+                          kind: link.kind,
+                          tours: link.tours ?? undefined,
+                          image: link.image,
+                      })),
+                  collections: discovery
+                      .filter(link => link.kind === 'collection')
+                      .map(link => ({
+                          name: link.name,
+                          href: localizeHref(
+                              locale,
+                              `/${currentIsland.slug}/${link.slug}`
+                          ),
+                          kind: link.kind,
+                          tours: link.tours ?? undefined,
+                          image: link.image,
+                      })),
                   topTours: [],
                   allTours: null,
               }
