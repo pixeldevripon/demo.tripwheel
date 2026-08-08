@@ -55,11 +55,18 @@ export function ToursBrowser({
     header,
     toolbar,
     results,
+    footer,
 }: {
     /** Optional block ABOVE the sticky toolbar; supplies its own container. */
     header?: ReactNode;
     toolbar: ReactNode;
     results: ReactNode;
+    /**
+     * Optional block BELOW the grid, outside the results container - for
+     * full-bleed sections such as the search recovery band. Dims with the grid
+     * during a filter navigation, since it is part of the same answer.
+     */
+    footer?: ReactNode;
 }) {
     const [isPending, startTransition] = useTransition();
     const startNav = (fn: () => void) => startTransition(fn);
@@ -74,10 +81,20 @@ export function ToursBrowser({
             {toolbar}
             <div
                 aria-busy={busy}
-                className={`it-container transition-opacity duration-200 ${
+                className={`transition-opacity duration-200 ${
                     busy ? 'pointer-events-none opacity-50' : 'opacity-100'
                 }`}>
-                {results}
+                {/* Breathing room under the toolbar's divider. The band ends in
+                    a hairline border and the first card sat flush against it,
+                    which read as the grid being part of the toolbar rather than
+                    the answer to it. Here rather than in each caller, so the
+                    listing pages and search keep ONE gap under one band - and
+                    skipped when there is no grid (search's zero state), where it
+                    would only pad an empty div above the recovery band. */}
+                {results && (
+                    <div className='it-container pt-6 md:pt-8'>{results}</div>
+                )}
+                {footer}
             </div>
         </ToursNavContext.Provider>
     );

@@ -37,7 +37,7 @@ export type Dictionary = Awaited<ReturnType<(typeof dictionaries)['en']>>;
  * actually keys on, so changing this string is guaranteed to bust every locale.
  * Any string works; the date + what was added is just a useful audit trail.
  */
-const DICTIONARY_VERSION = '2026-08-08-most-relevant-sort-on-search';
+const DICTIONARY_VERSION = '2026-08-08-search-results-screen-mck12';
 
 export const getDictionary = (locale: Locale): Promise<Dictionary> =>
     loadDictionary(locale, DICTIONARY_VERSION);
