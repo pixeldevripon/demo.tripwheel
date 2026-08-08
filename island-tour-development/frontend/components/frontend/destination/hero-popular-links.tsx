@@ -4,37 +4,10 @@ import Link from 'next/link';
 import { useRef } from 'react';
 
 import { useScrollOverflow } from '@/hooks/use-scroll-overflow';
+import { edgeFadeMask } from '@/lib/edge-fade';
 import { cn } from '@/lib/utils';
 
 import type { ActivityLink } from './lib/destination-hero.types';
-
-/**
- * Edge fades as a MASK, not a colour gradient.
- *
- * The rest of the site fades scroll tracks with `bg-linear-to-r from-it-white`,
- * which works because those tracks sit on a known surface. This row sits on the
- * HERO PHOTO - a different colour on every island, and a different colour at
- * each end of the same row - so there is no colour to fade to. Masking fades the
- * text itself to transparent and lets the photo through underneath, which is the
- * only version that survives an arbitrary background.
- *
- * WRITTEN OUT IN FULL, not built from a `${FADE}` template. Tailwind scans
- * source text for complete class names; an interpolated one is never seen, so
- * the utility is never generated and the class silently does nothing - which is
- * exactly what shipped: the row was cut off with a hard edge and no fade.
- *
- * And `calc(100%_-_44px)`, not `calc(100%-44px)`: CSS calc REQUIRES whitespace
- * around `-`, so the tighter form is invalid and drops the whole declaration.
- * Two ways for this to fail silently, both of which it did.
- *
- * `-webkit-mask-image` is still required for Safari.
- */
-const MASK = {
-    none: '',
-    right: '[mask-image:linear-gradient(to_right,#000_calc(100%_-_44px),transparent)] [-webkit-mask-image:linear-gradient(to_right,#000_calc(100%_-_44px),transparent)]',
-    left: '[mask-image:linear-gradient(to_right,transparent,#000_44px)] [-webkit-mask-image:linear-gradient(to_right,transparent,#000_44px)]',
-    both: '[mask-image:linear-gradient(to_right,transparent,#000_44px,#000_calc(100%_-_44px),transparent)] [-webkit-mask-image:linear-gradient(to_right,transparent,#000_44px,#000_calc(100%_-_44px),transparent)]',
-} as const;
 
 /**
  * The hero's "Popular:" quick links (master 5.2 locks the top 3).
@@ -64,7 +37,6 @@ export function HeroPopularLinks({
     // Self-gating: desktop wraps instead of scrolling, so there is no overflow
     // to report and no mask is applied there.
     const { left, right } = useScrollOverflow(trackRef);
-    const mask = left && right ? 'both' : right ? 'right' : left ? 'left' : 'none';
 
     if (activities.length === 0) return null;
 
@@ -75,7 +47,7 @@ export function HeroPopularLinks({
                 'flex w-full items-center gap-1.5 text-[13.5px] font-semibold leading-[1.6] text-it-white/90 [text-shadow:0_1px_10px_rgba(0,0,0,0.3)]',
                 'max-md:flex-nowrap max-md:justify-start max-md:overflow-x-auto max-md:whitespace-nowrap md:flex-wrap md:justify-center',
                 '[scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
-                MASK[mask]
+                edgeFadeMask(left, right)
             )}>
             <span className='shrink-0'>{label}:</span>
             {activities.map((item, i) => (

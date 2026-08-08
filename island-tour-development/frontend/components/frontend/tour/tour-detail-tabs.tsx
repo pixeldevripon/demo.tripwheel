@@ -1,6 +1,9 @@
 'use client';
 
 import { useDragScroll } from '@/hooks/use-drag-scroll';
+import { useScrollOverflow } from '@/hooks/use-scroll-overflow';
+import { useTabAutoScroll } from '@/hooks/use-tab-autoscroll';
+import { edgeFadeMask } from '@/lib/edge-fade';
 import { smoothScrollToId } from '@/lib/motion/smooth-scroll';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
@@ -27,6 +30,8 @@ export function TourDetailTabs({ tabs }: { tabs: TourTab[] }) {
     const scrollRef = useDragScroll<HTMLDivElement>();
     const [active, setActive] = useState(tabs[0]?.id ?? '');
     const reduce = useReducedMotion();
+    const { left, right } = useScrollOverflow(scrollRef);
+    useTabAutoScroll(scrollRef, active, !!reduce);
     // True while a click-triggered scroll animates: the spy stays quiet so the
     // underline glides straight to the clicked tab instead of hopping through
     // every section the scroll passes.
@@ -77,9 +82,14 @@ export function TourDetailTabs({ tabs }: { tabs: TourTab[] }) {
         <div
             ref={barRef}
             className='sticky top-16 z-30 bg-(--it-frow-bg) backdrop-blur-[8px]'>
+            {/* The fade goes on the SCROLLER itself, so it tracks the row's own
+                position rather than the bar's. The baseline hairline is the
+                bar's, not the row's, or the mask would fade the rule away with
+                the tabs. */}
+            <div className='border-b border-it-divider'>
             <div
                 ref={scrollRef}
-                className='flex gap-0.5 overflow-x-auto overflow-y-hidden border-b border-it-divider [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+                className={`flex gap-0.5 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${edgeFadeMask(left, right)}`}>
                 {tabs.map(t => {
                     const isActive = active === t.id;
                     return (
@@ -87,6 +97,7 @@ export function TourDetailTabs({ tabs }: { tabs: TourTab[] }) {
                             key={t.id}
                             type='button'
                             onClick={() => goTo(t.id)}
+                            data-tab-key={t.id}
                             aria-current={isActive ? 'true' : undefined}
                             className={`relative -mb-px shrink-0 cursor-pointer whitespace-nowrap border-none bg-transparent px-[13px] py-3 text-[13px] leading-[1.6] transition-colors duration-(--it-duration-xs) ease-(--it-ease) ${
                                 isActive
@@ -116,6 +127,7 @@ export function TourDetailTabs({ tabs }: { tabs: TourTab[] }) {
                         </motion.button>
                     );
                 })}
+            </div>
             </div>
         </div>
     );
