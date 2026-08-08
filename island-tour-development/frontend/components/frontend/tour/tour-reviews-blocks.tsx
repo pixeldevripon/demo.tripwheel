@@ -60,7 +60,14 @@ export async function TourReviewsPreview({
     );
     if (previewReviews.length === 0) return null;
 
-    return <TourReviews reviews={previewReviews} dict={dict} />;
+    return (
+        <TourReviews
+            reviews={previewReviews}
+            rating={rating}
+            reviewCount={reviewCount}
+            dict={dict}
+        />
+    );
 }
 
 interface TourReviewsBlockProps {
