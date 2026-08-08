@@ -146,6 +146,36 @@ export function NavSearch({
     const categoryNames = (categories ?? []).map(c => c.name);
     const rotating = categoryNames.length > 0;
 
+    /*
+     * What the LAYER offers before anything is typed. The dropdown can afford
+     * to stay closed until two characters - it is a small panel under a small
+     * bar - but the layer is a whole screen, and it opened on "No results for
+     * “”", which is a verdict on a search nobody had run.
+     *
+     * Built from the island's own categories, the same list the rotating
+     * placeholder cycles, so the words the field is suggesting are the rows
+     * underneath it. Unscoped (no island) there is nothing gated to offer, and
+     * the layer simply waits for a query.
+     */
+    const layerZeroState =
+        currentIsland && (categories?.length ?? 0) > 0
+            ? {
+                  categoriesAndHubs: (categories ?? []).map(category => ({
+                      name: category.name,
+                      href: localizeHref(
+                          locale,
+                          `/${currentIsland.slug}/${category.slug}`
+                      ),
+                      kind: 'category' as const,
+                      tours: category.tours,
+                      image: category.image,
+                  })),
+                  collections: [],
+                  topTours: [],
+                  allTours: null,
+              }
+            : undefined;
+
     const panel = (inline: boolean) => (
         <SearchTypeahead
             suggest={suggest}
@@ -166,6 +196,7 @@ export function NavSearch({
             hubHref={(destinationSlug: string, slug: string) =>
                 localizeHref(locale, `/${destinationSlug}/${slug}`)
             }
+            zeroState={inline ? layerZeroState : undefined}
             inline={inline}
             onSelect={onSelect}
         />
@@ -238,8 +269,11 @@ export function NavSearch({
                         variant='layer'
                         compact
                         dict={{
-                            searchPlaceholder: nav.search,
-                            searchPlaceholderShort: nav.search,
+                            // Blank while the rotating overlay is running, so
+                            // the two do not print on top of each other.
+                            searchPlaceholder: rotating ? '' : nav.search,
+                            searchPlaceholderShort: rotating ? '' : nav.search,
+                            ariaLabel: nav.search,
                             searchLabel: search.title,
                         }}
                         query={query}
@@ -249,8 +283,14 @@ export function NavSearch({
                         // asked for - the date belongs to the hero, where the
                         // island is already chosen.
                         showDate={false}
-                        onSubmit={submit}
-                    />
+                        onSubmit={submit}>
+                        {rotating && query === '' && (
+                            <RotatingSearchPlaceholder
+                                prefix={nav.search}
+                                names={categoryNames}
+                            />
+                        )}
+                    </SearchPill>
                 }
                 panel={panel(true)}
             />

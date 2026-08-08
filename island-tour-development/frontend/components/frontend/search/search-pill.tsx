@@ -34,6 +34,12 @@ export type SearchPillDict = {
     /** Mobile placeholder for the same field. */
     searchPlaceholderShort: string;
     /**
+     * Accessible name for the field, when it differs from the visible
+     * placeholder - the navbar blanks the placeholder so its rotating category
+     * overlay can show through, and a nameless search field is not an option.
+     */
+    ariaLabel?: string;
+    /**
      * Date-field copy. Optional because a pill can have no date half at all -
      * the navbar search and the homepage hero both search without one, and
      * making them carry labels for a field they never render is how unused
@@ -204,7 +210,7 @@ export const SearchPill = forwardRef<HTMLInputElement, {
                         placeholder={placeholder}
                         // The aria-label stays the FULL question at every width -
                         // "What?" is a visual abbreviation, not a name.
-                        aria-label={dict.searchPlaceholder}
+                        aria-label={dict.ariaLabel ?? dict.searchPlaceholder}
                         className='min-w-0 w-full border-none bg-transparent text-[16px] font-semibold leading-[1.6] text-it-ink outline-none placeholder:font-bold placeholder:text-it-ink-muted md:text-[15.5px] [&::-webkit-search-cancel-button]:appearance-none'
                     />
                     {children}
