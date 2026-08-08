@@ -24,7 +24,8 @@ interface CollectionHeroProps {
  * Collection hero (Figma node 47433:2069). A thin 300px editorial band on
  * desktop, with the content bottom-anchored to the container's left gutter: an
  * uppercase eyebrow, the H1 title, a subtitle, and a "{N} tours · From ${price}"
- * meta row. A Share pill sits top-right, aligned to the same container gutter.
+ * meta row. A Share pill sits top-right, aligned to the same content column
+ * as the title (not to the banner edge - Pastel #48).
  * Falls back to a flat grey placeholder (matching the Figma frame) when no image
  * is set.
  *
@@ -62,10 +63,26 @@ export function CollectionHero({
                 </>
             )}
 
-            {/* ── Share pill: pinned top-right, aligned to the container gutter ── */}
-            <div className='pointer-events-none absolute inset-x-0 top-[18px] z-10 flex justify-end px-6'>
-                <div className='pointer-events-auto'>
-                    <CollectionShareButton label={dict.share} />
+            {/* ── Share pill: top-right of the CONTENT column ──
+                Pastel #48. This row used to be `inset-x-0 ... px-6`, i.e. 24px
+                from the BANNER edge, while the title below sits inside
+                `it-container` - so on a wide screen the pill drifted hundreds of
+                pixels away from the column it belongs to. (The old comment
+                claimed it was "aligned to the container gutter"; it was not.)
+
+                It now carries the container's own max-width, so its right edge
+                lands exactly where the title's gutter does at every width above
+                the cap, and moves with that token rather than a magic number.
+
+                MOBILE IS UNCHANGED, which the issue requires: `px-6` is kept
+                rather than switching to `it-container`, whose padding drops to
+                16px below 768px. Under the max-width this is byte-identical to
+                the previous markup; only wide screens move. */}
+            <div className='pointer-events-none absolute inset-x-0 top-[18px] z-10'>
+                <div className='mx-auto flex w-full max-w-(--it-container-max) justify-end px-6'>
+                    <div className='pointer-events-auto'>
+                        <CollectionShareButton label={dict.share} />
+                    </div>
                 </div>
             </div>
 
