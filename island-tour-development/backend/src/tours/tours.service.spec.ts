@@ -29,7 +29,7 @@ import {
   TourStatus,
   WholeUnitType,
 } from '@prisma/client';
-import { CreateTourDto, UpdateTourDto } from './dto/tour.dto';
+import { CreateTourDto, SearchSort, UpdateTourDto } from './dto/tour.dto';
 import { AvailabilityService } from '@/availability/availability.service';
 import { FxRatesService } from '@/fx/fx-rates.service';
 import { InboxService } from '@/inbox/inbox.service';
@@ -1150,6 +1150,138 @@ describe('ToursService', () => {
       expect(and).toHaveLength(2);
       expect(and[0]).toEqual({ id: { in: ['t-1', 't-2'] } });
       expect(and[1]).toHaveProperty('id.in');
+    });
+
+    // ── Pastel #44: the search page mounts the listing toolbar ────────────────
+
+    it('applies the toolbar filters exactly as the listing endpoint does', async () => {
+      prisma.tour.count.mockResolvedValue(0);
+      prisma.tour.findMany.mockResolvedValue([]);
+
+      await service.search({
+        q: 'catamaran',
+        minPrice: 50,
+        maxPrice: 300,
+        durationMin: 120,
+        durationMax: 240,
+        ratingMin: 4,
+        cancellationMaxHours: 24,
+        pickupAvailable: true,
+      });
+
+      // Same helper both endpoints call - a divergence here is the shared
+      // toolbar meaning two different things on two pages.
+      const where = prisma.tour.findMany.mock.calls[0][0].where;
+      expect(where.priceFrom).toEqual({ gte: 50, lte: 300 });
+      expect(where.durationMinutesFrom).toEqual({ gte: 120, lte: 240 });
+      expect(where.aggregateRating).toEqual({ gte: 4 });
+      expect(where.cancellationHours).toEqual({ lte: 24 });
+      expect(where.pickupModel).toEqual({ not: PickupModel.NONE });
+    });
+
+    it('ORs the category quick-filter chips, like the listing multi-select', async () => {
+      prisma.tour.count.mockResolvedValue(0);
+      prisma.tour.findMany.mockResolvedValue([]);
+
+      await service.search({
+        q: 'catamaran',
+        categoryIds: ['cat-1', 'cat-2'],
+      });
+
+      expect(prisma.tour.findMany.mock.calls[0][0].where.categories).toEqual({
+        some: { categoryId: { in: ['cat-1', 'cat-2'] } },
+      });
+    });
+
+    it('leaves the category filter off entirely when no chip is selected', async () => {
+      // An empty `in: []` would narrow to nothing - every search would return 0.
+      prisma.tour.count.mockResolvedValue(0);
+      prisma.tour.findMany.mockResolvedValue([]);
+
+      await service.search({ q: 'catamaran', categoryIds: [] });
+
+      expect(
+        prisma.tour.findMany.mock.calls[0][0].where.categories,
+      ).toBeUndefined();
+    });
+
+    it('passes guests and timeOfDay into the date-availability filter', async () => {
+      // Without a date these are inert; with one they must reach the departure
+      // scan, or the travelers pill silently does nothing on this page.
+      prisma.departure.findMany.mockResolvedValue([]);
+      prisma.tour.count.mockResolvedValue(0);
+      prisma.tour.findMany.mockResolvedValue([]);
+
+      await service.search({
+        q: 'catamaran',
+        date: '2026-08-27',
+        guests: 4,
+        timeOfDay: ['morning'],
+      });
+
+      expect(prisma.departure.findMany).toHaveBeenCalled();
+      const and = prisma.tour.findMany.mock.calls[0][0].where.AND;
+      expect(and).toHaveLength(2);
+    });
+
+    it('orders by relevance: a name match outranks a category-name match', async () => {
+      // The raw matcher scores WHERE the term hit. The candidate list arrives in
+      // canonical rank order, so relevance has to re-order it - the id list the
+      // page is finally hydrated from is what proves it did.
+      prisma.$queryRaw.mockResolvedValue([
+        { id: 'buried', score: 20 },
+        { id: 'named', score: 100 },
+        { id: 'category', score: 40 },
+      ]);
+      prisma.tour.count.mockResolvedValue(3);
+      prisma.tour.findMany
+        // 1: the canonically-ranked candidate pool.
+        .mockResolvedValueOnce([
+          { id: 'buried' },
+          { id: 'named' },
+          { id: 'category' },
+        ])
+        // 2: hydration of the ranked page.
+        .mockResolvedValueOnce([]);
+
+      await service.search({ q: 'catamaran' });
+
+      expect(prisma.tour.findMany.mock.calls[1][0].where).toEqual({
+        id: { in: ['named', 'category', 'buried'] },
+      });
+    });
+
+    it('keeps canonical rank as the tie-break inside a relevance tier', async () => {
+      prisma.$queryRaw.mockResolvedValue([
+        { id: 'a', score: 60 },
+        { id: 'b', score: 60 },
+      ]);
+      prisma.tour.count.mockResolvedValue(2);
+      prisma.tour.findMany
+        // Canonical order puts 'b' first (is_sponsored / tier_rank / quality).
+        .mockResolvedValueOnce([{ id: 'b' }, { id: 'a' }])
+        .mockResolvedValueOnce([]);
+
+      await service.search({ q: 'catamaran' });
+
+      expect(prisma.tour.findMany.mock.calls[1][0].where).toEqual({
+        id: { in: ['b', 'a'] },
+      });
+    });
+
+    it('takes the plain skip/take path for a price sort - no candidate pool', async () => {
+      prisma.tour.count.mockResolvedValue(1);
+      prisma.tour.findMany.mockResolvedValue([]);
+
+      await service.search({ q: 'catamaran', sort: SearchSort.price_asc });
+
+      // One query, not the two the relevance ranking needs.
+      expect(prisma.tour.findMany).toHaveBeenCalledTimes(1);
+      const call = prisma.tour.findMany.mock.calls[0][0];
+      expect(call.take).toBe(20);
+      expect(call.orderBy).toEqual(
+        expect.arrayContaining([{ priceFrom: { sort: 'asc', nulls: 'last' } }]),
+      );
     });
   });
 

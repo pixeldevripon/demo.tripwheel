@@ -66,6 +66,7 @@ import {
   CreateTourDto,
   MyToursQueryDto,
   TourAlternativesQueryDto,
+  SearchSort,
   TourBySlugQueryDto,
   TourQueryDto,
   TourSort,
@@ -706,6 +707,15 @@ export class ToursService {
     return picked;
   }
 
+  /**
+   * How deep "Most relevant" ranks. The score is not a column, so relevance
+   * ordering happens in app code over this many canonically-ranked candidates.
+   * Past it (a term matching more than 500 LIVE tours, which no real query on a
+   * per-island catalogue does) the results stay in canonical rank order rather
+   * than paying for an unbounded id scan.
+   */
+  private static readonly RELEVANCE_POOL = 500;
+
   /** Dead-end alternatives must have room "within 7 days" (§8). */
   private static readonly ALTERNATIVES_HORIZON_DAYS = 7;
   /** "2-3 same-category tours" (§8) - three is the ceiling. */
@@ -757,7 +767,20 @@ export class ToursService {
   async search(params: {
     q?: string;
     destinationSlug?: string;
+    /** Toolbar sort; `relevance` (the page default) ranks by match quality. */
+    sort?: SearchSort;
+    /** Category quick-filter chips: a tour in ANY of these matches. */
+    categoryIds?: string[];
     date?: string;
+    guests?: number;
+    timeOfDay?: string[];
+    minPrice?: number;
+    maxPrice?: number;
+    durationMin?: number;
+    durationMax?: number;
+    ratingMin?: number;
+    cancellationMaxHours?: number;
+    pickupAvailable?: boolean;
     locale?: Locale;
     currency?: Currency;
     page?: number;
@@ -765,6 +788,7 @@ export class ToursService {
   }) {
     const {
       destinationSlug,
+      sort = SearchSort.relevance,
       locale = Locale.en,
       page = 1,
       limit = 20,
@@ -789,14 +813,16 @@ export class ToursService {
     const dateAvailableTourIds = parsedDate
       ? await this.findDateAvailableTourIds({
           date: parsedDate,
-          guests: 1,
-          timeOfDay: [],
+          guests: params.guests ?? 1,
+          timeOfDay: params.timeOfDay ?? [],
         })
       : null;
-    // Accent-insensitive text match, as ids (see findTermMatchedTourIds). Both
-    // filters narrow by id, so they are ANDed as separate clauses rather than
-    // fighting over one `id` key - a single object cannot hold two.
-    const termMatchedTourIds = await this.findTermMatchedTourIds(term);
+    // Accent-insensitive text match, as ids + a relevance score (see
+    // findTermMatchedTourScores). Both filters narrow by id, so they are ANDed
+    // as separate clauses rather than fighting over one `id` key - a single
+    // object cannot hold two.
+    const scored = await this.findTermMatchedTourScores(term);
+    const scoreById = new Map(scored.map((r) => [r.id, r.score]));
     const where: Prisma.TourWhereInput = {
       // Bookability gate (master §7.2): excluded from EVERY ranked result set -
       // search results included.
@@ -805,46 +831,92 @@ export class ToursService {
       isBookable: true,
       ...(destinationSlug && { destination: { slug: destinationSlug } }),
       AND: [
-        { id: { in: termMatchedTourIds } },
+        { id: { in: [...scoreById.keys()] } },
         ...(dateAvailableTourIds ? [{ id: { in: dateAvailableTourIds } }] : []),
       ],
     };
+    // Category quick-filter chips (OR across the selection), same rule as the
+    // listing endpoint's multi-select.
+    if (params.categoryIds?.length)
+      where.categories = { some: { categoryId: { in: params.categoryIds } } };
+    // The toolbar's price / duration / rating / cancellation / pickup chips -
+    // the same helper the listing endpoint uses, so one toolbar means one thing.
+    this.applyToolbarFilters(where, params);
+
     const skip = (page - 1) * limit;
-    const [total, data] = await Promise.all([
-      this.prisma.tour.count({ where }),
-      this.prisma.tour.findMany({
-        where,
+    const hitSelect = {
+      ...this.tourSelect,
+      // Each hit must carry enough to build its flat URL (/{dest}/{slug}) and
+      // show a localized title without a second round-trip.
+      destination: { select: { slug: true } },
+      translations: { where: { locale }, select: { title: true } },
+      images: this.cardImagesArgs,
+      // Widened from tourSelect's id-only shape: the typeahead groups hits
+      // under their (localized) primary-category name.
+      categories: {
         select: {
-          ...this.tourSelect,
-          // Each hit must carry enough to build its flat URL (/{dest}/{slug}) and
-          // show a localized title without a second round-trip.
-          destination: { select: { slug: true } },
-          translations: { where: { locale }, select: { title: true } },
-          images: this.cardImagesArgs,
-          // Widened from tourSelect's id-only shape: the typeahead groups hits
-          // under their (localized) primary-category name.
-          categories: {
+          categoryId: true,
+          isPrimary: true,
+          category: {
             select: {
-              categoryId: true,
-              isPrimary: true,
-              category: {
-                select: {
-                  slug: true,
-                  name: true,
-                  translations: {
-                    where: { locale },
-                    select: { name: true },
-                  },
-                },
+              slug: true,
+              name: true,
+              translations: {
+                where: { locale },
+                select: { name: true },
               },
             },
           },
         },
+      },
+    } as const;
+
+    // `relevance` cannot be expressed as a Prisma `orderBy` (the score lives in
+    // the raw match query, not on the row), so that sort ranks in app code over
+    // a bounded candidate pool. Every other sort keeps the cheap skip/take path.
+    const useRelevance =
+      sort === SearchSort.relevance && skip < ToursService.RELEVANCE_POOL;
+
+    const total = await this.prisma.tour.count({ where });
+    let data: Prisma.TourGetPayload<{ select: typeof hitSelect }>[];
+    if (useRelevance) {
+      // Candidates arrive in canonical rank order, so a plain stable sort by
+      // score keeps `is_sponsored, tier_rank, quality_score, id` as the
+      // tie-break inside each relevance tier - no second ordering key needed.
+      const candidates = await this.prisma.tour.findMany({
+        where,
+        select: { id: true },
         orderBy: this.buildOrderBy(TourSort.recommended),
+        take: ToursService.RELEVANCE_POOL,
+      });
+      const pageIds = candidates
+        .map((c, i) => ({ id: c.id, score: scoreById.get(c.id) ?? 0, i }))
+        .sort((a, b) => b.score - a.score || a.i - b.i)
+        .slice(skip, skip + limit)
+        .map((c) => c.id);
+      const rows = await this.prisma.tour.findMany({
+        where: { id: { in: pageIds } },
+        select: hitSelect,
+      });
+      const byId = new Map(rows.map((r) => [r.id, r]));
+      data = pageIds
+        .map((id) => byId.get(id))
+        .filter((r): r is NonNullable<typeof r> => Boolean(r));
+    } else {
+      data = await this.prisma.tour.findMany({
+        where,
+        select: hitSelect,
+        orderBy: this.buildOrderBy(
+          sort === SearchSort.price_asc
+            ? TourSort.price_asc
+            : sort === SearchSort.price_desc
+              ? TourSort.price_desc
+              : TourSort.recommended,
+        ),
         skip,
         take: limit,
-      }),
-    ]);
+      });
+    }
     const hits = data.map((t) => {
       const primary = t.categories.find((c) => c.isPrimary) ?? t.categories[0];
       const category = primary?.category;
@@ -1242,9 +1314,52 @@ export class ToursService {
    * percent, not "anything".
    */
   private async findTermMatchedTourIds(term: string): Promise<string[]> {
-    const pattern = `%${term.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
-    const rows = await this.prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
-      SELECT DISTINCT t.id
+    const rows = await this.findTermMatchedTourScores(term);
+    return rows.map((r) => r.id);
+  }
+
+  /**
+   * {@link findTermMatchedTourIds} plus a RELEVANCE score per tour - what the
+   * search page's "Most relevant" sort orders by (Pastel #44).
+   *
+   * The score is where the term hit, not how often, because "how often" on an
+   * ILIKE catalogue rewards long overviews rather than good matches:
+   *
+   *   100  the tour's own name/title IS the term
+   *    80  its name/title STARTS WITH the term
+   *    60  its name/title contains the term
+   *    40  a category or hub name contains it  (a themed match, not this tour's)
+   *    20  the overview or a highlight contains it (buried in body copy)
+   *
+   * `MAX` over the join fan-out, so a tour is scored by its BEST match and a
+   * tour joined to five highlights is not thereby more relevant. Ties fall back
+   * to the canonical ranking (`is_sponsored, tier_rank, quality_score, id`),
+   * which is what the caller's candidate order already carries.
+   */
+  private async findTermMatchedTourScores(
+    term: string,
+  ): Promise<{ id: string; score: number }[]> {
+    const escaped = term.replace(/[\\%_]/g, (c) => `\\${c}`);
+    const pattern = `%${escaped}%`;
+    const prefix = `${escaped}%`;
+    const exact = escaped;
+    const rows = await this.prisma.$queryRaw<{ id: string; score: number }[]>(
+      Prisma.sql`
+      SELECT t.id, MAX(
+        CASE
+          WHEN immutable_unaccent(t.name)     ILIKE immutable_unaccent(${exact})   ESCAPE '\\' THEN 100
+          WHEN immutable_unaccent(tt.title)   ILIKE immutable_unaccent(${exact})   ESCAPE '\\' THEN 100
+          WHEN immutable_unaccent(t.name)     ILIKE immutable_unaccent(${prefix})  ESCAPE '\\' THEN 80
+          WHEN immutable_unaccent(tt.title)   ILIKE immutable_unaccent(${prefix})  ESCAPE '\\' THEN 80
+          WHEN immutable_unaccent(t.name)     ILIKE immutable_unaccent(${pattern}) ESCAPE '\\' THEN 60
+          WHEN immutable_unaccent(tt.title)   ILIKE immutable_unaccent(${pattern}) ESCAPE '\\' THEN 60
+          WHEN immutable_unaccent(c.name)     ILIKE immutable_unaccent(${pattern}) ESCAPE '\\' THEN 40
+          WHEN immutable_unaccent(h.name)     ILIKE immutable_unaccent(${pattern}) ESCAPE '\\' THEN 40
+          WHEN immutable_unaccent(tt.overview) ILIKE immutable_unaccent(${pattern}) ESCAPE '\\' THEN 20
+          WHEN immutable_unaccent(hlt.text)   ILIKE immutable_unaccent(${pattern}) ESCAPE '\\' THEN 20
+          ELSE 0
+        END
+      )::int AS score
       FROM tours t
       LEFT JOIN tour_translations tt ON tt."tourId" = t.id
       LEFT JOIN tour_categories tc ON tc."tourId" = t.id
@@ -1259,8 +1374,10 @@ export class ToursService {
          OR immutable_unaccent(c.name)   ILIKE immutable_unaccent(${pattern}) ESCAPE '\\'
          OR immutable_unaccent(h.name)   ILIKE immutable_unaccent(${pattern}) ESCAPE '\\'
          OR immutable_unaccent(hlt.text) ILIKE immutable_unaccent(${pattern}) ESCAPE '\\'
-    `);
-    return rows.map((r) => r.id);
+      GROUP BY t.id
+    `,
+    );
+    return rows;
   }
 
   /**
@@ -1328,6 +1445,56 @@ export class ToursService {
     return [...ids];
   }
 
+  /**
+   * The filters the shared listing toolbar can set - price, duration, rating,
+   * free-cancellation window, pickup - applied onto a where-clause in place.
+   *
+   * Lives here rather than inline in `findAll` because the SEARCH results page
+   * mounts THE SAME toolbar (Pastel #44) and has to mean exactly the same thing
+   * by it. Two copies of "what does the 4+ rating chip filter on" is two
+   * behaviours a month from now.
+   *
+   * Date-anchored availability (`date`/`guests`/`timeOfDay`) is deliberately not
+   * here: it narrows by id via {@link findDateAvailableTourIds}, and the two
+   * callers compose that id list into their where-clause differently.
+   */
+  private applyToolbarFilters(
+    where: Prisma.TourWhereInput,
+    f: {
+      minPrice?: number;
+      maxPrice?: number;
+      durationMin?: number;
+      durationMax?: number;
+      ratingMin?: number;
+      cancellationMaxHours?: number;
+      pickupAvailable?: boolean;
+    },
+  ): void {
+    // Price filter runs against `priceFrom` (the displayed "From" anchor: default
+    // participant band for PER_PERSON, basePrice for UNIT), so it agrees with the
+    // price shown on the card - not the raw `basePrice`.
+    if (f.minPrice !== undefined || f.maxPrice !== undefined) {
+      where.priceFrom = {};
+      if (f.minPrice !== undefined) where.priceFrom.gte = f.minPrice;
+      if (f.maxPrice !== undefined) where.priceFrom.lte = f.maxPrice;
+    }
+    if (f.durationMin !== undefined || f.durationMax !== undefined) {
+      where.durationMinutesFrom = {};
+      if (f.durationMin !== undefined)
+        where.durationMinutesFrom.gte = f.durationMin;
+      if (f.durationMax !== undefined)
+        where.durationMinutesFrom.lte = f.durationMax;
+    }
+    if (f.ratingMin !== undefined) where.aggregateRating = { gte: f.ratingMin };
+    // Free-cancellation window: "I want to cancel up to N hours before" ->
+    // only tours whose cutoff is <= N (cancellationHours is the hours-before
+    // deadline; a smaller value is more flexible).
+    if (f.cancellationMaxHours !== undefined)
+      where.cancellationHours = { lte: f.cancellationMaxHours };
+    // Pickup available = the tour offers pickup at all (any model but NONE).
+    if (f.pickupAvailable) where.pickupModel = { not: PickupModel.NONE };
+  }
+
   async findAll(query: TourQueryDto, rawQuery: Record<string, unknown> = {}) {
     const {
       search,
@@ -1374,29 +1541,15 @@ export class ToursService {
     if (isLocalsFavourite !== undefined)
       where.isLocalsFavourite = isLocalsFavourite;
     if (pricingModel) where.pricingModel = pricingModel;
-    // Price filter runs against `priceFrom` (the displayed "From" anchor: default
-    // participant band for PER_PERSON, basePrice for UNIT), so it agrees with the
-    // price shown on the card - not the raw `basePrice`.
-    if (minPrice !== undefined || maxPrice !== undefined) {
-      where.priceFrom = {};
-      if (minPrice !== undefined) where.priceFrom.gte = minPrice;
-      if (maxPrice !== undefined) where.priceFrom.lte = maxPrice;
-    }
-    if (durationMin !== undefined || durationMax !== undefined) {
-      where.durationMinutesFrom = {};
-      if (durationMin !== undefined)
-        where.durationMinutesFrom.gte = durationMin;
-      if (durationMax !== undefined)
-        where.durationMinutesFrom.lte = durationMax;
-    }
-    if (ratingMin !== undefined) where.aggregateRating = { gte: ratingMin };
-    // Free-cancellation window: "I want to cancel up to N hours before" ->
-    // only tours whose cutoff is <= N (cancellationHours is the hours-before
-    // deadline; a smaller value is more flexible).
-    if (cancellationMaxHours !== undefined)
-      where.cancellationHours = { lte: cancellationMaxHours };
-    // Pickup available = the tour offers pickup at all (any model but NONE).
-    if (pickupAvailable) where.pickupModel = { not: PickupModel.NONE };
+    this.applyToolbarFilters(where, {
+      minPrice,
+      maxPrice,
+      durationMin,
+      durationMax,
+      ratingMin,
+      cancellationMaxHours,
+      pickupAvailable,
+    });
 
     // Date-anchored availability filter (master §7.2): when a date is given, keep
     // only tours with an OPEN departure that day that fits `guests` and (if set)

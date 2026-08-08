@@ -203,6 +203,7 @@
                 "description": "Passe deine Filter an oder setze sie zurück, um mehr Touren zu sehen."
             },
             "sort": {
+                "relevance": "Relevanteste",
                 "localsFavorites": "Favoriten der Locals",
                 "priceLowHigh": "Preis: aufsteigend",
                 "priceHighLow": "Preis: absteigend"

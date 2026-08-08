@@ -1,9 +1,10 @@
 import { Locale } from '@/common/constants/locales';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, PickType } from '@nestjs/swagger';
 import { Currency } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsEnum,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -13,9 +14,34 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
-import { TourResponseDto } from '@/tours/dto/tour.dto';
+import {
+  SearchSort,
+  TourQueryDto,
+  TourResponseDto,
+} from '@/tours/dto/tour.dto';
 
-export class SearchQueryDto {
+export { SearchSort };
+
+/**
+ * Filter params the search page shares with the listing toolbar. Picked off
+ * `TourQueryDto` rather than re-declared, so the two endpoints cannot drift on
+ * validation, coercion or Swagger docs - the toolbar is one component and it
+ * must mean the same thing on both pages.
+ */
+const SHARED_FILTER_KEYS = [
+  'categoryIds',
+  'minPrice',
+  'maxPrice',
+  'durationMin',
+  'durationMax',
+  'ratingMin',
+  'cancellationMaxHours',
+  'pickupAvailable',
+  'guests',
+  'timeOfDay',
+] as const;
+
+export class SearchQueryDto extends PickType(TourQueryDto, SHARED_FILTER_KEYS) {
   @ApiProperty({
     example: 'catamaran',
     description:
@@ -35,9 +61,19 @@ export class SearchQueryDto {
   destinationSlug?: string;
 
   @ApiPropertyOptional({
+    enum: SearchSort,
+    default: SearchSort.relevance,
+    description:
+      'Sort order. `relevance` (default) ranks by where the term matched - tour name/title beats a category or hub name, which beats the overview or a highlight - and falls back to the canonical ranking within a tier.',
+  })
+  @IsOptional()
+  @IsIn(Object.values(SearchSort))
+  sort?: SearchSort = SearchSort.relevance;
+
+  @ApiPropertyOptional({
     example: '2026-07-01',
     description:
-      'Date (YYYY-MM-DD). When set, only tours with an OPEN departure on that date are returned.',
+      'Date (YYYY-MM-DD). When set, only tours with an OPEN departure on that date are returned; `guests` and `timeOfDay` refine that same-day availability.',
   })
   @IsOptional()
   @Matches(/^\d{4}-\d{2}-\d{2}$/, {

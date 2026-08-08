@@ -203,6 +203,7 @@
                 "description": "Pas je filters aan of wis ze om meer tours te zien."
             },
             "sort": {
+                "relevance": "Meest relevant",
                 "localsFavorites": "Favorieten van locals",
                 "priceLowHigh": "Prijs: laag naar hoog",
                 "priceHighLow": "Prijs: hoog naar laag"

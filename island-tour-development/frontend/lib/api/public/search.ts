@@ -9,6 +9,7 @@ import { cacheLife, cacheTag } from 'next/cache';
 
 import type { Currency, Locale } from '@/lib/constants/locales';
 import { DEFAULT_LOCALE } from '@/lib/constants/locales';
+import type { SearchBackendSort } from '@/lib/tours/filters';
 import type { SearchResults } from '@/types/search';
 import { buildQuery, publicGet } from './fetch';
 
@@ -27,8 +28,11 @@ const EMPTY = (query: string): SearchResults => ({
  * short-circuit shorter terms to an empty result (no request). Optionally scope
  * to a destination slug. Returns an empty result set on any backend failure.
  *
- * Cached briefly and tagged `search`; a query+locale(+destination)+page combo is
- * the cache key.
+ * Takes the same filter + sort params as the listing endpoint, because the
+ * results page mounts the same toolbar (Pastel #44); `sort` additionally accepts
+ * `relevance`, which is the page's default.
+ *
+ * Cached briefly and tagged `search`; the whole param set is the cache key.
  */
 export async function searchTours(params: {
   q: string;
@@ -36,8 +40,23 @@ export async function searchTours(params: {
   /** Shopper display currency; adds converted `money` to each hit (guide §20.9). */
   currency?: Currency;
   destinationSlug?: string;
+  /** `relevance` (default) | `recommended` | `price_asc` | `price_desc`. */
+  sort?: SearchBackendSort;
+  /** CSV of category ids; a tour in ANY of them matches (quick-filter chips). */
+  categoryIds?: string;
   /** YYYY-MM-DD — restricts to tours with an OPEN departure on that date. */
   date?: string;
+  /** Party size; only applied together with `date`. */
+  guests?: number;
+  /** CSV of morning|afternoon|evening; only applied together with `date`. */
+  timeOfDay?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  durationMin?: number;
+  durationMax?: number;
+  ratingMin?: number;
+  cancellationMaxHours?: number;
+  pickupAvailable?: boolean;
   page?: number;
   limit?: number;
 }): Promise<SearchResults> {
@@ -48,16 +67,9 @@ export async function searchTours(params: {
   const q = params.q?.trim() ?? '';
   if (q.length < 2) return EMPTY(q);
 
-  const {
-    locale = DEFAULT_LOCALE,
-    currency,
-    destinationSlug,
-    date,
-    page,
-    limit,
-  } = params;
+  const { locale = DEFAULT_LOCALE, ...rest } = params;
   const data = await publicGet<SearchResults>(
-    `/search${buildQuery({ q, locale, currency, destinationSlug, date, page, limit })}`,
+    `/search${buildQuery({ ...rest, q, locale })}`,
   );
   return data ?? EMPTY(q);
 }

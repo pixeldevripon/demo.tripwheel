@@ -25,6 +25,8 @@ import {
     DEFAULT_GUESTS,
     PRICE_MAX,
     PRICE_MIN,
+    TOURS_SORT_PROFILE,
+    type SortProfile,
     type ToursFilterState,
     type ToursGuests,
     type ToursSortValue,
@@ -69,11 +71,8 @@ export type ToursToolbarDict = {
 
 export type SortValue = ToursSortValue;
 
-export type ToursSortDict = {
-    localsFavorites: string;
-    priceLowHigh: string;
-    priceHighLow: string;
-};
+/** One label per {@link ToursSortValue}, keyed by the value itself. */
+export type ToursSortDict = Record<ToursSortValue, string>;
 
 export type FilterCategory = { label: string; slug: string };
 
@@ -117,6 +116,18 @@ interface ToursFilterBarProps {
      * filters survive sort/category/price changes.
      */
     attributes?: Record<string, string[]>;
+    /**
+     * Which sorts this page offers and which one it defaults to. Defaults to the
+     * listing profile; `/search` passes `SEARCH_SORT_PROFILE` so "Most relevant"
+     * leads there and All Tours keeps Locals' favorites (Pastel #44).
+     */
+    sortProfile?: SortProfile;
+    /**
+     * Route-owned query params the toolbar must carry across every navigation
+     * but does not model - `q` and `destination` on the search page. Dropping
+     * them would turn a filter change into a search with no term.
+     */
+    extraParams?: Record<string, string | undefined>;
 }
 
 /* ── Shared atom styles (design v2) ────────────────────────────────── */
@@ -340,6 +351,8 @@ export function ToursFilterBar({
     currency,
     locale,
     attributes = {},
+    sortProfile = TOURS_SORT_PROFILE,
+    extraParams,
 }: ToursFilterBarProps) {
     const router = useRouter();
     const pathname = usePathname();
@@ -389,7 +402,8 @@ export function ToursFilterBar({
         const href = buildToursHref(
             pathname,
             { ...currentState, ...next, page: 1 },
-            priceMax
+            priceMax,
+            { sortProfile, extraParams }
         );
         startNav(() => {
             if (next.categories) setOptimisticCategories(next.categories);
@@ -403,7 +417,8 @@ export function ToursFilterBar({
             buildToursHref(
                 pathname,
                 { ...currentState, ...next, page: 1 },
-                priceMax
+                priceMax,
+                { sortProfile, extraParams }
             )
         );
 
@@ -464,11 +479,10 @@ export function ToursFilterBar({
     const [filterOpen, setFilterOpen] = useState(false);
     const activeFilterCount = countActiveFilters(activeFilters, priceMax);
 
-    const sortOptions: { value: SortValue; label: string }[] = [
-        { value: 'localsFavorites', label: sortDict.localsFavorites },
-        { value: 'priceLowHigh', label: sortDict.priceLowHigh },
-        { value: 'priceHighLow', label: sortDict.priceHighLow },
-    ];
+    const sortOptions = sortProfile.options.map(value => ({
+        value,
+        label: sortDict[value],
+    }));
     const [sortOpen, setSortOpen] = useState(false);
 
     // Multi-select: toggling an active category removes it, otherwise adds it.

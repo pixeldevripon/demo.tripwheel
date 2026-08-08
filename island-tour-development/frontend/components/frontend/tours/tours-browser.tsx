@@ -46,11 +46,18 @@ export function useToursNavOptional(): ToursNav | null {
  * feels instant: the toolbar reacts immediately while the `results` slot dims
  * and stays in place until the server streams the filtered page - instead of the
  * whole page freezing on a blocking navigation with no feedback.
+ *
+ * Backs the SEARCH results page too (Pastel #44), which mounts the same toolbar
+ * and so needs the same transition context - hence the optional `header` slot
+ * for the "N results for X" line that sits above the sticky band there.
  */
 export function ToursBrowser({
+    header,
     toolbar,
     results,
 }: {
+    /** Optional block ABOVE the sticky toolbar; supplies its own container. */
+    header?: ReactNode;
     toolbar: ReactNode;
     results: ReactNode;
 }) {
@@ -60,6 +67,7 @@ export function ToursBrowser({
 
     return (
         <ToursNavContext.Provider value={{ startNav, isPending }}>
+            {header}
             {/* The toolbar renders its own full-width sticky band + container
                 rows (design v2 .frow/.gridhead); the results grid gets the
                 container here. */}

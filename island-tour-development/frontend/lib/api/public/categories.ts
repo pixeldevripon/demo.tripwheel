@@ -14,6 +14,7 @@ import type {
   CategoryByDestination,
   CategoryDetailByDestination,
   CategoryFaq,
+  CategoryLocalized,
   CategoryPageContent,
 } from '@/types/category';
 import type { Locale } from '@/lib/constants/locales';
@@ -40,6 +41,29 @@ export async function getDestinationCategories(
 
   const data = await publicGet<CategoryByDestination[]>(
     `/categories/destination/${seg(destinationSlug)}${buildQuery({ locale })}`,
+  );
+  return data ?? [];
+}
+
+/**
+ * Every ACTIVE category, localized (no destination scope, no tour gate).
+ *
+ * For the global search page, whose results can span islands - there is no one
+ * destination whose gated set would be the right chip row. Scoped searches
+ * (`?destination=`) still use {@link getDestinationCategories}, so a chip there
+ * always leads somewhere. Returns `[]` if the backend is unreachable.
+ *
+ * Cached daily (tag-busted on writes); `locale` is the cache key.
+ */
+export async function getActiveCategories(
+  locale: Locale = DEFAULT_LOCALE,
+): Promise<CategoryLocalized[]> {
+  'use cache';
+  cacheLife('days');
+  cacheTag('categories');
+
+  const data = await publicGet<CategoryLocalized[]>(
+    `/categories/active${buildQuery({ locale })}`,
   );
   return data ?? [];
 }

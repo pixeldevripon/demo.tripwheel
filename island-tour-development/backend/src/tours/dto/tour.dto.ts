@@ -561,6 +561,19 @@ export const LAUNCH_TOUR_SORTS = [
   TourSort.price_desc,
 ] as const;
 
+/**
+ * Traveler-facing sort options on the SEARCH results page - the launch three
+ * plus `relevance`, which only exists where there is a search term to be
+ * relevant to. A separate enum rather than a fourth `TourSort` member because
+ * the filter-only listing endpoint shares that one and cannot honour it.
+ */
+export enum SearchSort {
+  relevance = 'relevance',
+  recommended = 'recommended',
+  price_asc = 'price_asc',
+  price_desc = 'price_desc',
+}
+
 export class RecomputeDemandResponseDto {
   @ApiProperty({ example: 9, description: 'Number of tours evaluated' })
   evaluated!: number;

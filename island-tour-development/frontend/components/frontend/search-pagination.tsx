@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
-import { useSearchNavOptional } from '@/components/frontend/search/search-browser';
+import { useToursNavOptional } from '@/components/frontend/tours/tours-browser';
 import { Pagination } from './pagination';
 
 /**
@@ -17,7 +17,7 @@ export function SearchPagination({ pageCount }: { pageCount: number }) {
     const params = useSearchParams();
     const page = Math.max(1, Number.parseInt(params.get('page') ?? '1', 10) || 1);
 
-    const nav = useSearchNavOptional();
+    const nav = useToursNavOptional();
 
     const hrefFor = (next: number) => {
         const sp = new URLSearchParams(params.toString());

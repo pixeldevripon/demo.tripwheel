@@ -203,6 +203,7 @@
                 "description": "Essayez d'ajuster ou d'effacer vos filtres pour voir plus d'excursions."
             },
             "sort": {
+                "relevance": "Plus pertinents",
                 "localsFavorites": "Favoris des locaux",
                 "priceLowHigh": "Prix : croissant",
                 "priceHighLow": "Prix : décroissant"

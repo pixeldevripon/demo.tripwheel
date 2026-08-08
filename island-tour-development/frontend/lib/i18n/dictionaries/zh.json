@@ -203,6 +203,7 @@
                 "description": "请调整或清除筛选条件以查看更多行程。"
             },
             "sort": {
+                "relevance": "最相关",
                 "localsFavorites": "当地人最爱",
                 "priceLowHigh": "价格：从低到高",
                 "priceHighLow": "价格：从高到低"

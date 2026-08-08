@@ -203,6 +203,7 @@
                 "description": "Prueba a ajustar o borrar los filtros para ver más tours."
             },
             "sort": {
+                "relevance": "Más relevantes",
                 "localsFavorites": "Favoritos de locales",
                 "priceLowHigh": "Precio: de menor a mayor",
                 "priceHighLow": "Precio: de mayor a menor"

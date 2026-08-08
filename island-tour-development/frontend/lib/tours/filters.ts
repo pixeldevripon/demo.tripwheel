@@ -21,11 +21,51 @@ export const DURATION_BUCKETS: Record<string, [number, number | null]> = {
     fullDay: [360, null],
 };
 
-/** UI sort values (as shown in the sort dropdown). */
-export type ToursSortValue = 'localsFavorites' | 'priceLowHigh' | 'priceHighLow';
+/**
+ * UI sort values (as shown in the sort dropdown). `relevance` is search-only -
+ * there is nothing to be relevant to without a query term - and is gated by the
+ * page's {@link SortProfile}, not by this union.
+ */
+export type ToursSortValue =
+    | 'relevance'
+    | 'localsFavorites'
+    | 'priceLowHigh'
+    | 'priceHighLow';
 
-/** Backend `sort` enum values the listing endpoint accepts. */
+/** Backend `sort` enum values the LISTING endpoint accepts. */
 export type ToursBackendSort = 'recommended' | 'price_asc' | 'price_desc';
+
+/** Backend `sort` enum values the SEARCH endpoint accepts (listing + relevance). */
+export type SearchBackendSort = ToursBackendSort | 'relevance';
+
+/**
+ * Which sorts a page offers and which one it defaults to. The default is the
+ * value OMITTED from the URL, so `/{dest}/tours` and `/search` can disagree
+ * about the default without either page's links carrying redundant params.
+ */
+export interface SortProfile {
+    /** Options in dropdown order. */
+    options: readonly ToursSortValue[];
+    /** The value assumed when `?sort=` is absent (and dropped when building). */
+    default: ToursSortValue;
+}
+
+/** All Tours / category pages: locals' favorites first (master 3.12). */
+export const TOURS_SORT_PROFILE: SortProfile = {
+    options: ['localsFavorites', 'priceLowHigh', 'priceHighLow'],
+    default: 'localsFavorites',
+};
+
+/** Search results: "Most relevant" leads and is the default (Pastel #44). */
+export const SEARCH_SORT_PROFILE: SortProfile = {
+    options: [
+        'relevance',
+        'localsFavorites',
+        'priceLowHigh',
+        'priceHighLow',
+    ],
+    default: 'relevance',
+};
 
 /** Guest breakdown carried in the toolbar's guests stepper. */
 export interface ToursGuests {
@@ -76,6 +116,12 @@ export interface ToursFilterState {
  * dynamic attribute filter (mirrors the backend's reserved-key convention).
  */
 const RESERVED_PARAM_KEYS = new Set([
+    // Owned by the SEARCH route, not by the filter model: the term and the
+    // island scope. Reserved so they are never mistaken for attribute filters
+    // (and shipped to the backend as such); the toolbar carries them across
+    // navigations via `extraParams` instead.
+    'q',
+    'destination',
     'category',
     'sort',
     'minPrice',
@@ -107,21 +153,30 @@ const CANCELLATION_TO_HOURS: Record<string, number> = {
     '72h': 72,
 };
 
-// UI sort <-> URL param <-> backend enum.
-const SORT_TO_PARAM: Record<ToursSortValue, string | null> = {
-    localsFavorites: null, // default -> omitted from the URL
-    priceLowHigh: 'price_asc',
-    priceHighLow: 'price_desc',
-};
-const PARAM_TO_SORT: Record<string, ToursSortValue> = {
-    price_asc: 'priceLowHigh',
-    price_desc: 'priceHighLow',
-};
-const SORT_TO_BACKEND: Record<ToursSortValue, ToursBackendSort> = {
+// UI sort <-> URL param <-> backend enum. The URL param IS the backend value,
+// so there is one name per sort to keep straight instead of two. The page's
+// default is dropped when building the href (see `buildToursHref`) rather than
+// being hardcoded to null here - which sort is the default is per page now.
+const SORT_TO_PARAM: Record<ToursSortValue, SearchBackendSort> = {
+    relevance: 'relevance',
     localsFavorites: 'recommended',
     priceLowHigh: 'price_asc',
     priceHighLow: 'price_desc',
 };
+const PARAM_TO_SORT: Record<string, ToursSortValue> = {
+    relevance: 'relevance',
+    recommended: 'localsFavorites',
+    price_asc: 'priceLowHigh',
+    price_desc: 'priceHighLow',
+};
+/**
+ * UI sort -> the backend enum. The only caller that can produce `relevance` is
+ * the search page, whose endpoint accepts it; the listing path folds it back to
+ * `recommended` in {@link filtersToTourQuery}.
+ */
+export function toBackendSort(sort: ToursSortValue): SearchBackendSort {
+    return SORT_TO_PARAM[sort];
+}
 
 function first(v: string | string[] | undefined): string | undefined {
     return Array.isArray(v) ? v[0] : v;
@@ -132,10 +187,17 @@ function toNumber(v: string | undefined, fallback: number): number {
     return Number.isFinite(n) ? n : fallback;
 }
 
-/** Parse the raw route search params into a normalized filter state. */
+/**
+ * Parse the raw route search params into a normalized filter state. `profile`
+ * decides which sorts this page accepts and which one an absent (or unknown, or
+ * not-offered-here) `?sort=` falls back to - so `?sort=relevance` hand-typed
+ * onto All Tours resolves to its own default instead of reaching the listing
+ * endpoint, which cannot honour it.
+ */
 export function parseToursFilters(
     sp: Record<string, string | string[] | undefined>,
     priceMax: number = PRICE_MAX,
+    profile: SortProfile = TOURS_SORT_PROFILE,
 ): ToursFilterState {
     const categoryRaw = first(sp.category);
     const categories = categoryRaw
@@ -143,7 +205,11 @@ export function parseToursFilters(
         : [];
 
     const sortParam = first(sp.sort);
-    const sort = (sortParam && PARAM_TO_SORT[sortParam]) || 'localsFavorites';
+    const parsedSort = sortParam ? PARAM_TO_SORT[sortParam] : undefined;
+    const sort =
+        parsedSort && profile.options.includes(parsedSort)
+            ? parsedSort
+            : profile.default;
 
     const min = toNumber(first(sp.minPrice), PRICE_MIN);
     const max = toNumber(first(sp.maxPrice), priceMax);
@@ -259,8 +325,12 @@ export function filtersToTourQuery(
     // Availability params (date / guests / timeOfDay) only take effect together
     // with a date - matching the backend's date-anchored filter.
     const dateActive = Boolean(state.date);
+    const backendSort = toBackendSort(state.sort);
     return {
-        sort: SORT_TO_BACKEND[state.sort],
+        // Listing-safe: `relevance` is unreachable here (no listing page offers
+        // it - see SortProfile), and the listing endpoint would 400 on it.
+        // Callers that CAN sort by relevance override this field.
+        sort: backendSort === 'relevance' ? 'recommended' : backendSort,
         minPrice: state.price[0] > PRICE_MIN ? state.price[0] : undefined,
         maxPrice: state.price[1] < priceMax ? state.price[1] : undefined,
         ratingMin: state.rating ? Number(state.rating) : undefined,
@@ -278,17 +348,32 @@ export function filtersToTourQuery(
     };
 }
 
-/** Build the All Tours href for a filter state (drops defaults + page 1). */
+/**
+ * Build the listing href for a filter state (drops defaults + page 1).
+ *
+ * `opts.extraParams` are route-owned params the toolbar must carry but does not
+ * model - the search page's `q` and `destination`. Without them a filter change
+ * on `/search` would navigate to a search with no term.
+ */
 export function buildToursHref(
     pathname: string,
     state: ToursFilterState,
     priceMax: number = PRICE_MAX,
+    opts: {
+        sortProfile?: SortProfile;
+        extraParams?: Record<string, string | undefined>;
+    } = {},
 ): string {
+    const { sortProfile = TOURS_SORT_PROFILE, extraParams } = opts;
     const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(extraParams ?? {})) {
+        if (value) params.set(key, value);
+    }
     if (state.categories.length)
         params.set('category', state.categories.join(','));
-    const sortParam = SORT_TO_PARAM[state.sort];
-    if (sortParam) params.set('sort', sortParam);
+    // The page's own default is implied by its absence - see SortProfile.
+    if (state.sort !== sortProfile.default)
+        params.set('sort', SORT_TO_PARAM[state.sort]);
     if (state.price[0] > PRICE_MIN) params.set('minPrice', String(state.price[0]));
     if (state.price[1] < priceMax) params.set('maxPrice', String(state.price[1]));
     if (state.rating) params.set('rating', state.rating);
