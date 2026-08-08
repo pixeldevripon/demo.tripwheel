@@ -129,16 +129,21 @@ export async function CollectionPage({
     return (
         <>
             <JsonLd data={breadcrumbJsonLd} />
-            {/* Breadcrumb: Home › Curaçao › Collections › {Collection Name} */}
+            {/* Breadcrumb: Home › {Destination} › {Collection Name}.
+                NO "Collections" crumb (Pastel #47): there is no collections
+                page, so that link only jumped to an anchor on the destination
+                page - a crumb that looks like a level of the hierarchy and is
+                not one. Dropping it also brings the visible trail into
+                agreement with the BreadcrumbList JSON-LD above, which never
+                had that entry. */}
             <ToursBreadcrumb
                 locale={locale}
                 destinationName={destinationName}
                 destinationSlug={destinationSlug}
-                anchor={{
-                    label: collectionDict?.breadcrumb ?? 'Collections',
-                    href: `/${destinationSlug}#collections`,
+                dict={{
+                    home: dict.destination.allTours.breadcrumb.home,
+                    current: breadcrumbLabel,
                 }}
-                dict={{ home: dict.destination.allTours.breadcrumb.home, current: breadcrumbLabel }}
             />
 
             {/* Full-width hero - Figma 47433-2069 */}
