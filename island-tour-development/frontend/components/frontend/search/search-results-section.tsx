@@ -1,5 +1,3 @@
-import Link from 'next/link';
-
 import { Reveal } from '@/components/frontend/reveal';
 import { SearchPagination } from '@/components/frontend/search-pagination';
 import { TourCard } from '@/components/frontend/tour-card';
@@ -13,7 +11,7 @@ import {
     getDestinationFacets,
     searchTours,
 } from '@/lib/api/public';
-import { localizeHref, type Locale } from '@/lib/constants/locales';
+import type { Locale } from '@/lib/constants/locales';
 import { getServerCurrency } from '@/lib/currency/server';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import {
@@ -26,25 +24,6 @@ import {
 import { searchHitToListing, TOUR_CARD_GRID } from '@/lib/tours/listing';
 
 const PAGE_SIZE = 12;
-
-/**
- * A removable scope chip above the results. Only the DESTINATION scope needs
- * one now: it comes from the navbar's active island and the toolbar has no
- * control for it. Date, travellers, price and the rest live in the toolbar's own
- * chips, which are removable there.
- */
-function ScopeChip({ href, label }: { href: string; label: string }) {
-    return (
-        <Link
-            href={href}
-            className='inline-flex w-fit items-center gap-2 rounded-it-full border border-it-border px-3 py-1.5 text-[13px] text-it-heading no-underline transition-colors hover:bg-it-surface'>
-            {label}
-            <span aria-hidden='true' className='text-it-heading/50'>
-                ✕
-            </span>
-        </Link>
-    );
-}
 
 interface SearchResultsSectionProps {
     locale: Locale;
@@ -144,21 +123,6 @@ export async function SearchResultsSection({
     const total = results?.total ?? 0;
     const totalPages = results ? Math.max(1, Math.ceil(total / PAGE_SIZE)) : 0;
 
-    // Dropping the island scope must not also throw away the term or anything
-    // the toolbar has set, so the chip's href is the current URL minus
-    // `destination` - not a rebuilt "q only" link.
-    const withoutDestination = (() => {
-        const params = new URLSearchParams();
-        for (const [key, value] of Object.entries(sp)) {
-            if (key === 'destination') continue;
-            const v = first(value);
-            if (v) params.set(key, v);
-        }
-        const qs = params.toString();
-        const path = localizeHref(locale, '/search');
-        return qs ? `${path}?${qs}` : path;
-    })();
-
     // Below the 2-character floor there is nothing to filter, so the toolbar
     // would only offer controls that cannot change anything.
     if (query.length < 2) {
@@ -174,19 +138,30 @@ export async function SearchResultsSection({
             header={
                 <div className='it-container flex flex-col gap-2'>
                     {total > 0 && (
+                        // ONE line: count, term and island together.
+                        //
+                        // The island used to be a separate removable "Curaçao ✕"
+                        // chip beneath this. It read as a stray filter rather
+                        // than as the scope - especially on a query like "cura",
+                        // where it looked like a duplicate of the term - and it
+                        // offered an escape hatch to an all-islands search that
+                        // the locked spec does not have: search is
+                        // DESTINATION-SCOPED ALWAYS (APPLICATION-FEATURES §D.12).
+                        // Naming the island in the sentence says the same thing
+                        // in the place a traveller is already reading.
                         <p className='m-0 text-[14px] md:text-[16px] leading-[1.6] text-it-heading/60'>
-                            {(total === 1 ? t.resultFor : t.resultsFor)
+                            {(destinationName
+                                ? total === 1
+                                    ? t.resultForIn
+                                    : t.resultsForIn
+                                : total === 1
+                                  ? t.resultFor
+                                  : t.resultsFor
+                            )
                                 .replace('{count}', String(total))
-                                .replace('{query}', query)}
+                                .replace('{query}', query)
+                                .replace('{destination}', destinationName ?? '')}
                         </p>
-                    )}
-                    {destinationName && (
-                        <div className='flex flex-wrap items-center gap-2'>
-                            <ScopeChip
-                                href={withoutDestination}
-                                label={destinationName}
-                            />
-                        </div>
                     )}
                 </div>
             }

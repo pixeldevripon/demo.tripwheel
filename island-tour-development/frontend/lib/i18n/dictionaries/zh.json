@@ -53,6 +53,8 @@
         "placeholder": "搜索行程、活动、地点",
         "resultsFor": "“{query}” 的 {count} 个结果",
         "resultFor": "“{query}” 的 {count} 个结果",
+        "resultsForIn": "在 {destination} 找到 {count} 个“{query}”的结果",
+        "resultForIn": "在 {destination} 找到 {count} 个“{query}”的结果",
         "noResults": "没有找到 “{query}” 的结果",
         "noResultsHint": "请检查拼写或尝试更宽泛的关键词。",
         "promptTitle": "搜索 Island Tours",

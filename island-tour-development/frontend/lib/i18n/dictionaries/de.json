@@ -53,6 +53,8 @@
         "placeholder": "Touren, Aktivitäten, Orte suchen",
         "resultsFor": "{count} Ergebnisse für “{query}”",
         "resultFor": "{count} Ergebnis für “{query}”",
+        "resultsForIn": "{count} Ergebnisse für „{query}“ auf {destination}",
+        "resultForIn": "{count} Ergebnis für „{query}“ auf {destination}",
         "noResults": "Keine Ergebnisse für “{query}”",
         "noResultsHint": "Überprüfe die Schreibweise oder versuche einen allgemeineren Begriff.",
         "promptTitle": "Island Tours durchsuchen",
