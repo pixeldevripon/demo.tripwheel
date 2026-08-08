@@ -18,8 +18,8 @@ import {
 import { HugeiconsIcon } from '@hugeicons/react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { useState } from 'react';
-import { useForm, type Resolver } from 'react-hook-form';
+import { useEffect, useState } from 'react';
+import { useForm, useWatch, type Resolver } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
@@ -69,8 +69,17 @@ const EMPTY: AddOnValues = {
 
 const UNIT_OPTIONS = [
     { value: 'PER_PERSON', label: 'Per person' },
-    { value: 'FLAT', label: 'Flat rate' },
+    { value: 'FLAT', label: 'Per booking' },
 ];
+
+/**
+ * A per-booking extra cannot be bought twice for the same booking, so its
+ * quantity is fixed at one and the field goes away (Pastel #58, founder
+ * 2026-08-07). The booking widget and the reserve endpoint both enforce the
+ * same ceiling; this only stops an operator setting a number that will never
+ * be honoured.
+ */
+const FLAT_MAX_QUANTITY = '1';
 
 interface AddOnsManagerProps {
     tripId: string;
@@ -278,7 +287,7 @@ function AddOnRow({
                 <Badge
                     variant='outline'
                     className='hidden shrink-0 text-xs md:inline-flex'>
-                    {addOn.unit === 'PER_PERSON' ? 'per person' : 'flat'}
+                    {addOn.unit === 'PER_PERSON' ? 'per person' : 'per booking'}
                 </Badge>
 
                 <span
@@ -400,17 +409,37 @@ function AddOnForm({
         register,
         handleSubmit,
         control,
+        setValue,
         formState: { errors },
     } = useForm<AddOnValues>({
         resolver: zodResolver(addOnSchema) as unknown as Resolver<AddOnValues>,
         defaultValues: initial ?? EMPTY,
     });
+    // `useWatch`, not `watch()`: the latter returns a fresh function every
+    // render, which makes the React Compiler skip memoizing this whole form.
+    const isPerPerson = useWatch({ control, name: 'unit' }) === 'PER_PERSON';
+
+    // Switching to per booking pins the quantity at 1, so the field shows the
+    // number that will actually be saved rather than a 10 the widget would
+    // never honour.
+    useEffect(() => {
+        if (!isPerPerson) setValue('maxQuantity', FLAT_MAX_QUANTITY);
+    }, [isPerPerson, setValue]);
 
     return (
         <form
             onSubmit={handleSubmit(async values => {
                 try {
-                    await onSubmit(values);
+                    // Whatever sits in the field, a per-booking extra saves as
+                    // one: the widget and the reserve endpoint cap it there, so
+                    // storing anything else is a number that never applies.
+                    await onSubmit({
+                        ...values,
+                        maxQuantity:
+                            values.unit === 'FLAT'
+                                ? FLAT_MAX_QUANTITY
+                                : values.maxQuantity,
+                    });
                 } catch (err) {
                     toast.error(
                         err instanceof Error ? err.message : 'Failed to save.',
@@ -455,6 +484,12 @@ function AddOnForm({
                     options={UNIT_OPTIONS}
                     error={errors.unit?.message}
                 />
+                {/* ONE input, always the registered one. Swapping in a separate
+                    `value='1'` field for the per-booking case flipped React
+                    between an uncontrolled and a controlled input mid-life,
+                    which it warns about and which loses the value. The field
+                    stays registered and is disabled instead; the effect above
+                    puts the 1 in it. */}
                 <Field>
                     <Label>Maximum quantity</Label>
                     <Input
@@ -462,8 +497,14 @@ function AddOnForm({
                         type='number'
                         min={1}
                         placeholder='10'
+                        disabled={!isPerPerson}
                         aria-invalid={!!errors.maxQuantity}
                     />
+                    <p className='text-xs text-content-muted'>
+                        {isPerPerson
+                            ? 'Also capped at the number of paying travellers on the booking.'
+                            : 'A per-booking extra can only be bought once.'}
+                    </p>
                     <FieldError>{errors.maxQuantity?.message}</FieldError>
                 </Field>
             </FieldGrid>
