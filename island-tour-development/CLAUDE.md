@@ -91,6 +91,19 @@ This repo is **not** the whole system. Three sibling checkouts live under
 | `tripwheel-x-islandtours-dashboard` | **`pixelvega`** | `main` |
 | `tripwheel-app` | **`pixelvega`** | `main` |
 
+**Every change goes on its OWN BRANCH and lands as a PR. Never commit straight to
+the base branch.** Branch off the fetched base, push that branch to `pixelvega`,
+open the PR against the base — one branch per PR, no exceptions and no batching
+of unrelated work onto a shared branch.
+
+```bash
+git fetch pixelvega prod
+git switch -c <branch> pixelvega/prod
+# ... commit ...
+git push -u pixelvega <branch>
+gh pr create --base prod --head <branch>
+```
+
 **This repo has FOUR remotes** — `org` (tripwheel-io), `org-personal` (devripon-tr), `origin`
 (Deveripon) and `pixelvega` (pixeldevripon/island-tours). Only the last is the push target, and the
 base branch is `prod`, not `main`. Name the remote and the branch explicitly on every push: a bare
