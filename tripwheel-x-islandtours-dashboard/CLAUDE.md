@@ -15,6 +15,19 @@ The operator + admin CRM for the Island Tours marketplace. Standalone Next.js 16
 | `island-tour-development` | **`pixelvega`** | `prod` |
 | `tripwheel-app` | **`pixelvega`** | `main` |
 
+**Every change goes on its OWN BRANCH and lands as a PR. Never commit straight to
+the base branch.** Branch off the fetched base, push that branch to `pixelvega`,
+open the PR against the base — one branch per PR, no exceptions and no batching
+of unrelated work onto a shared branch.
+
+```bash
+git fetch pixelvega main
+git switch -c <branch> pixelvega/main
+# ... commit ...
+git push -u pixelvega <branch>
+gh pr create --base main --head <branch>
+```
+
 `pixelvega` here is `pixeldevripon/dashbaord-tripwheel-x-islandtours` (note the typo in the repo
 name — it is real, not a mistake in this doc).
 
