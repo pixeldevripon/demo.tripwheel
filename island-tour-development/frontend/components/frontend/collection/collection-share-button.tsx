@@ -26,7 +26,7 @@ export function CollectionShareButton({ label }: { label: string }) {
             type='button'
             onClick={handleShare}
             aria-label={label}
-            className='inline-flex cursor-pointer items-center gap-[7px] rounded-it-full border border-it-border bg-it-white/92 px-[15px] py-[9px] shadow-it-sm transition-transform duration-(--it-duration-xs) ease-(--it-ease) hover:-translate-y-px'>
+            className='inline-flex cursor-pointer items-center gap-[7px] rounded-it-full border border-it-border bg-it-white/92 px-[15px] py-[9px] shadow-it-sm transition-transform duration-(--it-duration-xs) ease-(--it-ease) hover:-translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary'>
             <Image
                 src='/icons/share-outline.svg'
                 alt=''
