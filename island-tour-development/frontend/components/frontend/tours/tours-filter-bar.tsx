@@ -97,7 +97,9 @@ interface ToursFilterBarProps {
      * Render the "{shown} of {total} tours" counter. Off on the SEARCH page,
      * whose heading already states the count - master 3.12's dual count is a
      * listing-page rule and repeating it there just says the same number twice.
-     * The Sort control stays put either way (it is right-pinned).
+     * With it off, Sort moves UP into the filter row - alone on a row of its
+     * own it read as a control that had lost its label (mck-12 draws it in the
+     * filter row too).
      */
     showCount?: boolean;
     /**
@@ -526,6 +528,78 @@ export function ToursFilterBar({
         });
     }
 
+    /*
+     * Sort, as its own node so it can live in EITHER row.
+     *
+     * On a listing page it sits in the grid head beside the result counter
+     * (master 3.12 draws it in the filter row; it moved down so the band above
+     * is the category track's alone and the chips get the full width). On the
+     * SEARCH page the counter is suppressed - the heading states the count -
+     * which left Sort stranded on a row of its own, reading as a control that
+     * had lost its label. There it rides the filter row instead, exactly as
+     * mck-12 draws it.
+     */
+    const sortControl = (
+                <div className='ml-auto flex shrink-0 items-center'>
+                    <Popover open={sortOpen} onOpenChange={setSortOpen}>
+                        <PopoverTrigger asChild>
+                            <motion.button
+                                type='button'
+                                className='flex cursor-pointer items-center gap-[7px] whitespace-nowrap border-none bg-transparent px-1.5 py-[9px] text-[13.5px] font-bold leading-[1.6] text-it-ink'>
+                                <span className='font-semibold text-it-text-muted'>
+                                    {dict.sortBy}
+                                </span>
+                                {sortDict[sort]}
+                                <Image
+                                    src='/icons/filters/chevron-soft.svg'
+                                    alt=''
+                                    width={24}
+                                    height={24}
+                                    className={`size-3.5 shrink-0 transition-transform duration-(--it-duration-sm) ease-(--it-ease) ${sortOpen ? 'rotate-180' : ''}`}
+                                />
+                            </motion.button>
+                        </PopoverTrigger>
+                        <PopoverContent
+                            align='end'
+                            sideOffset={8}
+                            className='w-[230px] rounded-it-md border-none bg-it-white p-2 text-it-ink shadow-it-lg duration-300 ease-(--it-ease)'>
+                            {sortOptions.map((opt, i) => (
+                                <motion.button
+                                    key={opt.value}
+                                    type='button'
+                                    onClick={() => {
+                                        applyState({ sort: opt.value });
+                                        setSortOpen(false);
+                                    }}
+                                    initial={{ opacity: 0, y: -6 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    transition={{
+                                        ...springPop,
+                                        delay: i * 0.03,
+                                    }}
+                                    className={`flex w-full cursor-pointer items-center justify-between rounded-it-sm border-none bg-transparent px-3 py-2.5 text-left text-[13.5px] leading-[1.6] transition-colors duration-(--it-duration-xs) hover:bg-it-bg ${
+                                        opt.value === sort
+                                            ? 'font-bold text-it-primary-hover'
+                                            : 'font-semibold text-it-ink'
+                                    }`}>
+                                    {opt.label}
+                                    {opt.value === sort && (
+                                        <Image
+                                            src='/icons/filters/check-deep.svg'
+                                            alt=''
+                                            width={24}
+                                            height={24}
+                                            className='size-[15px] shrink-0'
+                                        />
+                                    )}
+                                </motion.button>
+                            ))}
+                        </PopoverContent>
+                    </Popover>
+                </div>
+    );
+
     const counterLabel = dict.resultsCount
         .replace('{shown}', String(shown))
         .replace('{total}', String(total));
@@ -794,6 +868,15 @@ export function ToursFilterBar({
                             />
                         </>
                     )}
+
+                    {/* With no counter below, Sort rides the filter row's right
+                        edge rather than sitting alone on an otherwise empty
+                        second line. */}
+                    {!showCount && (
+                        <div className='ml-auto flex shrink-0 items-center'>
+                            {sortControl}
+                        </div>
+                    )}
                 </div>
 
                 {/* Grid head (.gridhead) - counter + applied chips + clear all,
@@ -801,72 +884,16 @@ export function ToursFilterBar({
                     filter row (master 3.12 draws it in the row) so the band
                     above is the category track's alone and the chips get the
                     full width. */}
-                <div className='it-container flex flex-wrap items-center gap-3 gap-y-2.5 pt-3.5'>
+                {(showCount ||
+                    chips.length > 0 ||
+                    activeFilterCount > 0) && (
+                    <div className='it-container flex flex-wrap items-center gap-3 gap-y-2.5 pt-3.5'>
                     {showCount && (
                         <p className='m-0 shrink-0 whitespace-nowrap text-[14px] font-bold leading-[1.6] text-it-ink tabular-nums'>
                             {counterLabel} {dict.toursWord}
                         </p>
                     )}
 
-                    {/* Sort - right edge of the counter row. */}
-                    <div className='ml-auto flex shrink-0 items-center'>
-                        <Popover open={sortOpen} onOpenChange={setSortOpen}>
-                            <PopoverTrigger asChild>
-                                <motion.button
-                                    type='button'
-                                    className='flex cursor-pointer items-center gap-[7px] whitespace-nowrap border-none bg-transparent px-1.5 py-[9px] text-[13.5px] font-bold leading-[1.6] text-it-ink'>
-                                    <span className='font-semibold text-it-text-muted'>
-                                        {dict.sortBy}
-                                    </span>
-                                    {sortDict[sort]}
-                                    <Image
-                                        src='/icons/filters/chevron-soft.svg'
-                                        alt=''
-                                        width={24}
-                                        height={24}
-                                        className={`size-3.5 shrink-0 transition-transform duration-(--it-duration-sm) ease-(--it-ease) ${sortOpen ? 'rotate-180' : ''}`}
-                                    />
-                                </motion.button>
-                            </PopoverTrigger>
-                            <PopoverContent
-                                align='end'
-                                sideOffset={8}
-                                className='w-[230px] rounded-it-md border-none bg-it-white p-2 text-it-ink shadow-it-lg duration-300 ease-(--it-ease)'>
-                                {sortOptions.map((opt, i) => (
-                                    <motion.button
-                                        key={opt.value}
-                                        type='button'
-                                        onClick={() => {
-                                            applyState({ sort: opt.value });
-                                            setSortOpen(false);
-                                        }}
-                                        initial={{ opacity: 0, y: -6 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        whileTap={{ scale: 0.98 }}
-                                        transition={{
-                                            ...springPop,
-                                            delay: i * 0.03,
-                                        }}
-                                        className={`flex w-full cursor-pointer items-center justify-between rounded-it-sm border-none bg-transparent px-3 py-2.5 text-left text-[13.5px] leading-[1.6] transition-colors duration-(--it-duration-xs) hover:bg-it-bg ${
-                                            opt.value === sort
-                                                ? 'font-bold text-it-primary-hover'
-                                                : 'font-semibold text-it-ink'
-                                        }`}>
-                                        {opt.label}
-                                        {opt.value === sort && (
-                                            <Image
-                                                src='/icons/filters/check-deep.svg'
-                                                alt=''
-                                                width={24}
-                                                height={24}
-                                                className='size-[15px] shrink-0'
-                                            />
-                                        )}
-                                    </motion.button>
-                                ))}
-                            </PopoverContent>
-                        </Popover>
-                    </div>
 
                     {/* Applied chips + clear all - their own line ABOVE the
                     counter at every width (`order-first`): four pills alongside
@@ -916,7 +943,8 @@ export function ToursFilterBar({
                             </button>
                         </ScrollTrack>
                     )}
-                </div>
+                    </div>
+                )}
             </div>
 
             {/* Filters modal - rendered OUTSIDE the sticky band, which is its
