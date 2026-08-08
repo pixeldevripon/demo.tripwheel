@@ -562,8 +562,21 @@ function RankedTourCard({
 
             {/* ── Card info ───────────────────────────────────────────────── */}
             <div className='flex flex-1 min-w-0 flex-col gap-1 px-3 pt-2.5 pb-3 @[220px]:px-3.5 @[220px]:pt-3 @[220px]:pb-3.5'>
+                {/* Hub eyebrow - the SAME treatment as the default card
+                    (Pastel #49). The collection mapper has always supplied
+                    `hub`; this variant simply never rendered it, so a collection
+                    page showed hub-prefixed titles with nothing to explain them
+                    while the identical tour on All Tours showed the eyebrow and
+                    a clean title. Rendered above the title, and the title is
+                    stripped the same way, so the two cards cannot say the hub
+                    name twice. */}
+                {tour.hub && (
+                    <div className='mb-0.5 flex'>
+                        <HubEyebrow name={tour.hub.name} />
+                    </div>
+                )}
                 <h3 className='m-0 font-it-body font-bold text-[13px] @[220px]:text-[15.5px] leading-[1.3] tracking-[-0.005em] text-it-ink line-clamp-2'>
-                    {tour.title}
+                    {stripHubPrefix(tour.title, tour.hub?.name)}
                 </h3>
 
                 {/* Curation rationale - the required CMS line, italic. */}
