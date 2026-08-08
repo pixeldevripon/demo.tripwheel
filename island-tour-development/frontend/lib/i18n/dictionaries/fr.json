@@ -411,8 +411,6 @@
                 "payLaterLink": "Payez {pct}% aujourd'hui",
                 "sellOutTitle": "Risque de complet",
                 "sellOutSubtitle": "Réservez aujourd'hui pour garantir votre place.",
-                "mostPopularTitle": "Le plus populaire",
-                "mostPopularSubtitle": "Très bien noté par les voyageurs qui ont réservé",
                 "selectDate": "Choisir une date",
                 "checkAvailability": "Vérifier la disponibilité",
                 "errorSelectDate": "Choisissez une date pour continuer",

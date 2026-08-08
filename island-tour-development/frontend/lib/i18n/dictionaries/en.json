@@ -411,8 +411,6 @@
                 "payLaterLink": "Pay only {pct}% today",
                 "sellOutTitle": "Likely to sell out",
                 "sellOutSubtitle": "Book today to secure your spot.",
-                "mostPopularTitle": "Most popular",
-                "mostPopularSubtitle": "Highly rated by travellers who booked it",
                 "selectDate": "Select date",
                 "checkAvailability": "Check availability",
                 "errorSelectDate": "Select a date to continue",

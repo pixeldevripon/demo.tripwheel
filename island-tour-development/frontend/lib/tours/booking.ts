@@ -106,9 +106,6 @@ export type TourBookingDict = {
      *  secure your spot." Shown only when the §3.7 trigger fires. */
     sellOutTitle: string;
     sellOutSubtitle: string;
-    /** "Most popular" notice - earned by reviews (master §3.6). */
-    mostPopularTitle: string;
-    mostPopularSubtitle: string;
     // Booking Widget V2
     selectDate: string;
     checkAvailability: string;
@@ -226,61 +223,26 @@ export interface BookingSlot {
     seatsLeft?: number | null;
 }
 
-/** Everything the booking widget needs, resolved from a single tour fetch. */
 /**
- * Notices stacked beneath the booking card. A subset of the master §3.6 badge
- * set - `new` is deliberately excluded: on a listing card it REPLACES the rating
- * row, but the detail page already shows the real rating and review list, so all
- * "New" would add next to a Check Availability button is "nobody has reviewed
- * this yet".
+ * Whether the §3.7 demand card renders below the widget - the ONE thing master
+ * §5.7 puts in that slot, and nothing else. The client emptied the rest of the
+ * stack out of it (Pastel #52/#53): Instant confirmation (LD5 exclusion, already
+ * page-level on the All Tours trust strip), Sponsored (discloses a paid POSITION
+ * in a ranked list; a tour's own page has no position to disclose) and Most
+ * popular (a §3.6 LISTING-CARD badge, never part of §5.7 - the page already
+ * carries the real rating, a review preview and a Reviews section).
  *
- * Two kinds were REMOVED from this slot by the client (Pastel #52/#53):
- *
- *  - `instantConfirmation` - "Confirmed in seconds" is a page-level claim that
- *    already sits on the All Tours trust strip, and LD5 lists it by name among
- *    the things the widget area must not repeat. Conflict log 42 had already
- *    rejected it here once.
- *  - `sponsored` - the disclosure exists to explain a paid POSITION inside a
- *    ranked list. A tour's own page has no position to disclose (the visitor
- *    chose this tour), so the card told a deliberate visitor they were looking
- *    at an ad and explained nothing. It stays on the listing cards and in the
- *    results-counter ranking tooltip, which is where the position is.
+ * `override ?? computed`: the CMS override is authoritative when set, and
+ * `false` is a meaningful override (suppress), so `??` not `||`. At launch the
+ * override IS the signal - no tour has 90 days of history yet - and it is set on
+ * a handful of tours by hand, never catalog-wide. Expected coverage ~5-10%;
+ * selectivity is the feature.
  */
-export type BookingNoticeKind = 'likelyToSellOut' | 'mostPopular';
-
-/** Master §3.6: `mostPopular` is earned at >=10 reviews AND >=4.5 rating. */
-const MOST_POPULAR_MIN_REVIEWS = 10;
-const MOST_POPULAR_MIN_RATING = 4.5;
-
-/**
- * Which notices this tour has earned, in display order.
- *
- * NOT the same call as `deriveTourBadge`. That one picks a SINGLE winner for a
- * listing card, where there is one badge slot. Here there is room to stack, so a
- * tour shows every signal it genuinely carries and none it does not.
- *
- * Order is shopper-first: urgency, then social proof.
- */
-function deriveBookingNotices(detail: PublicTourDetail): BookingNoticeKind[] {
-    const notices: BookingNoticeKind[] = [];
-    // The §3.7 demand signal, and the only thing in this slot on most tours.
-    // `override ?? computed` - the CMS override is authoritative when set, and
-    // `false` is a meaningful override (suppress), so `??` not `||`. At launch
-    // the override IS the signal (no tour has 90 days of history yet) and it is
-    // set on a handful of tours by hand - never catalog-wide, because a card
-    // every tour carries stops meaning anything.
-    if (detail.likelyToSellOutOverride ?? detail.likelyToSellOut) {
-        notices.push('likelyToSellOut');
-    }
-    if (
-        detail.aggregateReviewCount >= MOST_POPULAR_MIN_REVIEWS &&
-        (detail.aggregateRating ?? 0) >= MOST_POPULAR_MIN_RATING
-    ) {
-        notices.push('mostPopular');
-    }
-    return notices;
+function deriveShowDemandCard(detail: PublicTourDetail): boolean {
+    return detail.likelyToSellOutOverride ?? detail.likelyToSellOut;
 }
 
+/** Everything the booking widget needs, resolved from a single tour fetch. */
 export interface TourBookingData {
     /**
      * Display currency CODE, not a glyph.
@@ -334,8 +296,8 @@ export interface TourBookingData {
     pickupRequired: boolean;
     /** Pickup zones for the checkout dropdown (display order, converted prices). */
     pickupOptions: BookingPickupOption[];
-    /** Which notices render beneath the card, already in display order. */
-    notices: BookingNoticeKind[];
+    /** Whether the §5.7 demand card renders beneath the card (master §3.7 gate). */
+    showDemandCard: boolean;
 }
 
 /**
@@ -428,7 +390,8 @@ export const DUMMY_BOOKING_DATA: TourBookingData = {
         { id: 'demo-cruise', label: 'Cruise terminal pickup', price: 17 },
     ],
     // Both of them, so the design/demo card exercises the full notice stack.
-    notices: ['likelyToSellOut', 'mostPopular'],
+    // On, so the design/demo card exercises the slot at all.
+    showDemandCard: true,
 };
 
 const CURRENCY_SYMBOLS: Record<string, string> = { USD: '$', EUR: '€' };
@@ -637,6 +600,6 @@ export function buildTourBookingData(
         pickupModel: detail.pickupModel,
         pickupRequired: detail.pickupRequired,
         pickupOptions,
-        notices: deriveBookingNotices(detail),
+        showDemandCard: deriveShowDemandCard(detail),
     };
 }

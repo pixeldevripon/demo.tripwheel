@@ -18,7 +18,7 @@ import { DepartureTimes } from './departure-times';
 import { PartySelector } from './party-selector';
 import { PolicyModal } from './policy-modal';
 import { PriceHeader } from './price-header';
-import { BookingNotices } from './booking-notices';
+import { DemandCard } from './demand-card';
 import { SpectatorsPanel } from './spectators-panel';
 
 export type { PolicyModalDict, TourBookingDict } from '@/lib/tours/booking';
@@ -60,13 +60,13 @@ function TourBookingCardLayout() {
                 on mobile it flows naturally with no inner scroll.
 
                 The cap sits HERE and not on the sticky rail: with it on the
-                rail, the card and the notices below it competed for one
-                viewport, and on a 720px screen the notices (which cannot
-                scroll or shrink) crushed the card past its own contents until
-                the CTA spilled out and printed over them. Capping the card
-                alone means the card is always whole and the notices simply
-                take whatever is left, coming back into view when the rail
-                releases at the end of the page.
+                rail, the card and the demand card below it competed for one
+                viewport, and on a 720px screen the demand card (which cannot
+                scroll or shrink) crushed the booking card past its own
+                contents until the CTA spilled out and printed over it.
+                Capping the card alone means the card is always whole and the
+                demand card simply takes whatever is left, coming back into
+                view when the rail releases at the end of the page.
 
                 `scroll-mt-20` is for the sticky bar's return trip: without it
                 `scrollIntoView` parks the card's top edge under the fixed
@@ -95,7 +95,7 @@ function TourBookingCardLayout() {
                     operable in between. It yields to `25vh` rather than sitting
                     at a flat 220px so that it can never demand more than the
                     cap allows: a floor taller than the cap would push the CTA
-                    out through the bottom of the card and over the notices.
+                    out through the bottom of the card and over the demand card.
 
                     Deliberately a BLOCK inside (`space-y-2`, not `flex-col` +
                     `gap-2`): as flex items in a height-constrained column the
@@ -144,11 +144,11 @@ function TourBookingCardLayout() {
                 )}
             </div>
 
-            {/* Earned notices (demand card / most popular) — flow below the
-                capped card. Renders nothing when the tour has none, which is
-                the common case: the demand signal is deliberately selective
-                (~5-10% of catalog, master §3.7). */}
-            <BookingNotices />
+            {/* The §5.7 demand card — the only thing in this slot. Flows
+                below the capped card and renders nothing unless the §3.7
+                trigger fires, which is the common case: the signal is
+                deliberately selective (~5-10% of catalog). */}
+            <DemandCard />
 
             {/* Phone-only stand-in for the card once it has scrolled away
                 (Pastel #37). Portals itself to the body, so where it sits in
@@ -186,7 +186,8 @@ function TourBookingCardLayout() {
  *  5. Price summary (Total / Pay today / Balance later) once date + time + party
  *     are set, expandable to a per-band line-item breakdown.
  *  6. Continue CTA (label switches from "Check Availability" once ready) + two
- *     trust lines, and a "Likely to sell out" notice beneath the card.
+ *     trust lines, and - only when the §3.7 trigger fires - the "Likely to sell
+ *     out" demand card beneath the card.
  *
  * The coordinated flow state lives in a per-card Zustand store, provided by
  * `BookingStoreProvider`; each section pulls its own slice via `useBooking()`.

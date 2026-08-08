@@ -23,6 +23,17 @@ exact same badge with zero client-side logic. The frontend just paints
 | `mostPopular` | Organic: `aggregateReviewCount >= 10` AND `aggregateRating >= 4.5`, not sponsored. | Rounded rect, **brand orange** `#e8611a` |
 | `new` | `publishedAt` < 30 days ago AND `aggregateReviewCount == 0`. Replaces the rating row. | Rounded rect, cream `#fdf6f0` |
 
+These four are **listing-card** badges. The tour detail page is not a listing —
+the only card in its right rail is the §5.7 demand card, and none of the other
+three has a tour-page form (Pastel #52/#53, 2026-08-07):
+
+- `sponsored` discloses a paid **position** inside a ranked list. A tour's own
+  page has no position to disclose.
+- `mostPopular` is a card badge capped at *"max 1 per category"*. On the tour
+  page the real rating already sits in the meta row, above a review preview
+  module and a full Reviews section, so a card repeating it is badge inflation.
+- `new` replaces the rating row on a card; the tour page shows the real rating.
+
 Not card badges (handled elsewhere, intentionally **not** in `deriveTourBadge`):
 - **Numbered rank 01-10** - circle, Best Things to Do / Top 10 collections only.
 - **Locals' favorite ✦** - meta-row element on the tour page; manual
