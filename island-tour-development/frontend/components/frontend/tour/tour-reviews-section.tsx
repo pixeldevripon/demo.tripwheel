@@ -5,6 +5,7 @@ import {
     MotionDiv,
 } from '@/components/frontend/motion-primitives';
 import { useDragScroll } from '@/hooks/use-drag-scroll';
+import { reviewerLead } from '@/lib/reviews/review-view';
 import { fetchTourReviews, PHOTO_STRIP_LIMIT } from '@/lib/api/reviews';
 import { type Locale } from '@/lib/constants/locales';
 import { dragGlide, springPop } from '@/lib/motion';
@@ -32,6 +33,8 @@ export type FullReview = {
     response?: ReviewResponse;
     /** Booking-gated (FE-5). Always true at launch - only booked guests can review. */
     verified: boolean;
+    /** Localized country name; '' when the reviewer gave none. */
+    country: string;
     /** Localized travel month, e.g. "March 2026". '' when unknown (FE-8). */
     travelLabel: string;
     /** Raw guest type (`COUPLE`|`FAMILY`|`FRIENDS`|`SOLO`) or null; localized here. */
@@ -61,7 +64,6 @@ export type TourReviewsSectionDict = {
     verified: string;
     verifiedTooltip: string;
     /** FE-8 "Travelled {month}" and the guest-type labels. */
-    travelledIn: string;
     guestCouple: string;
     guestFamily: string;
     guestFriends: string;
@@ -855,14 +857,19 @@ function ReviewCard({
         ? GUEST_TYPE_KEYS[review.guestType]
         : undefined;
     const guestLabel = guestKey ? dict[guestKey] : '';
-    // Travel month and guest type share one meta line; either can be absent
-    // (guest type is the one optional step in the submit flow).
-    const meta = [
-        review.travelLabel
-            ? dict.travelledIn.replace('{month}', review.travelLabel)
-            : '',
-        guestLabel,
-    ].filter(Boolean);
+    /*
+     * THE SAME REVIEWER LINE AS THE PREVIEW CARDS (Pastel #55: "so the page has
+     * one format"), composed by the shared helper: `Name · Country · Month Year`.
+     *
+     * The month moved UP into it, so the second line is the guest type alone.
+     * It used to read "Travelled in July 2026" down there while the preview
+     * card said "July 2026" up here - the same fact, said twice, differently.
+     */
+    const lead = reviewerLead({
+        name: review.name,
+        country: review.country,
+        when: review.date,
+    });
 
     return (
         <article className='flex flex-col gap-3 border-t border-it-divider py-4'>
@@ -883,7 +890,7 @@ function ReviewCard({
                             <b className='text-[13.5px] font-bold text-it-ink'>
                                 {review.name}
                             </b>
-                            {review.date}
+                            {lead.slice(1).join(' · ')}
                             {/* FE-5. A native `title` rather than a hand-rolled
                                 popover: it is the disclosure of last resort and
                                 must work with no JS, and the full Omnibus
@@ -902,8 +909,9 @@ function ReviewCard({
                                 className='text-[12.5px] tracking-[1px] text-it-star'>
                                 {'★'.repeat(review.rating)}
                             </span>
-                            {/* FE-8 travel month + guest type */}
-                            {meta.length > 0 && <span>{meta.join(' · ')}</span>}
+                            {/* Guest type only - the travel month is in the
+                                reviewer line above now. */}
+                            {guestLabel && <span>{guestLabel}</span>}
                         </span>
                     </div>
                 </div>
