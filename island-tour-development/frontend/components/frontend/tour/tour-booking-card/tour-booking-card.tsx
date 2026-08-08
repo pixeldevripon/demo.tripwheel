@@ -18,6 +18,7 @@ import { DepartureTimes } from './departure-times';
 import { PartySelector } from './party-selector';
 import { PolicyModal } from './policy-modal';
 import { PriceHeader } from './price-header';
+import { PriceSummary } from './price-summary';
 import { DemandCard } from './demand-card';
 import { SpectatorsPanel } from './spectators-panel';
 
@@ -127,10 +128,16 @@ function TourBookingCardLayout() {
                             </div>
                             <PartySelector />
                             <SpectatorsPanel />
-                            {/* Optional extras (master E.3) - after the party,
-                                before the pinned CTA; hidden when the tour has
-                                none. */}
+                            {/* Optional extras (master E.3), then the price.
+                                This order is the point of Pastel #58: the total
+                                is the LAST thing above the button, so adding
+                                the open bar changes a number the traveller is
+                                still looking at. It used to sit above the
+                                extras - and inside the travelers box - so
+                                anyone who added one had to scroll back up to
+                                see what they now owed. */}
                             <BookingAddOns />
+                            <PriceSummary />
                         </>
                     )}
                 </div>
@@ -182,10 +189,12 @@ function TourBookingCardLayout() {
  *  2. Date field -> full-month calendar popover.
  *  3. Departure-time chips (appear once a date is picked).
  *  4. Party selector - Pattern A (single band: inline stepper) or Pattern B
- *     (age-banded: expandable steppers + optional spectators + Apply).
- *  5. Price summary (Total / Pay today / Balance later) once date + time + party
- *     are set, expandable to a per-band line-item breakdown.
- *  6. Continue CTA (label switches from "Check Availability" once ready) + two
+ *     (age-banded: expandable steppers + optional spectators).
+ *  5. Optional extras, in the card from the first render and collapsed.
+ *  6. Price block (Total / Pay today / Balance later) once date + time + party
+ *     are set, expandable to a per-band line-item breakdown. Its own block, and
+ *     the last thing before the button (Pastel #58).
+ *  7. Continue CTA (label switches from "Check Availability" once ready) + two
  *     trust lines, and - only when the §3.7 trigger fires - the "Likely to sell
  *     out" demand card beneath the card.
  *

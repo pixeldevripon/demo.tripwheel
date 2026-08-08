@@ -16,12 +16,15 @@ export function BandStepperRow({
     band: BookingBand;
     min: number;
 }) {
-    const { counts, effectiveMax, bandPriceLabel, setBandCount } = useBooking();
+    const { counts, effectiveMax, bandLabel, bandPriceLabel, setBandCount } =
+        useBooking();
+    // "Adult (Age 13+)" - the operator's noun, the localized age qualifier.
+    const label = bandLabel(band);
     return (
         <div className='flex items-center justify-between gap-1'>
             <span className='flex flex-col'>
                 <span className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                    {band.label}
+                    {label}
                 </span>
                 <span className='text-[14px] leading-[1.4] tracking-[-0.012em] text-it-text-muted'>
                     {bandPriceLabel(band)}
@@ -31,8 +34,8 @@ export function BandStepperRow({
                 value={counts[band.id] ?? 0}
                 min={min}
                 max={effectiveMax}
-                decLabel={`− ${band.label}`}
-                incLabel={`+ ${band.label}`}
+                decLabel={`− ${label}`}
+                incLabel={`+ ${label}`}
                 onChange={n => setBandCount(band, n)}
             />
         </div>

@@ -765,6 +765,71 @@ describe('BookingsService', () => {
         }),
       ).resolves.toBeDefined();
     });
+
+    it('caps a per-person add-on at the paying travellers (Pastel #58)', async () => {
+      setupReserveContext(prisma);
+      m.tourAddOn.findMany.mockResolvedValue([
+        {
+          id: 'a1',
+          name: 'Open bar',
+          unit: 'PER_PERSON',
+          price: D('22'),
+          maxQuantity: 10, // the operator allows ten; the party is two
+        },
+      ]);
+      await expect(
+        svc.reserve({
+          ...reserveDto,
+          addOns: [{ addOnId: 'a1', quantity: 3 }],
+        }),
+      ).rejects.toBeInstanceOf(UnprocessableEntityException);
+    });
+
+    it('charges one per-person add-on once, not once per traveller', async () => {
+      setupReserveContext(prisma);
+      m.tourAddOn.findMany.mockResolvedValue([
+        {
+          id: 'a1',
+          name: 'Open bar',
+          unit: 'PER_PERSON',
+          price: D('22'),
+          maxQuantity: 10,
+        },
+      ]);
+      await svc.reserve({
+        ...reserveDto,
+        addOns: [{ addOnId: 'a1', quantity: 1 }],
+      });
+      const data = m.booking.create.mock.calls[0][0].data;
+      // 2 adults * 79.99 = 159.98, + ONE open bar at 22 = 181.98 -> ceil 182.
+      // The old maths multiplied the bar by the party and reached 204.
+      expect(data.totalRetail.toString()).toBe('182');
+    });
+
+    it('caps a per-booking add-on at one, whatever the operator set', async () => {
+      setupReserveContext(prisma);
+      m.tourAddOn.findMany.mockResolvedValue([
+        {
+          id: 'a1',
+          name: 'GoPro photo package',
+          unit: 'FLAT',
+          price: D('34'),
+          maxQuantity: 5,
+        },
+      ]);
+      await expect(
+        svc.reserve({
+          ...reserveDto,
+          addOns: [{ addOnId: 'a1', quantity: 2 }],
+        }),
+      ).rejects.toBeInstanceOf(UnprocessableEntityException);
+      await expect(
+        svc.reserve({
+          ...reserveDto,
+          addOns: [{ addOnId: 'a1', quantity: 1 }],
+        }),
+      ).resolves.toBeDefined();
+    });
   });
 
   describe('reserve (UNIT / charter)', () => {

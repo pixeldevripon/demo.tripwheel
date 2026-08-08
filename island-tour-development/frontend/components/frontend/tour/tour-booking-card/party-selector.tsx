@@ -7,14 +7,17 @@ import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { BandStepperRow } from './band-stepper-row';
 import { Collapse } from './collapse';
-import { PriceSummary } from './price-summary';
 import { Stepper } from './stepper';
 
 /**
  * The traveller card: a header row (count + inline stepper for Pattern A, or a
- * chevron that expands the age-band steppers for Pattern B), the expandable body
- * of participant steppers (with any applied spectator steppers folded in), and
- * the price summary that takes over the same card once the party is confirmed.
+ * chevron that expands the age-band steppers for Pattern B) and the expandable
+ * body of participant steppers, with any applied spectator steppers folded in.
+ *
+ * The price used to live in here too, so collapsing the party left a box titled
+ * "5 travelers" holding a price breakdown (Pastel #58). It is its own block now,
+ * below the extras. The header keeps saying "Travelers" with the count; who they
+ * are shows up in the breakdown, where it belongs.
  */
 export function PartySelector() {
     const {
@@ -130,9 +133,6 @@ export function PartySelector() {
                     )}
                 </div>
             </Collapse>
-
-            {/* Body: price breakdown + totals (once ready). */}
-            <PriceSummary />
         </div>
     );
 }

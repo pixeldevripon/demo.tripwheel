@@ -13,8 +13,20 @@ import { Collapse } from './collapse';
 import { formatSelectedDate, formatTime } from './lib/booking.utils';
 
 /**
- * Departure-time chips, revealed once a date is picked. Each chip shows the
- * localized start time plus a state note (selected / sold out / "Only N left").
+ * Departure-time chips, revealed once a date is picked - on a tour with MORE
+ * THAN ONE departure. A tour with a single departure shows no row at all: there
+ * is nothing to pick, and a lone chip reading "Selected" is a control that
+ * cannot be operated (Pastel #58). The store selects that departure instead.
+ *
+ * An open chip shows the time and nothing else. The small line underneath is for
+ * capacity only - "Sold out", never "Available" and never "Selected", both of
+ * which said what the chip's own styling already says. Selection IS the orange
+ * border and fill.
+ *
+ * "Only N left" is deliberately absent from v1: the founder parked both
+ * scarcity signals (the chip sub-text and the date subscript) on 2026-08-07,
+ * because an honest one needs live per-departure capacity.
+ *
  * In live mode the slots are the date's real bookable departures (loaded async,
  * so a skeleton shows while they resolve); in demo mode they are the tour's
  * static start times.
@@ -71,11 +83,15 @@ export function DepartureTimes() {
     const noDepartures =
         selectedDate != null && !slotsLoading && slots.length === 0;
 
+    // The picker only belongs on a tour with a choice to make. One departure
+    // (the common case) renders nothing - the store has already picked it.
+    const hasChoice = slots.length > 1;
+
     return (
         <Collapse
             open={
                 selectedDate != null &&
-                (slotsLoading || slots.length > 0 || noDepartures)
+                (slotsLoading || hasChoice || noDepartures)
             }>
             {/* pt-2 / pb-2 = the stack gaps, kept INSIDE the collapse so they
                 animate with the height tween (an outer sibling margin would
@@ -123,23 +139,19 @@ export function DepartureTimes() {
                     animate={{ opacity: 1 }}
                     transition={swapFade}
                     style={{ x: shakeOffset }}
-                    className='grid grid-cols-3 gap-2 pb-2 pt-2'>
+                    className='pb-2 pt-2'>
+                    <span className='mb-2 block text-[12px] font-bold leading-[1.5] text-it-text-muted'>
+                        {dict.departureTime}
+                    </span>
+                    <div className='grid grid-cols-3 gap-2'>
                     {slots.map(slot => {
                         const isSelected = selectedTime === slot.time;
                         const soldOut = slot.status === 'sold_out';
-                        // Every chip carries a status line: selected, sold out,
-                        // "Only N left" when scarce (< 5), else a plain
-                        // "Available" default.
-                        const note = isSelected
-                            ? dict.selected
-                            : soldOut
-                              ? dict.soldOut
-                              : slot.remaining != null
-                                ? dict.onlyLeft.replace(
-                                      '{count}',
-                                      String(slot.remaining)
-                                  )
-                                : dict.available;
+                        // Capacity only. An open chip says the time and nothing
+                        // else; the orange border and fill say which one is
+                        // chosen, so a "Selected" line under it was the chip
+                        // narrating itself.
+                        const note = soldOut ? dict.soldOut : null;
                         // Missing-slot error: pickable chips carry a soft
                         // primary border (a quieter cousin of the selected
                         // state) that clears the moment a time is picked.
@@ -187,6 +199,7 @@ export function DepartureTimes() {
                             </motion.button>
                         );
                     })}
+                    </div>
                 </motion.div>
             )}
         </Collapse>

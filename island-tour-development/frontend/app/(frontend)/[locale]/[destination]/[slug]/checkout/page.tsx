@@ -136,20 +136,19 @@ async function CheckoutBody({
             id: `band-${row.band.id}`,
             label:
                 row.band.price > 0
-                    ? `${shortBandLabel(row.band)} x ${row.count} x ${fmt(row.band.price)}`
-                    : `${shortBandLabel(row.band)} x ${row.count}`,
+                    ? `${row.count} ${shortBandLabel(row.band)} × ${fmt(row.band.price)}`
+                    : `${row.count} ${shortBandLabel(row.band)}`,
             amount: row.lineTotal,
         })),
+        // Charged by the quantity picked, whatever the unit (Pastel #58).
         ...data.addOns.flatMap(addOn => {
             const qty = selection.addOns[addOn.id] ?? 0;
             if (qty <= 0) return [];
-            const units =
-                addOn.unit === 'PER_PERSON' ? qty * totals.partySize : qty;
             return [
                 {
                     id: `addon-${addOn.id}`,
-                    label: `${addOn.name} x ${units} x ${fmt(addOn.price)}`,
-                    amount: Math.round(units * addOn.price * 100) / 100,
+                    label: `${addOn.name} × ${qty}`,
+                    amount: Math.round(qty * addOn.price * 100) / 100,
                 },
             ];
         }),

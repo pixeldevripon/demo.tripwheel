@@ -378,11 +378,12 @@
                 "from": "À partir de",
                 "perPerson": "par personne",
                 "continue": "Continuer",
-                "selected": "Sélectionné",
                 "soldOut": "Complet",
-                "available": "Disponible",
-                "calendarNoDepartures": "Aucun départ",
+                "departureTime": "Heure de départ",
+                "calendarNoDepartures": "Pas de départ",
                 "calendarClosed": "Fermé",
+                "calendarLegend": "Une date barrée signifie qu'il y avait un départ et qu'il n'est plus disponible : « Complet » quand le voyage est plein, « Fermé » une fois le délai de réservation passé. En gris simple, le voyage n'a pas lieu ce jour-là.",
+                "calendarToday": "aujourd'hui",
                 "noDeparturesOnDateTitle": "Rien ne part le {date}",
                 "noDeparturesOnDateHint": "Choisissez un autre jour - le calendrier affiche toutes les dates encore disponibles.",
                 "deadEndTitle": "Ces excursions ont encore des départs cette semaine",
@@ -392,6 +393,26 @@
                 "onlyLeft": "Plus que {count}",
                 "travelers": { "one": "{count} voyageur", "other": "{count} voyageurs" },
                 "guests": { "one": "{count} invité", "other": "{count} invités" },
+                "bands": {
+                    "ADULT": {
+                        "plural": { "one": "{count} adulte", "other": "{count} adultes" }
+                    },
+                    "CHILD": {
+                        "plural": { "one": "{count} enfant", "other": "{count} enfants" }
+                    },
+                    "INFANT": {
+                        "plural": { "one": "{count} bébé", "other": "{count} bébés" }
+                    },
+                    "YOUTH": {
+                        "plural": { "one": "{count} jeune", "other": "{count} jeunes" }
+                    },
+                    "SENIOR": {
+                        "plural": { "one": "{count} senior", "other": "{count} seniors" }
+                    }
+                },
+                "ageFrom": "Âge {min}+",
+                "ageRange": "Âge {min}-{max}",
+                "ageUpTo": "Âge jusqu'à {max}",
                 "perGroup": "par groupe",
                 "perBoat": "par bateau",
                 "perVehicle": "par véhicule",
@@ -408,6 +429,7 @@
                 "balanceOnArrival": "Solde à l'arrivée",
                 "taxesIncluded": "Taxes et frais inclus",
                 "showDetails": "Voir les détails",
+                "hideDetails": "Masquer les détails",
                 "freeCancellation": "{link} jusqu'à {hours}h",
                 "freeCancellationLink": "Annulation gratuite",
                 "payLater": "{link}, le reste plus tard",
@@ -420,10 +442,8 @@
                 "errorSelectSlot": "Choisissez une heure de départ pour continuer",
                 "bookingUnavailable": "Ce tour n'est pas réservable en ligne pour le moment.",
                 "apply": "Appliquer",
-                "perPersonShort": "/par personne",
-                "perBookingShort": "/par réservation",
-                "showExtras": "Afficher les options",
                 "addOnsTitle": "Options supplémentaires",
+                "perBooking": "par réservation",
                 "free": "Gratuit",
                 "bringingSpectators": "Vous amenez des spectateurs ?",
                 "spectatorNote": "Les spectateurs vous accompagnent mais ne participent pas à l'activité",

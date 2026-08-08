@@ -240,16 +240,17 @@ export function computeCheckoutTotals(
         }
     }
 
-    // Optional extras + priced pickup, mirroring the backend math: PER_PERSON
-    // add-ons and pickup prices multiply by the party headcount; FLAT add-ons
-    // charge their quantity once (master E.3 / 5.8).
+    // Optional extras + priced pickup, mirroring the backend math (master E.3 /
+    // 5.8). An add-on is charged by the quantity picked, whatever its unit: the
+    // stepper counts UNITS and the unit is whatever the price line says, so one
+    // step on a "$22 per person" extra is $22 (Pastel #58). Only the PICKUP
+    // multiplies by the party - a zone price is quoted per head and chosen once.
     const extrasTotal = (partySize: number): number => {
         let sum = 0;
         for (const addOn of data.addOns) {
             const qty = extras?.addOns?.[addOn.id] ?? 0;
             if (qty <= 0) continue;
-            const units = addOn.unit === 'PER_PERSON' ? qty * partySize : qty;
-            sum += units * addOn.price;
+            sum += qty * addOn.price;
         }
         if (extras?.pickupPrice != null && extras.pickupPrice > 0) {
             sum += extras.pickupPrice * partySize;

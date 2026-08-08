@@ -16,6 +16,7 @@
 import type { BookingQuote } from '@/lib/api/bookings';
 import { depositToday, formatCheckoutMoney } from '@/lib/checkout/checkout';
 import type { Currency, Locale } from '@/lib/constants/locales';
+import { formatPlural } from '@/lib/i18n/plural';
 import {
     DUMMY_BOOKING_DATA,
     type BookingBand,
@@ -87,8 +88,13 @@ export type BookingLineItem = { band: BookingBand; count: number };
 
 /**
  * A rendered price-breakdown row: `text` is the full left-hand label (e.g.
- * "Adult x 2 x $120" or "Charter (up to 10 guests)"), `amount` the right-hand
+ * "2 adults × $120" or "Charter (up to 10 guests)"), `amount` the right-hand
  * money value. Both pricing models produce these so the summary renders one way.
+ *
+ * A row with `amount: 0` is a real, chosen row - an infant band, say - and the
+ * summary prints "Free" against it rather than a formatted zero. The master
+ * bans zero rows for bands nobody picked; a band that WAS picked should read
+ * like a fact, not like arithmetic about nothing (Pastel #58).
  */
 export type PriceRow = { id: string; text: string; amount: number };
 
@@ -154,7 +160,6 @@ export interface BookingState {
     /** The spectators field only surfaces once the traveller count is touched. */
     travelerTouched: boolean;
     spectatorsApplied: boolean;
-    availabilityChecked: boolean;
     policyModal: PolicyModalKind;
     /** Month-calendar availability keyed by `yyyy-MM-dd`; null until first load
      *  (live mode only - stays null in demo/design mode). */
@@ -279,6 +284,39 @@ function partyMinOf(s: BookingConfig, band: BookingBand): number {
     return band === defaultBand ? Math.min(1, s.data.minPartySize) : 0;
 }
 
+/**
+ * Travellers on a PRICED band - the ceiling for a per-person extra.
+ *
+ * Mirrors the backend's `payingPax`: a free band (infants) takes a seat and
+ * counts toward capacity, but is not somebody you buy an open bar for. On a
+ * charter every guest is covered by the price paid, so all of them count.
+ */
+function payingCountOf(s: BookingConfig & BookingState): number {
+    if (s.data.pricingModel === 'UNIT') return travelerCountOf(s);
+    return s.data.bands.reduce(
+        (n, b) => (b.price > 0 ? n + (s.counts[b.id] ?? 0) : n),
+        0
+    );
+}
+
+/**
+ * The most of one add-on a booking may hold. Mirrors the backend's
+ * `addOnQuantityCap` exactly, so a quantity the stepper refuses to offer is
+ * also one the quote refuses to price.
+ *
+ * The stepper counts UNITS and the unit is whatever the price line says
+ * (Pastel #58): a "per person" extra stops at the paying travellers, a "per
+ * booking" extra stops at one - it cannot be bought twice - and the operator's
+ * own `maxQuantity` can only lower either.
+ */
+export function addOnMaxOf(
+    addOn: { unit: string; maxQuantity: number },
+    payingCount: number
+): number {
+    const byUnit = addOn.unit === 'PER_PERSON' ? payingCount : 1;
+    return Math.max(0, Math.min(addOn.maxQuantity, byUnit));
+}
+
 /** The full read-only view every section consumes (via `useBooking()`). */
 export function deriveBooking(s: BookingStore) {
     const travelerCount = travelerCountOf(s);
@@ -322,25 +360,79 @@ export function deriveBooking(s: BookingStore) {
         s.calendarDays != null &&
         !hasOpenDayWithin(s.calendarDays, DEAD_END_HORIZON_DAYS);
 
-    // Readiness (price summary shown, CTA = the reserve action). In LIVE mode the
-    // backend already pre-verified availability (the calendar only offers open
-    // days and `/availability/check` only returns bookable slots), so a complete,
-    // in-capacity selection is immediately ready - there is nothing left to
-    // "check", and the party stays editable after ready (steppers remain). The
-    // design/demo card (no tour id) keeps the explicit two-phase check click.
+    // Readiness (price block shown, CTA reads "Continue"). The backend already
+    // pre-verified availability - the calendar only offers open days and
+    // `/availability/check` only returns bookable slots - so a complete,
+    // in-capacity selection is ready the moment it is complete. There is
+    // nothing left to check.
+    //
+    // The design/demo card used to keep a second, explicit "Check availability"
+    // click before showing a price. The client killed it (Pastel #58): with a
+    // date chosen and the departure already on screen, "Check availability" is a
+    // question the widget has just answered. The party stays editable
+    // throughout, and the price moves on every plus and minus.
     const selectionComplete =
         s.selectedDate != null &&
         s.selectedTime != null &&
         travelerCount >= 1 &&
         !overCapacity;
-    const ready = isLive ? selectionComplete : s.availabilityChecked;
-    const editingParty = isLive ? true : !s.availabilityChecked;
+    const ready = selectionComplete;
+    const editingParty = true;
 
     // ONE formatter for the whole funnel. This was a verbatim copy of
     // `formatCheckoutMoney` - same expression, same docblock - so the widget and
     // the checkout summary could drift apart across a single navigation.
     const money = (n: number) =>
         formatCheckoutMoney(n, s.data.currency, s.locale);
+
+    /**
+     * The band's age qualifier, localized: "Age 13+", "Age 4-12", "Age up to 3".
+     * Null when the band carries no bounds at all - there is nothing to say.
+     *
+     * The word "Age" is part of it by client instruction (Pastel #58): "Adult
+     * (13+)" reads as a price tier, "Adult (Age 13+)" reads as a rule.
+     */
+    const bandAgeLabel = (band: BookingBand): string | null => {
+        if (band.minAge != null && band.maxAge != null) {
+            return s.dict.ageRange
+                .replace('{min}', String(band.minAge))
+                .replace('{max}', String(band.maxAge));
+        }
+        if (band.minAge != null) {
+            return s.dict.ageFrom.replace('{min}', String(band.minAge));
+        }
+        if (band.maxAge != null) {
+            return s.dict.ageUpTo.replace('{max}', String(band.maxAge));
+        }
+        return null;
+    };
+
+    /**
+     * The party-row label: the operator's own noun with a localized age
+     * qualifier around it - "Adult (Age 13+)".
+     *
+     * The noun is kept rather than swapped for the band TYPE's word so an
+     * operator who named a band "Student" still gets "Student", and any age
+     * qualifier they typed by hand ("Adult (13+)") is dropped in favour of the
+     * localized one - otherwise a Dutch traveller reads a bracket in English.
+     */
+    const bandLabel = (band: BookingBand): string => {
+        const noun = band.label.split(' (')[0].trim() || band.label;
+        const age = bandAgeLabel(band);
+        return age ? `${noun} (${age})` : noun;
+    };
+
+    /**
+     * The breakdown label for a chosen band: "2 adults", "1 infant". Localized
+     * from the band TYPE, not the operator's free text, because this one is a
+     * sentence fragment and has to decline with the count. An unrecognised type
+     * falls back to the operator's noun with the count in front of it.
+     */
+    const bandCountLabel = (band: BookingBand, count: number): string => {
+        const forms = s.dict.bands?.[band.bandType]?.plural;
+        if (!forms) return `${count} ${band.label.split(' (')[0].trim()}`;
+        return formatPlural(forms, count, s.locale);
+    };
 
     // Price breakdown rows + grand total, per pricing model.
     const isUnit = s.data.pricingModel === 'UNIT';
@@ -365,7 +457,7 @@ export function deriveBooking(s: BookingStore) {
         if (extra > 0) {
             priceRows.push({
                 id: 'extra-guests',
-                text: `${s.dict.unitExtraGuests} x ${extra} x ${money(
+                text: `${s.dict.unitExtraGuests} × ${extra} × ${money(
                     s.data.extraPersonPrice
                 )}`,
                 amount: extra * s.data.extraPersonPrice,
@@ -373,35 +465,51 @@ export function deriveBooking(s: BookingStore) {
         }
         total = s.data.basePrice + extra * s.data.extraPersonPrice;
     } else {
+        // "2 adults × $150", not "Adult x 2 x $150" (Pastel #58). A free band
+        // drops the "× $0" tail entirely and reads "1 infant" - the summary
+        // prints "Free" in the amount column against it.
         priceRows = s.data.bands
             .map(b => ({ band: b, count: s.counts[b.id] ?? 0 }))
             .filter(row => row.count > 0)
-            .map(({ band, count }) => ({
-                id: band.id,
-                text: `${
-                    band.kind === 'spectator' ? s.dict.spectators : band.label
-                } x ${count} x ${money(band.price)}`,
-                amount: count * band.price,
-            }));
+            .map(({ band, count }) => {
+                const lead =
+                    band.kind === 'spectator'
+                        ? `${count} ${s.dict.spectators}`
+                        : bandCountLabel(band, count);
+                return {
+                    id: band.id,
+                    text:
+                        band.price > 0
+                            ? `${lead} × ${money(band.price)}`
+                            : lead,
+                    amount: count * band.price,
+                };
+            });
         total = priceRows.reduce((sum, r) => sum + r.amount, 0);
     }
 
-    // ── Optional extras (master E.3): PER_PERSON multiplies by the party
-    // headcount, FLAT charges its quantity once. Mirrors the backend add-on
-    // math exactly, so the optimistic estimate matches the quote that replaces
-    // it below. Rows fold into the same breakdown as the participant lines.
-    // Tracked separately from the tour total: extras are excluded from the
-    // deposit-% base and charged 100% up front (founder 2026-07-25).
+    // ── Optional extras (master E.3): charged by the quantity picked, whatever
+    // the unit. Mirrors the backend add-on math exactly, so the optimistic
+    // estimate matches the quote that replaces it below. Rows fold into the same
+    // breakdown as the participant lines. Tracked separately from the tour
+    // total: extras are excluded from the deposit-% base and charged 100% up
+    // front (founder 2026-07-25).
+    //
+    // This used to multiply a PER_PERSON extra by the party on top of the
+    // quantity the traveller picked, so two adults adding one open bar were
+    // charged $44 for a $22 extra (Pastel #58). The stepper counts UNITS and the
+    // unit is whatever the price line says: "$22 per person" means one step is
+    // one person. Two open bars for two adults is the traveller's choice to
+    // make, not ours to assume - which is what `addOnMax` is for.
     const tourTotal = total;
     let extrasTotal = 0;
     for (const addOn of s.data.addOns) {
         const qty = s.addOnQty[addOn.id] ?? 0;
         if (qty <= 0) continue;
-        const units = addOn.unit === 'PER_PERSON' ? qty * travelerCount : qty;
-        const amount = Math.round(units * addOn.price * 100) / 100;
+        const amount = Math.round(qty * addOn.price * 100) / 100;
         priceRows.push({
             id: `addon-${addOn.id}`,
-            text: `${addOn.name} x ${units} x ${money(addOn.price)}`,
+            text: `${addOn.name} × ${qty}`,
             amount,
         });
         extrasTotal += amount;
@@ -448,12 +556,35 @@ export function deriveBooking(s: BookingStore) {
         total = Number(q.totalRetail);
         payToday = Number(q.depositAmount);
         balanceLater = Number(q.balanceAmount);
-        // Rebuild the breakdown from the quote lines so it reconciles to the total.
-        priceRows = q.lines.map((l, i) => ({
-            id: `${l.kind}-${l.ageBandId ?? i}`,
-            text: `${l.label} x ${l.quantity} x ${money(Number(l.unitPrice))}`,
-            amount: Number(l.lineTotal),
-        }));
+        // Rebuild the breakdown from the quote lines so it reconciles to the
+        // total - in the SAME voice as the client rows above. It used to render
+        // "Adult x 2 x $139" here while the optimistic estimate rendered "2
+        // adults × $139", so the wording the client signed off on lasted only
+        // until the server quote landed and silently replaced it.
+        priceRows = q.lines.map((l, i) => {
+            const band =
+                l.kind === 'participant' && l.ageBandId
+                    ? s.data.bands.find(b => b.id === l.ageBandId)
+                    : undefined;
+            const unitPrice = Number(l.unitPrice);
+            const lead = band
+                ? band.kind === 'spectator'
+                    ? `${l.quantity} ${s.dict.spectators}`
+                    : bandCountLabel(band, l.quantity)
+                : l.kind === 'participant'
+                  ? `${l.quantity} ${l.label}`
+                  : `${l.label} × ${l.quantity}`;
+            return {
+                id: `${l.kind}-${l.ageBandId ?? i}`,
+                // A free band, and every extra (its unit price is already in the
+                // name), drop the "× price" tail.
+                text:
+                    l.kind === 'participant' && unitPrice > 0
+                        ? `${lead} × ${money(unitPrice)}`
+                        : lead,
+                amount: Number(l.lineTotal),
+            };
+        });
     }
 
     // Money rows: hide zero-amount rows (master §6.1).
@@ -497,19 +628,26 @@ export function deriveBooking(s: BookingStore) {
           })()
         : null;
 
+    // "$150 per person", not "$150/per person" (Pastel #58).
     const bandPriceLabel = (band: BookingBand): string =>
         band.price > 0
-            ? `${money(band.price)}${s.dict.perPersonShort}`
+            ? `${money(band.price)} ${s.dict.perPerson}`
             : s.dict.free;
 
     const partyMin = (band: BookingBand) => partyMinOf(s, band);
 
-    // While editing: Pattern A gets an inline header stepper, Pattern B gets a
-    // chevron that expands its age-band steppers. Once the availability check
-    // passes the header control disappears and the price summary takes over.
-    const headerHasChevron = s.isPatternB && editingParty;
-    const showInlineStepper = !s.isPatternB && editingParty;
-    const showPartyBody = s.isPatternB && s.partyOpen && editingParty;
+    // Travellers on a priced band - the ceiling for a per-person extra.
+    const payingCount = payingCountOf(s);
+    const addOnMax = (addOn: { unit: string; maxQuantity: number }) =>
+        addOnMaxOf(addOn, payingCount);
+
+    // Pattern A gets an inline header stepper, Pattern B gets a chevron that
+    // expands its age-band steppers from its own header - the same way the
+    // extras block opens and closes. Neither has an Apply: the price moves on
+    // every plus and minus (Pastel #58).
+    const headerHasChevron = s.isPatternB;
+    const showInlineStepper = !s.isPatternB;
+    const showPartyBody = s.isPatternB && s.partyOpen;
 
     return {
         travelerCount,
@@ -532,6 +670,9 @@ export function deriveBooking(s: BookingStore) {
         money,
         fillPolicy,
         bandPriceLabel,
+        bandLabel,
+        payingCount,
+        addOnMax,
         partyMin,
         headerHasChevron,
         showInlineStepper,
@@ -577,6 +718,20 @@ export function parseLocalDateParam(
     return date >= today ? date : null;
 }
 
+/**
+ * The one bookable time, when a tour offers exactly one - otherwise null.
+ *
+ * A tour with a single departure shows no chip row at all (Pastel #58: "the
+ * picker only belongs on tours with more than one"), so nothing on screen can
+ * make that choice and the widget has to make it. Without this the CTA sat on
+ * "Check availability" forever - a question the widget had already answered -
+ * because a departure was chosen everywhere except in the state.
+ */
+export function loneSlotTime(slots: BookingSlot[]): string | null {
+    const open = slots.filter(sl => sl.status !== 'sold_out');
+    return open.length === 1 ? open[0].time : null;
+}
+
 export function createBookingStore(init: BookingInit) {
     const data = init.data ?? DUMMY_BOOKING_DATA;
     const locale = init.locale ?? 'en';
@@ -619,14 +774,16 @@ export function createBookingStore(init: BookingInit) {
         addOnQty: {},
         // Pre-chosen day from the URL, if any (see BookingInit.initialDate).
         selectedDate: parseLocalDateParam(init.initialDate),
-        selectedTime: null,
+        // The design/demo card has no backend to fetch departures from, so its
+        // lone-slot auto-selection has to happen here; the live card does it in
+        // `setDaySlots`, once the date's real departures land.
+        selectedTime: init.tourId == null ? loneSlotTime(data.slots) : null,
         calendarOpen: false,
         partyOpen: false,
         detailsOpen: false,
         spectatorsOn: false,
         travelerTouched: false,
         spectatorsApplied: false,
-        availabilityChecked: false,
         policyModal: null,
         calendarDays: null,
         calendarLoading: false,
@@ -662,20 +819,45 @@ export function createBookingStore(init: BookingInit) {
             if (clamped > current && others + clamped > effectiveMaxOf(s)) {
                 return;
             }
-            set(prev => ({
-                // Changing the party reveals the spectators field and forces a
-                // re-check.
-                travelerTouched:
-                    band.kind === 'participant' ? true : prev.travelerTouched,
-                availabilityChecked: false,
-                counts: { ...prev.counts, [band.id]: clamped },
-            }));
+            set(prev => {
+                const counts = { ...prev.counts, [band.id]: clamped };
+                // Shrinking the party can drop a per-person extra below its own
+                // ceiling, so re-clamp the extras against the new party rather
+                // than leaving four open bars sold to two people.
+                const next: Partial<BookingState> = {
+                    // Changing the party reveals the spectators field.
+                    travelerTouched:
+                        band.kind === 'participant'
+                            ? true
+                            : prev.travelerTouched,
+                    counts,
+                };
+                const paying = payingCountOf({ ...s, counts });
+                let addOnQty: Record<string, number> | null = null;
+                for (const addOn of s.data.addOns) {
+                    const qty = prev.addOnQty[addOn.id] ?? 0;
+                    const cap = addOnMaxOf(addOn, paying);
+                    if (qty > cap) {
+                        addOnQty ??= { ...prev.addOnQty };
+                        addOnQty[addOn.id] = cap;
+                    }
+                }
+                if (addOnQty) next.addOnQty = addOnQty;
+                return next;
+            });
         },
 
         setAddOnQty: (addOnId, next) => {
-            const addOn = get().data.addOns.find(a => a.id === addOnId);
+            const s = get();
+            const addOn = s.data.addOns.find(a => a.id === addOnId);
             if (!addOn) return;
-            const clamped = Math.max(0, Math.min(next, addOn.maxQuantity));
+            // The same ceiling the backend enforces: per-person stops at the
+            // paying travellers, per-booking stops at one, and the operator's
+            // maxQuantity can only lower either.
+            const clamped = Math.max(
+                0,
+                Math.min(next, addOnMaxOf(addOn, payingCountOf(s)))
+            );
             set(prev => ({
                 addOnQty: { ...prev.addOnQty, [addOnId]: clamped },
             }));
@@ -768,8 +950,11 @@ export function createBookingStore(init: BookingInit) {
         pickDate: date =>
             set(s => ({
                 selectedDate: date,
-                selectedTime: null,
-                availabilityChecked: false,
+                // Live: cleared until this date's departures land, where
+                // `setDaySlots` re-picks a lone one. Demo: the static slots do
+                // not change with the date, so keep the auto-picked one.
+                selectedTime:
+                    s.tourId != null ? null : loneSlotTime(s.data.slots),
                 calendarOpen: false,
                 ctaError: null,
                 // Drop the previous date's slots and show loading (live only) until
@@ -781,13 +966,11 @@ export function createBookingStore(init: BookingInit) {
         selectTime: time =>
             set({
                 selectedTime: time,
-                availabilityChecked: false,
                 ctaError: null,
             }),
 
         handleCtaClick: () => {
             const s = get();
-            if (s.availabilityChecked) return; // Continue -> checkout (booking module).
             // An incomplete selection must never swallow the click (silent
             // no-op = "the button is broken"): say WHAT is missing above the
             // CTA and highlight that field, on top of the existing affordance
@@ -816,10 +999,11 @@ export function createBookingStore(init: BookingInit) {
                 if (s.isPatternB) set({ partyOpen: true });
                 return;
             }
+            // Complete: nothing left for the card to do. The CTA hook takes it
+            // to checkout; this only tidies the open panels behind it.
             set({
                 partyOpen: false,
                 calendarOpen: false,
-                availabilityChecked: true,
                 ctaError: null,
             });
         },
@@ -831,7 +1015,14 @@ export function createBookingStore(init: BookingInit) {
                 calendarError: failed,
             }),
         setCalendarLoading: loading => set({ calendarLoading: loading }),
-        setDaySlots: slots => set({ daySlots: slots, slotsLoading: false }),
+        // A date with exactly one bookable departure picks it: no chip row is
+        // rendered for it, so nothing on screen could (Pastel #58).
+        setDaySlots: slots =>
+            set(prev => ({
+                daySlots: slots,
+                slotsLoading: false,
+                selectedTime: prev.selectedTime ?? loneSlotTime(slots),
+            })),
         setSlotsLoading: loading => set({ slotsLoading: loading }),
         setQuote: quote =>
             set({ quote, quoteLoading: false, quoteError: false }),

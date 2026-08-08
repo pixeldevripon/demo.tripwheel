@@ -10,15 +10,24 @@ import { Stepper } from './stepper';
 
 /**
  * Optional extras (master E.3 `add_ons[]`: "Optional extras at the booking
- * step"), gated behind an explicit "Show extras" toggle - the traveller opts
- * INTO seeing them (founder decision 2026-07-25), and nothing is ever
- * pre-selected (master ethical CRO: "no pre-checked add-ons"): every quantity
- * starts at 0. PER_PERSON prices multiply by the party headcount in the totals
- * (mirroring the backend math); FLAT prices charge once per quantity. Renders
- * nothing when the tour has no add-ons - the common case.
+ * step").
+ *
+ * In the card from the first render and CLOSED - the same treatment the brief
+ * gives the spectators field (§3.6: in step 1, never expanded by default, never
+ * framed as an upsell). It also means only one block appears later instead of
+ * two, so the button moves less. The header names the section outright rather
+ * than asking permission to show it: a row reading "Show extras" is a question
+ * the chevron already asks.
+ *
+ * Nothing is ever pre-selected (master ethical CRO: "no pre-checked add-ons"):
+ * every quantity starts at 0. The stepper counts UNITS, and the unit is
+ * whatever the price line says - one step on a "per person" extra is one
+ * person, capped at the paying travellers; a "per booking" extra caps at one,
+ * because it cannot be bought twice (Pastel #58). Renders nothing when the tour
+ * has no add-ons - the common case.
  */
 export function BookingAddOns() {
-    const { dict, data, addOnQty, setAddOnQty, money } = useBooking();
+    const { dict, data, addOnQty, setAddOnQty, addOnMax, money } = useBooking();
     const [open, setOpen] = useState(false);
 
     if (data.addOns.length === 0) return null;
@@ -35,7 +44,7 @@ export function BookingAddOns() {
                 transition={springPop}
                 className='flex w-full cursor-pointer items-center justify-between gap-2.5 border-none bg-transparent px-4 py-4 text-left'>
                 <span className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                    {open ? dict.addOnsTitle : dict.showExtras}
+                    {dict.addOnsTitle}
                 </span>
                 <Image
                     src='/icons/booking-chevron-down.svg'
@@ -53,10 +62,11 @@ export function BookingAddOns() {
                     <div className='h-px w-full bg-it-heading/10' />
                     {data.addOns.map(addOn => {
                         const qty = addOnQty[addOn.id] ?? 0;
+                        // "$22 per person", not "$22/per person".
                         const priceSuffix =
                             addOn.unit === 'PER_PERSON'
-                                ? dict.perPersonShort
-                                : dict.perBookingShort;
+                                ? dict.perPerson
+                                : dict.perBooking;
                         return (
                             <div
                                 key={addOn.id}
@@ -71,14 +81,13 @@ export function BookingAddOns() {
                                         </span>
                                     )}
                                     <span className='text-[14px] leading-[1.5] tracking-[-0.012em] text-it-ink-muted'>
-                                        {money(addOn.price)}
-                                        {priceSuffix}
+                                        {`${money(addOn.price)} ${priceSuffix}`}
                                     </span>
                                 </div>
                                 <Stepper
                                     value={qty}
                                     min={0}
-                                    max={addOn.maxQuantity}
+                                    max={addOnMax(addOn)}
                                     decLabel={`− ${addOn.name}`}
                                     incLabel={`+ ${addOn.name}`}
                                     onChange={n => setAddOnQty(addOn.id, n)}

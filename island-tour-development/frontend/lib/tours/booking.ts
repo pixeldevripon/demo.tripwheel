@@ -41,14 +41,15 @@ export type TourBookingDict = {
     from: string;
     perPerson: string;
     continue: string;
-    selected: string;
     soldOut: string;
-    /** Default per-slot status line ("Available") when not selected/scarce/sold out. */
-    available: string;
-    /** Calendar hover hint for a day with no departures (no schedule that weekday). */
+    /** Calendar label for a day the tour does not run at all - NOT struck through. */
     calendarNoDepartures: string;
-    /** Calendar hover hint for a day whose departures are all closed (e.g. an exception). */
+    /** Calendar label for a day past its booking cutoff (or closed by the operator). */
     calendarClosed: string;
+    /** The line under the calendar explaining what a struck-out date means. */
+    calendarLegend: string;
+    /** Accessible name for the ring on today's date. */
+    calendarToday: string;
     /** Shown when the chosen day has no bookable departure at all. */
     noDeparturesOnDateTitle: string;
     noDeparturesOnDateHint: string;
@@ -61,7 +62,12 @@ export type TourBookingDict = {
     deadEndNext: string;
     /** Shown when the destination has nothing bookable this week either. */
     deadEndNoAlternatives: string;
-    /** "Only {count} left" */
+    /**
+     * "Only {count} left". PARKED for v1 (founder, 2026-08-07): both scarcity
+     * signals - the chip sub-line and the date subscript - wait for live
+     * per-departure capacity, because an unhonest one is worse than none. The
+     * string stays so the wording does not have to be reinvented.
+     */
     onlyLeft: string;
     /** "1 traveler" / "{count} travelers" - ICU plural categories, resolved via `formatPlural`. */
     travelers: PluralForms;
@@ -83,6 +89,20 @@ export type TourBookingDict = {
     unitExtraGuests: string;
     /** PRIVATE unit badge, e.g. "Private charter - you get the whole {unit}". */
     privateCharter: string;
+    /** Heading above the departure-time chips - shown only on a multi-departure tour. */
+    departureTime: string;
+    /**
+     * Age-band nouns, keyed by `bandType`. `plural` is the ICU-category form used
+     * in the price breakdown ("2 adults"); the panel row keeps the operator's own
+     * noun and only borrows the age qualifier below.
+     */
+    bands: Record<string, { plural: PluralForms }>;
+    /** "Age {min}+" - the qualifier on a band with no upper bound. */
+    ageFrom: string;
+    /** "Age {min}-{max}" - the qualifier on a bounded band. */
+    ageRange: string;
+    /** "Age up to {max}" - the qualifier on a band with no lower bound. */
+    ageUpTo: string;
     total: string;
     payToday: string;
     balanceLater: string;
@@ -90,6 +110,8 @@ export type TourBookingDict = {
     balanceOnArrival: string;
     taxesIncluded: string;
     showDetails: string;
+    /** The same toggle once the breakdown is open - a word, never a bare arrow. */
+    hideDetails: string;
     /** Trust line with a `{link}` marker for the clickable part, e.g. "{link} up to {hours}h". */
     freeCancellation: string;
     /** Clickable/underlined phrase inside `freeCancellation` (opens the modal). */
@@ -116,8 +138,6 @@ export type TourBookingDict = {
     /** Shown in place of the CTA when the tour's payment model is not bookable in v1. */
     bookingUnavailable: string;
     apply: string;
-    /** "/per person" */
-    perPersonShort: string;
     /** Price label for a free age band (infants). */
     free: string;
     bringingSpectators: string;
@@ -131,12 +151,10 @@ export type TourBookingDict = {
     /** "Up to {count} travellers per booking" (party at the tour's per-booking max,
      *  not scarcity - keeps capacity messaging honest per master ethical CRO). */
     maxPerBooking: string;
-    /** Add-ons consent toggle ("Show extras") - collapsed by default. */
-    showExtras: string;
     /** Add-ons section heading ("Optional extras") - widget S4 (master E.3). */
     addOnsTitle: string;
-    /** Price suffix for a FLAT add-on ("/per booking"); PER_PERSON reuses perPersonShort. */
-    perBookingShort: string;
+    /** Price suffix for a FLAT add-on ("per booking"); PER_PERSON reuses `perPerson`. */
+    perBooking: string;
     /** Aria-label for the policy-modal close button. */
     policyClose: string;
     /**
@@ -177,12 +195,39 @@ export interface BookingBand {
     id: string;
     /** PARTICIPANT rows join the activity; SPECTATOR rows come along but don't. */
     kind: 'participant' | 'spectator';
-    /** Localized label, e.g. "Adult (age 13+)". */
+    /** The operator's own label, e.g. "Adult (13+)". Free text, and English on
+     *  every locale - the widget renders `bandLabel()` instead, which keeps the
+     *  operator's NOUN and localizes the age qualifier around it. */
     label: string;
+    /** ADULT / CHILD / INFANT / YOUTH / SENIOR - drives the fixed row order and
+     *  the localized plural in the price breakdown ("2 adults"). */
+    bandType: string;
+    /** Inclusive age bounds; either may be null (no bound on that side). */
+    minAge: number | null;
+    maxAge: number | null;
     /** Per-person price in the tour's default currency (0 = free, e.g. infants). */
     price: number;
     /** The band pre-selected with a starting count (the tour's default age band). */
     isDefault: boolean;
+}
+
+/**
+ * The order the party rows are shown in - adults, then children, then infants -
+ * both in the panel and in the price breakdown (Pastel #58).
+ *
+ * Fixed, NOT the operator's `displayOrder`: that is assigned in the order the
+ * bands happened to be created, so adding an infant band to a live tour dropped
+ * its row between Adult and Child. A traveller reads the party by age, and the
+ * age order does not depend on when the operator typed it in.
+ *
+ * Anything unrecognised sorts last rather than first: an unknown type is a band
+ * we cannot place, and guessing the top of the list is the louder mistake.
+ */
+const BAND_TYPE_ORDER = ['ADULT', 'SENIOR', 'YOUTH', 'CHILD', 'INFANT'];
+
+export function bandTypeRank(bandType: string): number {
+    const i = BAND_TYPE_ORDER.indexOf(bandType);
+    return i === -1 ? BAND_TYPE_ORDER.length : i;
 }
 
 /** An optional extra purchasable in the widget (master E.3 add_ons, never pre-checked). */
@@ -320,35 +365,50 @@ export const DUMMY_BOOKING_DATA: TourBookingData = {
         {
             id: 'adult',
             kind: 'participant',
-            label: 'Adult (age 13+)',
+            label: 'Adult',
+            bandType: 'ADULT',
+            minAge: 13,
+            maxAge: null,
             price: 120,
             isDefault: true,
         },
         {
             id: 'child',
             kind: 'participant',
-            label: 'Child (age 4-12)',
+            label: 'Child',
+            bandType: 'CHILD',
+            minAge: 4,
+            maxAge: 12,
             price: 65,
             isDefault: false,
         },
         {
             id: 'infant',
             kind: 'participant',
-            label: 'Infant (age 0-3)',
+            label: 'Infant',
+            bandType: 'INFANT',
+            minAge: 0,
+            maxAge: 3,
             price: 0,
             isDefault: false,
         },
         {
             id: 'spec-adult',
             kind: 'spectator',
-            label: 'Adult (age 13+)',
+            label: 'Adult',
+            bandType: 'ADULT',
+            minAge: 13,
+            maxAge: null,
             price: 20,
             isDefault: false,
         },
         {
             id: 'spec-kid',
             kind: 'spectator',
-            label: 'Kid (age 4-12)',
+            label: 'Kid',
+            bandType: 'CHILD',
+            minAge: 4,
+            maxAge: 12,
             price: 10,
             isDefault: false,
         },
@@ -414,6 +474,9 @@ function mapBand(
         id: band.id,
         kind: band.participation === 'SPECTATOR' ? 'spectator' : 'participant',
         label: band.label,
+        bandType: band.bandType,
+        minAge: band.minAge,
+        maxAge: band.maxAge,
         price: priceOf(band),
         isDefault: band.isDefault,
     };
@@ -500,7 +563,17 @@ export function buildTourBookingData(
     const ordered = [...detail.ageBands].sort(
         (a, b) => a.displayOrder - b.displayOrder
     );
-    const participants = ordered.filter(b => b.participation !== 'SPECTATOR');
+    // Participants come out in the fixed age order (see BAND_TYPE_ORDER), with
+    // the operator's `displayOrder` only breaking a tie between two bands of the
+    // same type. Spectators keep the operator's order - they are a short list
+    // with no age story to tell.
+    const participants = ordered
+        .filter(b => b.participation !== 'SPECTATOR')
+        .sort(
+            (a, b) =>
+                bandTypeRank(a.bandType) - bandTypeRank(b.bandType) ||
+                a.displayOrder - b.displayOrder
+        );
     const spectators = ordered.filter(b => b.participation === 'SPECTATOR');
 
     let bands: BookingBand[];
@@ -512,6 +585,9 @@ export function buildTourBookingData(
                 id: 'unit-guests',
                 kind: 'participant',
                 label: 'Guests',
+                bandType: 'ADULT',
+                minAge: null,
+                maxAge: null,
                 price: 0,
                 isDefault: true,
             },
@@ -523,6 +599,9 @@ export function buildTourBookingData(
                 id: 'default-adult',
                 kind: 'participant',
                 label: 'Adult',
+                bandType: 'ADULT',
+                minAge: null,
+                maxAge: null,
                 price: priceFrom,
                 isDefault: true,
             },

@@ -2,6 +2,11 @@
 
 import { useBooking } from '@/hooks/tours/use-booking';
 import { toDateParam } from '@/lib/checkout/checkout';
+import {
+    calendarDayLabel,
+    calendarDayReason,
+    isStruckThrough,
+} from '@/lib/tours/calendar-day-state';
 import { crossFade, springPop } from '@/lib/motion';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
@@ -199,7 +204,12 @@ export function BookingCalendar() {
                                     width: coords.width,
                                 }}
                                 className='fixed z-[90] rounded-[16px] bg-it-white p-4 shadow-it-lg'>
-                                {/* Month nav: ← current | year | next → */}
+                                {/* Month nav: "← August 2026" on the left, "September →"
+                                    on the right. The year used to float between the
+                                    two month names, so the header read "August 2026
+                                    September" and belonged to neither of them
+                                    (Pastel #58). It goes next to the month it
+                                    qualifies. */}
                                 <div className='flex items-center justify-between gap-2 pb-4'>
                                     <motion.button
                                         type='button'
@@ -214,15 +224,12 @@ export function BookingCalendar() {
                                             height={20}
                                             className='size-5 shrink-0 rotate-180'
                                         />
-                                        {monthName(
+                                        {`${monthName(
                                             view.month,
                                             view.year,
                                             locale
-                                        )}
+                                        )} ${view.year}`}
                                     </motion.button>
-                                    <span className='font-normal text-[20px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
-                                        {view.year}
-                                    </span>
                                     <motion.button
                                         type='button'
                                         onClick={() => shiftMonth(1)}
@@ -268,6 +275,7 @@ export function BookingCalendar() {
                                     ))}
                                     {/* Day cells */}
                                     {calendarCells.map(({ date, inMonth }) => {
+                                        const dateKey = toDateParam(date);
                                         const key = date.toISOString();
                                         const isPast =
                                             date.getTime() < today.getTime();
@@ -277,7 +285,7 @@ export function BookingCalendar() {
                                         // out / closed). Demo mode: every future day is
                                         // open.
                                         const dayState = isLive
-                                            ? calendarDays?.[toDateParam(date)]
+                                            ? calendarDays?.[dateKey]
                                             : undefined;
                                         const dayOpen =
                                             !isLive ||
@@ -290,22 +298,34 @@ export function BookingCalendar() {
                                                 startOfDay(
                                                     selectedDate
                                                 ).getTime();
-                                        // Hover hint: why a future in-month day can't be
-                                        // picked (live only). Absent day = no schedule,
-                                        // sold-out / closed = an exception or full slots.
-                                        let hint: string | null = null;
-                                        if (
-                                            isLive &&
+                                        // Why a future in-month day can't be picked
+                                        // (live only), as three distinct states rather
+                                        // than one grey "Closed" for all of them.
+                                        const showState =
+                                            isLive && inMonth && !isPast && !dayOpen;
+                                        const reason = showState
+                                            ? calendarDayReason(dayState)
+                                            : 'open';
+                                        const hint = showState
+                                            ? calendarDayLabel(reason, dict)
+                                            : null;
+                                        // The line means "there WAS a departure and it
+                                        // can no longer be had" - so it covers sold out
+                                        // and past-cutoff, and not a day the tour never
+                                        // runs. On a phone, where hover does not exist,
+                                        // this is the whole signal.
+                                        const struck = isStruckThrough(reason);
+                                        // Today gets a ring; the first bookable date
+                                        // gets an orange outline while nothing is
+                                        // chosen, so the calendar opens pointing at the
+                                        // soonest answer instead of at nothing.
+                                        const isToday =
                                             inMonth &&
-                                            !isPast &&
-                                            !dayOpen
-                                        ) {
-                                            hint = !dayState
-                                                ? dict.calendarNoDepartures
-                                                : dayState.status === 'SOLD_OUT'
-                                                  ? dict.soldOut
-                                                  : dict.calendarClosed;
-                                        }
+                                            date.getTime() === today.getTime();
+                                        const isFirstOpen =
+                                            !isSelected &&
+                                            selectedDate == null &&
+                                            firstAvailable === dateKey;
                                         return (
                                             <div
                                                 key={key}
@@ -328,6 +348,17 @@ export function BookingCalendar() {
                                                     type='button'
                                                     disabled={disabled}
                                                     title={hint ?? undefined}
+                                                    // The label is the whole
+                                                    // answer for a screen
+                                                    // reader, which cannot see
+                                                    // the line either.
+                                                    aria-label={
+                                                        hint
+                                                            ? `${date.getDate()}, ${hint}`
+                                                            : isToday
+                                                              ? `${date.getDate()}, ${dict.calendarToday}`
+                                                              : undefined
+                                                    }
                                                     onClick={() =>
                                                         pickDate(date)
                                                     }
@@ -337,13 +368,29 @@ export function BookingCalendar() {
                                                             : { scale: 0.9 }
                                                     }
                                                     transition={springPop}
-                                                    className={`grid size-9 place-items-center rounded-it-full text-[16px] leading-[1.6] tracking-[-0.012em] transition-colors duration-300 ${
+                                                    className={[
+                                                        'grid size-9 place-items-center rounded-it-full border text-[16px] leading-[1.6] tracking-[-0.012em] transition-colors duration-300',
+                                                        struck && 'line-through',
+                                                        // The ring on today
+                                                        // survives the day being
+                                                        // unbookable - it says
+                                                        // WHERE you are, not
+                                                        // whether you can book.
+                                                        isSelected || isFirstOpen
+                                                            ? 'border-it-primary'
+                                                            : isToday
+                                                              ? 'border-it-ink-muted'
+                                                              : 'border-transparent',
                                                         isSelected
                                                             ? 'bg-it-primary font-normal text-it-white'
                                                             : disabled
                                                               ? 'cursor-not-allowed text-it-ink-muted/50'
-                                                              : 'cursor-pointer text-it-heading hover:bg-it-surface'
-                                                    }`}>
+                                                              : isFirstOpen
+                                                                ? 'cursor-pointer bg-it-surface font-bold text-it-primary-hover'
+                                                                : 'cursor-pointer text-it-heading hover:bg-it-surface',
+                                                    ]
+                                                        .filter(Boolean)
+                                                        .join(' ')}>
                                                     {date.getDate()}
                                                 </motion.button>
                                                 <AnimatePresence>
@@ -380,6 +427,15 @@ export function BookingCalendar() {
                                         );
                                     })}
                                 </div>
+
+                                {/* What the line through a date means. It is the
+                                    only explanation a phone gets - there is no
+                                    hover there - so it is not optional chrome. */}
+                                {isLive && (
+                                    <p className='m-0 pt-3 text-[11.5px] leading-[1.5] text-it-ink-muted'>
+                                        {dict.calendarLegend}
+                                    </p>
+                                )}
                             </motion.div>
                         )}
                     </AnimatePresence>,
