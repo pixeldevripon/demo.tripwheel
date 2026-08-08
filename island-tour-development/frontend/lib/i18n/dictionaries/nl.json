@@ -53,6 +53,8 @@
         "placeholder": "Zoek tours, activiteiten, plaatsen",
         "resultsFor": "{count} resultaten voor “{query}”",
         "resultFor": "{count} resultaat voor “{query}”",
+        "resultsForIn": "{count} resultaten voor “{query}” op {destination}",
+        "resultForIn": "{count} resultaat voor “{query}” op {destination}",
         "noResults": "Geen resultaten voor “{query}”",
         "noResultsHint": "Controleer de spelling of probeer een algemenere term.",
         "promptTitle": "Zoek Island Tours",

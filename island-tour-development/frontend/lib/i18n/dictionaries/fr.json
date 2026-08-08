@@ -53,6 +53,8 @@
         "placeholder": "Rechercher des excursions, activités, lieux",
         "resultsFor": "{count} résultats pour “{query}”",
         "resultFor": "{count} résultat pour “{query}”",
+        "resultsForIn": "{count} résultats pour « {query} » à {destination}",
+        "resultForIn": "{count} résultat pour « {query} » à {destination}",
         "noResults": "Aucun résultat pour “{query}”",
         "noResultsHint": "Vérifiez l'orthographe ou essayez un terme plus général.",
         "promptTitle": "Rechercher sur Island Tours",

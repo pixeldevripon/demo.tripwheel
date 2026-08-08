@@ -11,7 +11,7 @@ import type { Currency, Locale } from '@/lib/constants/locales';
 import { DEFAULT_LOCALE } from '@/lib/constants/locales';
 import type { SearchBackendSort } from '@/lib/tours/filters';
 import type { SearchResults } from '@/types/search';
-import { buildQuery, publicGet } from './fetch';
+import { buildQuery, publicGetStrict } from './fetch';
 
 export type { SearchHit, SearchResults } from '@/types/search';
 
@@ -68,7 +68,22 @@ export async function searchTours(params: {
   if (q.length < 2) return EMPTY(q);
 
   const { locale = DEFAULT_LOCALE, ...rest } = params;
-  const data = await publicGet<SearchResults>(
+  // `publicGetStrict`, NOT `publicGet`. This runs inside the `'use cache'`
+  // scope above, so swallowing a failure to `null` did not just show the wrong
+  // thing once - it CACHED it. A backend that was briefly unreachable turned
+  // every search into "No results for {query}" and kept saying so for the whole
+  // `cacheLife('minutes')` window, long after the API came back. The traveller
+  // is told their search found nothing when in fact it was never run.
+  //
+  // This is the exact failure `publicGetStrict` was written for; its own
+  // docblock records the same bug on the destination pages ("a backend outage
+  // during revalidation replaced every destination page with a cached 404").
+  // Throwing aborts the render instead, so nothing is cached and the error
+  // boundary shows a real error rather than a false empty state.
+  //
+  // A GENUINELY empty search is unaffected: `/search` answers 200 with
+  // `total: 0`, never 404, so it parses and returns normally.
+  const data = await publicGetStrict<SearchResults>(
     `/search${buildQuery({ ...rest, q, locale })}`,
   );
   return data ?? EMPTY(q);
