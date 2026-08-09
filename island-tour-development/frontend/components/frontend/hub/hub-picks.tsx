@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { Reveal } from '../reveal';
 import {
     HubPickCard,
@@ -9,18 +8,16 @@ import {
 export type HubPicksData = {
     title: string;
     subtitle: string;
-    /** Footer note before the link, e.g. "Our honest picks not paid placements." */
+    /** Footer note, e.g. "Our honest picks, not paid placements." */
     footerNote: string;
-    seeAllLabel: string;
-    seeAllHref: string;
     items: HubPick[];
     card: HubPickCardDict;
 };
 
 /**
  * "We've been on every boat" editorial top-picks block (Figma node 48024:11563 /
- * 48539:15821) - heading + a stack of split <HubPickCard>s + a footer note with
- * a "See All Tours" link. Rendered inside the Private charters panel.
+ * 48539:15821) - heading + a stack of split <HubPickCard>s + a footer note.
+ * Rendered inside the Private charters panel.
  */
 export function HubPicks({ data }: { data: HubPicksData }) {
     return (
@@ -47,12 +44,7 @@ export function HubPicks({ data }: { data: HubPicksData }) {
             </div>
 
             <p className='m-0 text-left text-[14px] md:text-center md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
-                {data.footerNote}{' '}
-                <Link
-                    href={data.seeAllHref}
-                    className='font-normal text-it-primary underline decoration-1 underline-offset-4 transition-colors hover:text-it-heading'>
-                    {data.seeAllLabel}
-                </Link>
+                {data.footerNote}
             </p>
         </Reveal>
     );
