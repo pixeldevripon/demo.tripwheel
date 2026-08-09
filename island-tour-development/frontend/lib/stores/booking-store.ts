@@ -16,7 +16,7 @@
 import type { BookingQuote } from '@/lib/api/bookings';
 import { depositToday, formatCheckoutMoney } from '@/lib/checkout/checkout';
 import type { Currency, Locale } from '@/lib/constants/locales';
-import { formatPlural } from '@/lib/i18n/plural';
+import { bandCountLabel as sharedBandCountLabel } from '@/lib/tours/band-label';
 import {
     DUMMY_BOOKING_DATA,
     type BookingBand,
@@ -423,16 +423,12 @@ export function deriveBooking(s: BookingStore) {
     };
 
     /**
-     * The breakdown label for a chosen band: "2 adults", "1 infant". Localized
-     * from the band TYPE, not the operator's free text, because this one is a
-     * sentence fragment and has to decline with the count. An unrecognised type
-     * falls back to the operator's noun with the count in front of it.
+     * The breakdown label for a chosen band: "2 adults", "1 infant". Shared
+     * with the checkout summary, which shows the same booking one navigation
+     * later - see `lib/tours/band-label.ts`.
      */
-    const bandCountLabel = (band: BookingBand, count: number): string => {
-        const forms = s.dict.bands?.[band.bandType]?.plural;
-        if (!forms) return `${count} ${band.label.split(' (')[0].trim()}`;
-        return formatPlural(forms, count, s.locale);
-    };
+    const bandCountLabel = (band: BookingBand, count: number): string =>
+        sharedBandCountLabel(band, count, s.dict.bands, s.locale);
 
     // Price breakdown rows + grand total, per pricing model.
     const isUnit = s.data.pricingModel === 'UNIT';

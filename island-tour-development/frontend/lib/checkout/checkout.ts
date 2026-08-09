@@ -16,6 +16,10 @@
 import type { ReserveItem } from '@/lib/api/bookings';
 import type { Currency, Locale } from '@/lib/constants/locales';
 import { formatPriceFrom } from '@/lib/currency/current';
+import {
+    bandCountLabel,
+    type BandPluralDict,
+} from '@/lib/tours/band-label';
 import type { BookingBand, TourBookingData } from '@/lib/tours/booking';
 
 /**
@@ -343,10 +347,20 @@ export function shortBandLabel(band: BookingBand): string {
     return band.label.split(' (')[0];
 }
 
-/** Aggregated party line for the summary, e.g. "2 Adult, 1 Child". */
-export function buildPartyLabel(lineItems: CheckoutLineItem[]): string {
+/**
+ * Aggregated party line for the summary, e.g. "2 adults, 1 child".
+ *
+ * Same wording as the booking card's breakdown, from the same helper: the
+ * summary shows the booking the card just described, and "2 Adult, 1 Child"
+ * next to the card's "2 adults × $150" is one booking spelled two ways.
+ */
+export function buildPartyLabel(
+    lineItems: CheckoutLineItem[],
+    bands: BandPluralDict,
+    locale: Locale
+): string {
     return lineItems
-        .map(row => `${row.count} ${shortBandLabel(row.band)}`)
+        .map(row => bandCountLabel(row.band, row.count, bands, locale))
         .join(', ');
 }
 

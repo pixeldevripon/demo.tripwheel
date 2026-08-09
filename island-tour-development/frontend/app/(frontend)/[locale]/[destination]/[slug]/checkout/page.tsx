@@ -12,8 +12,11 @@ import {
     formatCheckoutMoney,
     fromDateParam,
     parseCheckoutSelection,
-    shortBandLabel,
 } from '@/lib/checkout/checkout';
+import {
+    bandCountLabel,
+    type BandPluralDict,
+} from '@/lib/tours/band-label';
 import { getServerCurrency } from '@/lib/currency/server';
 import {
     isCurrency,
@@ -58,6 +61,7 @@ async function CheckoutBody({
     tourHref,
     searchParams,
     dict,
+    bands,
 }: {
     locale: Locale;
     destination: string;
@@ -65,6 +69,9 @@ async function CheckoutBody({
     tourHref: string;
     searchParams: Promise<PageSearch>;
     dict: Awaited<ReturnType<typeof getDictionary>>['checkout'];
+    /** Age-band plurals from the BOOKING dictionary, so the summary words the
+     *  party exactly as the card that sent the traveller here did. */
+    bands: BandPluralDict;
 }) {
     const sp = await searchParams;
     const selection = parseCheckoutSelection(sp);
@@ -136,8 +143,8 @@ async function CheckoutBody({
             id: `band-${row.band.id}`,
             label:
                 row.band.price > 0
-                    ? `${row.count} ${shortBandLabel(row.band)} × ${fmt(row.band.price)}`
-                    : `${row.count} ${shortBandLabel(row.band)}`,
+                    ? `${bandCountLabel(row.band, row.count, bands, locale)} × ${fmt(row.band.price)}`
+                    : bandCountLabel(row.band, row.count, bands, locale),
             amount: row.lineTotal,
         })),
         // Charged by the quantity picked, whatever the unit (Pastel #58).
@@ -168,7 +175,7 @@ async function CheckoutBody({
     const timeLabel = selection.time
         ? formatTime(selection.time, locale)
         : null;
-    const partyLabel = buildPartyLabel(totals.lineItems);
+    const partyLabel = buildPartyLabel(totals.lineItems, bands, locale);
 
     return (
         <CheckoutClient
@@ -255,6 +262,7 @@ export default async function CheckoutPage({
                     tourHref={tourHref}
                     searchParams={searchParams}
                     dict={dict.checkout}
+                    bands={dict.destination.tour.booking.bands}
                 />
             </Suspense>
         </section>
