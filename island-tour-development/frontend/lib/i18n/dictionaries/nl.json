@@ -119,7 +119,9 @@
             "cta": "Mail me deze lijst",
             "help": "Eén e-mail met een link naar deze lijst. Verder niets, tenzij je daarom vraagt.",
             "sent": "Verstuurd. Open de link op elk apparaat en ga verder waar je gebleven was.",
-            "error": "Versturen is niet gelukt. Probeer het zo nog eens."
+            "error": "Versturen is niet gelukt. Probeer het zo nog eens.",
+            "emailRequired": "Vul je e-mailadres in",
+            "emailInvalid": "Dat lijkt geen e-mailadres"
         },
         "empty": {
             "title": "Nog niets bewaard",

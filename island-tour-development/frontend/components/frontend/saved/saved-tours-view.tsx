@@ -30,7 +30,10 @@ import {
 } from '@/lib/tours/saved-list';
 
 import {
+    DEFAULT_TRAVELERS,
     formatCheckDate,
+    isDayKey,
+    MAX_TRAVELERS,
     parseDayKey,
     SavedDateCheck,
     type SavedDateCheckDict,
@@ -155,6 +158,19 @@ export function SavedToursView({
             const shared = parseIdList(params.get('list'));
             if (shared.length > 0) setSharedIds(shared);
         }
+
+        // Restore a date check from the URL - a reload, the back button, or a
+        // return trip from a tour page all land here with the question still
+        // attached, and re-asking it would be the site forgetting the answer
+        // the traveller just gave it.
+        const date = params.get('date');
+        if (date && isDayKey(date)) {
+            setCheckedDate(date);
+            const party = Number(params.get('guests'));
+            if (Number.isInteger(party) && party >= 1 && party <= MAX_TRAVELERS) {
+                setGuests(party);
+            }
+        }
         setUrlRead(true);
         // Runs once: `adopt` is stable and the URL is read at mount by design.
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -220,7 +236,38 @@ export function SavedToursView({
 
     // ── The date check ──────────────────────────────────────────────────────
     const [checkedDate, setCheckedDate] = useState<string | null>(null);
-    const [guests, setGuests] = useState(2);
+    const [guests, setGuests] = useState(DEFAULT_TRAVELERS);
+
+    /**
+     * The checked date lives in the URL, like every other answer the traveller
+     * gives the site (All Tours and search both do this).
+     *
+     * It buys three things a component-only state cannot: the page survives a
+     * reload and the back button, the link is shareable with the question
+     * already asked, and the answer is still there after a trip to a tour page
+     * and back.
+     *
+     * `replaceState` rather than the router: this is the same document with an
+     * annotation, not a navigation, and pushing would make the back button walk
+     * through every guest count the traveller tried.
+     */
+    useEffect(() => {
+        if (!urlRead) return;
+        const params = new URLSearchParams(window.location.search);
+        if (checkedDate) {
+            params.set('date', checkedDate);
+            params.set('guests', String(guests));
+        } else {
+            params.delete('date');
+            params.delete('guests');
+        }
+        const query = params.toString();
+        window.history.replaceState(
+            null,
+            '',
+            `${window.location.pathname}${query ? `?${query}` : ''}`
+        );
+    }, [checkedDate, guests, urlRead]);
     const [availability, setAvailability] = useState<Record<string, boolean>>(
         {}
     );
@@ -435,6 +482,7 @@ export function SavedToursView({
                                             dict={dict}
                                             cardDict={cardDict}
                                             durationDict={durationDict}
+                                            checkedDate={checkedDate}
                                             savedPrice={
                                                 isShared
                                                     ? null
@@ -493,6 +541,7 @@ function BookableCard({
     dict,
     cardDict,
     durationDict,
+    checkedDate,
     savedPrice,
     availableLabel,
     onRemove,
@@ -502,11 +551,21 @@ function BookableCard({
     dict: SavedToursDict;
     cardDict: TourCardDict;
     durationDict: DurationDict;
+    /** Rides onto the card's href so the tour page opens on the same day. */
+    checkedDate: string | null;
     savedPrice: { price: number; currency: string } | null;
     availableLabel?: { available: boolean; label: string };
     onRemove?: (tourId: string) => void;
 }) {
-    const listing = searchHitToListing(card, locale, durationDict);
+    // The date rides along on the href: opening a saved tour after checking a
+    // day should land on the widget with that day already chosen, not ask the
+    // traveller the question they just answered.
+    const listing = searchHitToListing(
+        card,
+        locale,
+        durationDict,
+        checkedDate ?? undefined
+    );
     const was = savedPriceWas(savedPrice, {
         price: listing.price,
         currency: listing.currency,

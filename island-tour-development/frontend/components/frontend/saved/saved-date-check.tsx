@@ -27,7 +27,16 @@ export type SavedDateCheckDict = {
 };
 
 /** Most travelers the chip will count up to - past this it is a group booking. */
-const MAX_TRAVELERS = 12;
+export const MAX_TRAVELERS = 12;
+
+/**
+ * The party the check assumes before anyone says otherwise.
+ *
+ * Two, not one: the common case for a tour is a pair, and a check run for one
+ * person would call a departure with a single seat left "available" to a
+ * couple.
+ */
+export const DEFAULT_TRAVELERS = 2;
 
 /**
  * "Check a date" (mck-17, flagged v1.1 in the spec and confirmed for this
@@ -182,6 +191,11 @@ export function toDayKey(date: Date): string {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${date.getFullYear()}-${month}-${day}`;
+}
+
+/** Whether `value` is a `yyyy-MM-dd` day key. URL input, so it is not trusted. */
+export function isDayKey(value: string): boolean {
+    return /^\d{4}-\d{2}-\d{2}$/.test(value) && parseDayKey(value) !== undefined;
 }
 
 export function parseDayKey(key: string): Date | undefined {

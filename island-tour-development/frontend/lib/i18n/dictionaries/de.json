@@ -119,7 +119,9 @@
             "cta": "Schick mir diese Liste",
             "help": "Eine E-Mail mit einem Link zu dieser Liste. Sonst nichts, außer du möchtest es.",
             "sent": "Verschickt. Öffne den Link auf jedem Gerät und mach dort weiter, wo du aufgehört hast.",
-            "error": "Das hat nicht geklappt. Versuch es gleich noch einmal."
+            "error": "Das hat nicht geklappt. Versuch es gleich noch einmal.",
+            "emailRequired": "Gib deine E-Mail-Adresse ein",
+            "emailInvalid": "Das sieht nicht nach einer E-Mail-Adresse aus"
         },
         "empty": {
             "title": "Noch nichts gespeichert",

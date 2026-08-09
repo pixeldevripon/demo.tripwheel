@@ -119,7 +119,9 @@
             "cta": "Enviarme esta lista",
             "help": "Un correo con un enlace a esta lista. Nada más, salvo que tú lo pidas.",
             "sent": "Enviado. Abre el enlace en cualquier dispositivo para continuar donde lo dejaste.",
-            "error": "No se pudo enviar. Inténtalo de nuevo en un momento."
+            "error": "No se pudo enviar. Inténtalo de nuevo en un momento.",
+            "emailRequired": "Introduce tu correo electrónico",
+            "emailInvalid": "Eso no parece un correo electrónico"
         },
         "empty": {
             "title": "Aún no has guardado nada",

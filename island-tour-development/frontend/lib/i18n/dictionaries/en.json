@@ -119,7 +119,9 @@
             "cta": "Email me this list",
             "help": "One email with a link to this list. Nothing else unless you opt in.",
             "sent": "Sent. Open the link on any device to pick up where you left off.",
-            "error": "That did not send. Try again in a moment."
+            "error": "That did not send. Try again in a moment.",
+            "emailRequired": "Enter your email address",
+            "emailInvalid": "That does not look like an email address"
         },
         "empty": {
             "title": "Nothing saved yet",

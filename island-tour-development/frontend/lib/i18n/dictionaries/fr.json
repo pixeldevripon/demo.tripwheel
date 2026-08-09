@@ -119,7 +119,9 @@
             "cta": "Envoyez-moi cette liste",
             "help": "Un e-mail avec un lien vers cette liste. Rien d’autre, sauf si vous le demandez.",
             "sent": "Envoyé. Ouvrez le lien sur n’importe quel appareil pour reprendre où vous en étiez.",
-            "error": "L’envoi a échoué. Réessayez dans un instant."
+            "error": "L’envoi a échoué. Réessayez dans un instant.",
+            "emailRequired": "Saisissez votre e-mail",
+            "emailInvalid": "Cela ne ressemble pas à une adresse e-mail"
         },
         "empty": {
             "title": "Rien d’enregistré pour l’instant",
