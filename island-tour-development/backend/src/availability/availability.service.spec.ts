@@ -524,6 +524,31 @@ describe('AvailabilityService', () => {
       expect(notifications.emitAvailabilityUpdate).toHaveBeenCalled();
     });
 
+    /**
+     * The write has already committed by the time the projection runs, so a
+     * projection failure must not be reported as a failed write.
+     *
+     * This is exactly how an unapplied migration presented on 2026-08-08:
+     * `materializeTour` threw on every call, the POST 500'd, and the dashboard
+     * told the operator "0 added, 2 could not be added" about two schedules it
+     * had just created - so the retry hit duplicate-key errors on rows they had
+     * been told did not exist.
+     */
+    it('still succeeds when the projection fails - the write is committed', async () => {
+      prisma.availabilityException.create.mockResolvedValue(exceptionRow());
+      materializer.materializeTour.mockRejectedValue(
+        new Error('The column `closureBatchId` does not exist'),
+      );
+
+      await expect(
+        svc.createException('u1', Role.TOUR_OPERATOR, {
+          tourId: 't1',
+          date: '2030-06-10',
+          type: 'CLOSE_DATE',
+        }),
+      ).resolves.toBeDefined();
+    });
+
     it('re-materialises on updateException', async () => {
       prisma.availabilityException.findUnique.mockResolvedValue({
         tourId: 't1',
