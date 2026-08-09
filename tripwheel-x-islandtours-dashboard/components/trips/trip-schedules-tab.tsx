@@ -58,6 +58,49 @@ const WEEKDAYS = [
 ];
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
+/**
+ * Turn the rejections from a multi-row schedule create into one readable
+ * sentence, in the SERVER's words.
+ *
+ * A count on its own ("2 could not be added") cannot tell an operator whether
+ * they picked a day that already has that time - deselect it and move on - or
+ * whether the API is down, which no amount of adjusting the form will fix.
+ * Those need opposite responses, and on 2026-08-08 the count reported the
+ * second as if it were the first, so the operator retried a form that could not
+ * succeed. The backend already writes a good message ("A schedule for Monday at
+ * 13:00 already exists for this tour."); this just stops throwing it away.
+ *
+ * Identical messages collapse - twelve rows failing the same way is one fact,
+ * not twelve - and each is tagged with the combination that produced it so
+ * "which Tuesday" is never a guess.
+ */
+export function describeFailures(
+    failed: { item: { weekday: number; startTime: string }; error: unknown }[],
+): string {
+    const byMessage = new Map<string, string[]>();
+    for (const { item, error } of failed) {
+        const message =
+            error instanceof Error && error.message
+                ? error.message
+                : 'The server did not say why.';
+        const day =
+            WEEKDAYS.find(w => w.value === item.weekday)?.full ??
+            `Day ${item.weekday}`;
+        const where = byMessage.get(message) ?? [];
+        where.push(`${day} ${item.startTime}`);
+        byMessage.set(message, where);
+    }
+    return [...byMessage.entries()]
+        // The message already names the combination when it is a duplicate
+        // conflict, so a single failure does not need it said twice.
+        .map(([message, where]) =>
+            where.length === 1 && message.includes(where[0].split(' ')[0])
+                ? message
+                : `${where.join(', ')}: ${message}`,
+        )
+        .join(' ');
+}
+
 // 'YYYY-MM-DD' → '2 Jul 2026' (falls back to the raw string if unparseable).
 function formatDay(day: string): string {
     const parsed = new Date(day + 'T00:00:00');
@@ -731,8 +774,22 @@ export function RecurringSchedulesSection({
         // Partial: the succeeded rows are persisted (and now in the list). Tell
         // the operator so they can narrow the selection to just the rest rather
         // than resubmitting the whole grid into duplicate-key errors.
+        //
+        // And say WHY, in the server's own words. A bare count cannot tell
+        // "Tuesday at 13:00 already exists" from "the API is down", and those
+        // need opposite responses: one is deselect that day, the other is stop
+        // and call someone. On 2026-08-08 an unapplied migration made every
+        // call 500 and this line reported it as an ordinary partial failure, so
+        // the operator kept retrying a form that could not succeed.
         setErrors({
-            form: `${succeeded.length} added, ${failed.length} could not be added. The added schedules are saved — adjust the selection and add the rest.`,
+            form: [
+                `${succeeded.length} added, ${failed.length} could not be added.`,
+                succeeded.length > 0 &&
+                    'The added schedules are saved — adjust the selection and add the rest.',
+                describeFailures(failed),
+            ]
+                .filter(Boolean)
+                .join(' '),
         });
     }
 
