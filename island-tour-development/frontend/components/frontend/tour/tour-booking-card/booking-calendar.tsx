@@ -157,6 +157,15 @@ export function BookingCalendar() {
             return { year: d.getFullYear(), month: d.getMonth() };
         });
 
+    // Each nav button is named for the month it lands on - the chevrons carry no
+    // text of their own, and "July 2026" says more than "previous".
+    const monthLabelAt = (delta: number) => {
+        const d = new Date(view.year, view.month + delta, 1);
+        return `${monthName(d.getMonth(), d.getFullYear(), locale)} ${d.getFullYear()}`;
+    };
+    const prevMonthLabel = monthLabelAt(-1);
+    const nextMonthLabel = monthLabelAt(1);
+
     return (
         <div className='relative'>
             <motion.button
@@ -223,59 +232,69 @@ export function BookingCalendar() {
                                     left: coords.left,
                                     width: coords.width,
                                 }}
-                                className='fixed z-[90] rounded-it-lg border border-it-border bg-it-white p-4 shadow-it-lg'>
-                                {/* `.mrow` (mck-15): 14.5px bold, a round 28px
-                                    button on each end. "← August 2026" on the
-                                    left, "September →" on the right - the year
-                                    used to float between the two month names,
-                                    so the header read "August 2026 September"
-                                    and belonged to neither of them. */}
-                                <div className='mb-3 flex items-center justify-between gap-2 text-[14.5px] font-bold leading-[1.6] text-it-ink'>
+                                // 10px, the fields' radius - not the mockup's
+                                // own 16px (`.wcal`). Every box inside this
+                                // card now speaks one radius: the fields, the
+                                // travelers panel and this. At 16px the corner
+                                // sat visibly wider than the field it covers,
+                                // and the tight layer of the e3 shadow traced a
+                                // second arc just inside it. Ripon's call,
+                                // 2026-08-09.
+                                className='fixed z-[90] rounded-it-sm border border-it-border bg-it-white p-4 shadow-it-lg'>
+                                {/* Month nav: a chevron on each end, the month
+                                    and its year CENTRED between them.
+                                    mck-15 puts the next month's name on the
+                                    right, but the client's actual instruction
+                                    was about the year - "move the year next to
+                                    the month on the left, so it reads August
+                                    2026 instead of the year floating between
+                                    two month names". Centred keeps that and
+                                    drops the second month name, which was the
+                                    part doing the floating.
+
+                                    Each button's accessible name is the month it
+                                    goes TO, so a screen reader hears "July 2026,
+                                    button" rather than a bare "previous" - and
+                                    it needs no new copy in seven locales. */}
+                                <div className='mb-3 flex items-center justify-between gap-2'>
                                     <motion.button
                                         type='button'
                                         onClick={() => shiftMonth(-1)}
-                                        whileTap={{ scale: 0.96 }}
+                                        aria-label={prevMonthLabel}
+                                        whileTap={{ scale: 0.94 }}
                                         transition={springPop}
-                                        className='flex cursor-pointer items-center gap-2'>
-                                        <span className='grid size-7 shrink-0 place-items-center rounded-it-full border border-it-border bg-it-white'>
-                                            <Image
-                                                src='/icons/booking-arrow.svg'
-                                                alt=''
-                                                width={20}
-                                                height={20}
-                                                className='size-3.5 shrink-0 rotate-180'
-                                            />
-                                        </span>
+                                        className='grid size-7 shrink-0 cursor-pointer place-items-center rounded-it-full border border-it-border bg-it-white transition-colors duration-200 hover:bg-it-bg'>
+                                        <Image
+                                            src='/icons/booking-chevron-down.svg'
+                                            alt=''
+                                            width={20}
+                                            height={20}
+                                            className='size-3.5 shrink-0 rotate-90'
+                                        />
+                                    </motion.button>
+                                    <span
+                                        aria-live='polite'
+                                        className='text-[14.5px] font-bold leading-[1.6] text-it-ink'>
                                         {`${monthName(
                                             view.month,
                                             view.year,
                                             locale
                                         )} ${view.year}`}
-                                    </motion.button>
+                                    </span>
                                     <motion.button
                                         type='button'
                                         onClick={() => shiftMonth(1)}
-                                        whileTap={{ scale: 0.96 }}
+                                        aria-label={nextMonthLabel}
+                                        whileTap={{ scale: 0.94 }}
                                         transition={springPop}
-                                        className='flex cursor-pointer items-center gap-2'>
-                                        {monthName(
-                                            view.month === 11
-                                                ? 0
-                                                : view.month + 1,
-                                            view.month === 11
-                                                ? view.year + 1
-                                                : view.year,
-                                            locale
-                                        )}
-                                        <span className='grid size-7 shrink-0 place-items-center rounded-it-full border border-it-border bg-it-white'>
-                                            <Image
-                                                src='/icons/booking-arrow.svg'
-                                                alt=''
-                                                width={20}
-                                                height={20}
-                                                className='size-3.5 shrink-0'
-                                            />
-                                        </span>
+                                        className='grid size-7 shrink-0 cursor-pointer place-items-center rounded-it-full border border-it-border bg-it-white transition-colors duration-200 hover:bg-it-bg'>
+                                        <Image
+                                            src='/icons/booking-chevron-down.svg'
+                                            alt=''
+                                            width={20}
+                                            height={20}
+                                            className='size-3.5 shrink-0 -rotate-90'
+                                        />
                                     </motion.button>
                                 </div>
 
