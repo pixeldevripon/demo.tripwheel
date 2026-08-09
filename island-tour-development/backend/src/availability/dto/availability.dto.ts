@@ -145,7 +145,7 @@ export class CalendarDayResponseDto {
     description:
       'Why the day is unbookable, when an operator closed it. NOT_RUNNING means ' +
       'the traveller calendar shows "No departure" plain rather than a struck-out ' +
-      '"Closed" — nothing was ever on sale that day.',
+      '"Closed". Nothing was ever on sale that day.',
   })
   closureReason!: ClosureReason | null;
 }
