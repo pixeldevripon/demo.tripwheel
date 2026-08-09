@@ -64,3 +64,6 @@ window.HTMLElement.prototype.scrollIntoView = vi.fn();
 window.HTMLElement.prototype.hasPointerCapture = vi.fn(() => false);
 window.HTMLElement.prototype.setPointerCapture = vi.fn();
 window.HTMLElement.prototype.releasePointerCapture = vi.fn();
+
+/** The mobile search layer restores the page scroll on close. Not in jsdom. */
+window.scrollTo = vi.fn();

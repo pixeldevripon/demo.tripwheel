@@ -10,6 +10,7 @@ import type { SearchDict } from '@/components/frontend/navbar/lib/navbar.types';
 import { SearchTypeahead } from '@/components/frontend/navbar/search-typeahead';
 import { MobileSearchLayer } from '@/components/frontend/search/mobile-search-layer';
 import { SearchPill } from '@/components/frontend/search/search-pill';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { searchSuggestClient } from '@/lib/api/search';
 import {
     LOCALE_CURRENCY,
@@ -60,6 +61,7 @@ export function HeroSearch({
     );
     const ref = useRef<HTMLDivElement>(null);
     const layerInputRef = useRef<HTMLInputElement>(null);
+    const isMobile = useIsMobile();
 
     const trimmed = query.trim();
 
@@ -184,6 +186,10 @@ export function HeroSearch({
                 availability is per tour, and there is no island chosen yet. */}
             <SearchPill
                 dict={pillDict}
+                // Without `compact` the pill never hands off (`handOff` gates on
+                // it), so mobile taps focused the field in place and the panel -
+                // `max-md:hidden` below - never appeared anywhere.
+                compact={isMobile}
                 query={query}
                 onQueryChange={value => {
                     setQuery(value);
