@@ -290,8 +290,8 @@
             "charters": {
                 "heading": "{count} charters privés. Rien que pour vous.",
                 "subtitle": "Exclusivement pour votre groupe, plus l'équipage.",
-                "dayCharters": "Charters de jour",
-                "overnightCharters": "Charters de nuit"
+                "dayCharters": "Charters privés de jour",
+                "overnightCharters": "Charters privés de nuit"
             },
             "picks": {
                 "heading": "Nous avons testé chaque bateau",

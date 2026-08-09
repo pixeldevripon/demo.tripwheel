@@ -835,8 +835,9 @@ async function HubTripsData({
         .replace('{count}', String(trips.length))
         .replace('{hub}', render.name);
 
-    // Day / Overnight charter groups, each labelled with its count (Figma
-    // "Day charters (N)" / "Overnight charters (M)"). Empty groups are dropped.
+    // Day / Overnight charter groups, each labelled with its count ("Private
+    // day charters (N)" / "Private overnight charters (M)"). Empty groups are
+    // dropped.
     const charterGroups = [
         { title: chartersDict.dayCharters, tours: dayCharterTours },
         { title: chartersDict.overnightCharters, tours: overnightCharterTours },

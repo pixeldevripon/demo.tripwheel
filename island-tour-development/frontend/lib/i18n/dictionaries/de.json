@@ -290,8 +290,8 @@
             "charters": {
                 "heading": "{count} private Charter. Ganz für dich.",
                 "subtitle": "Exklusiv für deine Gruppe, plus die Crew.",
-                "dayCharters": "Tagescharter",
-                "overnightCharters": "Übernachtungscharter"
+                "dayCharters": "Private Tagescharter",
+                "overnightCharters": "Private Übernachtungscharter"
             },
             "picks": {
                 "heading": "Wir waren auf jedem Boot",

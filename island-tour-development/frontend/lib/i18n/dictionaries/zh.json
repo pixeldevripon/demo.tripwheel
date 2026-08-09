@@ -290,8 +290,8 @@
             "charters": {
                 "heading": "{count}个私人包船。专属于您。",
                 "subtitle": "专属于您的团队，外加船员。",
-                "dayCharters": "日间包船",
-                "overnightCharters": "过夜包船"
+                "dayCharters": "私人日间包船",
+                "overnightCharters": "私人过夜包船"
             },
             "picks": {
                 "heading": "我们体验过每一艘船",
