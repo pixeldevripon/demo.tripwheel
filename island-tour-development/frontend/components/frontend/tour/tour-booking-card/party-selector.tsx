@@ -7,14 +7,17 @@ import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { BandStepperRow } from './band-stepper-row';
 import { Collapse } from './collapse';
-import { PriceSummary } from './price-summary';
 import { Stepper } from './stepper';
 
 /**
  * The traveller card: a header row (count + inline stepper for Pattern A, or a
- * chevron that expands the age-band steppers for Pattern B), the expandable body
- * of participant steppers (with any applied spectator steppers folded in), and
- * the price summary that takes over the same card once the party is confirmed.
+ * chevron that expands the age-band steppers for Pattern B) and the expandable
+ * body of participant steppers, with any applied spectator steppers folded in.
+ *
+ * The price used to live in here too, so collapsing the party left a box titled
+ * "5 travelers" holding a price breakdown (Pastel #58). It is its own block now,
+ * below the extras. The header keeps saying "Travelers" with the count; who they
+ * are shows up in the breakdown, where it belongs.
  */
 export function PartySelector() {
     const {
@@ -45,23 +48,25 @@ export function PartySelector() {
         locale
     );
 
+    // `.wfield` content: 17px icon, then the count at 14px semibold.
     const headerLabel = (
-        <span className='flex items-center gap-2.5 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+        <span className='flex items-center gap-2.5 text-[14px] font-semibold leading-[1.6] text-it-ink'>
             <Image
                 src='/icons/booking-travelers.svg'
                 alt=''
                 width={24}
                 height={24}
-                className='size-6 shrink-0'
+                className='size-[17px] shrink-0'
             />
             {travelersLabel}
         </span>
     );
 
     return (
-        <div className='rounded-it-sm border border-it-border bg-it-white transition-colors duration-(--it-duration-xs)'>
-            {/* Header row. Pattern B (chevron): the WHOLE row is the toggle -
-                clicking anywhere on it opens the steppers, not just the small
+        <div>
+            {/* The FIELD (mck-15 `.wfield`), a sibling of the date field in the
+                same 8px stack - not a box wrapped around the panel. Pattern B
+                (chevron): the WHOLE row is the toggle, not just the small
                 chevron. Pattern A keeps the plain row (it holds the inline
                 stepper, which is the interaction). */}
             {headerHasChevron ? (
@@ -71,20 +76,20 @@ export function PartySelector() {
                     onClick={() => togglePartyOpen()}
                     whileTap={{ scale: 0.99 }}
                     transition={springPop}
-                    className='flex w-full cursor-pointer items-center justify-between gap-2.5 border-none bg-transparent px-[13px] py-[11px] text-left'>
+                    className='flex w-full cursor-pointer items-center justify-between gap-2.5 rounded-it-sm border border-it-border bg-it-white px-[13px] py-[11px] text-left'>
                     {headerLabel}
                     <Image
                         src='/icons/booking-chevron-down.svg'
                         alt=''
                         width={20}
                         height={20}
-                        className={`size-5 shrink-0 transition-transform duration-300 ${
+                        className={`size-[17px] shrink-0 transition-transform duration-300 ${
                             partyOpen ? 'rotate-180' : ''
                         }`}
                     />
                 </motion.button>
             ) : (
-                <div className='flex items-center justify-between gap-2.5 px-4 py-4'>
+                <div className='flex items-center justify-between gap-2.5 rounded-it-sm border border-it-border bg-it-white px-[13px] py-[11px]'>
                     {headerLabel}
                     {showInlineStepper && (
                         <Stepper
@@ -99,10 +104,16 @@ export function PartySelector() {
                 </div>
             )}
 
-            {/* Body: party steppers */}
+            {/* The PANEL (`.trav.travinline`): its own bordered box below the
+                field, 8px down, with the rows separated by hairlines rather
+                than floated on gaps. */}
             <Collapse open={showPartyBody}>
-                <div className='flex flex-col gap-3.5 px-4 pb-4'>
-                    <div className='h-px w-full bg-it-heading/10' />
+                {/* 10px, the fields' radius - NOT the mockup's own 16px
+                    (`.trav` keeps the r-lg it has as a floating popover, and
+                    `.travinline` never overrides it). Inline under a 10px
+                    field, the softer corner read as a different kind of box;
+                    Ripon's call, 2026-08-09. */}
+                <div className='mt-2 rounded-it-sm border border-it-border bg-it-white px-3.5 py-0.5'>
                     {participantBands.map(band => (
                         <BandStepperRow
                             key={band.id}
@@ -112,13 +123,12 @@ export function PartySelector() {
                     ))}
 
                     {/* Once spectators are applied, their steppers fold in here
-                        below a separator. */}
+                        under their own heading. */}
                     {spectatorsApplied && spectatorsOn && (
                         <>
-                            <div className='h-px w-full bg-it-heading/10' />
-                            <span className='font-normal text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                            <div className='border-t border-it-divider pt-2.5 text-[12px] font-bold leading-[1.6] text-it-text-muted'>
                                 {dict.spectators}
-                            </span>
+                            </div>
                             {spectatorBands.map(band => (
                                 <BandStepperRow
                                     key={band.id}
@@ -130,9 +140,6 @@ export function PartySelector() {
                     )}
                 </div>
             </Collapse>
-
-            {/* Body: price breakdown + totals (once ready). */}
-            <PriceSummary />
         </div>
     );
 }

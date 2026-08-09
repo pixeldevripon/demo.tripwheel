@@ -13,8 +13,20 @@ import { Collapse } from './collapse';
 import { formatSelectedDate, formatTime } from './lib/booking.utils';
 
 /**
- * Departure-time chips, revealed once a date is picked. Each chip shows the
- * localized start time plus a state note (selected / sold out / "Only N left").
+ * Departure-time chips, revealed once a date is picked - on a tour with MORE
+ * THAN ONE departure. A tour with a single departure shows no row at all: there
+ * is nothing to pick, and a lone chip reading "Selected" is a control that
+ * cannot be operated (Pastel #58). The store selects that departure instead.
+ *
+ * An open chip shows the time and nothing else. The small line underneath is for
+ * capacity only - "Sold out", never "Available" and never "Selected", both of
+ * which said what the chip's own styling already says. Selection IS the orange
+ * border and fill.
+ *
+ * "Only N left" is deliberately absent from v1: the founder parked both
+ * scarcity signals (the chip sub-text and the date subscript) on 2026-08-07,
+ * because an honest one needs live per-departure capacity.
+ *
  * In live mode the slots are the date's real bookable departures (loaded async,
  * so a skeleton shows while they resolve); in demo mode they are the tour's
  * static start times.
@@ -71,11 +83,15 @@ export function DepartureTimes() {
     const noDepartures =
         selectedDate != null && !slotsLoading && slots.length === 0;
 
+    // The picker only belongs on a tour with a choice to make. One departure
+    // (the common case) renders nothing - the store has already picked it.
+    const hasChoice = slots.length > 1;
+
     return (
         <Collapse
             open={
                 selectedDate != null &&
-                (slotsLoading || slots.length > 0 || noDepartures)
+                (slotsLoading || hasChoice || noDepartures)
             }>
             {/* pt-2 / pb-2 = the stack gaps, kept INSIDE the collapse so they
                 animate with the height tween (an outer sibling margin would
@@ -88,7 +104,7 @@ export function DepartureTimes() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={swapFade}
-                    className='pb-2 pt-2'>
+                    className=''>
                     <p className='m-0 text-[14px] font-semibold leading-[1.5] text-it-ink'>
                         {dict.noDeparturesOnDateTitle.replace(
                             '{date}',
@@ -105,14 +121,15 @@ export function DepartureTimes() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={swapFade}
-                    className='grid grid-cols-3 gap-2 pb-2 pt-2'>
+                    className='flex flex-wrap gap-2'>
                     {[0, 1, 2].map(i => (
                         <div
                             key={i}
-                            // Same height as a real time chip (py-2 + time +
-                            // note lines + border), so resolving slots never
-                            // jolts the card.
-                            className='h-[74px] it-skeleton rounded-it-sm'
+                            // Same box as a real time chip (8+8 padding, the
+                            // 13.5px time, the reserved 11px capacity line and
+                            // the border), so resolving slots never jolts the
+                            // card.
+                            className='h-[48.6px] w-[84px] it-skeleton rounded-it-sm'
                         />
                     ))}
                 </motion.div>
@@ -123,70 +140,99 @@ export function DepartureTimes() {
                     animate={{ opacity: 1 }}
                     transition={swapFade}
                     style={{ x: shakeOffset }}
-                    className='grid grid-cols-3 gap-2 pb-2 pt-2'>
+                    // 2px of room under the chips, inside the collapse that
+                    // clips them. `springPop` is underdamped, so releasing a tap
+                    // overshoots past scale 1 and the chip's bottom border was
+                    // being sliced against a box that hugged it exactly. The
+                    // space belongs here rather than in <Collapse>: lifting the
+                    // clip there needed a re-render on animation-complete, and
+                    // that made every panel shake as it opened.
+                    className='pb-0.5'>
+                    {/* `.slotlabel` (mck-15): 12px bold in the muted grey. */}
+                    <span className='mb-2 block text-[12px] font-bold leading-[1.6] text-it-text-muted'>
+                        {dict.departureTime}
+                    </span>
+                    {/* `.slotrow`: chips WRAP, they do not share a fixed grid.
+                        A three-column grid stretched two departures across the
+                        card and cut a long localized time in half; the chip is
+                        as wide as its own label and the row runs on. */}
+                    <div className='flex flex-wrap gap-2'>
                     {slots.map(slot => {
                         const isSelected = selectedTime === slot.time;
                         const soldOut = slot.status === 'sold_out';
-                        // Every chip carries a status line: selected, sold out,
-                        // "Only N left" when scarce (< 5), else a plain
-                        // "Available" default.
-                        const note = isSelected
-                            ? dict.selected
-                            : soldOut
-                              ? dict.soldOut
-                              : slot.remaining != null
-                                ? dict.onlyLeft.replace(
-                                      '{count}',
-                                      String(slot.remaining)
-                                  )
-                                : dict.available;
+                        // Capacity only. An open chip says the time and nothing
+                        // else; the orange border and fill say which one is
+                        // chosen, so a "Selected" line under it was the chip
+                        // narrating itself.
+                        const note = soldOut ? dict.soldOut : null;
                         // Missing-slot error: pickable chips carry a soft
                         // primary border (a quieter cousin of the selected
                         // state) that clears the moment a time is picked.
                         // Default chips carry the subtle hairline so they
                         // read as pickable boxes on the white card (.slot);
                         // the selected chip swaps to the orange tint (.slot.on).
-                        const chipBorder = isSelected
+                        // Border AND fill in ONE branch, with the white on the
+                        // unselected side rather than in the base class. Both
+                        // are background-color utilities, and Tailwind settles
+                        // a conflict by CSS source order, not by the order they
+                        // appear in the attribute - so a base `bg-it-white`ns
+                        // silently beat the selected tint and the chip showed
+                        // an orange border on a white fill. The spec is "the
+                        // orange border and fill".
+                        const chipSkin = isSelected
                             ? 'border-it-primary bg-it-primary-subtle'
                             : missingSlot && !soldOut
-                              ? 'border-it-primary/45'
-                              : 'border-it-border';
+                              ? 'border-it-primary/45 bg-it-white'
+                              : 'border-it-border bg-it-white';
                         return (
                             <motion.button
                                 key={slot.time}
                                 type='button'
                                 disabled={soldOut}
+                                // Selection is the orange border and fill, and
+                                // colour is not a signal on its own. `aria-
+                                // pressed` says the same thing to a screen
+                                // reader without putting the word "Selected"
+                                // under the time, which the client's spec
+                                // reserves for capacity.
+                                aria-pressed={isSelected}
                                 onClick={() => selectTime(slot.time)}
                                 whileTap={soldOut ? undefined : { scale: 0.97 }}
                                 transition={springPop}
-                                // `px-2`, not `px-4`: the chip is a grid item,
-                                // so the cell decides its width and the padding
-                                // only decides how early the label wraps. At
-                                // px-4 the 3 columns lost enough room to the
-                                // scroll region's scrollbar to break "12:00 PM"
-                                // across two lines. Nothing moves visually -
-                                // the label is centred in the same box.
-                                className={`flex flex-col items-center gap-[3px] rounded-it-sm border bg-it-white px-2 py-2 transition-colors duration-300 ${chipBorder} ${
+                                // `.slot` (mck-15): 8/14 padding, 10px radius,
+                                // 13.5px bold tabular, centred. Selection is
+                                // the orange border and tint; a sold-out chip
+                                // simply fades to half.
+                                className={`rounded-it-sm border px-3.5 py-2 text-center transition-colors duration-200 ${chipSkin} ${
                                     soldOut
-                                        ? 'cursor-not-allowed opacity-60'
+                                        ? 'cursor-not-allowed opacity-50'
                                         : 'cursor-pointer'
                                 }`}>
                                 <span
-                                    className={`whitespace-nowrap text-[14px] font-bold leading-[1.6] tabular-nums ${
+                                    className={`block whitespace-nowrap text-[13.5px] font-bold leading-[1.25] tabular-nums ${
                                         isSelected
                                             ? 'text-it-primary-hover'
                                             : 'text-it-ink'
                                     }`}>
                                     {formatTime(slot.time, locale)}
                                 </span>
-                                {note && (
-                                    <span className='text-[12px] leading-[1.5] text-it-text-muted'>
-                                        {note}
-                                    </span>
-                                )}
+                                {/* The capacity line's space is RESERVED, not
+                                    conditional. `.slotrow` is a flex row, so in
+                                    the mockup one sold-out chip stretches every
+                                    sibling to its two-line height - which is the
+                                    height the chips are drawn at. Rendering the
+                                    line only when there is a note made the row
+                                    short on a tour with nothing sold out, and
+                                    would have made it jump taller the moment a
+                                    departure filled. 11px at 1.25 = 13.75px,
+                                    the exact line this holds open. */}
+                                <span className='block min-h-[13.75px] text-[11px] font-semibold leading-[1.25] text-it-text-muted'>
+                                    {note}
+                                </span>
                             </motion.button>
                         );
                     })}
+                    </div>
                 </motion.div>
             )}
         </Collapse>

@@ -16,6 +16,10 @@
 import type { ReserveItem } from '@/lib/api/bookings';
 import type { Currency, Locale } from '@/lib/constants/locales';
 import { formatPriceFrom } from '@/lib/currency/current';
+import {
+    bandCountLabel,
+    type BandPluralDict,
+} from '@/lib/tours/band-label';
 import type { BookingBand, TourBookingData } from '@/lib/tours/booking';
 
 /**
@@ -240,16 +244,17 @@ export function computeCheckoutTotals(
         }
     }
 
-    // Optional extras + priced pickup, mirroring the backend math: PER_PERSON
-    // add-ons and pickup prices multiply by the party headcount; FLAT add-ons
-    // charge their quantity once (master E.3 / 5.8).
+    // Optional extras + priced pickup, mirroring the backend math (master E.3 /
+    // 5.8). An add-on is charged by the quantity picked, whatever its unit: the
+    // stepper counts UNITS and the unit is whatever the price line says, so one
+    // step on a "$22 per person" extra is $22 (Pastel #58). Only the PICKUP
+    // multiplies by the party - a zone price is quoted per head and chosen once.
     const extrasTotal = (partySize: number): number => {
         let sum = 0;
         for (const addOn of data.addOns) {
             const qty = extras?.addOns?.[addOn.id] ?? 0;
             if (qty <= 0) continue;
-            const units = addOn.unit === 'PER_PERSON' ? qty * partySize : qty;
-            sum += units * addOn.price;
+            sum += qty * addOn.price;
         }
         if (extras?.pickupPrice != null && extras.pickupPrice > 0) {
             sum += extras.pickupPrice * partySize;
@@ -342,10 +347,20 @@ export function shortBandLabel(band: BookingBand): string {
     return band.label.split(' (')[0];
 }
 
-/** Aggregated party line for the summary, e.g. "2 Adult, 1 Child". */
-export function buildPartyLabel(lineItems: CheckoutLineItem[]): string {
+/**
+ * Aggregated party line for the summary, e.g. "2 adults, 1 child".
+ *
+ * Same wording as the booking card's breakdown, from the same helper: the
+ * summary shows the booking the card just described, and "2 Adult, 1 Child"
+ * next to the card's "2 adults × $150" is one booking spelled two ways.
+ */
+export function buildPartyLabel(
+    lineItems: CheckoutLineItem[],
+    bands: BandPluralDict,
+    locale: Locale
+): string {
     return lineItems
-        .map(row => `${row.count} ${shortBandLabel(row.band)}`)
+        .map(row => bandCountLabel(row.band, row.count, bands, locale))
         .join(', ');
 }
 

@@ -1,5 +1,8 @@
 import { AddOnUnit, Currency, PaymentModel, Prisma } from '@prisma/client';
-import { computeBookingPricing } from './booking-pricing.util';
+import {
+  addOnQuantityCap,
+  computeBookingPricing,
+} from './booking-pricing.util';
 
 const D = (v: string | number) => new Prisma.Decimal(v);
 
@@ -34,6 +37,24 @@ function compute(
     ...over,
   });
 }
+
+describe('addOnQuantityCap', () => {
+  it('stops a per-person extra at the paying travellers', () => {
+    expect(addOnQuantityCap(AddOnUnit.PER_PERSON, 10, 4)).toBe(4);
+  });
+
+  it('lets the operator ceiling win when it is lower', () => {
+    expect(addOnQuantityCap(AddOnUnit.PER_PERSON, 2, 6)).toBe(2);
+  });
+
+  it('stops a per-booking extra at one, whatever the operator set', () => {
+    expect(addOnQuantityCap(AddOnUnit.FLAT, 10, 6)).toBe(1);
+  });
+
+  it('never goes negative on an empty party', () => {
+    expect(addOnQuantityCap(AddOnUnit.PER_PERSON, 10, 0)).toBe(0);
+  });
+});
 
 describe('computeBookingPricing', () => {
   it('sums unit retail/net and expands one item per seat', () => {
@@ -140,7 +161,7 @@ describe('computeBookingPricing', () => {
     expect(p.commissionAmount?.toString()).toBe('41.58');
   });
 
-  it('multiplies PER_PERSON add-ons by pax; FLAT add-ons once', () => {
+  it('charges every add-on by its quantity, whatever its unit (Pastel #58)', () => {
     const p = compute({
       addOns: [
         {
@@ -159,10 +180,28 @@ describe('computeBookingPricing', () => {
         },
       ],
     });
-    // base 210 + lunch 10*3 + transfer 25 = 265
-    expect(p.totalRetail.toString()).toBe('265');
-    expect(p.addOns[0].totalPrice.toString()).toBe('30');
+    // base 210 + one lunch 10 + transfer 25 = 245. The party is 3, and it does
+    // NOT multiply the lunch: one step on a "per person" line is one person.
+    expect(p.totalRetail.toString()).toBe('245');
+    expect(p.addOns[0].totalPrice.toString()).toBe('10');
     expect(p.addOns[1].totalPrice.toString()).toBe('25');
+  });
+
+  it('scales a PER_PERSON add-on by the quantity the traveller picked', () => {
+    const p = compute({
+      addOns: [
+        {
+          addOnId: 'a1',
+          name: 'Lunch',
+          unit: AddOnUnit.PER_PERSON,
+          quantity: 3,
+          unitPrice: D('10'),
+        },
+      ],
+    });
+    // base 210 + three lunches at 10 = 240 - the traveller asked for three.
+    expect(p.totalRetail.toString()).toBe('240');
+    expect(p.addOns[0].totalPrice.toString()).toBe('30');
   });
 
   it('charges a priced pickup per person (unitPrice × pax) into the totals', () => {
@@ -309,7 +348,7 @@ describe('computeBookingPricing', () => {
     expect(p.unitItems).toHaveLength(8);
   });
 
-  it('UNIT: PER_PERSON add-ons still multiply by the guest headcount', () => {
+  it('UNIT: a PER_PERSON add-on is charged per unit picked, not per guest', () => {
     const p = computeUnit(
       {
         guests: 5,
@@ -330,8 +369,8 @@ describe('computeBookingPricing', () => {
         ],
       },
     );
-    // 1000 + 10*5 = 1050
-    expect(p.totalRetail.toString()).toBe('1050');
+    // 1000 + one lunch at 10 = 1010, on a charter for five.
+    expect(p.totalRetail.toString()).toBe('1010');
   });
 
   it('throws when neither lines nor unit is supplied', () => {

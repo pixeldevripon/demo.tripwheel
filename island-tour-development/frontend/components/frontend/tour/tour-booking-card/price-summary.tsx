@@ -2,16 +2,23 @@
 
 import { motion } from 'framer-motion';
 import { springPop } from '@/lib/motion';
-import Image from 'next/image';
 import { useBooking } from '@/hooks/tours/use-booking';
 import { Collapse } from './collapse';
 
 /**
- * Price breakdown + totals, revealed once the availability check passes
- * (`ready`). The per-band line items sit in their own nested Collapse toggled by
- * the "Show details" link; the Total / Pay today / Balance later block is always
- * shown while ready. No parent flex-gap wraps the outer Collapse - all spacing is
- * internal so it collapses without a gap snap.
+ * The price block: breakdown + Total / Pay today / Balance later, revealed once
+ * the selection is complete (`ready`).
+ *
+ * Its OWN block, and the last thing above the button (Pastel #58). It used to
+ * live inside the travelers box, so collapsing the party left a box titled "5
+ * travelers" holding a price breakdown, and it sat above the extras - so
+ * anybody who added the open bar had to scroll back up to see what they now
+ * owed.
+ *
+ * The per-band line items sit in a nested Collapse toggled by Show details /
+ * Hide details; the totals are always shown while ready. No parent flex-gap
+ * wraps the outer Collapse - all spacing is internal so it collapses without a
+ * gap snap.
  */
 export function PriceSummary() {
     const {
@@ -31,68 +38,80 @@ export function PriceSummary() {
 
     return (
         <Collapse open={ready}>
-            <div className='flex flex-col px-4 pb-4'>
-                <div className='h-px w-full bg-it-heading/10' />
+            {/* `.wsummary` (mck-15): a rule above, 12px of air, and 13.5px rows
+                that sit at 3px each. Not a bordered card - the totals are the
+                card's own last word, not another panel inside it. */}
+            <div className='mt-3 flex flex-col border-t border-it-divider pt-3 text-[13.5px] leading-[1.6]'>
                 <Collapse open={detailsOpen}>
-                    <div className='flex flex-col gap-3.5 pt-3.5'>
-                        <div className='flex flex-col gap-2'>
-                            {priceRows.map(row => (
-                                <div
-                                    key={row.id}
-                                    className='flex items-center justify-between gap-1 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                    <span>{row.text}</span>
-                                    <span>{money(row.amount)}</span>
-                                </div>
-                            ))}
-                        </div>
-                        <div className='h-px w-full bg-it-heading/10' />
+                    <div>
+                        {priceRows.map(row => (
+                            <div
+                                key={row.id}
+                                className='flex items-center justify-between gap-2 py-[3px] tabular-nums'>
+                                <span className='text-it-text-muted'>
+                                    {row.text}
+                                </span>
+                                {/* A chosen band priced at zero (infants)
+                                    reads as a fact, not as arithmetic about
+                                    nothing. */}
+                                <span className='font-semibold text-it-ink'>
+                                    {row.amount > 0
+                                        ? money(row.amount)
+                                        : dict.free}
+                                </span>
+                            </div>
+                        ))}
+                        {/* `.bkdiv` - the hairline that separates what was
+                            chosen from what it comes to. */}
+                        <div className='my-2 h-px w-full bg-it-divider' />
                     </div>
                 </Collapse>
-                <div className='flex flex-col gap-2 pt-3.5'>
-                    <div className='flex items-center justify-between gap-1 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                        <span>{dict.total}</span>
-                        <span>{money(total)}</span>
-                    </div>
-                    {/* Money rows are model-driven: pay-today and balance rows
-                        each show only when non-zero (master §6.1). */}
-                    {showPayToday && (
-                        <div className='flex items-center justify-between gap-1 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                            <span>{dict.payToday}</span>
-                            <span className='text-it-primary'>
-                                {money(payToday)}
-                            </span>
-                        </div>
-                    )}
-                    {showBalance && (
-                        <div className='flex items-center justify-between gap-1 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                            <span>{balanceLabel}</span>
-                            <span>{money(balanceLater)}</span>
-                        </div>
-                    )}
-                    <span className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-ink-muted'>
-                        {dict.taxesIncluded}
-                    </span>
+                <div className='flex items-center justify-between gap-2 py-[3px] tabular-nums'>
+                    <span className='text-it-text-muted'>{dict.total}</span>
+                    <b className='text-[16px] font-extrabold text-it-ink'>
+                        {money(total)}
+                    </b>
                 </div>
+                {/* Money rows are model-driven: pay-today and balance rows
+                    each show only when non-zero (master §6.1). */}
+                {showPayToday && (
+                    <div className='flex items-center justify-between gap-2 py-[3px] tabular-nums'>
+                        <span className='text-it-text-muted'>
+                            {dict.payToday}
+                        </span>
+                        {/* `.pay` - the one figure the traveller is charged
+                            now, and the only one carrying the brand colour. */}
+                        <b className='font-bold text-it-primary-hover'>
+                            {money(payToday)}
+                        </b>
+                    </div>
+                )}
+                {showBalance && (
+                    <div className='flex items-center justify-between gap-2 py-[3px] tabular-nums'>
+                        <span className='text-it-text-muted'>
+                            {balanceLabel}
+                        </span>
+                        <b className='font-semibold text-it-ink'>
+                            {money(balanceLater)}
+                        </b>
+                    </div>
+                )}
+                <span className='mt-1 text-[12px] leading-[1.6] text-it-ink-muted'>
+                    {dict.taxesIncluded}
+                </span>
 
+                {/* The breakdown opens with a word and closes with one. It used
+                    to collapse behind a bare arrow, which named neither what it
+                    would do nor what was behind it (Pastel #58). Left-aligned
+                    under the rows it belongs to, not centred adrift of them. */}
                 <motion.button
                     type='button'
-                    aria-label={dict.showDetails}
                     aria-expanded={detailsOpen}
                     onClick={() => toggleDetails()}
                     whileTap={{ scale: 0.97 }}
                     transition={springPop}
-                    className='flex cursor-pointer items-center justify-center self-center border-none bg-transparent pt-3.5 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                    {detailsOpen ? (
-                        <Image
-                            src='/icons/booking-chevron-down.svg'
-                            alt=''
-                            width={20}
-                            height={20}
-                            className='size-5 shrink-0 rotate-180'
-                        />
-                    ) : (
-                        <span className='underline'>{dict.showDetails}</span>
-                    )}
+                    className='mt-1.5 cursor-pointer self-start border-none bg-transparent text-[12.5px] font-bold leading-[1.6] text-it-primary-hover underline underline-offset-2'>
+                    {detailsOpen ? dict.hideDetails : dict.showDetails}
                 </motion.button>
             </div>
         </Collapse>

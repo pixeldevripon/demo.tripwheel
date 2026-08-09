@@ -378,11 +378,11 @@
                 "from": "仅需",
                 "perPerson": "每人",
                 "continue": "继续",
-                "selected": "已选择",
                 "soldOut": "售罄",
-                "available": "可预订",
-                "calendarNoDepartures": "无出发班次",
-                "calendarClosed": "已关闭",
+                "departureTime": "出发时间",
+                "calendarNoDepartures": "无出发",
+                "calendarClosed": "已截止",
+                "calendarToday": "今天",
                 "noDeparturesOnDateTitle": "{date} 没有出发班次",
                 "noDeparturesOnDateHint": "请另选一天 - 日历会显示所有仍有名额的日期。",
                 "deadEndTitle": "这些行程本周仍有出发班次",
@@ -392,6 +392,26 @@
                 "onlyLeft": "仅剩 {count} 个",
                 "travelers": { "one": "{count} 位旅客", "other": "{count} 位旅客" },
                 "guests": { "one": "{count} 位宾客", "other": "{count} 位宾客" },
+                "bands": {
+                    "ADULT": {
+                        "plural": { "one": "{count} 名成人", "other": "{count} 名成人" }
+                    },
+                    "CHILD": {
+                        "plural": { "one": "{count} 名儿童", "other": "{count} 名儿童" }
+                    },
+                    "INFANT": {
+                        "plural": { "one": "{count} 名婴儿", "other": "{count} 名婴儿" }
+                    },
+                    "YOUTH": {
+                        "plural": { "one": "{count} 名青少年", "other": "{count} 名青少年" }
+                    },
+                    "SENIOR": {
+                        "plural": { "one": "{count} 名长者", "other": "{count} 名长者" }
+                    }
+                },
+                "ageFrom": "年龄 {min}+",
+                "ageRange": "年龄 {min}-{max}",
+                "ageUpTo": "年龄 {max} 及以下",
                 "perGroup": "每团",
                 "perBoat": "每船",
                 "perVehicle": "每车",
@@ -408,6 +428,7 @@
                 "balanceOnArrival": "到场付余款",
                 "taxesIncluded": "含全部税费",
                 "showDetails": "查看明细",
+                "hideDetails": "收起明细",
                 "freeCancellation": "{hours} 小时前{link}",
                 "freeCancellationLink": "免费取消",
                 "payLater": "{link}，余款后付",
@@ -415,15 +436,14 @@
                 "sellOutTitle": "可能售罄",
                 "sellOutSubtitle": "立即预订以确保名额。",
                 "selectDate": "选择日期",
+                "change": "更改",
                 "checkAvailability": "查看可订情况",
                 "errorSelectDate": "请选择日期以继续",
                 "errorSelectSlot": "请选择出发时间以继续",
                 "bookingUnavailable": "此行程目前无法在线预订。",
                 "apply": "应用",
-                "perPersonShort": "/每人",
-                "perBookingShort": "/每订单",
-                "showExtras": "显示附加项目",
                 "addOnsTitle": "可选附加项目",
+                "perBooking": "每单",
                 "free": "免费",
                 "bringingSpectators": "需要带随行观众吗？",
                 "spectatorNote": "随行观众可同行，但不参与活动",

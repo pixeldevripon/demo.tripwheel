@@ -36,11 +36,15 @@ export function PriceHeader() {
     // the whole departure, so the traveler gets exclusive use.
     const isPrivateCharter = isUnit && data.bookingType === 'PRIVATE';
 
+    // `.wprice` (mck-15): a 13px muted line with a 22px/800 figure inside it.
+    // No rule underneath - the card is one 20px-padded box, and the divider
+    // that used to sit here fenced the price off from the fields it belongs
+    // with.
     return (
-        <div className='flex flex-col gap-0.5 border-b border-it-divider px-5 pb-3.5 pt-4'>
-            <div className='flex items-baseline gap-1 text-[13px] leading-[1.5] text-it-text-muted'>
+        <div className='flex flex-col gap-0.5 px-5 pt-5'>
+            <div className='flex items-baseline gap-1 text-[13px] leading-[1.6] text-it-text-muted'>
                 <span>{dict.from}</span>
-                <b className='mr-1 text-[22px] font-bold leading-[1.2] tracking-[-0.01em] text-it-ink tabular-nums'>
+                <b className='mr-1 text-[22px] font-extrabold leading-[1.2] tracking-[-0.01em] text-it-ink tabular-nums'>
                     {money(data.priceFrom)}
                 </b>
                 <span>{unitLabel}</span>

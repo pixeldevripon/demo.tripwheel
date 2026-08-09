@@ -378,11 +378,11 @@
                 "from": "Desde",
                 "perPerson": "por persona",
                 "continue": "Continuar",
-                "selected": "Seleccionado",
                 "soldOut": "Agotado",
-                "available": "Disponible",
-                "calendarNoDepartures": "Sin salidas",
+                "departureTime": "Hora de salida",
+                "calendarNoDepartures": "Sin salida",
                 "calendarClosed": "Cerrado",
+                "calendarToday": "hoy",
                 "noDeparturesOnDateTitle": "No hay salidas el {date}",
                 "noDeparturesOnDateHint": "Elige otro día: el calendario muestra todas las fechas con plazas.",
                 "deadEndTitle": "Estas excursiones aún tienen salidas esta semana",
@@ -392,6 +392,26 @@
                 "onlyLeft": "Solo quedan {count}",
                 "travelers": { "one": "{count} viajero", "other": "{count} viajeros" },
                 "guests": { "one": "{count} huésped", "other": "{count} huéspedes" },
+                "bands": {
+                    "ADULT": {
+                        "plural": { "one": "{count} adulto", "other": "{count} adultos" }
+                    },
+                    "CHILD": {
+                        "plural": { "one": "{count} niño", "other": "{count} niños" }
+                    },
+                    "INFANT": {
+                        "plural": { "one": "{count} bebé", "other": "{count} bebés" }
+                    },
+                    "YOUTH": {
+                        "plural": { "one": "{count} joven", "other": "{count} jóvenes" }
+                    },
+                    "SENIOR": {
+                        "plural": { "one": "{count} sénior", "other": "{count} séniores" }
+                    }
+                },
+                "ageFrom": "Edad {min}+",
+                "ageRange": "Edad {min}-{max}",
+                "ageUpTo": "Edad hasta {max}",
                 "perGroup": "por grupo",
                 "perBoat": "por barco",
                 "perVehicle": "por vehículo",
@@ -408,6 +428,7 @@
                 "balanceOnArrival": "Resto a la llegada",
                 "taxesIncluded": "Todos los impuestos y tasas incluidos",
                 "showDetails": "Ver detalles",
+                "hideDetails": "Ocultar detalles",
                 "freeCancellation": "{link} hasta {hours}h",
                 "freeCancellationLink": "Cancelación gratuita",
                 "payLater": "{link}, el resto después",
@@ -415,15 +436,14 @@
                 "sellOutTitle": "Probable que se agote",
                 "sellOutSubtitle": "Reserva hoy para asegurar tu lugar.",
                 "selectDate": "Selecciona la fecha",
+                "change": "Cambiar",
                 "checkAvailability": "Comprobar disponibilidad",
                 "errorSelectDate": "Selecciona una fecha para continuar",
                 "errorSelectSlot": "Selecciona una hora de salida para continuar",
                 "bookingUnavailable": "Este tour no se puede reservar en línea ahora mismo.",
                 "apply": "Aplicar",
-                "perPersonShort": "/por persona",
-                "perBookingShort": "/por reserva",
-                "showExtras": "Mostrar extras",
                 "addOnsTitle": "Extras opcionales",
+                "perBooking": "por reserva",
                 "free": "Gratis",
                 "bringingSpectators": "¿Traes espectadores?",
                 "spectatorNote": "Los espectadores te acompañan pero no participan en la actividad",

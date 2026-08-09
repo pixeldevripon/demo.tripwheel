@@ -90,6 +90,7 @@ import { TiersService } from '@/tiers/tiers.service';
 import { FxRatesService, retailWhole } from '@/fx/fx-rates.service';
 import type { FxQuote } from '@/fx/fx-provider.interface';
 import {
+  addOnQuantityCap,
   computeBookingPricing,
   type AddOnLineInput,
   type BookingPricing,
@@ -5776,19 +5777,13 @@ export class BookingsService {
       const row = byId.get(a.addOnId);
       if (!row)
         throw new UnprocessableEntityException(`Invalid addOnId ${a.addOnId}`);
-      // Operator-set ceiling (master E.3 add_ons; widget checklist §3.5): the client
-      // stepper caps at maxQuantity, so anything above it is a forged payload.
-      if (a.quantity > row.maxQuantity) {
-        throw new UnprocessableEntityException(
-          `Maximum quantity for "${row.name}" is ${row.maxQuantity}`,
-        );
-      }
       return {
         addOnId: row.id,
         name: row.name,
         unit: row.unit,
         quantity: a.quantity,
         unitPrice: row.price,
+        maxQuantity: row.maxQuantity,
       };
     });
   }
@@ -5811,6 +5806,35 @@ export class BookingsService {
       throw new UnprocessableEntityException(
         `Maximum party size is ${maxUnits}`,
       );
+    }
+
+    // Add-on ceilings (master E.3; Pastel #58). The quantity counts UNITS and the
+    // unit is whatever the price line says, so the ceiling is unit-aware: a
+    // per-person extra stops at the paying travellers, a per-booking extra stops
+    // at one, and the operator's own maxQuantity can only lower either. The
+    // widget's stepper caps at exactly this number, so anything above it is a
+    // forged payload.
+    //
+    // Paying travellers, not seats: a free band (infants) rides along and counts
+    // toward capacity, but is not somebody you buy an open bar for. On a charter
+    // every guest is covered by the price paid, so all of them count.
+    const payingPax = ctx.isUnit
+      ? ctx.guests
+      : ctx.lines.reduce(
+          (n, l) => (l.priceRetail.greaterThan(0) ? n + l.quantity : n),
+          0,
+        );
+    for (const line of ctx.addOnLines) {
+      const cap = addOnQuantityCap(
+        line.unit,
+        line.maxQuantity ?? Number.MAX_SAFE_INTEGER,
+        payingPax,
+      );
+      if (line.quantity > cap) {
+        throw new UnprocessableEntityException(
+          `Maximum quantity for "${line.name}" is ${cap}`,
+        );
+      }
     }
 
     // Min-age enforcement (master child ages): reject any supplied traveler age below

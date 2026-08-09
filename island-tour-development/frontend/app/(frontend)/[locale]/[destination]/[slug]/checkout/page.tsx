@@ -12,8 +12,11 @@ import {
     formatCheckoutMoney,
     fromDateParam,
     parseCheckoutSelection,
-    shortBandLabel,
 } from '@/lib/checkout/checkout';
+import {
+    bandCountLabel,
+    type BandPluralDict,
+} from '@/lib/tours/band-label';
 import { getServerCurrency } from '@/lib/currency/server';
 import {
     isCurrency,
@@ -58,6 +61,7 @@ async function CheckoutBody({
     tourHref,
     searchParams,
     dict,
+    bands,
 }: {
     locale: Locale;
     destination: string;
@@ -65,6 +69,9 @@ async function CheckoutBody({
     tourHref: string;
     searchParams: Promise<PageSearch>;
     dict: Awaited<ReturnType<typeof getDictionary>>['checkout'];
+    /** Age-band plurals from the BOOKING dictionary, so the summary words the
+     *  party exactly as the card that sent the traveller here did. */
+    bands: BandPluralDict;
 }) {
     const sp = await searchParams;
     const selection = parseCheckoutSelection(sp);
@@ -136,20 +143,19 @@ async function CheckoutBody({
             id: `band-${row.band.id}`,
             label:
                 row.band.price > 0
-                    ? `${shortBandLabel(row.band)} x ${row.count} x ${fmt(row.band.price)}`
-                    : `${shortBandLabel(row.band)} x ${row.count}`,
+                    ? `${bandCountLabel(row.band, row.count, bands, locale)} × ${fmt(row.band.price)}`
+                    : bandCountLabel(row.band, row.count, bands, locale),
             amount: row.lineTotal,
         })),
+        // Charged by the quantity picked, whatever the unit (Pastel #58).
         ...data.addOns.flatMap(addOn => {
             const qty = selection.addOns[addOn.id] ?? 0;
             if (qty <= 0) return [];
-            const units =
-                addOn.unit === 'PER_PERSON' ? qty * totals.partySize : qty;
             return [
                 {
                     id: `addon-${addOn.id}`,
-                    label: `${addOn.name} x ${units} x ${fmt(addOn.price)}`,
-                    amount: Math.round(units * addOn.price * 100) / 100,
+                    label: `${addOn.name} × ${qty}`,
+                    amount: Math.round(qty * addOn.price * 100) / 100,
                 },
             ];
         }),
@@ -169,7 +175,7 @@ async function CheckoutBody({
     const timeLabel = selection.time
         ? formatTime(selection.time, locale)
         : null;
-    const partyLabel = buildPartyLabel(totals.lineItems);
+    const partyLabel = buildPartyLabel(totals.lineItems, bands, locale);
 
     return (
         <CheckoutClient
@@ -256,6 +262,7 @@ export default async function CheckoutPage({
                     tourHref={tourHref}
                     searchParams={searchParams}
                     dict={dict.checkout}
+                    bands={dict.destination.tour.booking.bands}
                 />
             </Suspense>
         </section>

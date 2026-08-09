@@ -18,6 +18,7 @@ import { DepartureTimes } from './departure-times';
 import { PartySelector } from './party-selector';
 import { PolicyModal } from './policy-modal';
 import { PriceHeader } from './price-header';
+import { PriceSummary } from './price-summary';
 import { DemandCard } from './demand-card';
 import { SpectatorsPanel } from './spectators-panel';
 
@@ -105,7 +106,7 @@ function TourBookingCardLayout() {
                     scrolling, because there was no overflow to scroll. Block
                     children keep their height, so the region overflows and the
                     scrollbar is what resolves it. */}
-                <div className='it-modal-scroll it-modal-scroll-lg-only min-h-0 flex-1 space-y-2 px-4 pt-4 lg:min-h-[min(220px,25vh)]'>
+                <div className='it-modal-scroll it-modal-scroll-lg-only min-h-0 flex-1 px-5 pt-3.5 lg:min-h-[min(220px,25vh)]'>
                     {availabilityDeadEnd ? (
                         /* All-sold-out recovery (AVAILABILITY-AND-DEPARTURES.md
                            §8). The whole selector stack is replaced, not just
@@ -116,29 +117,41 @@ function TourBookingCardLayout() {
                         <AvailabilityDeadEnd />
                     ) : (
                         <>
-                            {/* Calendar + slots share one block: the slots' top
-                                gap lives INSIDE their collapse (pt-2), so it
-                                animates with the height tween instead of a
-                                sibling margin snapping in the moment the block
-                                mounts. */}
-                            <div>
+                            {/* `.wfields` (mck-15): the two fields and the
+                                slot row in one 8px-gapped stack. `relative` is
+                                what the calendar overlay measures itself
+                                against - it covers this whole block rather
+                                than hanging below the date field. */}
+                            <div
+                                data-booking-fields=''
+                                className='relative flex flex-col gap-2'>
                                 <BookingCalendar />
                                 <DepartureTimes />
+                                <PartySelector />
                             </div>
-                            <PartySelector />
                             <SpectatorsPanel />
-                            {/* Optional extras (master E.3) - after the party,
-                                before the pinned CTA; hidden when the tour has
-                                none. */}
+                            {/* Optional extras (master E.3), then the price.
+                                This order is the point of Pastel #58: the total
+                                is the LAST thing above the button, so adding
+                                the open bar changes a number the traveller is
+                                still looking at. It used to sit above the
+                                extras - and inside the travelers box - so
+                                anyone who added one had to scroll back up to
+                                see what they now owed. */}
                             <BookingAddOns />
+                            <PriceSummary />
                         </>
                     )}
                 </div>
 
                 {/* CTA + trust lines — pinned footer, always reachable. Gone in
                     the dead end: there is nothing to continue to. */}
+                {/* `.wcta` + `.wtrust` carry a 14px top margin in the mockup;
+                    here that is the footer's own `pt-3.5`, because the button is
+                    pinned rather than in flow. Without it the button touched the
+                    "Hide details" link above it. */}
                 {!availabilityDeadEnd && (
-                    <div className='shrink-0 px-4 pb-4 pt-6'>
+                    <div className='shrink-0 px-5 pb-5 pt-3.5'>
                         <BookingCta />
                     </div>
                 )}
@@ -182,10 +195,12 @@ function TourBookingCardLayout() {
  *  2. Date field -> full-month calendar popover.
  *  3. Departure-time chips (appear once a date is picked).
  *  4. Party selector - Pattern A (single band: inline stepper) or Pattern B
- *     (age-banded: expandable steppers + optional spectators + Apply).
- *  5. Price summary (Total / Pay today / Balance later) once date + time + party
- *     are set, expandable to a per-band line-item breakdown.
- *  6. Continue CTA (label switches from "Check Availability" once ready) + two
+ *     (age-banded: expandable steppers + optional spectators).
+ *  5. Optional extras, in the card from the first render and collapsed.
+ *  6. Price block (Total / Pay today / Balance later) once date + time + party
+ *     are set, expandable to a per-band line-item breakdown. Its own block, and
+ *     the last thing before the button (Pastel #58).
+ *  7. Continue CTA (label switches from "Check Availability" once ready) + two
  *     trust lines, and - only when the §3.7 trigger fires - the "Likely to sell
  *     out" demand card beneath the card.
  *

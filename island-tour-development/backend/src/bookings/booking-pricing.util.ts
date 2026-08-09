@@ -62,6 +62,8 @@ export interface AddOnLineInput {
   unit: AddOnUnit;
   quantity: number;
   unitPrice: Prisma.Decimal;
+  /** Operator ceiling (`TourAddOn.maxQuantity`); folded into {@link addOnQuantityCap}. */
+  maxQuantity?: number;
 }
 
 /**
@@ -207,20 +209,38 @@ export function computeBookingPricing(input: ComputeInput): BookingPricing {
   });
   const unitsNet = toBooking(src.unitsNet);
 
-  // ── Add-ons: convert unit price, then PER_PERSON multiplies by pax; FLAT does not ──
+  // ── Add-ons: convert the unit price, then charge the quantity ASKED FOR ──
+  //
+  // The quantity IS the number of units, and the unit is whatever the price line
+  // says (Pastel #58, founder 2026-08-07). "$22 per person" means one step is
+  // one person, so one open bar is $22 whatever the party size; two open bars
+  // for two adults is the traveller's choice to make, not ours to assume.
+  //
+  // This used to multiply a PER_PERSON add-on by `pax` on top of the quantity
+  // the traveller picked, so the same extra was counted twice: two adults
+  // adding one open bar were charged $44. `unit` still matters - it decides the
+  // CAP (`assertAddOnQuantities`) and the price-line wording - but never the
+  // multiplier.
   const expandedAddOns: ExpandedAddOn[] = [];
   let addOnsRetail = D(0);
   let sourceAddOnsRetail = D(0);
   for (const a of addOns) {
-    const multiplier =
-      a.unit === AddOnUnit.PER_PERSON ? a.quantity * pax : a.quantity;
     sourceAddOnsRetail = sourceAddOnsRetail.plus(
-      retailWhole(a.unitPrice).times(multiplier),
+      retailWhole(a.unitPrice).times(a.quantity),
     );
     const unitPrice = toRetail(a.unitPrice);
-    const totalPrice = unitPrice.times(multiplier);
+    const totalPrice = unitPrice.times(a.quantity);
     addOnsRetail = addOnsRetail.plus(totalPrice);
-    expandedAddOns.push({ ...a, unitPrice, totalPrice });
+    // Built field by field, not spread: `maxQuantity` is an input-side ceiling
+    // and has no business riding along into the persisted booking line.
+    expandedAddOns.push({
+      addOnId: a.addOnId,
+      name: a.name,
+      unit: a.unit,
+      quantity: a.quantity,
+      unitPrice,
+      totalPrice,
+    });
   }
 
   // ── Pickup: per-person zone price × pax (master 5.8; PAID_ADDON model only) ──
@@ -305,6 +325,13 @@ interface ParticipantExpansion {
   unitsNet: Prisma.Decimal;
   anyNetMissing: boolean;
   pax: number;
+  /**
+   * Seats on a priced band - the ceiling for a PER_PERSON add-on (Pastel #58:
+   * "cap a per-person extra at the number of paying travelers"). A free band
+   * (infants) takes a seat and counts toward capacity, but nobody buys an open
+   * bar for a two-year-old.
+   */
+  payingPax: number;
 }
 
 /** PER_PERSON: expand each age-band line to one item per seat and sum retail/net. */
@@ -314,8 +341,10 @@ function computePerPersonLines(lines: PriceLineInput[]): ParticipantExpansion {
   let unitsNet = D(0);
   let anyNetMissing = false;
   let pax = 0;
+  let payingPax = 0;
   for (const l of lines) {
     pax += l.quantity;
+    if (l.priceRetail.greaterThan(0)) payingPax += l.quantity;
     for (let i = 0; i < l.quantity; i++) {
       unitItems.push({
         ageBandId: l.ageBandId,
@@ -327,7 +356,7 @@ function computePerPersonLines(lines: PriceLineInput[]): ParticipantExpansion {
     if (l.priceNet === null) anyNetMissing = true;
     else unitsNet = unitsNet.plus(l.priceNet.times(l.quantity));
   }
-  return { unitItems, unitsRetail, unitsNet, anyNetMissing, pax };
+  return { unitItems, unitsRetail, unitsNet, anyNetMissing, pax, payingPax };
 }
 
 /**
@@ -360,7 +389,31 @@ function computeUnitLines(unit: UnitPricingInput): ParticipantExpansion {
     unitsNet: unit.priceNet ?? D(0),
     anyNetMissing: unit.priceNet === null,
     pax: guests,
+    // A charter has no free band: every guest is covered by the price paid.
+    payingPax: guests,
   };
+}
+
+/**
+ * The most of an add-on one booking may hold (Pastel #58, founder 2026-08-07).
+ *
+ * The quantity is a count of UNITS, and the unit is whatever the price line
+ * says. So a `PER_PERSON` extra tops out at the number of paying travellers -
+ * nobody buys five open bars for four people - and a `FLAT` (per-booking) extra
+ * tops out at one, because the same booking cannot hold two of a thing that is
+ * sold per booking. The operator's own `maxQuantity` still applies on top and
+ * can only make the ceiling lower.
+ *
+ * Shared by the reserve/quote guard and mirrored by the widget's stepper, so a
+ * quantity the card refuses to offer is also one the API refuses to price.
+ */
+export function addOnQuantityCap(
+  unit: AddOnUnit,
+  maxQuantity: number,
+  payingPax: number,
+): number {
+  const byUnit = unit === AddOnUnit.PER_PERSON ? payingPax : 1;
+  return Math.max(0, Math.min(maxQuantity, byUnit));
 }
 
 /**

@@ -2,6 +2,11 @@
 
 import { useBooking } from '@/hooks/tours/use-booking';
 import { toDateParam } from '@/lib/checkout/checkout';
+import {
+    calendarDayLabel,
+    calendarDayReason,
+    isStruckThrough,
+} from '@/lib/tours/calendar-day-state';
 import { crossFade, springPop } from '@/lib/motion';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
@@ -61,9 +66,16 @@ export function BookingCalendar() {
 
     // Portal + fixed positioning: the card's selector stack scrolls inside an
     // `overflow` container that would clip an in-flow absolute popover, so the
-    // calendar renders in a body portal, positioned under the date field and
-    // re-measured on scroll/resize so it tracks the field as the sticky rail or
-    // the inner scroll moves.
+    // calendar renders in a body portal, positioned OVER the field stack and
+    // re-measured on scroll/resize so it tracks it as the sticky rail or the
+    // inner scroll moves.
+    //
+    // Over, not under (mck-15 `#ical{position:absolute;top:0;left:0;right:0}`):
+    // the calendar takes the fields' place while it is open rather than pushing
+    // the card taller, so the button below it does not move. The portal stays -
+    // the mockup is a static page with no scroll container to be clipped by,
+    // and a fixed layer is the only version of `top:0 of the field stack` that
+    // survives one.
     const triggerRef = useRef<HTMLButtonElement>(null);
     const [mounted, setMounted] = useState(false);
     const [coords, setCoords] = useState<PopoverCoords | null>(null);
@@ -73,8 +85,11 @@ export function BookingCalendar() {
         const update = () => {
             const el = triggerRef.current;
             if (!el) return;
-            const r = el.getBoundingClientRect();
-            setCoords({ top: r.bottom + 8, left: r.left, width: r.width });
+            // The `.wfields` stack this field sits in - the box the overlay
+            // covers. Falls back to the field itself if the structure changes.
+            const box = (el.closest('[data-booking-fields]') ?? el)
+                .getBoundingClientRect();
+            setCoords({ top: box.top, left: box.left, width: box.width });
         };
         update();
         // Capture phase catches scrolls from the inner card body too, not just
@@ -142,6 +157,15 @@ export function BookingCalendar() {
             return { year: d.getFullYear(), month: d.getMonth() };
         });
 
+    // Each nav button is named for the month it lands on - the chevrons carry no
+    // text of their own, and "July 2026" says more than "previous".
+    const monthLabelAt = (delta: number) => {
+        const d = new Date(view.year, view.month + delta, 1);
+        return `${monthName(d.getMonth(), d.getFullYear(), locale)} ${d.getFullYear()}`;
+    };
+    const prevMonthLabel = monthLabelAt(-1);
+    const nextMonthLabel = monthLabelAt(1);
+
     return (
         <div className='relative'>
             <motion.button
@@ -154,11 +178,25 @@ export function BookingCalendar() {
                 // back into view: the first thing still to answer.
                 data-booking-date-trigger=''
                 transition={springPop}
-                // Blocked CTA click with no date: ring the field so the note
-                // above the button points somewhere concrete.
-                className={`flex w-full cursor-pointer items-center justify-between gap-2.5 rounded-it-sm border border-it-border bg-it-white px-[13px] py-[11px] text-left ${
+                // `.wfield` (mck-15): 1px border, 10px radius, 11/13 padding,
+                // 14px semibold, icon LEFT at 17px. Blocked CTA click with no
+                // date: ring the field so the note above the button points
+                // somewhere concrete.
+                className={`flex w-full cursor-pointer items-center gap-2.5 rounded-it-sm border border-it-border bg-it-white px-[13px] py-[11px] text-left ${
                     ctaError === 'date' ? 'ring-1 ring-it-primary' : ''
                 }`}>
+                <Image
+                    src='/icons/booking-calendar.svg'
+                    alt=''
+                    width={24}
+                    height={24}
+                    className='size-[17px] shrink-0'
+                    // Card chrome, always visible above the fold - it must not
+                    // queue behind the page's ~190 lazy images. `eager` (not
+                    // `priority`) loads it immediately WITHOUT adding a
+                    // preload link that would compete with the gallery LCP.
+                    loading='eager'
+                />
                 <span
                     className={`text-[14px] font-semibold leading-[1.6] ${
                         selectedDate ? 'text-it-ink' : 'text-it-ink-muted'
@@ -167,18 +205,14 @@ export function BookingCalendar() {
                         ? formatSelectedDate(selectedDate, locale)
                         : dict.selectDate}
                 </span>
-                <Image
-                    src='/icons/booking-calendar.svg'
-                    alt=''
-                    width={24}
-                    height={24}
-                    className='size-6 shrink-0'
-                    // Card chrome, always visible above the fold - it must not
-                    // queue behind the page's ~190 lazy images. `eager` (not
-                    // `priority`) loads it immediately WITHOUT adding a
-                    // preload link that would compete with the gallery LCP.
-                    loading='eager'
-                />
+                {/* "Change" once a date is set - the field stops looking like an
+                    empty input and starts looking like an answer you can edit
+                    (mck-15 `.wfield .chg`). Nothing to change before then. */}
+                {selectedDate && (
+                    <span className='ml-auto text-[12px] font-bold leading-[1.6] text-it-primary-hover underline underline-offset-2'>
+                        {dict.change}
+                    </span>
+                )}
             </motion.button>
 
             {mounted &&
@@ -198,61 +232,78 @@ export function BookingCalendar() {
                                     left: coords.left,
                                     width: coords.width,
                                 }}
-                                className='fixed z-[90] rounded-[16px] bg-it-white p-4 shadow-it-lg'>
-                                {/* Month nav: ← current | year | next → */}
-                                <div className='flex items-center justify-between gap-2 pb-4'>
+                                // 10px, the fields' radius - not the mockup's
+                                // own 16px (`.wcal`). Every box inside this
+                                // card now speaks one radius: the fields, the
+                                // travelers panel and this. At 16px the corner
+                                // sat visibly wider than the field it covers,
+                                // and the tight layer of the e3 shadow traced a
+                                // second arc just inside it. Ripon's call,
+                                // 2026-08-09.
+                                className='fixed z-[90] rounded-it-sm border border-it-border bg-it-white p-4 shadow-it-lg'>
+                                {/* Month nav: a chevron on each end, the month
+                                    and its year CENTRED between them.
+                                    mck-15 puts the next month's name on the
+                                    right, but the client's actual instruction
+                                    was about the year - "move the year next to
+                                    the month on the left, so it reads August
+                                    2026 instead of the year floating between
+                                    two month names". Centred keeps that and
+                                    drops the second month name, which was the
+                                    part doing the floating.
+
+                                    Each button's accessible name is the month it
+                                    goes TO, so a screen reader hears "July 2026,
+                                    button" rather than a bare "previous" - and
+                                    it needs no new copy in seven locales. */}
+                                <div className='mb-3 flex items-center justify-between gap-2'>
                                     <motion.button
                                         type='button'
                                         onClick={() => shiftMonth(-1)}
-                                        whileTap={{ scale: 0.99 }}
+                                        aria-label={prevMonthLabel}
+                                        whileTap={{ scale: 0.94 }}
                                         transition={springPop}
-                                        className='flex cursor-pointer items-center gap-2 font-normal text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                        className='grid size-7 shrink-0 cursor-pointer place-items-center rounded-it-full border border-it-border bg-it-white transition-colors duration-200 hover:bg-it-bg'>
                                         <Image
-                                            src='/icons/booking-arrow.svg'
+                                            src='/icons/booking-chevron-down.svg'
                                             alt=''
                                             width={20}
                                             height={20}
-                                            className='size-5 shrink-0 rotate-180'
+                                            className='size-3.5 shrink-0 rotate-90'
                                         />
-                                        {monthName(
+                                    </motion.button>
+                                    <span
+                                        aria-live='polite'
+                                        className='text-[14.5px] font-bold leading-[1.6] text-it-ink'>
+                                        {`${monthName(
                                             view.month,
                                             view.year,
                                             locale
-                                        )}
-                                    </motion.button>
-                                    <span className='font-normal text-[20px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
-                                        {view.year}
+                                        )} ${view.year}`}
                                     </span>
                                     <motion.button
                                         type='button'
                                         onClick={() => shiftMonth(1)}
-                                        whileTap={{ scale: 0.99 }}
+                                        aria-label={nextMonthLabel}
+                                        whileTap={{ scale: 0.94 }}
                                         transition={springPop}
-                                        className='flex cursor-pointer items-center gap-2 font-normal text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                        {monthName(
-                                            view.month === 11
-                                                ? 0
-                                                : view.month + 1,
-                                            view.month === 11
-                                                ? view.year + 1
-                                                : view.year,
-                                            locale
-                                        )}
+                                        className='grid size-7 shrink-0 cursor-pointer place-items-center rounded-it-full border border-it-border bg-it-white transition-colors duration-200 hover:bg-it-bg'>
                                         <Image
-                                            src='/icons/booking-arrow.svg'
+                                            src='/icons/booking-chevron-down.svg'
                                             alt=''
                                             width={20}
                                             height={20}
-                                            className='size-5 shrink-0'
+                                            className='size-3.5 shrink-0 -rotate-90'
                                         />
                                     </motion.button>
                                 </div>
 
-                                {/* Weekday headers + day cells (pulse while the live
-                            calendar is still loading). */}
+                                {/* `.grid` + `.dow` (mck-15): 7 columns at a 3px
+                                    gap, weekday heads 10px bold uppercase in
+                                    faint. Pulses while the live calendar loads. */}
                                 <div
                                     aria-busy={isLive && calendarLoading}
-                                    className={`grid grid-cols-7 gap-y-2 text-center ${
+                                    className={`grid grid-cols-7 gap-[3px] text-center ${
                                         isLive &&
                                         calendarLoading &&
                                         !calendarDays
@@ -262,12 +313,13 @@ export function BookingCalendar() {
                                     {weekdays.map(w => (
                                         <span
                                             key={w}
-                                            className='font-normal text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                            className='py-1 text-[10px] font-bold uppercase leading-[1.6] tracking-[0.06em] text-it-ink-muted'>
                                             {w}
                                         </span>
                                     ))}
                                     {/* Day cells */}
                                     {calendarCells.map(({ date, inMonth }) => {
+                                        const dateKey = toDateParam(date);
                                         const key = date.toISOString();
                                         const isPast =
                                             date.getTime() < today.getTime();
@@ -277,7 +329,7 @@ export function BookingCalendar() {
                                         // out / closed). Demo mode: every future day is
                                         // open.
                                         const dayState = isLive
-                                            ? calendarDays?.[toDateParam(date)]
+                                            ? calendarDays?.[dateKey]
                                             : undefined;
                                         const dayOpen =
                                             !isLive ||
@@ -290,22 +342,34 @@ export function BookingCalendar() {
                                                 startOfDay(
                                                     selectedDate
                                                 ).getTime();
-                                        // Hover hint: why a future in-month day can't be
-                                        // picked (live only). Absent day = no schedule,
-                                        // sold-out / closed = an exception or full slots.
-                                        let hint: string | null = null;
-                                        if (
-                                            isLive &&
+                                        // Why a future in-month day can't be picked
+                                        // (live only), as three distinct states rather
+                                        // than one grey "Closed" for all of them.
+                                        const showState =
+                                            isLive && inMonth && !isPast && !dayOpen;
+                                        const reason = showState
+                                            ? calendarDayReason(dayState)
+                                            : 'open';
+                                        const hint = showState
+                                            ? calendarDayLabel(reason, dict)
+                                            : null;
+                                        // The line means "there WAS a departure and it
+                                        // can no longer be had" - so it covers sold out
+                                        // and past-cutoff, and not a day the tour never
+                                        // runs. On a phone, where hover does not exist,
+                                        // this is the whole signal.
+                                        const struck = isStruckThrough(reason);
+                                        // Today gets a ring; the first bookable date
+                                        // gets an orange outline while nothing is
+                                        // chosen, so the calendar opens pointing at the
+                                        // soonest answer instead of at nothing.
+                                        const isToday =
                                             inMonth &&
-                                            !isPast &&
-                                            !dayOpen
-                                        ) {
-                                            hint = !dayState
-                                                ? dict.calendarNoDepartures
-                                                : dayState.status === 'SOLD_OUT'
-                                                  ? dict.soldOut
-                                                  : dict.calendarClosed;
-                                        }
+                                            date.getTime() === today.getTime();
+                                        const isFirstOpen =
+                                            !isSelected &&
+                                            selectedDate == null &&
+                                            firstAvailable === dateKey;
                                         return (
                                             <div
                                                 key={key}
@@ -328,6 +392,17 @@ export function BookingCalendar() {
                                                     type='button'
                                                     disabled={disabled}
                                                     title={hint ?? undefined}
+                                                    // The label is the whole
+                                                    // answer for a screen
+                                                    // reader, which cannot see
+                                                    // the line either.
+                                                    aria-label={
+                                                        hint
+                                                            ? `${date.getDate()}, ${hint}`
+                                                            : isToday
+                                                              ? `${date.getDate()}, ${dict.calendarToday}`
+                                                              : undefined
+                                                    }
                                                     onClick={() =>
                                                         pickDate(date)
                                                     }
@@ -337,13 +412,76 @@ export function BookingCalendar() {
                                                             : { scale: 0.9 }
                                                     }
                                                     transition={springPop}
-                                                    className={`grid size-9 place-items-center rounded-it-full text-[16px] leading-[1.6] tracking-[-0.012em] transition-colors duration-300 ${
+                                                    className={[
+                                                        // `.d` (mck-15): 8px
+                                                        // radius, 12.5px
+                                                        // semibold tabular.
+                                                        //
+                                                        // SQUARE, and centred in
+                                                        // its column. The mockup
+                                                        // lets the cell fill the
+                                                        // column, which makes it
+                                                        // 44 wide by 34 tall -
+                                                        // so `border-radius:50%`
+                                                        // on today drew a flat
+                                                        // grey ellipse rather
+                                                        // than a ring. A square
+                                                        // cell gives today a
+                                                        // true circle and keeps
+                                                        // the selected day a
+                                                        // rounded square, which
+                                                        // is what tells the two
+                                                        // states apart at a
+                                                        // glance.
+                                                        'mx-auto grid aspect-square w-full max-w-[34px] place-items-center rounded-[8px] border text-[12.5px] leading-[1.6] tabular-nums transition-colors duration-200',
+                                                        struck && 'line-through',
+                                                        isToday && 'rounded-full',
+                                                        // The ring on today
+                                                        // survives the day being
+                                                        // unbookable - it says
+                                                        // WHERE you are, not
+                                                        // whether you can book.
+                                                        isSelected || isFirstOpen
+                                                            ? 'border-it-primary'
+                                                            : isToday
+                                                              ? 'border-it-ink-muted'
+                                                              : 'border-transparent',
+                                                        // ONE branch owns the
+                                                        // fill, the weight and
+                                                        // the text colour. Split
+                                                        // across a base class
+                                                        // and a branch, the two
+                                                        // font-weight utilities
+                                                        // would be resolved by
+                                                        // CSS source order
+                                                        // rather than by which
+                                                        // one is written last -
+                                                        // the same trap that
+                                                        // stopped the selected
+                                                        // chip getting its fill.
                                                         isSelected
-                                                            ? 'bg-it-primary font-normal text-it-white'
+                                                            ? 'bg-it-primary font-extrabold text-it-white'
                                                             : disabled
-                                                              ? 'cursor-not-allowed text-it-ink-muted/50'
-                                                              : 'cursor-pointer text-it-heading hover:bg-it-surface'
-                                                    }`}>
+                                                              ? 'cursor-not-allowed font-normal text-it-ink-muted'
+                                                              : isFirstOpen
+                                                                ? 'cursor-pointer bg-it-bg font-extrabold text-it-primary-hover'
+                                                                : isToday
+                                                                  ? // Today, and
+                                                                    // bookable:
+                                                                    // the ring
+                                                                    // plus a
+                                                                    // heavier
+                                                                    // number, so
+                                                                    // "you are
+                                                                    // here" is
+                                                                    // legible
+                                                                    // even at
+                                                                    // 12.5px.
+                                                                    'cursor-pointer font-extrabold text-it-ink hover:bg-it-bg'
+                                                                  : 'cursor-pointer font-semibold text-it-ink hover:bg-it-bg',
+                                                    ]
+                                                        .filter(Boolean)
+                                                        .join(' ')}>
                                                     {date.getDate()}
                                                 </motion.button>
                                                 <AnimatePresence>
@@ -370,7 +508,18 @@ export function BookingCalendar() {
                                                                     transition={
                                                                         crossFade
                                                                     }
-                                                                    className='block origin-bottom whitespace-nowrap rounded-[6px] bg-it-heading px-2 py-1 text-[12px] leading-[1.4] tracking-[-0.012em] text-it-white shadow-it-md'>
+                                                                    // `.tip`
+                                                                    // (mck-15):
+                                                                    // 10.5px
+                                                                    // bold on
+                                                                    // the dark
+                                                                    // ink, with
+                                                                    // the little
+                                                                    // arrow
+                                                                    // pointing
+                                                                    // at its own
+                                                                    // date.
+                                                                    className='relative block origin-bottom whitespace-nowrap rounded-[6px] bg-it-dark px-2 py-[3px] text-[10.5px] font-bold leading-[1.6] text-it-white after:absolute after:left-1/2 after:top-full after:-ml-1 after:border-x-4 after:border-t-4 after:border-x-transparent after:border-t-it-dark after:content-[""]'>
                                                                     {hint}
                                                                 </motion.span>
                                                             </div>
@@ -380,6 +529,7 @@ export function BookingCalendar() {
                                         );
                                     })}
                                 </div>
+
                             </motion.div>
                         )}
                     </AnimatePresence>,
