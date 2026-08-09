@@ -108,7 +108,12 @@ export function PartySelector() {
                 field, 8px down, with the rows separated by hairlines rather
                 than floated on gaps. */}
             <Collapse open={showPartyBody}>
-                <div className='mt-2 rounded-it-lg border border-it-border bg-it-white px-3.5 py-0.5'>
+                {/* 10px, the fields' radius - NOT the mockup's own 16px
+                    (`.trav` keeps the r-lg it has as a floating popover, and
+                    `.travinline` never overrides it). Inline under a 10px
+                    field, the softer corner read as a different kind of box;
+                    Ripon's call, 2026-08-09. */}
+                <div className='mt-2 rounded-it-sm border border-it-border bg-it-white px-3.5 py-0.5'>
                     {participantBands.map(band => (
                         <BandStepperRow
                             key={band.id}

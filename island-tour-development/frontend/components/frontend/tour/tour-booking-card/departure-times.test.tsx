@@ -71,6 +71,24 @@ describe('a tour with more than one', () => {
         expect(screen.getByText('Sold out')).toBeInTheDocument();
     });
 
+    it('holds the capacity line open on every chip, sold out or not', () => {
+        // `.slotrow` is a flex row, so in mck-15 one sold-out chip stretches
+        // every sibling to its two-line height - that IS the drawn height. The
+        // line is therefore reserved, not conditional: a tour with nothing sold
+        // out draws the same chips, and a departure filling later does not make
+        // the whole row jump taller.
+        renderSlots([AT_08, AT_13]);
+        const chips = screen
+            .getAllByRole('button')
+            .filter(b => /AM|PM/.test(b.textContent ?? ''));
+        expect(chips).toHaveLength(2);
+        for (const chip of chips) {
+            // Two children: the time, and the capacity line holding its space.
+            expect(chip.children).toHaveLength(2);
+            expect(chip.children[1].textContent).toBe('');
+        }
+    });
+
     it('still shows the row when the second departure is the sold-out one', () => {
         // The sold-out chip is worth saying - mck-15 §3 draws exactly this -
         // and the row appearing is what makes the open chip clickable.

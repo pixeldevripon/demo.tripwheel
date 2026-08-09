@@ -125,10 +125,11 @@ export function DepartureTimes() {
                     {[0, 1, 2].map(i => (
                         <div
                             key={i}
-                            // Same box as a real time chip (py-2 + a 13.5px
-                            // line + border), so resolving slots never jolts
-                            // the card.
-                            className='h-[38px] w-[84px] it-skeleton rounded-it-sm'
+                            // Same box as a real time chip (8+8 padding, the
+                            // 13.5px time, the reserved 11px capacity line and
+                            // the border), so resolving slots never jolts the
+                            // card.
+                            className='h-[48.6px] w-[84px] it-skeleton rounded-it-sm'
                         />
                     ))}
                 </motion.div>
@@ -173,6 +174,13 @@ export function DepartureTimes() {
                                 key={slot.time}
                                 type='button'
                                 disabled={soldOut}
+                                // Selection is the orange border and fill, and
+                                // colour is not a signal on its own. `aria-
+                                // pressed` says the same thing to a screen
+                                // reader without putting the word "Selected"
+                                // under the time, which the client's spec
+                                // reserves for capacity.
+                                aria-pressed={isSelected}
                                 onClick={() => selectTime(slot.time)}
                                 whileTap={soldOut ? undefined : { scale: 0.97 }}
                                 transition={springPop}
@@ -193,11 +201,19 @@ export function DepartureTimes() {
                                     }`}>
                                     {formatTime(slot.time, locale)}
                                 </span>
-                                {note && (
-                                    <span className='block text-[11px] font-semibold leading-[1.25] text-it-text-muted'>
-                                        {note}
-                                    </span>
-                                )}
+                                {/* The capacity line's space is RESERVED, not
+                                    conditional. `.slotrow` is a flex row, so in
+                                    the mockup one sold-out chip stretches every
+                                    sibling to its two-line height - which is the
+                                    height the chips are drawn at. Rendering the
+                                    line only when there is a note made the row
+                                    short on a tour with nothing sold out, and
+                                    would have made it jump taller the moment a
+                                    departure filled. 11px at 1.25 = 13.75px,
+                                    the exact line this holds open. */}
+                                <span className='block min-h-[13.75px] text-[11px] font-semibold leading-[1.25] text-it-text-muted'>
+                                    {note}
+                                </span>
                             </motion.button>
                         );
                     })}
