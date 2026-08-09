@@ -759,7 +759,7 @@ export function TripAvailabilityCalendar({
                                             {resetCounts.closures === 1
                                                 ? ''
                                                 : 's'}{' '}
-                                            — those dates go back on sale
+                                            , those dates go back on sale
                                         </li>
                                     )}
                                     {resetCounts.added > 0 && (
@@ -779,9 +779,9 @@ export function TripAvailabilityCalendar({
                                     )}
                                 </ul>
                                 <p className='text-muted-foreground'>
-                                    Bookings are never touched — closing only
-                                    ever stopped new sales. Past days are left
-                                    exactly as they are.
+                                    Bookings are never touched. Closing only
+                                    ever stopped new sales, and past days are
+                                    left exactly as they are.
                                 </p>
                             </div>
                         </AlertDialogDescription>
@@ -999,7 +999,7 @@ function DayCell({
                                      engine has not filled it yet - dashed, so
                                      "will run" never reads as "is selling". */
                                   <span className='max-w-full truncate rounded-full border border-dashed border-success-solid/50 px-1.5 py-px text-2xs font-semibold tabular-nums leading-none text-muted-foreground'>
-                                      {day.scheduledTimes[0] ?? '—'}
+                                      {day.scheduledTimes[0] ?? '–'}
                                   </span>
                               )}
                         {day.departures.length > 3 && (
