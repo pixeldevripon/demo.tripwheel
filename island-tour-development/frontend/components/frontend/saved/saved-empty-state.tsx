@@ -17,8 +17,15 @@ export type SavedEmptyDestination = {
     name: string;
     /** Category quick links, already gated by the backend. */
     categories: { slug: string; name: string }[];
-    /** Three Locals' favorites with live hearts - the first save happens here. */
+    /** Three tours with live hearts - the first save happens here. */
     favourites: TourListing[];
+    /**
+     * Whether `favourites` really is the curated Locals' favorites set, or the
+     * island's recommended tours standing in for it. Only the heading changes:
+     * calling a fallback "Locals' favorites" would be a claim about curation
+     * that nobody made.
+     */
+    curated: boolean;
 };
 
 export type SavedEmptyDict = {
@@ -30,8 +37,10 @@ export type SavedEmptyDict = {
     cta: string;
     /** Used when no island is in play at all. */
     ctaGeneric: string;
-    /** "Locals' favorites" */
+    /** "Locals' favorites" - the curated set. */
     favouritesTitle: string;
+    /** Heading when the curated set is empty and recommended tours stand in. */
+    popularTitle: string;
     /** "Tap a heart to start your list." */
     favouritesHint: string;
 };
@@ -130,7 +139,12 @@ export function SavedEmptyState({
             {island && island.favourites.length > 0 && (
                 <section className='mt-10'>
                     <h2 className='m-0 font-it-display text-[22px] font-bold leading-[1.2] text-it-heading'>
-                        {dict.favouritesTitle}
+                        {island.curated
+                            ? dict.favouritesTitle
+                            : dict.popularTitle.replace(
+                                  '{destination}',
+                                  island.name
+                              )}
                     </h2>
                     <p className='m-0 mb-4 mt-[5px] text-[13.5px] leading-[1.6] text-it-text-muted'>
                         {dict.favouritesHint}

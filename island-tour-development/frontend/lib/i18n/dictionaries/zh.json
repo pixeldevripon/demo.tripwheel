@@ -128,6 +128,7 @@
             "cta": "查看 {destination} 的所有旅行",
             "ctaGeneric": "查看所有旅行",
             "favouritesTitle": "当地人最爱",
+            "popularTitle": "{destination} 的热门旅行",
             "favouritesHint": "点一下爱心，开始你的清单。"
         },
         "unbookable": {

@@ -934,6 +934,8 @@ its endpoints. Nothing a visitor reads says it, the URL included.
 - [x] "Email me this list": `POST /wishlist/email` + `saved-tours.template.ts`, throttled 1/10s · 3/min · 10/hr. The link carries `?restore=` and merges the ids back onto the opening device, then cleans itself out of the URL
 - [x] Shared view (`?list=`): read-only, hearts start empty, no email box and no device line
 - [x] Empty state per master 5.12: outlined heart, "Nothing saved yet", body line, CTA back to the remembered island, category quick links, and three Locals' favorites with live hearts
+- [x] The suggestion row cannot vanish: `isLocalsFavourite` is editorial (~30% coverage target) so an island can legitimately have none, and a cached-empty response during a backend blip produces the same result for an hour. Falls back to the island's recommended tours under a "Popular in {destination}" heading - the curated claim is only made when the set really is curated
+- [x] Sponsored suppressed on the empty-state suggestion row too. mck-17 bars it from the PAGE, not just the saved grid, and "Locals' favorites" + "Sponsored" on one card are two labels that contradict each other
 - [x] Compact trust strip - the same four lines and WhatsApp link as All Tours, reusing `ToursTrustStrip`
 - [x] Mobile order: header → action row → grid → email capture. The first card starts at 354px instead of 600px, so three are visible on arrival instead of none
 - [x] Vitest over the cookie format (v1 + v2, budget shedding) and the three list rules (price delta, sole destination, id parsing)

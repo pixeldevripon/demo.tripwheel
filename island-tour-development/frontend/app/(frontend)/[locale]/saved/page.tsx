@@ -52,15 +52,54 @@ async function emptyStateFor(
         }),
     ]);
 
+    /**
+     * The suggestion row must not be able to disappear.
+     *
+     * `isLocalsFavourite` is an editorial flag with a ~30% coverage target, so
+     * an island can legitimately have none - and a cached-empty response
+     * during a backend blip produces the same result for an hour. Either way
+     * the empty state loses the only tours on it, on the one screen whose
+     * entire job is to give somebody something to tap.
+     *
+     * So: fall back to the island's recommended tours. They are a weaker
+     * suggestion than a curated pick, and a strictly better page than none.
+     */
+    const suggestions =
+        favourites.data.length > 0
+            ? favourites.data
+            : (
+                  await getDestinationTours({
+                      destinationId: destination.id,
+                      locale,
+                      sort: 'recommended',
+                      limit: EMPTY_STATE_FAVOURITES,
+                  })
+              ).data;
+
     return {
         slug: destination.slug,
         name: destination.name,
+        /** True only when the row really is the curated set. */
+        curated: favourites.data.length > 0,
         categories: categories
             .slice(0, EMPTY_STATE_CATEGORIES)
             .map(c => ({ slug: c.slug, name: c.name })),
-        favourites: favourites.data.map(hit =>
-            searchHitToListing(hit, locale, duration)
-        ),
+        favourites: suggestions.map(hit => ({
+            ...searchHitToListing(hit, locale, duration),
+            /**
+             * No Sponsored badge here either.
+             *
+             * mck-17 bars it from this PAGE, not merely from the saved grid,
+             * and the reason holds twice over in this row: "Locals' favorites"
+             * is a claim about curation, and "Sponsored" is a statement about
+             * who paid. Two labels on one card that contradict each other
+             * teach the visitor to trust neither.
+             *
+             * Every earned badge survives - New and Most popular say something
+             * about the tour rather than about the placement.
+             */
+            badge: hit.badge === 'sponsored' ? null : hit.badge,
+        })),
     };
 }
 

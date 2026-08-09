@@ -128,6 +128,7 @@
             "cta": "Alle Touren in {destination} ansehen",
             "ctaGeneric": "Alle Touren ansehen",
             "favouritesTitle": "Favoriten der Einheimischen",
+            "popularTitle": "Beliebt in {destination}",
             "favouritesHint": "Tippe auf ein Herz, um deine Liste zu beginnen."
         },
         "unbookable": {

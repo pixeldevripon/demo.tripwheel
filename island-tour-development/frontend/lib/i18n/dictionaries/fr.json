@@ -128,6 +128,7 @@
             "cta": "Voir tous les tours à {destination}",
             "ctaGeneric": "Voir tous les tours",
             "favouritesTitle": "Coups de cœur des locaux",
+            "popularTitle": "Populaires à {destination}",
             "favouritesHint": "Touchez un cœur pour commencer votre liste."
         },
         "unbookable": {
