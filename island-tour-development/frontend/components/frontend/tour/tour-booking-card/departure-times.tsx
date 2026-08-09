@@ -140,7 +140,14 @@ export function DepartureTimes() {
                     animate={{ opacity: 1 }}
                     transition={swapFade}
                     style={{ x: shakeOffset }}
-                    className=''>
+                    // 2px of room under the chips, inside the collapse that
+                    // clips them. `springPop` is underdamped, so releasing a tap
+                    // overshoots past scale 1 and the chip's bottom border was
+                    // being sliced against a box that hugged it exactly. The
+                    // space belongs here rather than in <Collapse>: lifting the
+                    // clip there needed a re-render on animation-complete, and
+                    // that made every panel shake as it opened.
+                    className='pb-0.5'>
                     {/* `.slotlabel` (mck-15): 12px bold in the muted grey. */}
                     <span className='mb-2 block text-[12px] font-bold leading-[1.6] text-it-text-muted'>
                         {dict.departureTime}
