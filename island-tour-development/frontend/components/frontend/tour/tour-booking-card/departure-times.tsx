@@ -141,7 +141,7 @@ export function DepartureTimes() {
                     style={{ x: shakeOffset }}
                     className=''>
                     {/* `.slotlabel` (mck-15): 12px bold in the muted grey. */}
-                    <span className='mb-2 block text-[12px] font-bold leading-[1.4] text-it-text-muted'>
+                    <span className='mb-2 block text-[12px] font-bold leading-[1.6] text-it-text-muted'>
                         {dict.departureTime}
                     </span>
                     {/* `.slotrow`: chips WRAP, they do not share a fixed grid.

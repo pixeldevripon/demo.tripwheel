@@ -41,7 +41,7 @@ export function PriceSummary() {
             {/* `.wsummary` (mck-15): a rule above, 12px of air, and 13.5px rows
                 that sit at 3px each. Not a bordered card - the totals are the
                 card's own last word, not another panel inside it. */}
-            <div className='mt-3 flex flex-col border-t border-it-divider pt-3 text-[13.5px] leading-[1.4]'>
+            <div className='mt-3 flex flex-col border-t border-it-divider pt-3 text-[13.5px] leading-[1.6]'>
                 <Collapse open={detailsOpen}>
                     <div>
                         {priceRows.map(row => (
@@ -96,7 +96,7 @@ export function PriceSummary() {
                         </b>
                     </div>
                 )}
-                <span className='mt-1 text-[12px] leading-[1.4] text-it-ink-muted'>
+                <span className='mt-1 text-[12px] leading-[1.6] text-it-ink-muted'>
                     {dict.taxesIncluded}
                 </span>
 
@@ -110,7 +110,7 @@ export function PriceSummary() {
                     onClick={() => toggleDetails()}
                     whileTap={{ scale: 0.97 }}
                     transition={springPop}
-                    className='mt-1.5 cursor-pointer self-start border-none bg-transparent text-[12.5px] font-bold leading-[1.4] text-it-primary-hover underline underline-offset-2'>
+                    className='mt-1.5 cursor-pointer self-start border-none bg-transparent text-[12.5px] font-bold leading-[1.6] text-it-primary-hover underline underline-offset-2'>
                     {detailsOpen ? dict.hideDetails : dict.showDetails}
                 </motion.button>
             </div>

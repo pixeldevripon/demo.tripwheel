@@ -85,7 +85,7 @@ export function BookingCta() {
                     transition={springPop}
                     // `.wcta` (mck-15): full width, 10px radius, 14px of
                     // padding, 16.5px bold.
-                    className={`flex w-full items-center justify-center rounded-it-sm border-none bg-it-primary px-8 py-3.5 text-[16.5px] font-bold leading-[1.4] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover ${
+                    className={`flex w-full items-center justify-center rounded-it-sm border-none bg-it-primary px-8 py-3.5 text-[16.5px] font-bold leading-[1.6] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover ${
                         navigating
                             ? 'cursor-default opacity-80'
                             : 'cursor-pointer'

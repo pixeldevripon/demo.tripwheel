@@ -200,7 +200,7 @@ export function BookingCalendar() {
                     empty input and starts looking like an answer you can edit
                     (mck-15 `.wfield .chg`). Nothing to change before then. */}
                 {selectedDate && (
-                    <span className='ml-auto text-[12px] font-bold leading-[1.4] text-it-primary-hover underline underline-offset-2'>
+                    <span className='ml-auto text-[12px] font-bold leading-[1.6] text-it-primary-hover underline underline-offset-2'>
                         {dict.change}
                     </span>
                 )}
@@ -230,7 +230,7 @@ export function BookingCalendar() {
                                     used to float between the two month names,
                                     so the header read "August 2026 September"
                                     and belonged to neither of them. */}
-                                <div className='mb-3 flex items-center justify-between gap-2 text-[14.5px] font-bold leading-[1.4] text-it-ink'>
+                                <div className='mb-3 flex items-center justify-between gap-2 text-[14.5px] font-bold leading-[1.6] text-it-ink'>
                                     <motion.button
                                         type='button'
                                         onClick={() => shiftMonth(-1)}
@@ -294,7 +294,7 @@ export function BookingCalendar() {
                                     {weekdays.map(w => (
                                         <span
                                             key={w}
-                                            className='py-1 text-[10px] font-bold uppercase leading-[1.4] tracking-[0.06em] text-it-ink-muted'>
+                                            className='py-1 text-[10px] font-bold uppercase leading-[1.6] tracking-[0.06em] text-it-ink-muted'>
                                             {w}
                                         </span>
                                     ))}
@@ -405,7 +405,7 @@ export function BookingCalendar() {
                                                         // read as a marker
                                                         // rather than as one
                                                         // more selected day.
-                                                        'w-full rounded-[8px] border py-[7px] text-[12.5px] font-semibold leading-[1.25] tabular-nums transition-colors duration-200',
+                                                        'w-full rounded-[8px] border py-[7px] text-[12.5px] font-semibold leading-[1.6] tabular-nums transition-colors duration-200',
                                                         struck && 'line-through',
                                                         isToday && 'rounded-full',
                                                         // The ring on today
@@ -465,7 +465,7 @@ export function BookingCalendar() {
                                                                     // pointing
                                                                     // at its own
                                                                     // date.
-                                                                    className='relative block origin-bottom whitespace-nowrap rounded-[6px] bg-it-dark px-2 py-[3px] text-[10.5px] font-bold leading-[1.4] text-it-white after:absolute after:left-1/2 after:top-full after:-ml-1 after:border-x-4 after:border-t-4 after:border-x-transparent after:border-t-it-dark after:content-[""]'>
+                                                                    className='relative block origin-bottom whitespace-nowrap rounded-[6px] bg-it-dark px-2 py-[3px] text-[10.5px] font-bold leading-[1.6] text-it-white after:absolute after:left-1/2 after:top-full after:-ml-1 after:border-x-4 after:border-t-4 after:border-x-transparent after:border-t-it-dark after:content-[""]'>
                                                                     {hint}
                                                                 </motion.span>
                                                             </div>

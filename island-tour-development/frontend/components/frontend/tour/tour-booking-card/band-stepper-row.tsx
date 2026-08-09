@@ -26,10 +26,10 @@ export function BandStepperRow({
         // as a list rather than as three floating pairs.
         <div className='flex items-center justify-between gap-1 border-b border-it-divider py-[9px] last:border-b-0'>
             <span className='flex flex-col'>
-                <span className='text-[14px] font-semibold leading-[1.4] text-it-ink'>
+                <span className='text-[14px] font-semibold leading-[1.6] text-it-ink'>
                     {label}
                 </span>
-                <span className='text-[12px] leading-[1.4] text-it-text-muted'>
+                <span className='text-[12px] leading-[1.6] text-it-text-muted'>
                     {bandPriceLabel(band)}
                 </span>
             </span>

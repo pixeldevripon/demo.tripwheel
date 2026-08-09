@@ -108,7 +108,7 @@ export function PartySelector() {
                 field, 8px down, with the rows separated by hairlines rather
                 than floated on gaps. */}
             <Collapse open={showPartyBody}>
-                <div className='mt-2 rounded-it-lg border border-it-border bg-it-white px-3.5'>
+                <div className='mt-2 rounded-it-lg border border-it-border bg-it-white px-3.5 py-0.5'>
                     {participantBands.map(band => (
                         <BandStepperRow
                             key={band.id}
@@ -121,7 +121,7 @@ export function PartySelector() {
                         under their own heading. */}
                     {spectatorsApplied && spectatorsOn && (
                         <>
-                            <div className='border-t border-it-divider pt-2.5 text-[12px] font-bold leading-[1.4] text-it-text-muted'>
+                            <div className='border-t border-it-divider pt-2.5 text-[12px] font-bold leading-[1.6] text-it-text-muted'>
                                 {dict.spectators}
                             </div>
                             {spectatorBands.map(band => (
