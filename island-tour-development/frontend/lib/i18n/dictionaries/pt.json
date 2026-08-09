@@ -88,12 +88,53 @@
         "seeAllTours": "Ver todos os tours"
     },
     "wishlist": {
-        "title": "A sua lista de desejos",
-        "empty": "Ainda não há passeios guardados",
-        "emptyHint": "Toque no coração de qualquer passeio para o guardar aqui.",
-        "signInTitle": "Inicie sessão para ver a sua lista de desejos",
-        "signInHint": "Os seus passeios guardados estão associados à sua conta.",
-        "signInCta": "Iniciar sessão"
+        "title": "Tours salvos",
+        "subtitle": "As suas escolhas, lado a lado. Reserve quando quiser.",
+        "sharedNote": "Partilhado consigo. Quando quiser. Toque num coração para guardar qualquer um na sua própria lista.",
+        "tourCount": {
+            "one": "{count} tour",
+            "other": "{count} tours"
+        },
+        "deviceLine": "Esta lista vive neste dispositivo. Envie-a para si por email para a abrir em qualquer lado.",
+        "share": "Partilhar",
+        "shareCopied": "Link copiado",
+        "availableOn": "Disponível a {date}",
+        "closedOn": "Fechado a {date}",
+        "priceWas": "Custava {price} quando o guardou",
+        "removed": "{title} removido",
+        "undo": "Anular",
+        "restored": "Os seus tours salvos estão de volta neste dispositivo.",
+        "dateCheck": {
+            "checkDate": "Verificar uma data",
+            "clearDate": "Limpar data",
+            "travelers": {
+                "one": "{count} viajante",
+                "other": "{count} viajantes"
+            },
+            "fewerTravelers": "Menos um viajante",
+            "moreTravelers": "Mais um viajante"
+        },
+        "email": {
+            "title": "Leve a sua lista consigo",
+            "placeholder": "O seu email",
+            "cta": "Enviar-me esta lista",
+            "help": "Um email com um link para esta lista. Mais nada, a menos que peça.",
+            "sent": "Enviado. Abra o link em qualquer dispositivo para continuar onde ficou.",
+            "error": "Não foi possível enviar. Tente novamente daqui a pouco."
+        },
+        "empty": {
+            "title": "Ainda não guardou nada",
+            "body": "Toque no coração de qualquer tour e ele fica aqui. Os seus planos, num só sítio.",
+            "cta": "Ver todos os tours em {destination}",
+            "ctaGeneric": "Ver todos os tours",
+            "favouritesTitle": "Favoritos locais",
+            "favouritesHint": "Toque num coração para começar a sua lista."
+        },
+        "unbookable": {
+            "notBookable": "Sem reservas de momento",
+            "seeSimilar": "Ver tours semelhantes",
+            "removeFromList": "Remover {title} da sua lista"
+        }
     },
     "home": {
         "hero": {
@@ -615,6 +656,8 @@
             "likelyToSellOut": "Provável esgotar",
             "mostPopular": "Mais popular",
             "sponsored": "Patrocinado",
+            "saveAria": "Guardar {title}",
+            "removeAria": "Remover {title} dos seus tours salvos",
             "pickupAvailable": "Recolha disponível",
             "freeCancellation": "Cancelamento gratuito",
             "priceVaries": "O preço varia de acordo com o tamanho do grupo",

@@ -1,11 +1,25 @@
 import type { TypedAuthUser } from '@/auth/auth.types';
 import { AuthenticatedUser } from '@/auth/decorators/authenticated-user.decorator';
 import { Public } from '@/auth/decorators/public.decorator';
-import { Controller, Delete, Get, Param, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { ResolveWishlistQueryDto, WishlistQueryDto } from './dto/wishlist.dto';
+import { Throttle } from '@nestjs/throttler';
+import {
+  EmailWishlistDto,
+  ResolveWishlistQueryDto,
+  WishlistQueryDto,
+} from './dto/wishlist.dto';
 import {
   ApiAddWishlistDocs,
+  ApiEmailWishlistDocs,
   ApiGetWishlistDocs,
   ApiGetWishlistIdsDocs,
   ApiRemoveWishlistDocs,
@@ -41,6 +55,24 @@ export class WishlistController {
       .map((id) => id.trim())
       .filter(Boolean);
     return this.wishlistService.resolveByIds(ids, query.locale, query.currency);
+  }
+
+  /**
+   * Public because the list is: anyone can build one without an account, so
+   * anyone can mail themselves one. Tightly throttled instead - this is the
+   * only route on the platform that sends mail to an address the caller
+   * chose, and a generous limit on that is a spam relay.
+   */
+  @Throttle({
+    short: { limit: 1, ttl: 10_000 },
+    medium: { limit: 3, ttl: 60_000 },
+    long: { limit: 10, ttl: 3_600_000 },
+  })
+  @Post('email')
+  @Public()
+  @ApiEmailWishlistDocs()
+  emailList(@Body() dto: EmailWishlistDto) {
+    return this.wishlistService.emailList(dto);
   }
 
   @Get()

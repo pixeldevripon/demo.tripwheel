@@ -352,6 +352,10 @@
 
 - [x] Wishlist module: `GET resolve`, `GET /`, `GET ids`, `POST :tourId`, `DELETE :tourId` with `list`/`resolveByIds`/`listIds`/`add`/`remove`
 - [x] Session/auth-aware wishlist ownership
+- [x] `POST /wishlist/email` (public, throttled) - mails a saved list back to its owner with a `?restore=` link. Ids that are no longer bookable are left out; none surviving is a 400 rather than an empty email (mck-17)
+- [x] `resolveByIds`/`list` return unsellable saved tours as `isBookable: false` cards instead of dropping them, carrying only id, title, photo and where to find something similar
+- [x] `dropSponsoredBadge` on both saved-list readers - runs AFTER `applyMostPopularCap`, which can otherwise reintroduce the badge as a cap fallback
+- [x] `POST /availability/check-batch` (public) - bookability of up to 100 tours on ONE date for a given party, same `liveDepartureStatus` + `isDepartureBookable` rules as the calendar and reserve, one query for the whole list
 - [ ] Spec file for `wishlist.service.ts` (no test coverage at all)
 
 ### Home page CMS
@@ -905,12 +909,35 @@ Pages/CMS module, observability (Sentry/backups/deep health), and founder-gated 
 
 - [x] `/[locale]/wishlist` route, `noindex, nofollow`, server-localized chrome
 - [x] `WishlistProvider` mounted in the `[locale]` layout
-- [x] Client `WishlistView` fetching contents at request time
+- [x] Client `SavedToursView` fetching contents at request time
 - [x] `GET /wishlist/resolve` + `wishlistApi` backed by the real `src/wishlist/` backend module
 - [x] Cookie fallback for anonymous wishlists (`lib/wishlist-cookie.ts`)
 - [x] Heart control on every tour card with optimistic fill and revert on API failure
 - [x] `WishlistSkeleton`
 - [ ] `add_to_wishlist` analytics event with list id and index (§3.5)
+
+### Saved tours page rebuild (mck-17, 2026-08-09)
+
+The page is **Saved**, not "Wishlist": `wishlist` survives only in the route, the
+GA4 event names and the backend module. Nothing a visitor reads says it.
+
+- [x] H1 "Saved tours", the locked subline, the `{n} tours · {Island}` meta row and the device line
+- [x] Share pill (`SharePill`, extracted from `CollectionShareButton` so one implementation serves both) producing a `?list=` link
+- [x] Remove is the FILLED HEART, not an X - collapse out plus a snackbar with Undo that restores the tour to its original position
+- [x] Heart moved bottom-right on the horizontal mobile card (master §3.5 "avoids badge collision"), so the demand badge gets the full thumbnail width
+- [x] Heart `aria-label` localized in all 7 locales (`listings.saveAria` / `removeAria`) - it was hardcoded English on every card on every surface
+- [x] **No Sponsored badge on this grid** - `WishlistService.dropSponsoredBadge` runs after `applyMostPopularCap`, which can itself hand out a 'sponsored' fallback
+- [x] Price integrity line: "Was {price} when you saved it", both directions, muted, suppressed across a currency switch (an FX move is not a price change). Cookie v2 carries the snapshot
+- [x] Unbookable saved tours are kept, not dropped: dimmed, desaturated, not clickable, "Not bookable right now" + "See similar tours" pointing at the tour's own category on its own island. The heart still works
+- [x] Date check (spec-flagged v1.1, confirmed for this release): `POST /availability/check-batch` answers many tours for one date and party size in a single call; per-card "Available on {date}" / "Closed on {date}" chips
+- [x] "Email me this list": `POST /wishlist/email` + `saved-tours.template.ts`, throttled 1/10s · 3/min · 10/hr. The link carries `?restore=` and merges the ids back onto the opening device, then cleans itself out of the URL
+- [x] Shared view (`?list=`): read-only, hearts start empty, no email box and no device line
+- [x] Empty state per master 5.12: outlined heart, "Nothing saved yet", body line, CTA back to the remembered island, category quick links, and three Locals' favorites with live hearts
+- [x] Compact trust strip - the same four lines and WhatsApp link as All Tours, reusing `ToursTrustStrip`
+- [x] Mobile order: header → action row → grid → email capture. The first card starts at 354px instead of 600px, so three are visible on arrival instead of none
+- [x] Vitest over the cookie format (v1 + v2, budget shedding) and the three list rules (price delta, sole destination, id parsing)
+- [ ] **Recommendations under the saved grid are deliberately NOT built.** mck-17 marks them "not in v1" and shows the usual evidence does not survive checking (the Airbnb carousel test compared two algorithms, never against no carousel; GetYourGuide's wishlist renders navigation, not save-based recommendations). Revisit only against our own `related_tour_click` numbers
+- [ ] Destination GROUPING once a list spans islands - the meta row drops the island name rather than picking one. Described in mck-17, never drawn
 
 ## Search & typeahead
 

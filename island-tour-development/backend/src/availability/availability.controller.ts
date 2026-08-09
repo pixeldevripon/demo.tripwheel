@@ -20,6 +20,7 @@ import type { TypedAuthUser } from '@/auth/auth.types';
 import { AvailabilityService } from './availability.service';
 import {
   AgendaQueryDto,
+  AvailabilityBatchDto,
   AvailabilityCalendarDto,
   AvailabilityCheckDto,
   AvailabilitySummaryQueryDto,
@@ -43,6 +44,7 @@ import {
   ApiAgendaDocs,
   ApiAvailabilitySummaryDocs,
   ApiCalendarDocs,
+  ApiCheckBatchDocs,
   ApiCloseAgendaDayDocs,
   ApiCheckAvailabilityDocs,
   ApiCloseRangeDocs,
@@ -92,6 +94,13 @@ export class AvailabilityController {
   @ApiCalendarDocs()
   calendar(@Body() dto: AvailabilityCalendarDto) {
     return this.availability.calendar(dto);
+  }
+
+  @Post('check-batch')
+  @Public()
+  @ApiCheckBatchDocs()
+  checkBatch(@Body() dto: AvailabilityBatchDto) {
+    return this.availability.checkBatch(dto);
   }
 
   // ── Daily agenda (Surface B - cross-tour) ───────────────────────────────────

@@ -7,6 +7,7 @@ import { emailSafeLogoUrl } from './email-logo.util';
 import {
   changeEmailConfirmationTemplate,
   emailVerificationTemplate,
+  savedToursTemplate,
   travellerLoginCodeTemplate,
   hatAddedSubject,
   hatAddedTemplate,
@@ -188,6 +189,32 @@ export class MailService {
       // screens and in notification banners, where anyone holding the phone
       // can read it without unlocking.
       subject: 'Your Island Tours sign-in code',
+      html,
+      text,
+    });
+  }
+
+  // ── Saved tours ("Email me this list") ───────────────────────────────────────
+  /**
+   * Sends the traveller's own saved list back to them as a link (mck-17).
+   *
+   * The one pre-booking email on the platform, and the only reason a list kept
+   * in a browser cookie survives a change of device.
+   */
+  async sendSavedToursEmail(
+    to: string,
+    listUrl: string,
+    tourTitles: string[],
+  ): Promise<void> {
+    const siteLogoUrl = await this.getSiteLogo();
+    const { html, text } = savedToursTemplate({
+      listUrl,
+      tourTitles,
+      siteLogoUrl,
+    });
+    await this.sendMail({
+      to,
+      subject: 'Your saved tours',
       html,
       text,
     });

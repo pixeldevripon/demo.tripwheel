@@ -34,6 +34,8 @@ const DICT: SearchRecoveryDict = {
 
 const CARD_DICT = {
     from: 'From',
+    saveAria: 'Save {title}',
+    removeAria: 'Remove {title} from your saved tours',
     per: 'per person',
     freeCancellation: 'Free cancellation',
     reviews: 'reviews',

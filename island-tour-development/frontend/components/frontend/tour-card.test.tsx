@@ -18,6 +18,8 @@ const DICT = {
     likelyToSellOut: 'Likely to sell out',
     mostPopular: 'Most popular',
     sponsored: 'Sponsored',
+    saveAria: 'Save {title}',
+    removeAria: 'Remove {title} from your saved tours',
     from: 'From',
     per: 'per person',
     freeCancellation: 'Free cancellation',

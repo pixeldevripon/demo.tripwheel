@@ -88,12 +88,53 @@
         "seeAllTours": "Alle tours bekijken"
     },
     "wishlist": {
-        "title": "Jouw verlanglijst",
-        "empty": "Nog geen opgeslagen tours",
-        "emptyHint": "Tik op het hartje bij een tour om die hier op te slaan.",
-        "signInTitle": "Log in om je verlanglijst te bekijken",
-        "signInHint": "Je opgeslagen tours zijn gekoppeld aan je account.",
-        "signInCta": "Inloggen"
+        "title": "Bewaarde tours",
+        "subtitle": "Jouw keuzes, naast elkaar. Boek wanneer je er klaar voor bent.",
+        "sharedNote": "Met jou gedeeld. Klaar wanneer jij dat bent. Tik op een hartje om er een op je eigen lijst te zetten.",
+        "tourCount": {
+            "one": "{count} tour",
+            "other": "{count} tours"
+        },
+        "deviceLine": "Deze lijst staat op dit apparaat. Mail hem naar jezelf om hem overal te openen.",
+        "share": "Delen",
+        "shareCopied": "Link gekopieerd",
+        "availableOn": "Beschikbaar op {date}",
+        "closedOn": "Gesloten op {date}",
+        "priceWas": "Was {price} toen je hem bewaarde",
+        "removed": "{title} verwijderd",
+        "undo": "Ongedaan maken",
+        "restored": "Je bewaarde tours staan weer op dit apparaat.",
+        "dateCheck": {
+            "checkDate": "Een datum checken",
+            "clearDate": "Datum wissen",
+            "travelers": {
+                "one": "{count} reiziger",
+                "other": "{count} reizigers"
+            },
+            "fewerTravelers": "Eén reiziger minder",
+            "moreTravelers": "Eén reiziger meer"
+        },
+        "email": {
+            "title": "Neem je lijst mee",
+            "placeholder": "Je e-mailadres",
+            "cta": "Mail me deze lijst",
+            "help": "Eén e-mail met een link naar deze lijst. Verder niets, tenzij je daarom vraagt.",
+            "sent": "Verstuurd. Open de link op elk apparaat en ga verder waar je gebleven was.",
+            "error": "Versturen is niet gelukt. Probeer het zo nog eens."
+        },
+        "empty": {
+            "title": "Nog niets bewaard",
+            "body": "Tik op het hartje bij een tour en hij blijft hier staan. Je plannen, op één plek.",
+            "cta": "Bekijk alle tours in {destination}",
+            "ctaGeneric": "Bekijk alle tours",
+            "favouritesTitle": "Favorieten van locals",
+            "favouritesHint": "Tik op een hartje om je lijst te beginnen."
+        },
+        "unbookable": {
+            "notBookable": "Nu niet te boeken",
+            "seeSimilar": "Bekijk vergelijkbare tours",
+            "removeFromList": "{title} van je lijst verwijderen"
+        }
     },
     "home": {
         "hero": {
@@ -615,6 +656,8 @@
             "likelyToSellOut": "Snel uitverkocht",
             "mostPopular": "Meest populair",
             "sponsored": "Gesponsord",
+            "saveAria": "{title} bewaren",
+            "removeAria": "{title} uit je bewaarde tours verwijderen",
             "pickupAvailable": "Ophaalservice beschikbaar",
             "freeCancellation": "Gratis annulering",
             "priceVaries": "Prijs varieert per groepsgrootte",

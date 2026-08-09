@@ -88,12 +88,53 @@
         "seeAllTours": "查看全部行程"
     },
     "wishlist": {
-        "title": "你的心愿单",
-        "empty": "还没有收藏的行程",
-        "emptyHint": "点击任意行程上的爱心即可收藏到这里。",
-        "signInTitle": "登录以查看你的心愿单",
-        "signInHint": "你收藏的行程与你的账户关联。",
-        "signInCta": "登录"
+        "title": "已收藏的旅行",
+        "subtitle": "你挑的行程，一目了然。想好了随时预订。",
+        "sharedNote": "有人把这份清单分享给你。想收藏哪一个，点一下爱心就好。",
+        "tourCount": {
+            "one": "{count} 个旅行",
+            "other": "{count} 个旅行"
+        },
+        "deviceLine": "这份清单保存在这台设备上。发到你的邮箱，就能在任何设备上打开。",
+        "share": "分享",
+        "shareCopied": "链接已复制",
+        "availableOn": "{date} 可预订",
+        "closedOn": "{date} 不开放",
+        "priceWas": "你收藏时的价格是 {price}",
+        "removed": "已移除 {title}",
+        "undo": "撤销",
+        "restored": "你收藏的旅行已回到这台设备上。",
+        "dateCheck": {
+            "checkDate": "查看某一天",
+            "clearDate": "清除日期",
+            "travelers": {
+                "one": "{count} 位旅客",
+                "other": "{count} 位旅客"
+            },
+            "fewerTravelers": "减少一位旅客",
+            "moreTravelers": "增加一位旅客"
+        },
+        "email": {
+            "title": "把清单带走",
+            "placeholder": "你的邮箱",
+            "cta": "把清单发给我",
+            "help": "只发一封邮件，里面是这份清单的链接。除非你另行选择，不会再有别的。",
+            "sent": "已发送。在任何设备上打开链接，就能接着看。",
+            "error": "发送失败，请稍后再试。"
+        },
+        "empty": {
+            "title": "还没有收藏",
+            "body": "在任何旅行上点一下爱心，它就会留在这里。你的计划，都在一处。",
+            "cta": "查看 {destination} 的所有旅行",
+            "ctaGeneric": "查看所有旅行",
+            "favouritesTitle": "当地人最爱",
+            "favouritesHint": "点一下爱心，开始你的清单。"
+        },
+        "unbookable": {
+            "notBookable": "目前无法预订",
+            "seeSimilar": "看看类似的旅行",
+            "removeFromList": "把 {title} 从清单中移除"
+        }
     },
     "home": {
         "hero": {
@@ -615,6 +656,8 @@
             "likelyToSellOut": "即将售罄",
             "mostPopular": "最受欢迎",
             "sponsored": "赞助",
+            "saveAria": "收藏 {title}",
+            "removeAria": "把 {title} 从已收藏的旅行中移除",
             "pickupAvailable": "提供接送",
             "freeCancellation": "免费取消",
             "priceVaries": "价格因团体人数而异",

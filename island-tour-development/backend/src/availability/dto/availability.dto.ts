@@ -841,6 +841,67 @@ export class AvailabilityCheckDto {
   units?: PartySizeDto[];
 }
 
+/**
+ * The most tours one batch check will answer for.
+ *
+ * Matches the saved-list cap in `WishlistService.resolveByIds` on purpose: the
+ * saved tours page is the caller, and a list it cannot render is a list it must
+ * not be able to ask about either.
+ */
+export const BATCH_CHECK_MAX_TOURS = 100;
+
+/**
+ * "Is each of these tours bookable on this one day?" - the request behind the
+ * saved tours page's date check (mck-17). Many tours, ONE date, because the
+ * traveller is asking about a day rather than about a tour.
+ */
+export class AvailabilityBatchDto {
+  @ApiProperty({
+    type: [String],
+    example: ['tour-uuid-a', 'tour-uuid-b'],
+    description: `Tour ids to check (deduplicated, first ${BATCH_CHECK_MAX_TOURS} kept)`,
+  })
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsString({ each: true })
+  tourIds!: string[];
+
+  @ApiProperty({ example: '2026-08-15', description: 'The day being checked' })
+  @IsLocalDate()
+  date!: string;
+
+  @ApiPropertyOptional({
+    example: 2,
+    default: 1,
+    description: 'Party size - a departure with fewer seats left is not a yes',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  guests?: number;
+}
+
+export class AvailabilityBatchTourDto {
+  @ApiProperty({ example: 'tour-uuid-a' }) tourId!: string;
+  @ApiProperty({
+    example: true,
+    description:
+      'False for every reason a traveller cannot book that day: no departure, sold out, past cutoff, or too few seats left',
+  })
+  available!: boolean;
+}
+
+export class AvailabilityBatchResponseDto {
+  @ApiProperty({ example: '2026-08-15' }) date!: string;
+  @ApiProperty({ example: 2 }) guests!: number;
+  @ApiProperty({
+    type: [AvailabilityBatchTourDto],
+    description: 'One entry per requested tour, in the order asked for',
+  })
+  tours!: AvailabilityBatchTourDto[];
+}
+
 export class AvailabilityCalendarDto {
   @ApiProperty({ example: 'tour-uuid' })
   @IsString()

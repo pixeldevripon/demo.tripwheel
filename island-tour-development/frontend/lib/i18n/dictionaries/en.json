@@ -88,12 +88,53 @@
         "seeAllTours": "See all tours"
     },
     "wishlist": {
-        "title": "Your wishlist",
-        "empty": "No saved tours yet",
-        "emptyHint": "Tap the heart on any tour to save it here.",
-        "signInTitle": "Sign in to view your wishlist",
-        "signInHint": "Your saved tours are tied to your account.",
-        "signInCta": "Sign in"
+        "title": "Saved tours",
+        "subtitle": "Your picks, side by side. Book when you’re ready.",
+        "sharedNote": "Shared with you. Ready when you are. Tap a heart to keep any of these on your own list.",
+        "tourCount": {
+            "one": "{count} tour",
+            "other": "{count} tours"
+        },
+        "deviceLine": "This list lives on this device. Email it to yourself to open it anywhere.",
+        "share": "Share",
+        "shareCopied": "Link copied",
+        "availableOn": "Available on {date}",
+        "closedOn": "Closed on {date}",
+        "priceWas": "Was {price} when you saved it",
+        "removed": "{title} removed",
+        "undo": "Undo",
+        "restored": "Your saved tours are back on this device.",
+        "dateCheck": {
+            "checkDate": "Check a date",
+            "clearDate": "Clear date",
+            "travelers": {
+                "one": "{count} traveler",
+                "other": "{count} travelers"
+            },
+            "fewerTravelers": "One traveler fewer",
+            "moreTravelers": "One traveler more"
+        },
+        "email": {
+            "title": "Take your list with you",
+            "placeholder": "Your email",
+            "cta": "Email me this list",
+            "help": "One email with a link to this list. Nothing else unless you opt in.",
+            "sent": "Sent. Open the link on any device to pick up where you left off.",
+            "error": "That did not send. Try again in a moment."
+        },
+        "empty": {
+            "title": "Nothing saved yet",
+            "body": "Tap the heart on any tour and it stays right here. Your plans, in one place.",
+            "cta": "See all {destination} tours",
+            "ctaGeneric": "See all tours",
+            "favouritesTitle": "Locals’ favorites",
+            "favouritesHint": "Tap a heart to start your list."
+        },
+        "unbookable": {
+            "notBookable": "Not bookable right now",
+            "seeSimilar": "See similar tours",
+            "removeFromList": "Remove {title} from your list"
+        }
     },
     "home": {
         "hero": {
@@ -615,6 +656,8 @@
             "likelyToSellOut": "Likely to sell out",
             "mostPopular": "Most popular",
             "sponsored": "Sponsored",
+            "saveAria": "Save {title}",
+            "removeAria": "Remove {title} from your saved tours",
             "pickupAvailable": "Pickup available",
             "freeCancellation": "Free cancellation",
             "priceVaries": "Price varies by group size",
