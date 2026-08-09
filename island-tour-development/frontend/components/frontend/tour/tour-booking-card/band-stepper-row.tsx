@@ -21,12 +21,15 @@ export function BandStepperRow({
     // "Adult (Age 13+)" - the operator's noun, the localized age qualifier.
     const label = bandLabel(band);
     return (
-        <div className='flex items-center justify-between gap-1'>
+        // `.trav .row` (mck-15): 9px of vertical room and a hairline between
+        // rows, none after the last. The divider is what makes three bands read
+        // as a list rather than as three floating pairs.
+        <div className='flex items-center justify-between gap-1 border-b border-it-divider py-[9px] last:border-b-0'>
             <span className='flex flex-col'>
-                <span className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                <span className='text-[14px] font-semibold leading-[1.4] text-it-ink'>
                     {label}
                 </span>
-                <span className='text-[14px] leading-[1.4] tracking-[-0.012em] text-it-text-muted'>
+                <span className='text-[12px] leading-[1.4] text-it-text-muted'>
                     {bandPriceLabel(band)}
                 </span>
             </span>

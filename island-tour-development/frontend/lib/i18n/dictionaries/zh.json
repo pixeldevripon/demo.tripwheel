@@ -437,6 +437,7 @@
                 "sellOutTitle": "可能售罄",
                 "sellOutSubtitle": "立即预订以确保名额。",
                 "selectDate": "选择日期",
+                "change": "更改",
                 "checkAvailability": "查看可订情况",
                 "errorSelectDate": "请选择日期以继续",
                 "errorSelectSlot": "请选择出发时间以继续",

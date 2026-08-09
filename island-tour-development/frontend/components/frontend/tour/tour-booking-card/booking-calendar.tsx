@@ -66,9 +66,16 @@ export function BookingCalendar() {
 
     // Portal + fixed positioning: the card's selector stack scrolls inside an
     // `overflow` container that would clip an in-flow absolute popover, so the
-    // calendar renders in a body portal, positioned under the date field and
-    // re-measured on scroll/resize so it tracks the field as the sticky rail or
-    // the inner scroll moves.
+    // calendar renders in a body portal, positioned OVER the field stack and
+    // re-measured on scroll/resize so it tracks it as the sticky rail or the
+    // inner scroll moves.
+    //
+    // Over, not under (mck-15 `#ical{position:absolute;top:0;left:0;right:0}`):
+    // the calendar takes the fields' place while it is open rather than pushing
+    // the card taller, so the button below it does not move. The portal stays -
+    // the mockup is a static page with no scroll container to be clipped by,
+    // and a fixed layer is the only version of `top:0 of the field stack` that
+    // survives one.
     const triggerRef = useRef<HTMLButtonElement>(null);
     const [mounted, setMounted] = useState(false);
     const [coords, setCoords] = useState<PopoverCoords | null>(null);
@@ -78,8 +85,11 @@ export function BookingCalendar() {
         const update = () => {
             const el = triggerRef.current;
             if (!el) return;
-            const r = el.getBoundingClientRect();
-            setCoords({ top: r.bottom + 8, left: r.left, width: r.width });
+            // The `.wfields` stack this field sits in - the box the overlay
+            // covers. Falls back to the field itself if the structure changes.
+            const box = (el.closest('[data-booking-fields]') ?? el)
+                .getBoundingClientRect();
+            setCoords({ top: box.top, left: box.left, width: box.width });
         };
         update();
         // Capture phase catches scrolls from the inner card body too, not just
@@ -159,11 +169,25 @@ export function BookingCalendar() {
                 // back into view: the first thing still to answer.
                 data-booking-date-trigger=''
                 transition={springPop}
-                // Blocked CTA click with no date: ring the field so the note
-                // above the button points somewhere concrete.
-                className={`flex w-full cursor-pointer items-center justify-between gap-2.5 rounded-it-sm border border-it-border bg-it-white px-[13px] py-[11px] text-left ${
+                // `.wfield` (mck-15): 1px border, 10px radius, 11/13 padding,
+                // 14px semibold, icon LEFT at 17px. Blocked CTA click with no
+                // date: ring the field so the note above the button points
+                // somewhere concrete.
+                className={`flex w-full cursor-pointer items-center gap-2.5 rounded-it-sm border border-it-border bg-it-white px-[13px] py-[11px] text-left ${
                     ctaError === 'date' ? 'ring-1 ring-it-primary' : ''
                 }`}>
+                <Image
+                    src='/icons/booking-calendar.svg'
+                    alt=''
+                    width={24}
+                    height={24}
+                    className='size-[17px] shrink-0'
+                    // Card chrome, always visible above the fold - it must not
+                    // queue behind the page's ~190 lazy images. `eager` (not
+                    // `priority`) loads it immediately WITHOUT adding a
+                    // preload link that would compete with the gallery LCP.
+                    loading='eager'
+                />
                 <span
                     className={`text-[14px] font-semibold leading-[1.6] ${
                         selectedDate ? 'text-it-ink' : 'text-it-ink-muted'
@@ -172,18 +196,14 @@ export function BookingCalendar() {
                         ? formatSelectedDate(selectedDate, locale)
                         : dict.selectDate}
                 </span>
-                <Image
-                    src='/icons/booking-calendar.svg'
-                    alt=''
-                    width={24}
-                    height={24}
-                    className='size-6 shrink-0'
-                    // Card chrome, always visible above the fold - it must not
-                    // queue behind the page's ~190 lazy images. `eager` (not
-                    // `priority`) loads it immediately WITHOUT adding a
-                    // preload link that would compete with the gallery LCP.
-                    loading='eager'
-                />
+                {/* "Change" once a date is set - the field stops looking like an
+                    empty input and starts looking like an answer you can edit
+                    (mck-15 `.wfield .chg`). Nothing to change before then. */}
+                {selectedDate && (
+                    <span className='ml-auto text-[12px] font-bold leading-[1.4] text-it-primary-hover underline underline-offset-2'>
+                        {dict.change}
+                    </span>
+                )}
             </motion.button>
 
             {mounted &&
@@ -203,27 +223,29 @@ export function BookingCalendar() {
                                     left: coords.left,
                                     width: coords.width,
                                 }}
-                                className='fixed z-[90] rounded-[16px] bg-it-white p-4 shadow-it-lg'>
-                                {/* Month nav: "← August 2026" on the left, "September →"
-                                    on the right. The year used to float between the
-                                    two month names, so the header read "August 2026
-                                    September" and belonged to neither of them
-                                    (Pastel #58). It goes next to the month it
-                                    qualifies. */}
-                                <div className='flex items-center justify-between gap-2 pb-4'>
+                                className='fixed z-[90] rounded-it-lg border border-it-border bg-it-white p-4 shadow-it-lg'>
+                                {/* `.mrow` (mck-15): 14.5px bold, a round 28px
+                                    button on each end. "← August 2026" on the
+                                    left, "September →" on the right - the year
+                                    used to float between the two month names,
+                                    so the header read "August 2026 September"
+                                    and belonged to neither of them. */}
+                                <div className='mb-3 flex items-center justify-between gap-2 text-[14.5px] font-bold leading-[1.4] text-it-ink'>
                                     <motion.button
                                         type='button'
                                         onClick={() => shiftMonth(-1)}
-                                        whileTap={{ scale: 0.99 }}
+                                        whileTap={{ scale: 0.96 }}
                                         transition={springPop}
-                                        className='flex cursor-pointer items-center gap-2 font-normal text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                        <Image
-                                            src='/icons/booking-arrow.svg'
-                                            alt=''
-                                            width={20}
-                                            height={20}
-                                            className='size-5 shrink-0 rotate-180'
-                                        />
+                                        className='flex cursor-pointer items-center gap-2'>
+                                        <span className='grid size-7 shrink-0 place-items-center rounded-it-full border border-it-border bg-it-white'>
+                                            <Image
+                                                src='/icons/booking-arrow.svg'
+                                                alt=''
+                                                width={20}
+                                                height={20}
+                                                className='size-3.5 shrink-0 rotate-180'
+                                            />
+                                        </span>
                                         {`${monthName(
                                             view.month,
                                             view.year,
@@ -233,9 +255,9 @@ export function BookingCalendar() {
                                     <motion.button
                                         type='button'
                                         onClick={() => shiftMonth(1)}
-                                        whileTap={{ scale: 0.99 }}
+                                        whileTap={{ scale: 0.96 }}
                                         transition={springPop}
-                                        className='flex cursor-pointer items-center gap-2 font-normal text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                        className='flex cursor-pointer items-center gap-2'>
                                         {monthName(
                                             view.month === 11
                                                 ? 0
@@ -245,21 +267,24 @@ export function BookingCalendar() {
                                                 : view.year,
                                             locale
                                         )}
-                                        <Image
-                                            src='/icons/booking-arrow.svg'
-                                            alt=''
-                                            width={20}
-                                            height={20}
-                                            className='size-5 shrink-0'
-                                        />
+                                        <span className='grid size-7 shrink-0 place-items-center rounded-it-full border border-it-border bg-it-white'>
+                                            <Image
+                                                src='/icons/booking-arrow.svg'
+                                                alt=''
+                                                width={20}
+                                                height={20}
+                                                className='size-3.5 shrink-0'
+                                            />
+                                        </span>
                                     </motion.button>
                                 </div>
 
-                                {/* Weekday headers + day cells (pulse while the live
-                            calendar is still loading). */}
+                                {/* `.grid` + `.dow` (mck-15): 7 columns at a 3px
+                                    gap, weekday heads 10px bold uppercase in
+                                    faint. Pulses while the live calendar loads. */}
                                 <div
                                     aria-busy={isLive && calendarLoading}
-                                    className={`grid grid-cols-7 gap-y-2 text-center ${
+                                    className={`grid grid-cols-7 gap-[3px] text-center ${
                                         isLive &&
                                         calendarLoading &&
                                         !calendarDays
@@ -269,7 +294,7 @@ export function BookingCalendar() {
                                     {weekdays.map(w => (
                                         <span
                                             key={w}
-                                            className='font-normal text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                            className='py-1 text-[10px] font-bold uppercase leading-[1.4] tracking-[0.06em] text-it-ink-muted'>
                                             {w}
                                         </span>
                                     ))}
@@ -369,8 +394,20 @@ export function BookingCalendar() {
                                                     }
                                                     transition={springPop}
                                                     className={[
-                                                        'grid size-9 place-items-center rounded-it-full border text-[16px] leading-[1.6] tracking-[-0.012em] transition-colors duration-300',
+                                                        // `.d` (mck-15): a full-
+                                                        // width cell, 7px of
+                                                        // vertical padding, 8px
+                                                        // radius, 12.5px
+                                                        // semibold tabular. Not
+                                                        // a circle - only TODAY
+                                                        // is round, which is
+                                                        // what makes its ring
+                                                        // read as a marker
+                                                        // rather than as one
+                                                        // more selected day.
+                                                        'w-full rounded-[8px] border py-[7px] text-[12.5px] font-semibold leading-[1.25] tabular-nums transition-colors duration-200',
                                                         struck && 'line-through',
+                                                        isToday && 'rounded-full',
                                                         // The ring on today
                                                         // survives the day being
                                                         // unbookable - it says
@@ -382,12 +419,12 @@ export function BookingCalendar() {
                                                               ? 'border-it-ink-muted'
                                                               : 'border-transparent',
                                                         isSelected
-                                                            ? 'bg-it-primary font-normal text-it-white'
+                                                            ? 'bg-it-primary font-extrabold text-it-white'
                                                             : disabled
-                                                              ? 'cursor-not-allowed text-it-ink-muted/50'
+                                                              ? 'cursor-not-allowed font-normal text-it-ink-muted'
                                                               : isFirstOpen
-                                                                ? 'cursor-pointer bg-it-surface font-bold text-it-primary-hover'
-                                                                : 'cursor-pointer text-it-heading hover:bg-it-surface',
+                                                                ? 'cursor-pointer bg-it-bg font-extrabold text-it-primary-hover'
+                                                                : 'cursor-pointer text-it-ink hover:bg-it-bg',
                                                     ]
                                                         .filter(Boolean)
                                                         .join(' ')}>
@@ -417,7 +454,18 @@ export function BookingCalendar() {
                                                                     transition={
                                                                         crossFade
                                                                     }
-                                                                    className='block origin-bottom whitespace-nowrap rounded-[6px] bg-it-heading px-2 py-1 text-[12px] leading-[1.4] tracking-[-0.012em] text-it-white shadow-it-md'>
+                                                                    // `.tip`
+                                                                    // (mck-15):
+                                                                    // 10.5px
+                                                                    // bold on
+                                                                    // the dark
+                                                                    // ink, with
+                                                                    // the little
+                                                                    // arrow
+                                                                    // pointing
+                                                                    // at its own
+                                                                    // date.
+                                                                    className='relative block origin-bottom whitespace-nowrap rounded-[6px] bg-it-dark px-2 py-[3px] text-[10.5px] font-bold leading-[1.4] text-it-white after:absolute after:left-1/2 after:top-full after:-ml-1 after:border-x-4 after:border-t-4 after:border-x-transparent after:border-t-it-dark after:content-[""]'>
                                                                     {hint}
                                                                 </motion.span>
                                                             </div>

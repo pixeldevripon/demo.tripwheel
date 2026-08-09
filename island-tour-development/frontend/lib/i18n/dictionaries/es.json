@@ -437,6 +437,7 @@
                 "sellOutTitle": "Probable que se agote",
                 "sellOutSubtitle": "Reserva hoy para asegurar tu lugar.",
                 "selectDate": "Selecciona la fecha",
+                "change": "Cambiar",
                 "checkAvailability": "Comprobar disponibilidad",
                 "errorSelectDate": "Selecciona una fecha para continuar",
                 "errorSelectSlot": "Selecciona una hora de salida para continuar",

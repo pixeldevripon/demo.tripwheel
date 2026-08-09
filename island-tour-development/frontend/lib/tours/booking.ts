@@ -130,6 +130,8 @@ export type TourBookingDict = {
     sellOutSubtitle: string;
     // Booking Widget V2
     selectDate: string;
+    /** Shown on the date field once a date is chosen - it edits, not selects. */
+    change: string;
     checkAvailability: string;
     /** Inline CTA note when Check Availability is clicked with no date picked. */
     errorSelectDate: string;

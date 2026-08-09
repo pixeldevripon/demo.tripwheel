@@ -788,7 +788,11 @@ export function createBookingStore(init: BookingInit) {
         selectedTime: init.tourId == null ? loneSlotTime(data.slots) : null,
         calendarOpen: false,
         partyOpen: false,
-        detailsOpen: false,
+        // OPEN by default (mck-15 `S.details = true`, including its reset
+        // state). The breakdown is the answer to "why that number", and a
+        // traveller who has to ask for it has already been given a total they
+        // cannot check. Collapsing is the deliberate act, not expanding.
+        detailsOpen: true,
         spectatorsOn: false,
         travelerTouched: false,
         spectatorsApplied: false,
@@ -809,9 +813,23 @@ export function createBookingStore(init: BookingInit) {
         ...config,
         ...initialState,
 
-        setCalendarOpen: open => set({ calendarOpen: open }),
-        toggleCalendar: () => set(s => ({ calendarOpen: !s.calendarOpen })),
-        togglePartyOpen: () => set(s => ({ partyOpen: !s.partyOpen })),
+        // The calendar covers the field stack while it is open, so the party
+        // panel folds away with it - two panels cannot own the same space
+        // (mck-15 opens one and closes the other on every field tap).
+        setCalendarOpen: open =>
+            set(open ? { calendarOpen: true, partyOpen: false } : { calendarOpen: false }),
+        toggleCalendar: () =>
+            set(s =>
+                s.calendarOpen
+                    ? { calendarOpen: false }
+                    : { calendarOpen: true, partyOpen: false }
+            ),
+        togglePartyOpen: () =>
+            set(s =>
+                s.partyOpen
+                    ? { partyOpen: false }
+                    : { partyOpen: true, calendarOpen: false }
+            ),
         toggleDetails: () => set(s => ({ detailsOpen: !s.detailsOpen })),
         setSpectatorsOn: on => set({ spectatorsOn: on }),
         setSpectatorsApplied: applied => set({ spectatorsApplied: applied }),

@@ -33,17 +33,19 @@ export function BookingAddOns() {
     if (data.addOns.length === 0) return null;
 
     return (
-        <div className='rounded-[8px] bg-it-white'>
-            {/* Consent toggle - the whole row is the click target, mirroring
-                the Pattern B party header. */}
+        // `.extras` (mck-15): a rule above and 12px of air, NOT a bordered card.
+        // The card already has one border; a second box inside it turned every
+        // section into its own panel and buried the order the client asked for.
+        <div className='mt-3 border-t border-it-divider pt-3'>
+            {/* `.exhead`: 14px bold, the whole row is the click target. */}
             <motion.button
                 type='button'
                 aria-expanded={open}
                 onClick={() => setOpen(o => !o)}
                 whileTap={{ scale: 0.99 }}
                 transition={springPop}
-                className='flex w-full cursor-pointer items-center justify-between gap-2.5 border-none bg-transparent px-4 py-4 text-left'>
-                <span className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                className='flex w-full cursor-pointer items-center justify-between gap-2.5 border-none bg-transparent text-left'>
+                <span className='text-[14px] font-bold leading-[1.4] text-it-ink'>
                     {dict.addOnsTitle}
                 </span>
                 <Image
@@ -51,15 +53,14 @@ export function BookingAddOns() {
                     alt=''
                     width={20}
                     height={20}
-                    className={`size-5 shrink-0 transition-transform duration-300 ${
+                    className={`size-[17px] shrink-0 transition-transform duration-300 ${
                         open ? 'rotate-180' : ''
                     }`}
                 />
             </motion.button>
 
             <Collapse open={open}>
-                <div className='flex flex-col gap-3.5 px-4 pb-4'>
-                    <div className='h-px w-full bg-it-heading/10' />
+                <div>
                     {data.addOns.map(addOn => {
                         const qty = addOnQty[addOn.id] ?? 0;
                         // "$22 per person", not "$22/per person".
@@ -68,19 +69,21 @@ export function BookingAddOns() {
                                 ? dict.perPerson
                                 : dict.perBooking;
                         return (
+                            // `.exrow`: top-aligned, hairline between rows and
+                            // none after the last.
                             <div
                                 key={addOn.id}
-                                className='flex items-center justify-between gap-3'>
+                                className='flex items-start gap-3 border-b border-it-divider py-2.5 last:border-b-0'>
                                 <div className='flex min-w-0 flex-col'>
-                                    <span className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                    <span className='text-[13.5px] font-bold leading-[1.4] text-it-ink'>
                                         {addOn.name}
                                     </span>
                                     {addOn.description && (
-                                        <span className='text-[14px] leading-[1.5] tracking-[-0.012em] text-it-text-muted'>
+                                        <span className='text-[12px] leading-[1.4] text-it-text-muted'>
                                             {addOn.description}
                                         </span>
                                     )}
-                                    <span className='text-[14px] leading-[1.5] tracking-[-0.012em] text-it-ink-muted'>
+                                    <span className='text-[12px] leading-[1.4] text-it-ink-muted'>
                                         {`${money(addOn.price)} ${priceSuffix}`}
                                     </span>
                                 </div>

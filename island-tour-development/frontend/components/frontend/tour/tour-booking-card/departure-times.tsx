@@ -104,7 +104,7 @@ export function DepartureTimes() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={swapFade}
-                    className='pb-2 pt-2'>
+                    className=''>
                     <p className='m-0 text-[14px] font-semibold leading-[1.5] text-it-ink'>
                         {dict.noDeparturesOnDateTitle.replace(
                             '{date}',
@@ -121,14 +121,14 @@ export function DepartureTimes() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={swapFade}
-                    className='grid grid-cols-3 gap-2 pb-2 pt-2'>
+                    className='flex flex-wrap gap-2'>
                     {[0, 1, 2].map(i => (
                         <div
                             key={i}
-                            // Same height as a real time chip (py-2 + time +
-                            // note lines + border), so resolving slots never
-                            // jolts the card.
-                            className='h-[74px] it-skeleton rounded-it-sm'
+                            // Same box as a real time chip (py-2 + a 13.5px
+                            // line + border), so resolving slots never jolts
+                            // the card.
+                            className='h-[38px] w-[84px] it-skeleton rounded-it-sm'
                         />
                     ))}
                 </motion.div>
@@ -139,11 +139,16 @@ export function DepartureTimes() {
                     animate={{ opacity: 1 }}
                     transition={swapFade}
                     style={{ x: shakeOffset }}
-                    className='pb-2 pt-2'>
-                    <span className='mb-2 block text-[12px] font-bold leading-[1.5] text-it-text-muted'>
+                    className=''>
+                    {/* `.slotlabel` (mck-15): 12px bold in the muted grey. */}
+                    <span className='mb-2 block text-[12px] font-bold leading-[1.4] text-it-text-muted'>
                         {dict.departureTime}
                     </span>
-                    <div className='grid grid-cols-3 gap-2'>
+                    {/* `.slotrow`: chips WRAP, they do not share a fixed grid.
+                        A three-column grid stretched two departures across the
+                        card and cut a long localized time in half; the chip is
+                        as wide as its own label and the row runs on. */}
+                    <div className='flex flex-wrap gap-2'>
                     {slots.map(slot => {
                         const isSelected = selectedTime === slot.time;
                         const soldOut = slot.status === 'sold_out';
@@ -171,20 +176,17 @@ export function DepartureTimes() {
                                 onClick={() => selectTime(slot.time)}
                                 whileTap={soldOut ? undefined : { scale: 0.97 }}
                                 transition={springPop}
-                                // `px-2`, not `px-4`: the chip is a grid item,
-                                // so the cell decides its width and the padding
-                                // only decides how early the label wraps. At
-                                // px-4 the 3 columns lost enough room to the
-                                // scroll region's scrollbar to break "12:00 PM"
-                                // across two lines. Nothing moves visually -
-                                // the label is centred in the same box.
-                                className={`flex flex-col items-center gap-[3px] rounded-it-sm border bg-it-white px-2 py-2 transition-colors duration-300 ${chipBorder} ${
+                                // `.slot` (mck-15): 8/14 padding, 10px radius,
+                                // 13.5px bold tabular, centred. Selection is
+                                // the orange border and tint; a sold-out chip
+                                // simply fades to half.
+                                className={`rounded-it-sm border bg-it-white px-3.5 py-2 text-center transition-colors duration-200 ${chipBorder} ${
                                     soldOut
-                                        ? 'cursor-not-allowed opacity-60'
+                                        ? 'cursor-not-allowed opacity-50'
                                         : 'cursor-pointer'
                                 }`}>
                                 <span
-                                    className={`whitespace-nowrap text-[14px] font-bold leading-[1.6] tabular-nums ${
+                                    className={`block whitespace-nowrap text-[13.5px] font-bold leading-[1.25] tabular-nums ${
                                         isSelected
                                             ? 'text-it-primary-hover'
                                             : 'text-it-ink'
@@ -192,7 +194,7 @@ export function DepartureTimes() {
                                     {formatTime(slot.time, locale)}
                                 </span>
                                 {note && (
-                                    <span className='text-[12px] leading-[1.5] text-it-text-muted'>
+                                    <span className='block text-[11px] font-semibold leading-[1.25] text-it-text-muted'>
                                         {note}
                                     </span>
                                 )}

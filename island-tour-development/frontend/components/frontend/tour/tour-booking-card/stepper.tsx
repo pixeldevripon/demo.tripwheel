@@ -4,7 +4,16 @@ import { springPop } from '@/lib/motion';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 
-/** Circular +/- stepper button (Figma node 49212:8122). */
+/**
+ * Circular +/- stepper button - `.ctr button` in mck-15: a 28px disc with a
+ * hairline border.
+ *
+ * 28px of visible disc, with the touch target taken back out to 44px by an
+ * invisible `before:` box (-8px on each side). The same trick the tour hero's
+ * overlay actions use: sizing the disc itself at 44px to satisfy the target
+ * floor puts six heavy circles in a card the mockup draws light, and the tap
+ * area is not the thing that has to be seen.
+ */
 function StepperButton({
     sign,
     label,
@@ -24,13 +33,13 @@ function StepperButton({
             disabled={disabled}
             whileTap={disabled ? undefined : { scale: 0.9 }}
             transition={springPop}
-            className='grid size-10 shrink-0 cursor-pointer place-items-center rounded-it-full border border-it-border-subtle bg-transparent transition-colors duration-300 hover:bg-it-bg disabled:cursor-not-allowed disabled:opacity-35'>
+            className='relative grid size-7 shrink-0 cursor-pointer place-items-center rounded-it-full border border-it-border bg-it-white transition-colors duration-200 before:absolute before:-inset-2 before:content-[""] hover:bg-it-bg disabled:cursor-not-allowed disabled:opacity-35'>
             <Image
                 src={`/icons/stepper-${sign}.svg`}
                 alt=''
                 width={20}
                 height={20}
-                className='size-5 shrink-0'
+                className='size-3.5 shrink-0'
             />
         </motion.button>
     );
@@ -53,14 +62,18 @@ export function Stepper({
     incLabel: string;
 }) {
     return (
-        <div className='flex items-center gap-2.5'>
+        // `.ctr`: the pair plus its count, 10px apart, pinned to the row's right
+        // edge (`margin-left:auto`) and never shrinking under a long band label.
+        // The auto margin is what keeps the extras' steppers in one column when
+        // their names are different lengths.
+        <div className='ml-auto flex shrink-0 items-center gap-2.5'>
             <StepperButton
                 sign='minus'
                 label={decLabel}
                 disabled={value <= min}
                 onClick={() => onChange(value - 1)}
             />
-            <span className='min-w-4 text-center font-normal text-[18px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+            <span className='min-w-4 text-center text-[14px] font-extrabold leading-[1.4] tabular-nums text-it-ink'>
                 {value}
             </span>
             <StepperButton

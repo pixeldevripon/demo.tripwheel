@@ -437,6 +437,7 @@
                 "sellOutTitle": "Likely to sell out",
                 "sellOutSubtitle": "Book today to secure your spot.",
                 "selectDate": "Select date",
+                "change": "Change",
                 "checkAvailability": "Check availability",
                 "errorSelectDate": "Select a date to continue",
                 "errorSelectSlot": "Select a departure time to continue",
