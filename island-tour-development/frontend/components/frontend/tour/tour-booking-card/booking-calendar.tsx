@@ -394,18 +394,27 @@ export function BookingCalendar() {
                                                     }
                                                     transition={springPop}
                                                     className={[
-                                                        // `.d` (mck-15): a full-
-                                                        // width cell, 7px of
-                                                        // vertical padding, 8px
+                                                        // `.d` (mck-15): 8px
                                                         // radius, 12.5px
-                                                        // semibold tabular. Not
-                                                        // a circle - only TODAY
-                                                        // is round, which is
-                                                        // what makes its ring
-                                                        // read as a marker
-                                                        // rather than as one
-                                                        // more selected day.
-                                                        'w-full rounded-[8px] border py-[7px] text-[12.5px] font-semibold leading-[1.6] tabular-nums transition-colors duration-200',
+                                                        // semibold tabular.
+                                                        //
+                                                        // SQUARE, and centred in
+                                                        // its column. The mockup
+                                                        // lets the cell fill the
+                                                        // column, which makes it
+                                                        // 44 wide by 34 tall -
+                                                        // so `border-radius:50%`
+                                                        // on today drew a flat
+                                                        // grey ellipse rather
+                                                        // than a ring. A square
+                                                        // cell gives today a
+                                                        // true circle and keeps
+                                                        // the selected day a
+                                                        // rounded square, which
+                                                        // is what tells the two
+                                                        // states apart at a
+                                                        // glance.
+                                                        'mx-auto grid aspect-square w-full max-w-[34px] place-items-center rounded-[8px] border text-[12.5px] leading-[1.6] tabular-nums transition-colors duration-200',
                                                         struck && 'line-through',
                                                         isToday && 'rounded-full',
                                                         // The ring on today
@@ -418,13 +427,39 @@ export function BookingCalendar() {
                                                             : isToday
                                                               ? 'border-it-ink-muted'
                                                               : 'border-transparent',
+                                                        // ONE branch owns the
+                                                        // fill, the weight and
+                                                        // the text colour. Split
+                                                        // across a base class
+                                                        // and a branch, the two
+                                                        // font-weight utilities
+                                                        // would be resolved by
+                                                        // CSS source order
+                                                        // rather than by which
+                                                        // one is written last -
+                                                        // the same trap that
+                                                        // stopped the selected
+                                                        // chip getting its fill.
                                                         isSelected
                                                             ? 'bg-it-primary font-extrabold text-it-white'
                                                             : disabled
                                                               ? 'cursor-not-allowed font-normal text-it-ink-muted'
                                                               : isFirstOpen
                                                                 ? 'cursor-pointer bg-it-bg font-extrabold text-it-primary-hover'
-                                                                : 'cursor-pointer text-it-ink hover:bg-it-bg',
+                                                                : isToday
+                                                                  ? // Today, and
+                                                                    // bookable:
+                                                                    // the ring
+                                                                    // plus a
+                                                                    // heavier
+                                                                    // number, so
+                                                                    // "you are
+                                                                    // here" is
+                                                                    // legible
+                                                                    // even at
+                                                                    // 12.5px.
+                                                                    'cursor-pointer font-extrabold text-it-ink hover:bg-it-bg'
+                                                                  : 'cursor-pointer font-semibold text-it-ink hover:bg-it-bg',
                                                     ]
                                                         .filter(Boolean)
                                                         .join(' ')}>
@@ -476,14 +511,6 @@ export function BookingCalendar() {
                                     })}
                                 </div>
 
-                                {/* What the line through a date means. It is the
-                                    only explanation a phone gets - there is no
-                                    hover there - so it is not optional chrome. */}
-                                {isLive && (
-                                    <p className='m-0 pt-3 text-[11.5px] leading-[1.5] text-it-ink-muted'>
-                                        {dict.calendarLegend}
-                                    </p>
-                                )}
                             </motion.div>
                         )}
                     </AnimatePresence>,

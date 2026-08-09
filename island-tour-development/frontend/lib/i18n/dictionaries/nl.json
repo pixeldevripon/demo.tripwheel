@@ -382,7 +382,6 @@
                 "departureTime": "Vertrektijd",
                 "calendarNoDepartures": "Geen vertrek",
                 "calendarClosed": "Gesloten",
-                "calendarLegend": "Een streep door een datum betekent dat er een vertrek was dat niet meer te boeken is: \"Uitverkocht\" als de trip vol is, \"Gesloten\" zodra de boekingsdeadline voorbij is. Gewoon grijs betekent dat de trip die dag niet rijdt.",
                 "calendarToday": "vandaag",
                 "noDeparturesOnDateTitle": "Op {date} vaart er niets",
                 "noDeparturesOnDateHint": "Kies een andere dag - de kalender toont elke datum met plek.",

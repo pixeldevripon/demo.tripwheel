@@ -382,7 +382,6 @@
                 "departureTime": "Heure de départ",
                 "calendarNoDepartures": "Pas de départ",
                 "calendarClosed": "Fermé",
-                "calendarLegend": "Une date barrée signifie qu'il y avait un départ et qu'il n'est plus disponible : « Complet » quand le voyage est plein, « Fermé » une fois le délai de réservation passé. En gris simple, le voyage n'a pas lieu ce jour-là.",
                 "calendarToday": "aujourd'hui",
                 "noDeparturesOnDateTitle": "Rien ne part le {date}",
                 "noDeparturesOnDateHint": "Choisissez un autre jour - le calendrier affiche toutes les dates encore disponibles.",

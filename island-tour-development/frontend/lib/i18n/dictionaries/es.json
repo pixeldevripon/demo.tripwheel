@@ -382,7 +382,6 @@
                 "departureTime": "Hora de salida",
                 "calendarNoDepartures": "Sin salida",
                 "calendarClosed": "Cerrado",
-                "calendarLegend": "Una línea sobre la fecha significa que hubo una salida y ya no está disponible: «Agotado» cuando el viaje está lleno, «Cerrado» cuando ha pasado el plazo de reserva. En gris simple, el viaje no se realiza ese día.",
                 "calendarToday": "hoy",
                 "noDeparturesOnDateTitle": "No hay salidas el {date}",
                 "noDeparturesOnDateHint": "Elige otro día: el calendario muestra todas las fechas con plazas.",

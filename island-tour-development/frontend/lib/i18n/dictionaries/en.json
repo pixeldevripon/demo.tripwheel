@@ -382,7 +382,6 @@
                 "departureTime": "Departure time",
                 "calendarNoDepartures": "No departure",
                 "calendarClosed": "Closed",
-                "calendarLegend": "A line through a date means there was a departure and it can no longer be had: \"Sold out\" when the trip is full, \"Closed\" once the booking cutoff has passed. Plain grey means the trip does not run that day.",
                 "calendarToday": "today",
                 "noDeparturesOnDateTitle": "Nothing runs on {date}",
                 "noDeparturesOnDateHint": "Pick another day - the calendar shows every date with space left.",

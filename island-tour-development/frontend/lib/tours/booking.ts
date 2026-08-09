@@ -46,8 +46,6 @@ export type TourBookingDict = {
     calendarNoDepartures: string;
     /** Calendar label for a day past its booking cutoff (or closed by the operator). */
     calendarClosed: string;
-    /** The line under the calendar explaining what a struck-out date means. */
-    calendarLegend: string;
     /** Accessible name for the ring on today's date. */
     calendarToday: string;
     /** Shown when the chosen day has no bookable departure at all. */

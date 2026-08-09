@@ -382,7 +382,6 @@
                 "departureTime": "出发时间",
                 "calendarNoDepartures": "无出发",
                 "calendarClosed": "已截止",
-                "calendarLegend": "日期上有横线表示当天原本有班次，但已无法预订：满员时显示“售罄”，超过预订截止时间显示“已截止”。仅显示灰色则表示当天不发团。",
                 "calendarToday": "今天",
                 "noDeparturesOnDateTitle": "{date} 没有出发班次",
                 "noDeparturesOnDateHint": "请另选一天 - 日历会显示所有仍有名额的日期。",

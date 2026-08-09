@@ -382,7 +382,6 @@
                 "departureTime": "Abfahrtszeit",
                 "calendarNoDepartures": "Keine Abfahrt",
                 "calendarClosed": "Geschlossen",
-                "calendarLegend": "Ein Strich durch das Datum heißt: Es gab eine Abfahrt, und sie ist nicht mehr zu haben – „Ausverkauft“, wenn die Tour voll ist, „Geschlossen“, sobald die Buchungsfrist abgelaufen ist. Schlicht grau heißt, die Tour fährt an dem Tag gar nicht.",
                 "calendarToday": "heute",
                 "noDeparturesOnDateTitle": "Am {date} finden keine Touren statt",
                 "noDeparturesOnDateHint": "Wählen Sie einen anderen Tag - der Kalender zeigt jedes Datum mit freien Plätzen.",
