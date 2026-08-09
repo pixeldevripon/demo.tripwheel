@@ -149,7 +149,7 @@ function ReviewCard({
                     lessLabel={dict.readLess}
                     sentenceLimit={PREVIEW_SENTENCES}
                     className='m-0'
-                    buttonClassName='cursor-pointer whitespace-nowrap border-none bg-transparent p-0 text-[13.5px] font-bold leading-[1.55] text-it-primary-hover'
+                    buttonClassName='cursor-pointer whitespace-nowrap border-none bg-transparent p-0 text-[13.5px] leading-[1.55] text-it-primary-hover'
                 />
             </div>
         </article>
