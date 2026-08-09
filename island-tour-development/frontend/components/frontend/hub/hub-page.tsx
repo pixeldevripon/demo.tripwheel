@@ -926,7 +926,8 @@ async function HubTripsData({
                     },
                     from: listingsDict.from,
                     freeCancellation: listingsDict.freeCancellation,
-                    save: dict.nav.wishlist,
+                    saveAria: listingsDict.saveAria,
+                    removeAria: listingsDict.removeAria,
                 },
             }}
         />

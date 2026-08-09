@@ -23,6 +23,7 @@ import {
     type DurationDict,
 } from '@/lib/tours/listing';
 import {
+    needsResolve,
     parseIdList,
     savedPriceWas,
     soleDestinationSlug,
@@ -164,37 +165,58 @@ export function SavedToursView({
 
     const [cards, setCards] = useState<SavedTourCard[]>([]);
     const [loading, setLoading] = useState(true);
+    /**
+     * The id set the current `cards` were resolved from.
+     *
+     * It is what makes "re-fetch on an ADDITION, never on a removal" possible.
+     * A removal is already handled optimistically by `visible` below, so
+     * re-resolving on one would cost a request to render exactly what is
+     * already on screen, minus a card.
+     */
+    const resolved = useRef<Set<string>>(new Set());
+    const sourceKey = sourceIds.join(',');
 
-    // Resolve the ids into card data once the provider has hydrated and the URL
-    // has been read. Deliberately NOT re-run on every toggle - removals are
-    // reflected optimistically through `visible` below, so un-hearting a card
-    // does not cost a round trip.
     useEffect(() => {
         if (!ready || !urlRead) return;
         if (sourceIds.length === 0) {
+            resolved.current = new Set();
             setCards([]);
             setLoading(false);
             return;
         }
+
+        // Saving a tour from the empty state's suggestion row adds an id we
+        // have never resolved. Without this the page kept its empty state
+        // while the nav badge counted up and the hearts filled in - the list
+        // said "nothing saved yet" about tours it was showing as saved.
+        if (!needsResolve(sourceIds, resolved.current)) return;
+
         let ignore = false;
-        setLoading(true);
+        // Only the FIRST resolve shows the skeleton. Saving a tour should add a
+        // card, not blank the list and rebuild it.
+        const firstLoad = resolved.current.size === 0;
+        if (firstLoad) setLoading(true);
         const currency = currencyFromCookie(document.cookie, locale);
         wishlistApi
             .resolve(sourceIds, locale, currency)
             .then(rows => {
-                if (!ignore) setCards(rows);
+                if (ignore) return;
+                resolved.current = new Set(sourceIds);
+                setCards(rows);
             })
             .catch(() => {
                 if (!ignore) setCards([]);
             })
             .finally(() => {
-                if (!ignore) setLoading(false);
+                if (!ignore && firstLoad) setLoading(false);
             });
         return () => {
             ignore = true;
         };
+        // `sourceKey` stands in for `sourceIds`, which is a new array each
+        // render; the guard above decides whether a change is worth a request.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [ready, urlRead, locale, isShared]);
+    }, [ready, urlRead, locale, isShared, sourceKey]);
 
     // ── The date check ──────────────────────────────────────────────────────
     const [checkedDate, setCheckedDate] = useState<string | null>(null);

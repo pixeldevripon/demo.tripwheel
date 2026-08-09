@@ -51,6 +51,27 @@ export function soleDestinationSlug(
 }
 
 /**
+ * Whether the saved list needs re-resolving against the backend.
+ *
+ * True only when an id appears that has never been resolved. That asymmetry is
+ * the whole point:
+ *
+ * - An ADDITION must refetch. Saving a tour from the empty state's suggestion
+ *   row adds an id with no card behind it, and without a refetch the page kept
+ *   its "Nothing saved yet" state while the nav badge counted up and the heart
+ *   filled in - the list denying tours it was simultaneously showing as saved.
+ * - A REMOVAL must not. It is already reflected optimistically by filtering the
+ *   cards on screen, so refetching would spend a request to render what is
+ *   already there, minus one card.
+ */
+export function needsResolve(
+    sourceIds: string[],
+    resolvedIds: ReadonlySet<string>
+): boolean {
+    return sourceIds.some(id => !resolvedIds.has(id));
+}
+
+/**
  * Read a comma-separated id list off a URL parameter.
  *
  * Shared and emailed links carry ids in the query string, so this is

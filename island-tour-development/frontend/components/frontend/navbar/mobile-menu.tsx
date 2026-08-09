@@ -92,7 +92,7 @@ export function MobileMenu({
                         <Link
                             href={localizeHref(locale, '/saved')}
                             onClick={onClose}
-                            aria-label={dict.wishlist}
+                            aria-label={dict.saved}
                             className='flex items-center gap-2.5 no-underline py-2 text-it-ink'>
                             <Image
                                 src='/icons/nav-heart.svg'
@@ -102,7 +102,7 @@ export function MobileMenu({
                                 className='size-6'
                             />
                             <span className='text-base'>
-                                {dict.wishlist}
+                                {dict.saved}
                                 {count > 0 ? ` (${count})` : ''}
                             </span>
                         </Link>

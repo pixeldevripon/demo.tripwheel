@@ -1,6 +1,37 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseIdList, savedPriceWas, soleDestinationSlug } from './saved-list';
+import {
+    needsResolve,
+    parseIdList,
+    savedPriceWas,
+    soleDestinationSlug,
+} from './saved-list';
+
+/**
+ * The rule behind a bug worth remembering: hearting a tour from the empty
+ * state's suggestion row left the page saying "Nothing saved yet" about tours
+ * it was simultaneously showing as saved, because the resolver never re-ran.
+ */
+describe('needsResolve', () => {
+    it('refetches when a saved id has no card behind it yet', () => {
+        expect(needsResolve(['a', 'b'], new Set(['a']))).toBe(true);
+        expect(needsResolve(['a'], new Set())).toBe(true);
+    });
+
+    it('does NOT refetch on a removal - the card is dropped optimistically', () => {
+        expect(needsResolve(['a'], new Set(['a', 'b']))).toBe(false);
+        expect(needsResolve([], new Set(['a', 'b']))).toBe(false);
+    });
+
+    it('does not refetch when nothing changed', () => {
+        expect(needsResolve(['a', 'b'], new Set(['a', 'b']))).toBe(false);
+    });
+
+    it('refetches on a swap, where the count is unchanged', () => {
+        // Same length, different membership - a count check would miss this.
+        expect(needsResolve(['a', 'c'], new Set(['a', 'b']))).toBe(true);
+    });
+});
 
 /**
  * The three judgement calls the saved tours page makes about its own list
