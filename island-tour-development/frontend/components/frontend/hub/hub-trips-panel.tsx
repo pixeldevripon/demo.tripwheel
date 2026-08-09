@@ -21,7 +21,7 @@ import {
     type HubTourCardDict,
 } from './hub-tour-card';
 
-/** One card group inside a panel - an optional title (e.g. "Day charters (11)") + its tours. */
+/** One card group inside a panel - an optional title (e.g. "Private day charters (11)") + its tours. */
 export type HubCardGroup = { title?: string; tours: HubTour[] };
 
 /** A scroll-nav section's content - heading, subtitle, card groups, and an optional picks block. */

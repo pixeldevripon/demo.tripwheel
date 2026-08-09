@@ -290,8 +290,8 @@
             "charters": {
                 "heading": "{count} fretamentos privados. Só para si.",
                 "subtitle": "Exclusivamente para o seu grupo, mais a tripulação.",
-                "dayCharters": "Fretamentos de dia",
-                "overnightCharters": "Fretamentos noturnos"
+                "dayCharters": "Fretamentos privados de dia",
+                "overnightCharters": "Fretamentos privados noturnos"
             },
             "picks": {
                 "heading": "Já estivemos em cada barco",
