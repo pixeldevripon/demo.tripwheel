@@ -27,18 +27,30 @@ export type CalendarDayReason = 'open' | 'sold_out' | 'closed' | 'no_departure';
 export interface CalendarDayInput {
     available: boolean;
     status: string;
+    /** Why the OPERATOR closed the day, when they said - `SOLD_OUT` / `NOT_RUNNING`. */
+    closureReason?: string | null;
 }
 
 /**
  * Classify one day. `day` is null when the date is absent from the calendar
  * payload, which is exactly how the backend says "no departures at all here" -
  * only days that HAVE departures are returned.
+ *
+ * A day the operator closed carries a REASON, and it outranks the status:
+ * closing is always stored as CLOSED (a manual stop-sell must not reopen itself
+ * the way a fill does), so without the reason an operator who said "sold out"
+ * and one who said "not running" would look identical to a traveller. They are
+ * not - one is a full boat, the other is a day the trip never ran (mck-15 §4).
  */
 export function calendarDayReason(
     day: CalendarDayInput | null | undefined
 ): CalendarDayReason {
     if (!day) return 'no_departure';
     if (day.available) return 'open';
+    if (day.closureReason === 'NOT_RUNNING') return 'no_departure';
+    if (day.closureReason === 'SOLD_OUT') return 'sold_out';
+    // No reason given: a fill (stored SOLD_OUT) or the read-time booking
+    // cutoff, which is the plain "Closed".
     return day.status === 'SOLD_OUT' ? 'sold_out' : 'closed';
 }
 

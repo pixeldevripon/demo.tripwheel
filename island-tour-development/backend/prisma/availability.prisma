@@ -43,6 +43,11 @@ model AvailabilityException {
   // this it would count as fourteen and trip the badge on its own.
   closureBatchId String?
 
+  // Why the operator closed (mck-15 §4). Null on ADD_SLOT / SET_CAPACITY, and
+  // on closures written before the reason existed - those keep reading as a
+  // plain "Closed", which is what they have always meant.
+  closureReason ClosureReason?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -68,6 +73,15 @@ model Departure {
   bookedCount Int             @default(0)
   status      DepartureStatus @default(OPEN)
   soldOutAt   DateTime? // stamped once when the row fills; feeds demand signals
+
+  // Why this departure is CLOSED, projected from the exception that closed it
+  // (mck-15 §4). It is what a traveller is told - "Sold out" and struck through
+  // vs "No departure" and plain grey - so it has to ride on the materialized
+  // row, not be re-derived from exceptions on every public read.
+  //
+  // Null unless the stored status is CLOSED by an operator: a cutoff-passed
+  // closure is computed live and never stored, and reads as a plain "Closed".
+  closureReason ClosureReason?
 
   source         DepartureSource @default(SCHEDULE)
   externalRef    String? // operator/external system id when source = API

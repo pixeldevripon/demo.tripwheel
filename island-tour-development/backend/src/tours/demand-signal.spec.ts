@@ -138,6 +138,26 @@ describe('evaluateLikelyToSellOut (master §3.7)', () => {
       );
     });
 
+    /**
+     * Only a close the operator EXPLAINED as a sell-out is evidence of demand
+     * (mck-15 §4: "An operator-marked sold out counts; a Not running does
+     * not"). A "Not running" is weather, maintenance or a day off - the
+     * opposite - and an unexplained close from before reasons existed cannot be
+     * read either way without inventing intent.
+     *
+     * The filter lives in the query, so this asserts the query: the fixture
+     * returns whatever it is handed regardless of the `where`.
+     */
+    it('counts only closures the operator marked Sold out', async () => {
+      const prisma = makePrisma({ closures: [] });
+      await evaluateLikelyToSellOut(prisma, 't1', NOW);
+      expect(prisma.availabilityException.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ closureReason: 'SOLD_OUT' }),
+        }),
+      );
+    });
+
     it('counts three separate blackouts as three events', async () => {
       const prisma = makePrisma({
         closures: [

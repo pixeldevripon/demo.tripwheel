@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import {
   AvailabilityExceptionType,
+  ClosureReason,
   DepartureSource,
   DepartureStatus,
   Prisma,
@@ -30,6 +31,10 @@ interface DesiredDeparture {
   capacity: number;
   status: DepartureStatus; // OPEN, or CLOSED for a stop-sell exception
   source: DepartureSource;
+  // Carried from the exception that closed this row, because it is what a
+  // TRAVELLER is told: SOLD_OUT reads "Sold out" with the date struck through,
+  // NOT_RUNNING reads "No departure", plain. Null on an open row.
+  closureReason: ClosureReason | null;
 }
 
 /**
@@ -154,6 +159,7 @@ export class AvailabilityMaterializerService {
         capacity,
         status: DepartureStatus.OPEN,
         source: DepartureSource.SCHEDULE,
+        closureReason: null,
       });
     }
 
@@ -180,6 +186,7 @@ export class AvailabilityMaterializerService {
         capacity,
         status: DepartureStatus.OPEN,
         source: DepartureSource.EXCEPTION,
+        closureReason: null,
       });
     }
 
@@ -200,19 +207,31 @@ export class AvailabilityMaterializerService {
       }
     }
 
-    // 4. close_date / close_slot - stop-sell: keep the departure but mark it CLOSED.
+    // 4. close_date / close_slot - stop-sell: keep the departure but mark it
+    // CLOSED, and carry the operator's REASON onto it.
+    //
+    // CLOSED whichever reason was given, deliberately. A "Sold out" close is
+    // not stored as SOLD_OUT because that status is derived from the fill and
+    // would reopen the moment a booking was cancelled - and a manual stop-sell
+    // has to win until the operator lifts it. The reason is what makes the two
+    // read differently to a traveller.
     for (const ex of dayExceptions) {
       if (ex.type === AvailabilityExceptionType.CLOSE_DATE && !ex.startTime) {
         for (const [k, row] of desired) {
-          if (k.startsWith(`${dateKey(day)}|`))
+          if (k.startsWith(`${dateKey(day)}|`)) {
             row.status = DepartureStatus.CLOSED;
+            row.closureReason = ex.closureReason ?? null;
+          }
         }
       } else if (
         ex.type === AvailabilityExceptionType.CLOSE_SLOT &&
         ex.startTime
       ) {
         const row = desired.get(keyOf(timeOfDay(ex.startTime)));
-        if (row) row.status = DepartureStatus.CLOSED;
+        if (row) {
+          row.status = DepartureStatus.CLOSED;
+          row.closureReason = ex.closureReason ?? null;
+        }
       }
     }
   }
@@ -233,6 +252,7 @@ export class AvailabilityMaterializerService {
         capacity: true,
         bookedCount: true,
         status: true,
+        closureReason: true,
         manuallyEdited: true,
         source: true,
       },
@@ -280,6 +300,7 @@ export class AvailabilityMaterializerService {
           capacity: want.capacity,
           bookedCount: 0,
           status: want.status,
+          closureReason: want.closureReason,
           source: want.source,
         });
         continue;
@@ -299,11 +320,21 @@ export class AvailabilityMaterializerService {
           want.status === DepartureStatus.CLOSED
             ? DepartureStatus.CLOSED
             : storedStatusForFill(row.capacity, row.bookedCount);
-        if (status !== row.status) {
+        // The reason rides with the status: reopening clears it, and switching
+        // a close from "Not running" to "Sold out" has to reach the traveller.
+        // Both sides normalize to null - a row selected before the column
+        // existed reads `undefined`, and treating that as a difference would
+        // make every pass rewrite every booked departure it touches.
+        const closureReason =
+          status === DepartureStatus.CLOSED ? want.closureReason : null;
+        if (
+          status !== row.status ||
+          closureReason !== (row.closureReason ?? null)
+        ) {
           ops.push(
             this.prisma.departure.update({
               where: { id: row.id },
-              data: { status },
+              data: { status, closureReason },
             }),
           );
           updated++;
@@ -320,7 +351,13 @@ export class AvailabilityMaterializerService {
       ops.push(
         this.prisma.departure.update({
           where: { id: row.id },
-          data: { capacity: want.capacity, status, source: want.source },
+          data: {
+            capacity: want.capacity,
+            status,
+            closureReason:
+              status === DepartureStatus.CLOSED ? want.closureReason : null,
+            source: want.source,
+          },
         }),
       );
       updated++;

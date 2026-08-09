@@ -228,7 +228,9 @@ describe('AvailabilityMaterializerService', () => {
     expect(res).toMatchObject({ updated: 1, created: 0, removed: 0 });
     expect(prisma.departure.update).toHaveBeenCalledWith({
       where: { id: 'd1' },
-      data: { status: 'CLOSED' },
+      // No reason on this one: the fixture's exception carries none, and an
+      // unexplained close reads as a plain "Closed" to a traveller.
+      data: { status: 'CLOSED', closureReason: null },
     });
   });
 
@@ -242,8 +244,65 @@ describe('AvailabilityMaterializerService', () => {
     expect(res).toMatchObject({ updated: 1 });
     expect(prisma.departure.update).toHaveBeenCalledWith({
       where: { id: 'd1' },
-      data: { status: 'OPEN' },
+      // Reopening clears the reason with the status - they are one fact.
+      data: { status: 'OPEN', closureReason: null },
     });
+  });
+
+  /**
+   * The reason an operator gave for closing has to reach the materialized row,
+   * because that row is what a traveller's calendar reads (mck-15 §4). The
+   * STATUS stays CLOSED for both reasons deliberately: storing a "Sold out"
+   * close as SOLD_OUT would let it reopen itself the moment a booking was
+   * cancelled, and a manual stop-sell has to win until the operator lifts it.
+   */
+  it('carries a Sold out reason onto the closed departure', async () => {
+    prisma.availabilitySchedule.findMany.mockResolvedValue([schedule()]);
+    prisma.availabilityException.findMany.mockResolvedValue([
+      exception({ closureReason: 'SOLD_OUT' }),
+    ]);
+    prisma.departure.findMany.mockResolvedValue([
+      existingDeparture({ bookedCount: 2, status: 'OPEN' }),
+    ]);
+    await svc.materializeTour('t1', DAY, DAY);
+    expect(prisma.departure.update).toHaveBeenCalledWith({
+      where: { id: 'd1' },
+      data: { status: 'CLOSED', closureReason: 'SOLD_OUT' },
+    });
+  });
+
+  it('carries a Not running reason, which reads as no departure at all', async () => {
+    prisma.availabilitySchedule.findMany.mockResolvedValue([schedule()]);
+    prisma.availabilityException.findMany.mockResolvedValue([
+      exception({ closureReason: 'NOT_RUNNING' }),
+    ]);
+    prisma.departure.findMany.mockResolvedValue([
+      existingDeparture({ bookedCount: 2, status: 'OPEN' }),
+    ]);
+    await svc.materializeTour('t1', DAY, DAY);
+    expect(prisma.departure.update).toHaveBeenCalledWith({
+      where: { id: 'd1' },
+      data: { status: 'CLOSED', closureReason: 'NOT_RUNNING' },
+    });
+  });
+
+  it('rewrites nothing when the close and its reason are unchanged', async () => {
+    // Guards the null/undefined trap: a row already closed for the same reason
+    // must not be updated on every pass just because one side reads `undefined`.
+    prisma.availabilitySchedule.findMany.mockResolvedValue([schedule()]);
+    prisma.availabilityException.findMany.mockResolvedValue([
+      exception({ closureReason: 'SOLD_OUT' }),
+    ]);
+    prisma.departure.findMany.mockResolvedValue([
+      existingDeparture({
+        bookedCount: 2,
+        status: 'CLOSED',
+        closureReason: 'SOLD_OUT',
+      }),
+    ]);
+    const res = await svc.materializeTour('t1', DAY, DAY);
+    expect(res).toMatchObject({ updated: 0, skipped: 1 });
+    expect(prisma.departure.update).not.toHaveBeenCalled();
   });
 
   it('does not reopen a manuallyEdited closed departure', async () => {

@@ -45,6 +45,42 @@ describe('calendarDayReason', () => {
             'open'
         );
     });
+
+    /**
+     * An operator's close is ALWAYS stored as CLOSED - a manual stop-sell must
+     * not reopen itself the way a fill does - so without the reason the two
+     * kinds of close are indistinguishable. They are not the same thing: one is
+     * a full boat, the other a day the trip never ran (mck-15 §4).
+     */
+    it('reads an operator "Not running" close as no departure', () => {
+        expect(
+            calendarDayReason({
+                available: false,
+                status: 'CLOSED',
+                closureReason: 'NOT_RUNNING',
+            })
+        ).toBe('no_departure');
+    });
+
+    it('reads an operator "Sold out" close as sold out, not closed', () => {
+        expect(
+            calendarDayReason({
+                available: false,
+                status: 'CLOSED',
+                closureReason: 'SOLD_OUT',
+            })
+        ).toBe('sold_out');
+    });
+
+    it('still reads a cutoff-passed day as closed - it carries no reason', () => {
+        expect(
+            calendarDayReason({
+                available: false,
+                status: 'CLOSED',
+                closureReason: null,
+            })
+        ).toBe('closed');
+    });
 });
 
 describe('isStruckThrough', () => {
