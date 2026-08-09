@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Island Tours email programme — build status and estimate</title>
+<style>
+    /* ── Tokens ───────────────────────────────────────────────────────────
+       Light is the base. Warm neutrals biased toward the Island Tours
+       orange, so the greys read as chosen rather than inherited. */
+    :root {
+        --ground: #fbfaf8;
+        --surface: #ffffff;
+        --surface-sunk: #f5f2ed;
+        --ink: #23201b;
+        --ink-soft: #55504a;
+        --muted: #6e675e;
+        --faint: #948c81;
+        --rule: #e6e0d7;
+        --rule-soft: #f0ebe3;
+        --accent: #e8611a;
+        --accent-deep: #c7500f;
+        --accent-wash: #fdf0e6;
+        --built: #15803d;
+        --built-wash: #e9f6ee;
+        --partial: #b45309;
+        --partial-wash: #fdf3e3;
+        --missing: #7d766c;
+        --missing-wash: #f1eee9;
+        --shadow: 0 1px 2px rgba(35, 32, 27, 0.04),
+            0 8px 24px rgba(35, 32, 27, 0.06);
+    }
+
+    /* System stamp "dark", and the un-stamped default under a dark OS. */
+    @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+            --ground: #16140f;
+            --surface: #201d17;
+            --surface-sunk: #1a1712;
+            --ink: #f3efe8;
+            --ink-soft: #d3ccc1;
+            --muted: #a79f93;
+            --faint: #8a8175;
+            --rule: #322d25;
+            --rule-soft: #272219;
+            --accent: #f2803f;
+            --accent-deep: #ffa26a;
+            --accent-wash: #2c1d12;
+            --built: #5cc98b;
+            --built-wash: #16281d;
+            --partial: #e0a34a;
+            --partial-wash: #2b2113;
+            --missing: #978f83;
+            --missing-wash: #23201a;
+            --shadow: 0 1px 2px rgba(0, 0, 0, 0.3),
+                0 8px 24px rgba(0, 0, 0, 0.35);
+        }
+    }
+    :root[data-theme='dark'] {
+        --ground: #16140f;
+        --surface: #201d17;
+        --surface-sunk: #1a1712;
+        --ink: #f3efe8;
+        --ink-soft: #d3ccc1;
+        --muted: #a79f93;
+        --faint: #8a8175;
+        --rule: #322d25;
+        --rule-soft: #272219;
+        --accent: #f2803f;
+        --accent-deep: #ffa26a;
+        --accent-wash: #2c1d12;
+        --built: #5cc98b;
+        --built-wash: #16281d;
+        --partial: #e0a34a;
+        --partial-wash: #2b2113;
+        --missing: #978f83;
+        --missing-wash: #23201a;
+        --shadow: 0 1px 2px rgba(0, 0, 0, 0.3),
+            0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    /* ── Type ─────────────────────────────────────────────────────────────
+       No webfont: the artifact CSP blocks font CDNs, so a linked face would
+       fall back silently. Three deliberate system stacks instead, separated
+       by weight, width and tracking rather than by family alone. */
+    :root {
+        --display: ui-sans-serif, -apple-system, 'Segoe UI', system-ui,
+            sans-serif;
+        --body: ui-sans-serif, -apple-system, 'Segoe UI', system-ui, sans-serif;
+        --mono: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono',
+            Menlo, monospace;
+    }
+
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+        background: var(--ground);
+        color: var(--ink);
+        font-family: var(--body);
+        font-size: 16px;
+        line-height: 1.62;
+        -webkit-font-smoothing: antialiased;
+    }
+
+    .wrap {
+        max-width: 940px;
+        margin: 0 auto;
+        padding: 56px 24px 96px;
+        display: flex;
+        flex-direction: column;
+        gap: 56px;
+    }
+
+    /* ── Masthead ─────────────────────────────────────────────────────── */
+    header {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        border-bottom: 1px solid var(--rule);
+        padding-bottom: 32px;
+    }
+
+    .eyebrow {
+        font-family: var(--mono);
+        font-size: 11.5px;
+        font-weight: 600;
+        letter-spacing: 0.11em;
+        text-transform: uppercase;
+        color: var(--accent-deep);
+    }
+
+    h1 {
+        font-family: var(--display);
+        font-size: clamp(30px, 4.4vw, 44px);
+        font-weight: 700;
+        letter-spacing: -0.026em;
+        line-height: 1.08;
+        text-wrap: balance;
+        margin: 0;
+    }
+
+    .standfirst {
+        max-width: 66ch;
+        font-size: 17.5px;
+        line-height: 1.6;
+        color: var(--ink-soft);
+        margin: 0;
+    }
+
+    /* ── Tally ────────────────────────────────────────────────────────── */
+    .tally {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1px;
+        background: var(--rule);
+        border: 1px solid var(--rule);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .tally div {
+        background: var(--surface);
+        padding: 18px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .tally b {
+        font-family: var(--display);
+        font-size: 30px;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .tally span {
+        font-size: 13px;
+        color: var(--muted);
+    }
+
+    .tally .is-built b {
+        color: var(--built);
+    }
+    .tally .is-partial b {
+        color: var(--partial);
+    }
+    .tally .is-missing b {
+        color: var(--missing);
+    }
+
+    /* ── Sections ─────────────────────────────────────────────────────── */
+    section {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    h2 {
+        font-family: var(--display);
+        font-size: 25px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        line-height: 1.2;
+        margin: 0;
+        text-wrap: balance;
+    }
+
+    h2 .count {
+        font-family: var(--mono);
+        font-size: 13px;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+        color: var(--faint);
+        margin-left: 10px;
+        vertical-align: 2px;
+    }
+
+    .lede {
+        max-width: 68ch;
+        color: var(--ink-soft);
+        margin: -6px 0 0;
+    }
+
+    /* ── Tables ───────────────────────────────────────────────────────── */
+    .scroll {
+        overflow-x: auto;
+        border: 1px solid var(--rule);
+        border-radius: 12px;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+    }
+
+    table {
+        border-collapse: collapse;
+        width: 100%;
+        min-width: 720px;
+        font-size: 14.5px;
+    }
+
+    thead th {
+        text-align: left;
+        font-family: var(--mono);
+        font-size: 10.5px;
+        font-weight: 600;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: var(--faint);
+        padding: 13px 18px;
+        border-bottom: 1px solid var(--rule);
+        background: var(--surface-sunk);
+        white-space: nowrap;
+    }
+
+    tbody td {
+        padding: 15px 18px;
+        border-bottom: 1px solid var(--rule-soft);
+        vertical-align: top;
+        color: var(--ink-soft);
+    }
+
+    tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    td.id {
+        font-family: var(--mono);
+        font-size: 12.5px;
+        font-weight: 600;
+        color: var(--ink);
+        white-space: nowrap;
+    }
+
+    td.name {
+        color: var(--ink);
+        font-weight: 600;
+        min-width: 170px;
+    }
+
+    td.state {
+        white-space: nowrap;
+    }
+
+    td.detail {
+        min-width: 300px;
+    }
+
+    /* ── State chips ──────────────────────────────────────────────────────
+       State is encoded in FORM as well as colour: a filled marker for built,
+       a half-filled one for partial, a hollow ring for missing. It survives
+       greyscale, a colour-blind reader, and a Slack screenshot. */
+    .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 12.5px;
+        font-weight: 600;
+        border-radius: 999px;
+        padding: 4px 11px 4px 9px;
+        white-space: nowrap;
+    }
+
+    .chip::before {
+        content: '';
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        flex: none;
+    }
+
+    .chip.built {
+        color: var(--built);
+        background: var(--built-wash);
+    }
+    .chip.built::before {
+        background: currentColor;
+    }
+
+    .chip.partial {
+        color: var(--partial);
+        background: var(--partial-wash);
+    }
+    .chip.partial::before {
+        background: linear-gradient(
+            90deg,
+            currentColor 0 50%,
+            transparent 50% 100%
+        );
+        border: 1.5px solid currentColor;
+    }
+
+    .chip.missing {
+        color: var(--missing);
+        background: var(--missing-wash);
+    }
+    .chip.missing::before {
+        border: 1.5px solid currentColor;
+    }
+
+    /* ── Callout ──────────────────────────────────────────────────────── */
+    .callout {
+        border: 1px solid var(--rule);
+        border-left: 3px solid var(--accent);
+        border-radius: 10px;
+        background: var(--surface);
+        padding: 22px 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .callout h3 {
+        font-family: var(--display);
+        font-size: 17px;
+        font-weight: 700;
+        letter-spacing: -0.012em;
+        margin: 0;
+        color: var(--ink);
+    }
+
+    .callout p {
+        margin: 0;
+        color: var(--ink-soft);
+        max-width: 68ch;
+    }
+
+    ul.spine {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    ul.spine li {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 14px;
+        align-items: start;
+    }
+
+    ul.spine .marker {
+        font-family: var(--mono);
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--accent-deep);
+        background: var(--accent-wash);
+        border-radius: 6px;
+        padding: 3px 7px;
+        margin-top: 2px;
+        white-space: nowrap;
+    }
+
+    ul.spine b {
+        color: var(--ink);
+        display: block;
+    }
+
+    ul.spine span {
+        color: var(--muted);
+        font-size: 14.5px;
+    }
+
+    /* ── Hours ────────────────────────────────────────────────────────── */
+    td.hours,
+    th.hours {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+
+    td.hours {
+        font-family: var(--mono);
+        font-size: 14px;
+        color: var(--ink);
+        font-weight: 600;
+    }
+
+    tfoot td {
+        padding: 16px 18px;
+        border-top: 1.5px solid var(--rule);
+        font-weight: 700;
+        color: var(--ink);
+        background: var(--surface-sunk);
+    }
+
+    tfoot td.hours {
+        font-family: var(--mono);
+        font-size: 16px;
+        color: var(--accent-deep);
+    }
+
+    /* ── Phases ───────────────────────────────────────────────────────── */
+    .phases {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 16px;
+        align-items: start;
+    }
+
+    .phase {
+        border: 1px solid var(--rule);
+        border-radius: 12px;
+        background: var(--surface);
+        padding: 20px 22px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        box-shadow: var(--shadow);
+    }
+
+    .phase .n {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        font-weight: 600;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: var(--faint);
+    }
+
+    .phase h3 {
+        font-family: var(--display);
+        font-size: 18px;
+        font-weight: 700;
+        letter-spacing: -0.015em;
+        margin: 0;
+        color: var(--ink);
+    }
+
+    .phase .h {
+        font-family: var(--mono);
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--accent-deep);
+        font-variant-numeric: tabular-nums;
+        letter-spacing: -0.01em;
+    }
+
+    .phase p {
+        margin: 0;
+        font-size: 14px;
+        color: var(--muted);
+    }
+
+    ul.detail-list {
+        margin: 6px 0 0;
+        padding: 0;
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        border-top: 1px solid var(--rule-soft);
+        padding-top: 14px;
+    }
+
+    ul.detail-list li {
+        font-size: 13.5px;
+        line-height: 1.55;
+        color: var(--muted);
+        padding-left: 14px;
+        position: relative;
+    }
+
+    ul.detail-list li::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 8px;
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: var(--accent);
+        opacity: 0.55;
+    }
+
+    ul.detail-list b {
+        color: var(--ink);
+        font-weight: 650;
+    }
+
+    footer {
+        border-top: 1px solid var(--rule);
+        padding-top: 24px;
+        font-size: 13.5px;
+        color: var(--faint);
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    strong {
+        color: var(--ink);
+        font-weight: 650;
+    }
+
+    code {
+        font-family: var(--mono);
+        font-size: 0.88em;
+        background: var(--surface-sunk);
+        border: 1px solid var(--rule-soft);
+        border-radius: 4px;
+        padding: 1px 5px;
+        color: var(--ink);
+    }
+
+    a {
+        color: var(--accent-deep);
+    }
+
+    :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+    }
+
+    @media (max-width: 640px) {
+        .wrap {
+            padding: 40px 18px 72px;
+            gap: 44px;
+        }
+    }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+    <header>
+        <div class="eyebrow">Island Tours · build status &amp; estimate</div>
+        <h1>The email programme, measured against the two wireframes</h1>
+        <p class="standfirst">
+            Both wireframes were read against the actual codebase, email by
+            email, rather than against the status column they carry. Two of
+            them are further along than the wireframe claims, and one whole
+            category — the machinery that decides <em>when</em> an email may
+            send — does not exist at all.
+        </p>
+    </header>
+
+    <section>
+        <div class="tally">
+            <div class="is-built">
+                <b>2</b><span>Built and sending</span>
+            </div>
+            <div class="is-partial">
+                <b>6</b><span>Partly built</span>
+            </div>
+            <div class="is-missing">
+                <b>9</b><span>Not started</span>
+            </div>
+            <div><b>17</b><span>Emails in scope</span></div>
+        </div>
+    </section>
+
+    <section>
+        <h2>Customer funnel<span class="count">6 emails</span></h2>
+        <p class="lede">
+            The transactional spine is in better shape than the wireframe
+            records. Notably, BK-2 is not missing — its entire delivery
+            mechanism shipped months ago and has been sitting idle waiting for
+            exactly the copy decision this wireframe makes.
+        </p>
+        <div class="scroll">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Email</th>
+                        <th>State</th>
+                        <th>What is actually there</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="id">BK-1</td>
+                        <td class="name">Booking confirmation</td>
+                        <td class="state">
+                            <span class="chip built">Built</span>
+                        </td>
+                        <td class="detail">
+                            Template, all four payment-model branches, a render
+                            spec, fired on confirm. The wireframe's version adds
+                            the operator note, what-to-bring, the anti-fraud
+                            line and a related-tours rail, so this is a
+                            reconciliation rather than a build.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="id">BK-2</td>
+                        <td class="name">Pre-tour reminder</td>
+                        <td class="state">
+                            <span class="chip partial">Partly built</span>
+                        </td>
+                        <td class="detail">
+                            The whole T-24h spine exists and is tested: the
+                            delayed job, the outbox scheduler, the processor and
+                            a <code>utcReminderSentAt</code> guard. The job body
+                            currently logs and sends nothing, with a comment
+                            saying it is waiting on a founder copy decision.
+                            <strong
+                                >Only the template is missing.</strong
+                            >
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="id">BK-3</td>
+                        <td class="name">Post-tour review request</td>
+                        <td class="state">
+                            <span class="chip built">Built</span>
+                        </td>
+                        <td class="detail">
+                            Tokenised invitation, hourly sweeper, suppression
+                            with the reason recorded on the row.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="id">BK-3R</td>
+                        <td class="name">Review reminder</td>
+                        <td class="state">
+                            <span class="chip partial">Partly built</span>
+                        </td>
+                        <td class="detail">
+                            The wireframe calls this "spec only". It is not: the
+                            five-day single reminder, its give-up window and its
+                            stop-on-review rule are all live. What it lacks is
+                            its own copy — it re-sends the BK-3 template today.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="id">MK-1</td>
+                        <td class="name">Next adventure</td>
+                        <td class="state">
+                            <span class="chip missing">Not started</span>
+                        </td>
+                        <td class="detail">
+                            Nothing exists. This is the only marketing email in
+                            either wireframe, so it cannot send until consent
+                            and unsubscribe do — see the risk below.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="id">CX-1</td>
+                        <td class="name">Cancellation confirmation</td>
+                        <td class="state">
+                            <span class="chip partial">Partly built</span>
+                        </td>
+                        <td class="detail">
+                            "Your booking is cancelled" sends today through the
+                            generic notice template. The wireframe's version is
+                            payment-model aware, which the generic one is not.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section>
+        <h2>Operator onboarding<span class="count">11 emails</span></h2>
+        <p class="lede">
+            This is the greenfield half. Two emails exist in a form that can be
+            adapted; the nine-message nudge sequence has nothing behind it, and
+            neither does the operator state it all hangs off.
+        </p>
+        <div class="scroll">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Email</th>
+                        <th>State</th>
+                        <th>What is actually there</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="id">OB-1</td>
+                        <td class="name">Confirm your email</td>
+                        <td class="state">
+                            <span class="chip partial">Partly built</span>
+                        </td>
+                        <td class="detail">
+                            Better Auth already sends a verification email. It
+                            is not tied to an onboarding state, which is what
+                            the sequence keys off.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="id">OB-2</td>
+                        <td class="name">Welcome + agreement</td>
+                        <td class="state">
+                            <span class="chip partial">Partly built</span>
+                        </td>
+                        <td class="detail">
+                            The set-password operator invite exists. The
+                            agreement email, with its signatory block, does not.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="id">INT-1</td>
+                        <td class="name">New operator → sales@</td>
+                        <td class="state">
+                            <span class="chip missing">Not started</span>
+                        </td>
+                        <td class="detail">
+                            No internal alert stream exists, and no
+                            two-business-day pending reminder.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="id">OB-2A</td>
+                        <td class="name">You're approved</td>
+                        <td class="state">
+                            <span class="chip missing">Not started</span>
+                        </td>
+                        <td class="detail">
+                            An operator verification status enum exists
+                            (unverified / pending / verified / rejected) but
+                            nothing sets it deliberately, there is no admin
+                            one-click approve, and no email hangs off it. Every
+                            nudge below is anchored to this moment, so it is the
+                            first thing that has to be built.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="id">OB-3</td>
+                        <td class="name">First tour, step by step</td>
+                        <td class="state">
+                            <span class="chip missing">Not started</span>
+                        </td>
+                        <td class="detail">
+                            +48h, suppressed once a tour is submitted.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="id">OB-4</td>
+                        <td class="name">We'll build it with you</td>
+                        <td class="state">
+                            <span class="chip missing">Not started</span>
+                        </td>
+                        <td class="detail">+7d, the WhatsApp rescue.</td>
+                    </tr>
+                    <tr>
+                        <td class="id">OB-5</td>
+                        <td class="name">Your tour is live</td>
+                        <td class="state">
+                            <span class="chip missing">Not started</span>
+                        </td>
+                        <td class="detail">
+                            Needs a first-tour-live event, which is not emitted
+                            today.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="id">OB-6</td>
+                        <td class="name">How's it going?</td>
+                        <td class="state">
+                            <span class="chip missing">Not started</span>
+                        </td>
+                        <td class="detail">
+                            +14d, personal reply-to, ends the sequence.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="id">OB-7</td>
+                        <td class="name">Connect your calendar</td>
+                        <td class="state">
+                            <span class="chip missing">Not started</span>
+                        </td>
+                        <td class="detail">
+                            Feature-flag gated. The calendar feed itself exists,
+                            so only the email and the gate are new.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="id">OB-8</td>
+                        <td class="name">Make your page stronger</td>
+                        <td class="state">
+                            <span class="chip missing">Not started</span>
+                        </td>
+                        <td class="detail">Live +7d, page-strength tips.</td>
+                    </tr>
+                    <tr>
+                        <td class="id">INT-2</td>
+                        <td class="name">New tour → sales@</td>
+                        <td class="state">
+                            <span class="chip partial">Partly built</span>
+                        </td>
+                        <td class="detail">
+                            A tour-submitted alert goes to admins today. It is
+                            not routed to sales@ as a pipeline signal.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section>
+        <h2>What neither wireframe has behind it</h2>
+        <p class="lede">
+            This is the part that does not show up as an email in either
+            document, and it is where most of the risk sits. Both wireframes
+            state these rules in their footnotes; none of them exist as code.
+        </p>
+        <ul class="spine">
+            <li>
+                <span class="marker">01</span>
+                <div>
+                    <b>A send log with send-once idempotency</b>
+                    <span
+                        >Both wireframes require it by name: one row per
+                        recipient per template, with a unique index. Without it,
+                        a retried job sends a second welcome email. Nothing like
+                        it exists.</span
+                    >
+                </div>
+            </li>
+            <li>
+                <span class="marker">02</span>
+                <div>
+                    <b>Marketing consent and unsubscribe</b>
+                    <span
+                        >There is a <code>newsletterOptIn</code> column on
+                        bookings and nothing reads it. No consent record, no
+                        unsubscribe token, no preference page.</span
+                    >
+                </div>
+            </li>
+            <li>
+                <span class="marker">03</span>
+                <div>
+                    <b>Send windows</b>
+                    <span
+                        >Tuesday to Thursday, 09:00–11:00 America/Curaçao, and
+                        "around 10:00 tour-local" for BK-3. Sends fire on their
+                        trigger today, whenever that lands.</span
+                    >
+                </div>
+            </li>
+            <li>
+                <span class="marker">04</span>
+                <div>
+                    <b>Operator onboarding state</b>
+                    <span
+                        >created → accepted → approved, plus the counters the
+                        suppression rules read (tours submitted, first tour
+                        live). The nine-message sequence has nothing to hang
+                        off until this exists.</span
+                    >
+                </div>
+            </li>
+            <li>
+                <span class="marker">05</span>
+                <div>
+                    <b>Dashboard surfaces</b>
+                    <span
+                        >The onboarding pipeline, admin one-click approve, an
+                        email timeline per operator and per booking, and
+                        resend. All new, and in the second repo.</span
+                    >
+                </div>
+            </li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>Estimate</h2>
+        <p class="lede">
+            Hours of build time, bottom-up. The calibration is the saved-tours
+            page finished today: one page rebuilt across backend and frontend,
+            two new API endpoints, eight components, seven locales, twenty-two
+            new tests and five rounds of browser verification, in about an
+            hour. The email work is roughly twenty-five times the surface but
+            around eight times the effort, because seventeen emails share one
+            shell and one send engine.
+        </p>
+        <div class="scroll">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Piece</th>
+                        <th>Why that number</th>
+                        <th class="hours">Hours</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="name">Shared send spine</td>
+                        <td class="detail">
+                            Send log, suppression evaluator, send windows,
+                            consent and unsubscribe token. Three migrations.
+                            The only genuinely new design work.
+                        </td>
+                        <td class="hours">3.5</td>
+                    </tr>
+                    <tr>
+                        <td class="name">Customer funnel</td>
+                        <td class="detail">
+                            BK-2 and BK-3R are copy on top of working
+                            machinery. MK-1 is new. BK-1 and CX-1 are
+                            reconciliations against a richer wireframe, and
+                            BK-1 alone carries four payment-model branches and
+                            a render spec that moves with it.
+                        </td>
+                        <td class="hours">6</td>
+                    </tr>
+                    <tr>
+                        <td class="name">Operator onboarding</td>
+                        <td class="detail">
+                            The state machine, approval trigger and migration
+                            (~2h), then nine templates plus two internal alerts
+                            at roughly 25 minutes each once the shell exists.
+                        </td>
+                        <td class="hours">6</td>
+                    </tr>
+                    <tr>
+                        <td class="name">Dashboard</td>
+                        <td class="detail">
+                            Second repo: pipeline, one-click approve, email
+                            timeline, resend, opt-out view. Permissions are
+                            mirrored in two places and that repo has no CI, so
+                            it needs manual click-through.
+                        </td>
+                        <td class="hours">4</td>
+                    </tr>
+                    <tr>
+                        <td class="name">Unsubscribe &amp; preferences page</td>
+                        <td class="detail">
+                            Public site, seven locales. Required before MK-1
+                            can legally send.
+                        </td>
+                        <td class="hours">1.5</td>
+                    </tr>
+                    <tr>
+                        <td class="name">Copy in seven locales</td>
+                        <td class="detail">
+                            Thirteen new or changed templates across seven
+                            languages, machine-first through the existing
+                            translation path.
+                        </td>
+                        <td class="hours">2.5</td>
+                    </tr>
+                    <tr>
+                        <td class="name">Tests, verification, PRs</td>
+                        <td class="detail">
+                            A render spec per template, two repos, two base
+                            branches, five PRs.
+                        </td>
+                        <td class="hours">3</td>
+                    </tr>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td>Total</td>
+                        <td>Range allows for review turnarounds</td>
+                        <td class="hours">24–28</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </section>
+
+    <section>
+        <h2>Suggested phasing</h2>
+        <p class="lede">
+            Each phase ships on its own and is useful without the next one. The
+            order puts the revenue-adjacent work first and the piece with a
+            consent dependency last. One dependency drives the split: five of
+            the onboarding nudges are a lifecycle stream, and a lifecycle
+            stream has to carry an unsubscribe — so the opt-out mechanism ships
+            with phase two, not with the marketing work it is usually
+            associated with.
+        </p>
+        <div class="phases">
+            <div class="phase">
+                <div class="n">Phase one</div>
+                <h3>Transactional funnel</h3>
+                <div class="h">9.5h</div>
+                <p>
+                    Every transactional email in the customer funnel, live.
+                    Needs no consent work at all, which is why it can start
+                    immediately.
+                </p>
+                <ul class="detail-list">
+                    <li>
+                        <b>Send spine</b> — send log with send-once
+                        idempotency, the suppression evaluator, and the
+                        tour-local send windows. Three migrations.
+                    </li>
+                    <li>
+                        <b>BK-2 pre-tour reminder</b> — template only; the
+                        24h-before machinery is already built and tested.
+                    </li>
+                    <li>
+                        <b>BK-3R review reminder</b> — its own copy, replacing
+                        the re-sent BK-3 template.
+                    </li>
+                    <li>
+                        <b>BK-1 booking confirmation</b> — brought up to the
+                        wireframe: operator note, what to bring, the anti-fraud
+                        line, the related-tours rail, across all four payment
+                        models.
+                    </li>
+                    <li>
+                        <b>CX-1 cancellation</b> — payment-model-aware copy in
+                        place of the generic notice.
+                    </li>
+                </ul>
+            </div>
+            <div class="phase">
+                <div class="n">Phase two</div>
+                <h3>Operator onboarding</h3>
+                <div class="h">14h</div>
+                <p>
+                    The full sequence plus the dashboard needed to run it. The
+                    largest phase, because it is the one with nothing
+                    underneath it today.
+                </p>
+                <ul class="detail-list">
+                    <li>
+                        <b>Onboarding state</b> — created → accepted →
+                        approved, plus the counters the suppression rules read.
+                        Everything below anchors to the approval moment.
+                    </li>
+                    <li>
+                        <b>Nine operator emails</b> — OB-1 through OB-8 and the
+                        approval mail, with their Tue–Thu windows and
+                        zero-tours suppression.
+                    </li>
+                    <li>
+                        <b>Two internal alerts</b> — new operator and new tour
+                        to sales@, with the two-business-day pending reminder.
+                    </li>
+                    <li>
+                        <b>Opt-out and preference page</b> — required here, not
+                        in phase three: five of these nudges are a lifecycle
+                        stream and cannot legally send without an unsubscribe.
+                    </li>
+                    <li>
+                        <b>Dashboard</b> — pipeline view, admin one-click
+                        approve, an email timeline per operator, and resend.
+                    </li>
+                </ul>
+            </div>
+            <div class="phase">
+                <div class="n">Phase three</div>
+                <h3>Marketing</h3>
+                <div class="h">3.5h</div>
+                <p>
+                    Small, because phase two has already paid for the
+                    unsubscribe half of it. What is left is the consent record
+                    and the email itself.
+                </p>
+                <ul class="detail-list">
+                    <li>
+                        <b>Consent record</b> — explicit marketing opt-in with
+                        its source and timestamp, which nothing on the platform
+                        stores today.
+                    </li>
+                    <li>
+                        <b>MK-1 next adventure</b> — the template, the +72h
+                        trigger off tour end, and its six suppression
+                        conditions.
+                    </li>
+                    <li>
+                        <b>Gate</b> — MK-1 sends only to travellers with a
+                        recorded opt-in, so an empty consent table simply means
+                        nothing goes out.
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <h2>Two things that could move the number</h2>
+        <div class="callout">
+            <h3>Copy is the one line that will not compress</h3>
+            <p>
+                The 2.5 hours for seven locales assumes machine-first
+                translation, reviewed afterwards. If the client wants
+                human-reviewed copy before anything sends, that is calendar
+                time rather than build time, and it sits outside this estimate
+                entirely. Worth noting that both wireframes admit some copy is
+                not written yet.
+            </p>
+        </div>
+        <div class="callout">
+            <h3>MK-1 is marketing, and marketing needs consent</h3>
+            <p>
+                Every other email in both documents is transactional and can
+                send on the strength of the booking or the account. MK-1 cannot.
+                It needs a consent record and a working unsubscribe before it
+                is allowed to go out, which is why it is phased last — it is
+                the item most likely to turn into a scope conversation rather
+                than code.
+            </p>
+        </div>
+    </section>
+
+    <footer>
+        <div>
+            Status verified against the codebase on 9 August 2026, not against
+            the status columns in the wireframes.
+        </div>
+        <div>
+            Sources: <code>island-tours-email-funnel-wireframe.html</code>,
+            <code>island-tours-operator-onboarding-emails-wireframe.html</code>.
+        </div>
+    </footer>
+</div>
+
+</body>
+</html>

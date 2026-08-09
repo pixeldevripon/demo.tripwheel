@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Island Tours · Operator Onboarding Emails (wireframe)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --orange:#E8611A; --orange-tint:#FBF1EA; --green:#16A34A;
+    --dark:#1F2937; --mid:#6B7280; --line:#E8EAED; --bg:#11141A;
+  }
+  *{box-sizing:border-box}
+  body{
+    font-family:'Plus Jakarta Sans',sans-serif;margin:0;
+    background:
+      radial-gradient(900px 500px at 12% -10%, rgba(232,97,26,.18), transparent 60%),
+      radial-gradient(700px 500px at 100% 0%, rgba(232,97,26,.10), transparent 55%),
+      var(--bg);
+    color:#fff;min-height:100vh;padding:40px 24px 80px;
+  }
+  .wrap{max-width:1120px;margin:0 auto}
+  .brand{font-weight:800;letter-spacing:-.02em;font-size:14px;text-transform:uppercase}
+  .brand span{color:var(--orange)}
+  h1.title{font-size:30px;font-weight:800;letter-spacing:-.03em;margin:6px 0 4px}
+  .sub{color:#9aa3b2;font-size:14px;margin-bottom:26px;max-width:760px}
+  .tabs{display:inline-flex;gap:4px;background:rgba(255,255,255,.06);padding:5px;border-radius:999px;margin-bottom:26px;flex-wrap:wrap}
+  .tabs button{font-family:inherit;font-size:13px;font-weight:600;color:#cdd3dd;border:0;background:transparent;padding:9px 16px;border-radius:999px;cursor:pointer;transition:.18s}
+  .tabs button.active{background:var(--orange);color:#fff}
+  .stage{display:none}.stage.active{display:block}
+  .subjectbar{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px 16px;margin-bottom:12px;font-size:13px;color:#cdd3dd;max-width:640px}
+  .subjectbar b{color:#fff}
+  .subjectbar .pre{color:#8b93a2;margin-top:3px}
+  .trigbar{font-size:12.5px;color:#8b93a2;margin:0 0 18px;max-width:640px;line-height:1.6}
+  .trigbar b{color:#c7cdd8}
+  .canvas{background:#EDEFF2;border-radius:16px;padding:30px 16px;overflow:hidden}
+  .email{max-width:600px;margin:0 auto;background:#fff;border:1px solid #EAE7E1;border-radius:14px;padding:26px 30px;font-family:'Plus Jakarta Sans',sans-serif;color:#1F2937}
+  .e-logo{font-size:12.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#1F2937;margin-bottom:20px}
+  .e-logo span{color:var(--orange)}
+  .e-h{font-size:21px;font-weight:800;letter-spacing:-.01em;margin:0 0 10px}
+  .e-p{font-size:14.5px;line-height:1.6;color:#374151;margin:0 0 16px}
+  .e-btn{display:inline-block;background:var(--orange);color:#fff;font-size:14.5px;font-weight:700;border-radius:10px;padding:13px 22px;text-decoration:none;margin-bottom:10px}
+  .e-btn.green{background:var(--green)}
+  .e-callout{background:var(--orange-tint);border-left:4px solid var(--orange);border-radius:10px;padding:15px 17px;margin:0 0 16px}
+  .e-callout .ch{font-size:14px;font-weight:800;color:#9a4a16;margin-bottom:6px}
+  .e-callout .cb{font-size:14px;color:#5b3a22;line-height:1.55}
+  .e-callout a{color:#9a4a16;font-weight:700}
+  .e-quiet{background:#F8F8F6;border:1px solid #EAE7E1;border-radius:10px;padding:13px 16px;margin:16px 0 0}
+  .e-quiet .qh{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#6B7280;margin-bottom:5px}
+  .e-quiet .qb{font-size:13px;color:#4B5563;line-height:1.55}
+  .e-quiet a{color:#1F2937;font-weight:700}
+  .e-muted{font-size:12.5px;color:#6B7280;line-height:1.55;margin:16px 0 0}
+  .e-sec{font-size:13.5px;margin-top:14px}
+  .e-sec a{color:#1F2937;font-weight:700;text-decoration:underline;text-underline-offset:2px}
+  .e-foot{border-top:1px solid #EAE7E1;margin-top:22px;padding-top:14px;font-size:11.5px;color:#6B7280;line-height:1.6}
+  .e-foot .signoff{font-weight:800;color:#4B5563;font-size:12px;margin-bottom:4px}
+  .e-foot a{color:#6B7280}
+  .loom{position:relative;border:1px solid #EAE7E1;border-radius:12px;overflow:hidden;margin:0 0 16px;display:block}
+  .loom .thumb{height:150px;background:linear-gradient(150deg,#2E86AB 0%,#1B5E7E 60%,#123F55 100%);display:flex;align-items:center;justify-content:center}
+  .loom .play{width:52px;height:52px;border-radius:999px;background:rgba(255,255,255,.95);display:flex;align-items:center;justify-content:center}
+  .loom .play svg{width:20px;height:20px;fill:var(--orange);margin-left:3px}
+  .loom .cap{font-size:12.5px;color:#6B7280;padding:9px 13px;background:#fff}
+  /* flow view */
+  .flowcard{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:16px;padding:24px;margin-bottom:22px;overflow-x:auto}
+  table.ft{border-collapse:collapse;width:100%;font-size:13px;min-width:900px}
+  table.ft th{color:#8b93a2;font-weight:700;text-transform:uppercase;font-size:10.5px;letter-spacing:.06em;text-align:left;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.12)}
+  table.ft td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.06);color:#e5e9ef;vertical-align:top;line-height:1.5}
+  table.ft td b{color:#fff}
+  .pill{display:inline-block;font-size:10.5px;font-weight:700;border-radius:6px;padding:2px 8px;letter-spacing:.04em}
+  .pill.t{background:rgba(232,97,26,.18);color:#F09A6A}
+  .pill.l{background:rgba(255,255,255,.10);color:#cdd3dd}
+  .timeline{display:flex;gap:0;align-items:flex-start;margin:8px 0 6px;min-width:900px}
+  .tl-node{flex:1;position:relative;padding-top:26px}
+  .tl-node::before{content:"";position:absolute;top:8px;left:0;right:0;height:2px;background:rgba(255,255,255,.12)}
+  .tl-node::after{content:"";position:absolute;top:3px;left:calc(50% - 6px);width:12px;height:12px;border-radius:999px;background:var(--orange)}
+  .tl-node.ev::after{background:#fff}
+  .tl-node .d{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#8b93a2;text-align:center}
+  .tl-node .n{font-size:13px;font-weight:700;color:#fff;text-align:center;margin-top:3px}
+  .tl-node .s{font-size:11.5px;color:#8b93a2;text-align:center;margin-top:3px;line-height:1.45;padding:0 8px}
+  .legend{margin-top:30px;font-size:12.5px;color:#8b93a2;line-height:1.7;border-top:1px solid rgba(255,255,255,.08);padding-top:16px}
+  .legend b{color:#c7cdd8}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">Island <span>Tours</span></div>
+    <h1 class="title">Operator onboarding emails · wireframe</h1>
+    <div class="sub">From sign-up to habit: the full operator email flow. Suppression-gated, one button each, plain by design. Sample data; all values are merge variables. Spec: island-tours-operator-onboarding-emails-spec.md.</div>
+  </header>
+
+  <div class="tabs" id="tabs">
+    <button class="active" data-stage="flow">Flow</button>
+    <button data-stage="m1">1 · Verify</button>
+    <button data-stage="m2">2 · Welcome</button>
+    <button data-stage="m2a">2A · Approved</button>
+    <button data-stage="m3">3 · How-to</button>
+    <button data-stage="m4">4 · Stuck</button>
+    <button data-stage="m5">5 · Live</button>
+    <button data-stage="m6">6 · Check-in</button>
+    <button data-stage="m7">7 · Calendar</button>
+    <button data-stage="m8">8 · Photos</button>
+    <button data-stage="mint">Int · Sales</button>
+  </div>
+
+  <!-- ============ FLOW ============ -->
+  <section class="stage active" id="flow">
+    <div class="flowcard">
+      <div class="timeline">
+        <div class="tl-node"><div class="d">Day 0</div><div class="n">OB-1 Verify</div><div class="s">instant · state created</div></div>
+        <div class="tl-node"><div class="d">Day 0</div><div class="n">OB-2 Welcome</div><div class="s">instant · on accepted · INT-1 to sales@</div></div>
+        <div class="tl-node ev"><div class="d">Approval</div><div class="n">OB-2A Approved</div><div class="s">admin one-click · anchor of the nudges</div></div>
+        <div class="tl-node"><div class="d">Appr +2d</div><div class="n">OB-3 How-to</div><div class="s">only if 0 tours · Tue-Thu 09-11</div></div>
+        <div class="tl-node"><div class="d">Appr +7d</div><div class="n">OB-4 Stuck</div><div class="s">only if 0 tours · WhatsApp rescue</div></div>
+        <div class="tl-node ev"><div class="d">Event</div><div class="n">OB-5 Live</div><div class="s">first page published · habit intro</div></div>
+        <div class="tl-node"><div class="d">Appr +14d</div><div class="n">OB-6 Check-in</div><div class="s">personal · Denley reply-to · sequence ends</div></div>
+        <div class="tl-node ev"><div class="d">Live +3d</div><div class="n">OB-7 Calendar</div><div class="s">feature-flag gated · connect or stay manual</div></div>
+        <div class="tl-node ev"><div class="d">Live +7d</div><div class="n">OB-8 Photos</div><div class="s">page-strength tips · Dronebaas offer</div></div>
+      </div>
+    </div>
+    <div class="flowcard">
+      <table class="ft">
+        <tr><th>#</th><th>Trigger</th><th>Delay · window</th><th>Suppressed when</th><th>Stream</th><th>Opt-out</th></tr>
+        <tr><td><b>OB-1</b> Confirm your email</td><td>onboarding_state = created</td><td>Instant · always</td><td>Email already verified</td><td><span class="pill t">Transactional</span></td><td>No</td></tr>
+        <tr><td><b>OB-2</b> Welcome + agreement</td><td>onboarding_state → accepted</td><td>Instant · always</td><td>Never (fires once)</td><td><span class="pill t">Transactional</span></td><td>No</td></tr>
+        <tr><td><b>INT-1</b> New operator → sales@island.tours</td><td>onboarding_state → accepted</td><td>Instant</td><td>Reminder once after 2 business days pending</td><td><span class="pill l">Internal</span></td><td>No</td></tr>
+        <tr><td><b>OB-2A</b> You're approved</td><td>approval_status → approved (admin one-click)</td><td>Instant · always</td><td>Never (fires once)</td><td><span class="pill t">Transactional</span></td><td>No</td></tr>
+        <tr><td><b>OB-3</b> First tour, step by step</td><td>OB-2A sent</td><td>+48h · Tue-Thu 09:00-11:00 (America/Curacao)</td><td>tours_submitted ≥ 1, or opted out</td><td><span class="pill l">Lifecycle</span></td><td>Yes</td></tr>
+        <tr><td><b>OB-4</b> We'll build it with you</td><td>OB-2A sent</td><td>+7d · same window</td><td>tours_submitted ≥ 1, or opted out</td><td><span class="pill l">Lifecycle</span></td><td>Yes</td></tr>
+        <tr><td><b>OB-5</b> Your tour is live</td><td>first_tour_live event</td><td>Instant · always</td><td>Never (once per first live tour)</td><td><span class="pill t">Transactional</span></td><td>No</td></tr>
+        <tr><td><b>OB-6</b> How's it going?</td><td>OB-2A sent</td><td>+14d · same window</td><td>Suspended, or opted out</td><td><span class="pill l">Lifecycle</span></td><td>Yes</td></tr>
+        <tr><td><b>OB-7</b> Connect your calendar</td><td>first_tour_live +3d</td><td>Tue-Thu window</td><td>calendar_sync_available off, already connected, or opted out</td><td><span class="pill l">Lifecycle</span></td><td>Yes</td></tr>
+        <tr><td><b>OB-8</b> Make your tour page stronger</td><td>first_tour_live +7d</td><td>Tue-Thu window</td><td>Opted out, or suspended</td><td><span class="pill l">Lifecycle</span></td><td>Yes</td></tr>
+        <tr><td><b>INT-2</b> New tour → sales@island.tours</td><td>Tour submitted</td><td>Instant</td><td>Never</td><td><span class="pill l">Internal</span></td><td>No</td></tr>
+      </table>
+    </div>
+    <div class="legend">
+      <b>Rules:</b> send-once idempotency per operator per template (send log with unique index) · suppression evaluated at send time, not enqueue time · suspension stops everything, opt-out stops only the lifecycle set · sequence ends day 14, zero-tour non-responders flow to the Notion supply CRM for human follow-up · reply-to always monitored, never noreply@ · the recurring availability freshness nudge lives in the availability dev spec; OB-5 introduces the habit once and never repeats · approval gates everything: INT-1 goes to sales@island.tours on sign-up, one admin click approves, OB-2A anchors the nudges, and no lifecycle email ever reaches a pending or declined operator · volume cap: max one lifecycle email per operator per 3 days, priority OB-6 over OB-7 over OB-8 · the Live +Nd nodes shift with the actual live date; the drawn order is illustrative.
+    </div>
+  </section>
+
+  <!-- ============ OB-1 VERIFY ============ -->
+  <section class="stage" id="m1">
+    <div class="subjectbar"><b>Subject:</b> Confirm your email<div class="pre">One click and you're through to the next step.</div></div>
+    <div class="trigbar"><b>Trigger:</b> signup step 1 (state created) · instant · transactional · no opt-out. Single purpose: nothing else may ride along in a verification email.</div>
+    <div class="canvas">
+      <div class="email">
+        <div class="e-logo">Island <span>Tours</span></div>
+        <div class="e-h">Confirm your email</div>
+        <p class="e-p">Your operator account is almost ready. One click and you're through.</p>
+        <a class="e-btn" href="#">Confirm my email</a>
+        <p class="e-muted">The link works for 24 hours. Didn't sign up? You can ignore this email.</p>
+        <div class="e-foot">Island Tours is a service of ITG B.V. (Island Tours Group) · KvK Curaçao 169950<br>
+          Willemstad, Curaçao · www.island.tours</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ OB-2 WELCOME ============ -->
+  <section class="stage" id="m2">
+    <div class="subjectbar"><b>Subject:</b> You're on Island Tours.<div class="pre">Your agreement copy is inside. We're checking your registration.</div></div>
+    <div class="trigbar"><b>Trigger:</b> state → accepted · instant · transactional · PDF attached (version-pinned, hash-matched) plus hosted link (Q3). Fires together with INT-1 to sales@island.tours; the add-a-tour CTA moved to OB-2A because approval gates that page (founder decision July 9).</div>
+    <div class="canvas">
+      <div class="email">
+        <div class="e-logo">Island <span>Tours</span></div>
+        <div class="e-h">Welcome, Mayra.</div>
+        <p class="e-p">Your operator account is live. You run the tours, we bring the travelers, and that starts with your first tour page.</p>
+        <div class="e-callout" style="margin-top:0">
+          <div class="ch">We're checking your registration</div>
+          <div class="cb">A quick check of your registration, usually within one business day. You'll get one email the moment you're approved, then you can add your first tour.</div>
+        </div>
+        <div class="e-quiet">
+          <div class="qh">Your Operator Agreement</div>
+          <div class="qb">You accepted version 1.0 on July 9, 2026. Your copy is attached as a PDF, and it always lives at the link below.<br><a href="#">Read your agreement</a></div>
+        </div>
+        <p class="e-muted">Questions? <a href="#" style="color:#1F2937;font-weight:700">Email</a> or <a href="#" style="color:#1F2937;font-weight:700">WhatsApp us</a>. Every day, 08:00 to 20:00, Sundays too.</p>
+        <div class="e-foot">
+          <div class="signoff">Island Tours. Built by Islanders.</div>
+          We'll never ask for your password, codes, or payment by email.<br>
+          Island Tours is a service of ITG B.V. (Island Tours Group) · KvK Curaçao 169950<br>
+          Willemstad, Curaçao · www.island.tours
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ OB-2A APPROVED ============ -->
+  <section class="stage" id="m2a">
+    <div class="subjectbar"><b>Subject:</b> You're approved. Add your first tour.<div class="pre">Your first tour page starts here.</div></div>
+    <div class="trigbar"><b>Trigger:</b> approval_status → approved (one admin click from INT-1's Review button) · instant · transactional · this send anchors OB-3, OB-4, and OB-6.</div>
+    <div class="canvas">
+      <div class="email">
+        <div class="e-logo">Island <span>Tours</span></div>
+        <div class="e-h">Good news, Mayra.</div>
+        <p class="e-p">Irie Tours B.V. is approved on Island Tours. Time for the fun part: your first tour page.</p>
+        <a class="e-btn" href="#">Add your first tour</a>
+        <div class="e-quiet">
+          <div class="qh">Your dashboard, in short</div>
+          <div class="qb">Bookings the moment they land, availability in one tap, your tour pages in one place.<br><a href="#">Open your dashboard</a></div>
+        </div>
+        <div class="e-foot">
+          <div class="signoff">Island Tours. Built by Islanders.</div>
+          We'll never ask for your password, codes, or payment by email.<br>
+          Island Tours is a service of ITG B.V. (Island Tours Group) · KvK Curaçao 169950<br>
+          Willemstad, Curaçao · www.island.tours
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ OB-3 HOW-TO ============ -->
+  <section class="stage" id="m3">
+    <div class="subjectbar"><b>Subject:</b> Your first tour, step by step<div class="pre">A short walkthrough, start to finish.</div></div>
+    <div class="trigbar"><b>Trigger:</b> +48h after OB-2A (approval), only while tours_submitted = 0 · Tue-Thu 09:00-11:00 · lifecycle, opt-out. Walkthrough block shows ALTERNATES: build both slots, render the Loom thumbnail when a URL is configured, else the guide link alone (Q1, Q2). Video never embeds in email.</div>
+    <div class="canvas">
+      <div class="email">
+        <div class="e-logo">Island <span>Tours</span></div>
+        <div class="e-h">Your first tour, step by step</div>
+        <p class="e-p">Your tour page starts as a short form: your overview, facts, photos, prices, availability, and departure times. You fill it in, we give it a final check, and your page goes live.</p>
+        <a class="loom" href="#">
+          <div class="thumb"><div class="play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div></div>
+          <div class="cap">Watch the walkthrough · {duration}</div>
+        </a>
+        <a class="e-btn" href="#">Add your first tour</a>
+        <p class="e-sec"><a href="#">Read the step-by-step guide</a></p>
+        <div class="e-foot">
+          We'll never ask for your password, codes, or payment by email.<br>
+          Island Tours is a service of ITG B.V. (Island Tours Group) · KvK Curaçao 169950<br>
+          Willemstad, Curaçao · www.island.tours<br>
+          Prefer no setup emails? <a href="#">Opt out here</a>.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ OB-4 STUCK ============ -->
+  <section class="stage" id="m4">
+    <div class="subjectbar"><b>Subject:</b> We'll build it with you<div class="pre">Send your photos and prices on WhatsApp.</div></div>
+    <div class="trigbar"><b>Trigger:</b> day 7 after approval, only while tours_submitted = 0 · Tue-Thu 09:00-11:00 · lifecycle, opt-out. The rescue leans on the editorial model; the only green button in the family (WhatsApp).</div>
+    <div class="canvas">
+      <div class="email">
+        <div class="e-logo">Island <span>Tours</span></div>
+        <div class="e-h">We'll build it with you</div>
+        <p class="e-p">A first tour page can fall to the bottom of the pile. We know how island days run. Send us your photos, prices, and departure times, WhatsApp or email, and we'll set up your page together: you check it, we make it live.</p>
+        <a class="e-btn green" href="#">Chat on WhatsApp</a>
+        <p class="e-sec" style="margin-top:6px"><a href="#">Or email everything to sales@island.tours</a></p>
+        <p class="e-sec" style="margin-top:8px"><a href="#">Or add your tour yourself</a></p>
+        <div class="e-foot">
+          We'll never ask for your password, codes, or payment by email.<br>
+          Island Tours is a service of ITG B.V. (Island Tours Group) · KvK Curaçao 169950<br>
+          Willemstad, Curaçao · www.island.tours<br>
+          Prefer no setup emails? <a href="#">Opt out here</a>.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ OB-5 LIVE ============ -->
+  <section class="stage" id="m5">
+    <div class="subjectbar"><b>Subject:</b> Your tour is live: Sunset Cruise along Spanish Water<div class="pre">See your page, then keep your calendar current.</div></div>
+    <div class="trigbar"><b>Trigger:</b> first_tour_live publish event · instant · transactional · fires once, for the first live tour only. Introduces the availability habit; the recurring freshness nudge (availability dev spec) owns it afterward.</div>
+    <div class="canvas">
+      <div class="email">
+        <div class="e-logo">Island <span>Tours</span></div>
+        <div class="e-h">Sunset Cruise along Spanish Water is live.</div>
+        <p class="e-p">Travelers can book it right now. Take a look at your page, this is what they see.</p>
+        <a class="e-btn" href="#">See your live page</a>
+        <div class="e-callout" style="margin-top:16px">
+          <div class="ch">Keep your availability current</div>
+          <div class="cb">A day full, or not running? Close that date in the portal, one tap. Travelers can only book what's really open, so you never get a booking you can't take.</div>
+        </div>
+        <p class="e-sec"><a href="#">Open your availability</a></p>
+        <div class="e-foot">
+          <div class="signoff">Island Tours. Built by Islanders.</div>
+          We'll never ask for your password, codes, or payment by email.<br>
+          Island Tours is a service of ITG B.V. (Island Tours Group) · KvK Curaçao 169950<br>
+          Willemstad, Curaçao · www.island.tours
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ OB-6 CHECK-IN ============ -->
+  <section class="stage" id="m6">
+    <div class="subjectbar"><b>Subject:</b> How's it going?<div class="pre">One quick question.</div></div>
+    <div class="trigbar"><b>Trigger:</b> day 14 after approval · Tue-Thu 09:00-11:00 · lifecycle, opt-out · near-plain text, no buttons, no images · from "Denley from Island Tours", reply-to Denley's monitored inbox (Q4). Plain personal check-ins earn replies that designed emails do not.</div>
+    <div class="canvas">
+      <div class="email">
+        <p class="e-p" style="margin-bottom:12px">Hi Mayra,</p>
+        <p class="e-p" style="margin-bottom:12px">Denley here, founder of Island Tours. One quick question: what's the one thing we could do better for you as an operator?</p>
+        <p class="e-p" style="margin-bottom:12px">Hit reply, it lands in my inbox. WhatsApp works too, that's often faster.</p>
+        <p class="e-p" style="margin-bottom:0">Denley</p>
+        <div class="e-foot">
+          We'll never ask for your password, codes, or payment by email.<br>
+          Island Tours is a service of ITG B.V. (Island Tours Group) · KvK Curaçao 169950<br>
+          Willemstad, Curaçao · www.island.tours<br>
+          Prefer no setup emails? <a href="#">Opt out here</a>.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ OB-7 CALENDAR ============ -->
+  <section class="stage" id="m7">
+    <div class="subjectbar"><b>Subject:</b> Connect your calendar<div class="pre">Manual works. Connected never forgets.</div></div>
+    <div class="trigbar"><b>Trigger:</b> first_tour_live +3 days · Tue-Thu window · lifecycle, opt-out · gated on the calendar_sync_available feature flag (API adapters ship after launch, availability dev spec; Q7). Suppressed when a calendar is already connected.</div>
+    <div class="canvas">
+      <div class="email">
+        <div class="e-logo">Island <span>Tours</span></div>
+        <div class="e-h">Connect your calendar</div>
+        <p class="e-p">Keeping your availability current by hand works fine: one tap a day. But if your booking system or website can share its calendar, we can connect it, and closed dates sync themselves. No double bookings, nothing to remember.</p>
+        <p class="e-p">Our developer sets it up together with yours: check with your developer first, then message us and we'll make the connection.</p>
+        <a class="e-btn" href="#">Connect my calendar</a>
+        <p class="e-muted">No booking system? Manual is fine. One tap a day keeps everything current.</p>
+        <div class="e-foot">
+          We'll never ask for your password, codes, or payment by email.<br>
+          Island Tours is a service of ITG B.V. (Island Tours Group) · KvK Curaçao 169950<br>
+          Willemstad, Curaçao · www.island.tours<br>
+          Prefer no setup emails? <a href="#">Opt out here</a>.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ OB-8 PHOTOS ============ -->
+  <section class="stage" id="m8">
+    <div class="subjectbar"><b>Subject:</b> Make your tour page stronger<div class="pre">Photos do most of the work.</div></div>
+    <div class="trigbar"><b>Trigger:</b> first_tour_live +7 days · Tue-Thu window · lifecycle, opt-out · educational first, one partner offer at the end (Dronebaas, Q9); because of the offer, counsel reviews this one under Q5.</div>
+    <div class="canvas">
+      <div class="email">
+        <div class="e-logo">Island <span>Tours</span></div>
+        <div class="e-h">Make your tour page stronger</div>
+        <p class="e-p">A quick look at what makes tour pages book well: bright, real photos first (they do most of the work), availability that's always current, and honest answers to what travelers ask.</p>
+        <div class="e-quiet" style="margin:0 0 16px">
+          <div class="qh">Want pro photos?</div>
+          <div class="qb">We arrange photo and drone shoots with Dronebaas, our photo partner on the island. One shoot, and your page gets the pictures it deserves.</div>
+        </div>
+        <a class="e-btn" href="#">Plan a photo shoot</a>
+        <div class="e-foot">
+          We'll never ask for your password, codes, or payment by email.<br>
+          Island Tours is a service of ITG B.V. (Island Tours Group) · KvK Curaçao 169950<br>
+          Willemstad, Curaçao · www.island.tours<br>
+          Prefer no setup emails? <a href="#">Opt out here</a>.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ INTERNAL ============ -->
+  <section class="stage" id="mint">
+    <div class="subjectbar"><b>Subject:</b> New operator: Irie Tours B.V.<div class="pre">INT-1 · to sales@island.tours · Review in admin</div></div>
+    <div class="trigbar"><b>Trigger:</b> sign-up completed (accepted) · instant · internal · one reminder after 2 business days pending. Never an approve action inside the email: link scanners click, approval is an admin-SSO action, audit-logged.</div>
+    <div class="canvas">
+      <div class="email">
+        <div class="e-logo">Island <span>Tours</span> · <span style="color:#6B7280;letter-spacing:.05em">Internal</span></div>
+        <div class="e-h">New operator: Irie Tours B.V.</div>
+        <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;font-size:13.5px;color:#374151;margin-bottom:16px">
+          <tr><td style="padding:4px 0;color:#6B7280">Signatory</td><td style="padding:4px 0;text-align:right;font-weight:600">Mayra Martina</td></tr>
+          <tr><td style="padding:4px 0;color:#6B7280">Email</td><td style="padding:4px 0;text-align:right;font-weight:600">mayra@irietours.com</td></tr>
+          <tr><td style="padding:4px 0;color:#6B7280">Phone / WhatsApp</td><td style="padding:4px 0;text-align:right;font-weight:600">+599 9 561 22 43</td></tr>
+          <tr><td style="padding:4px 0;color:#6B7280">KvK Curaçao</td><td style="padding:4px 0;text-align:right;font-weight:600">123456</td></tr>
+          <tr><td style="padding:4px 0;color:#6B7280">Accepted</td><td style="padding:4px 0;text-align:right;font-weight:600">Jul 9, 2026, 14:32 · Agreement v1.0</td></tr>
+          <tr><td style="padding:4px 0;color:#6B7280">CRM</td><td style="padding:4px 0;text-align:right;font-weight:600">Match: Irie Tours (Live operators)</td></tr>
+        </table>
+        <a class="e-btn" href="#" style="background:#1F2937">Review in admin</a>
+      </div>
+      <div class="email" style="margin-top:18px">
+        <div class="e-logo">Island <span>Tours</span> · <span style="color:#6B7280;letter-spacing:.05em">Internal</span></div>
+        <div class="e-h" style="font-size:17px">New tour to review: Sunset Cruise along Spanish Water</div>
+        <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;font-size:13.5px;color:#374151;margin-bottom:16px">
+          <tr><td style="padding:4px 0;color:#6B7280">Operator</td><td style="padding:4px 0;text-align:right;font-weight:600">Irie Tours B.V.</td></tr>
+          <tr><td style="padding:4px 0;color:#6B7280">Submitted</td><td style="padding:4px 0;text-align:right;font-weight:600">Jul 12, 2026, 09:14</td></tr>
+          <tr><td style="padding:4px 0;color:#6B7280">Submission</td><td style="padding:4px 0;text-align:right;font-weight:600"><a href="#" style="color:#1F2937">Open the submission</a></td></tr>
+        </table>
+        <a class="e-btn" href="#" style="background:#1F2937">Review in admin</a>
+      </div>
+    </div>
+  </section>
+
+  <div class="legend">
+    <b>Design constants:</b> 600px single column on #EDEFF2 · one button per email, brand orange (#E8611A), WhatsApp green only on OB-4 · tinted callouts in the confirmation-email style · Plus Jakarta Sans · no emoji · alt text on every image · under 125KB per email · footers carry sender identity and, on the lifecycle set only, the opt-out. <b>Merge variables:</b> {firstName}, {version}, {date}, {tourName}, links per environment.
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll(".tabs button").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      document.querySelectorAll(".tabs button").forEach(function(b){ b.classList.remove("active"); });
+      document.querySelectorAll(".stage").forEach(function(s){ s.classList.remove("active"); });
+      btn.classList.add("active");
+      document.getElementById(btn.getAttribute("data-stage")).classList.add("active");
+      window.scrollTo({top:0});
+    });
+  });
+</script>
+</body>
+</html>

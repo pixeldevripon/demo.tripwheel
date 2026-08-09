@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Island Tours · Customer Email Funnel (wireframe)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{ --orange:#E8611A; --green:#16A34A; --bg:#11141A; }
+  *{box-sizing:border-box}
+  body{font-family:'Plus Jakarta Sans',sans-serif;margin:0;
+    background:radial-gradient(900px 500px at 12% -10%, rgba(232,97,26,.18), transparent 60%),
+      radial-gradient(700px 500px at 100% 0%, rgba(232,97,26,.10), transparent 55%), var(--bg);
+    color:#fff;min-height:100vh;padding:40px 24px 80px}
+  .wrap{max-width:1120px;margin:0 auto}
+  .brand{font-weight:800;letter-spacing:-.02em;font-size:14px;text-transform:uppercase}
+  .brand span{color:var(--orange)}
+  h1.title{font-size:30px;font-weight:800;letter-spacing:-.03em;margin:6px 0 4px}
+  .sub{color:#9aa3b2;font-size:14px;margin-bottom:20px;max-width:860px;line-height:1.6}
+  .notice{background:rgba(232,97,26,.10);border:1px solid rgba(232,97,26,.35);border-radius:12px;padding:12px 16px;font-size:12.5px;color:#f0c3a8;line-height:1.65;margin-bottom:24px;max-width:900px}
+  .notice b{color:#fff}
+  .tabs{display:inline-flex;gap:4px;background:rgba(255,255,255,.06);padding:5px;border-radius:999px;margin-bottom:26px;flex-wrap:wrap}
+  .tabs button{font-family:inherit;font-size:13px;font-weight:600;color:#cdd3dd;border:0;background:transparent;padding:9px 16px;border-radius:999px;cursor:pointer;transition:.18s}
+  .tabs button.active{background:var(--orange);color:#fff}
+  .stage{display:none}.stage.active{display:block}
+  .subjectbar{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px 16px;margin-bottom:12px;font-size:13px;color:#cdd3dd;max-width:700px}
+  .subjectbar b{color:#fff}
+  .subjectbar .pre{color:#8b93a2;margin-top:4px}
+  .trigbar{font-size:12.5px;color:#8b93a2;margin:0 0 18px;max-width:900px;line-height:1.65}
+  .trigbar b{color:#c7cdd8}
+  .canvas{background:#EDEFF2;border-radius:16px;padding:30px 16px;overflow:hidden}
+  .flowcard{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:16px;padding:24px;margin-bottom:22px;overflow-x:auto}
+  table.ft{border-collapse:collapse;width:100%;font-size:13px;min-width:980px}
+  table.ft th{color:#8b93a2;font-weight:700;text-transform:uppercase;font-size:10.5px;letter-spacing:.06em;text-align:left;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.12)}
+  table.ft td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.06);color:#e5e9ef;vertical-align:top;line-height:1.5}
+  table.ft td b{color:#fff}
+  .pill{display:inline-block;font-size:10.5px;font-weight:700;border-radius:6px;padding:2px 8px;letter-spacing:.04em}
+  .pill.t{background:rgba(232,97,26,.18);color:#F09A6A}
+  .pill.m{background:rgba(22,163,74,.18);color:#6EE7A8}
+  .pill.o{background:rgba(59,130,246,.18);color:#93C5FD}
+  .pill.ok{background:rgba(22,163,74,.18);color:#6EE7A8}
+  .pill.wip{background:rgba(255,255,255,.10);color:#cdd3dd}
+  .timeline{display:flex;gap:0;align-items:flex-start;margin:8px 0 6px;min-width:980px}
+  .tl-node{flex:1;position:relative;padding-top:26px}
+  .tl-node::before{content:"";position:absolute;top:8px;left:0;right:0;height:2px;background:rgba(255,255,255,.12)}
+  .tl-node::after{content:"";position:absolute;top:3px;left:calc(50% - 6px);width:12px;height:12px;border-radius:999px;background:var(--orange)}
+  .tl-node.ev::after{background:#fff}
+  .tl-node.op::after{background:#60A5FA}
+  .tl-node.mk::after{background:var(--green)}
+  .tl-node .d{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#8b93a2;text-align:center}
+  .tl-node .n{font-size:13px;font-weight:700;color:#fff;text-align:center;margin-top:3px}
+  .tl-node .s{font-size:11.5px;color:#8b93a2;text-align:center;margin-top:3px;line-height:1.45;padding:0 8px}
+  .legend{margin-top:30px;font-size:12.5px;color:#8b93a2;line-height:1.7;border-top:1px solid rgba(255,255,255,.08);padding-top:16px}
+  .legend b{color:#c7cdd8}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">Island <span>Tours</span></div>
+    <h1 class="title">Customer email funnel · wireframe</h1>
+    <div class="sub">The traveler's inbox, end to end. Each email below is the <b>real built template</b>, embedded verbatim from its own wireframe, rendered on one sample booking that runs through the whole funnel: Denley · IT-2026-04821 · Klein Curaçao Day Trip · Miss Ann Boat Trips · Fri 22 May 2026 · operator_link, 20% deposit. Each email also has its own wireframe file with the full variant matrix; this view stitches them together.</div>
+    <div class="notice"><b>Scope:</b> only emails that exist. There is <b>no win-back email</b>, that was never decided. The Next Adventure email is new and deliberately built as an <b>availability</b> email, not a recommendation email. <b>Note on the review request:</b> its standalone prototypes were built before this design system was applied, so they still use their own styling. The version shown here is the decided copy re-skinned into the family (brand bar, thumbnail summary, same type scale). The standalone prototypes should be re-skinned to match.</div>
+  </header>
+
+  <div class="tabs" id="tabs">
+    <button class="active" data-stage="flow">Flow</button>
+    <button data-stage="m1">1 · Confirmation</button>
+    <button data-stage="m2">2 · Pre-tour reminder</button>
+    <button data-stage="m3">3 · Review request</button>
+    <button data-stage="m4">4 · Next adventure</button>
+    <button data-stage="mx">X · Cancellation</button>
+  </div>
+
+  <!-- ============ FLOW ============ -->
+  <section class="stage active" id="flow">
+    <div class="flowcard">
+      <div class="timeline">
+        <div class="tl-node"><div class="d">Booking</div><div class="n">BK-1 Confirmation</div><div class="s">instant · the ticket · anti-fraud line</div></div>
+        <div class="tl-node op"><div class="d">Booking</div><div class="n">Operator balance link</div><div class="s">operator_link only · sent by the operator</div></div>
+        <div class="tl-node"><div class="d">Tour minus 24h</div><div class="n">BK-2 Reminder</div><div class="s">logistics · never a payment link</div></div>
+        <div class="tl-node ev"><div class="d">Tour day</div><div class="n">The tour</div><div class="s">the operator runs it · tour_end_datetime</div></div>
+        <div class="tl-node"><div class="d">Tour plus 24h</div><div class="n">BK-3 Review request</div><div class="s">morning after · around 10:00 tour-local</div></div>
+        <div class="tl-node mk"><div class="d">Tour plus 72h</div><div class="n">MK-1 Next adventure</div><div class="s">marketing rail · still-here window</div></div>
+        <div class="tl-node ev"><div class="d">Plus 5 to 7d</div><div class="n">BK-3R Reminder</div><div class="s">spec only · copy not written yet</div></div>
+        <div class="tl-node ev"><div class="d">Event</div><div class="n">CX-1 Cancellation</div><div class="s">stops everything downstream</div></div>
+      </div>
+    </div>
+
+    <div class="flowcard">
+      <table class="ft">
+        <tr><th>#</th><th>Trigger</th><th>Delay · window</th><th>Suppressed when</th><th>Stream</th><th>Status</th></tr>
+        <tr><td><b>BK-1</b> Booking confirmation</td><td>Booking confirmed (all four payment models)</td><td>Instant · always</td><td>Never (fires once). Booked under 24h before start: the subject switches to "today/tomorrow" and BK-2 is skipped</td><td><span class="pill t">Transactional</span></td><td><span class="pill ok">Built</span> wireframe + spec · master 6.5 · 4 payment models plus the cancel modal</td></tr>
+        <tr><td><b>(op)</b> Balance payment link</td><td>operator_link booking</td><td>Operator-sent · before the cancellation deadline</td><td>Every other payment model</td><td><span class="pill o">Operator</span></td><td>Not an Island Tours email. Foreshadowed in BK-1 so it is expected and not read as phishing</td></tr>
+        <tr><td><b>BK-2</b> Pre-tour reminder</td><td>tour_start minus 24h, tour-local</td><td>24h before · always</td><td>Cancelled, forfeited, operator-cancelled · bookings created inside the 24h window</td><td><span class="pill t">Transactional</span></td><td><span class="pill ok">Built</span> wireframe + spec · master 6.7 · payment-model and consent variants</td></tr>
+        <tr><td><b>BK-3</b> Post-tour review request</td><td>tour_end_datetime passed</td><td>Plus 24h · around 10:00 tour-local</td><td>Cancelled, forfeited, operator-cancelled, no-show</td><td><span class="pill t">Transactional</span></td><td><span class="pill ok">Built</span> prototypes (A clean, B upsell) + spec · proposed master 6.8 · needs re-skin to this design system</td></tr>
+        <tr><td><b>MK-1</b> Next adventure</td><td>tour_end_datetime (not off the review email)</td><td>Plus 72h · Curaçao morning</td><td>Booked again, cancelled, no-show, complained, left a 1 or 2 star review, opted out</td><td><span class="pill m">Marketing</span></td><td><span class="pill ok">New</span> wireframe + content built · availability-first, no discount</td></tr>
+        <tr><td><b>BK-3R</b> Review reminder</td><td>BK-3 sent, no review yet</td><td>Plus 5 to 7 days · WhatsApp where opt-in</td><td>Review submitted (the sequence stops immediately) · one reminder only</td><td><span class="pill t">Transactional</span></td><td><span class="pill wip">Spec only</span> rules decided, copy not written yet</td></tr>
+        <tr><td><b>CX-1</b> Cancellation confirmation</td><td>Admin confirms the cancellation (the 6.4 tokenized request flow)</td><td>Instant</td><td>Never · the copy is payment-model aware</td><td><span class="pill t">Transactional</span></td><td><span class="pill wip">Copy locked</span> in master 6.4 · no wireframe built yet</td></tr>
+      </table>
+    </div>
+
+    <div class="legend">
+      <b>Rules:</b> one dynamic template per email, merge variables plus conditional blocks plus i18n via customer_locale · every deadline renders "(Curaçao time)" or "(local time)" and resolves from the single cancellation window · zero-amount money lines are hidden, so the payment block differs across operator_link, on_arrival, paid_in_full and operator_full · <b>two-phase operator visibility:</b> pre-payment copy is agentless, post-booking the operator is named, which is why BK-1 foreshadows the operator's balance email and BK-3 credits the operator · <b>never a payment link</b> in BK-2 or BK-3, and BK-2 carries no balance nudge and no cancellation CTA; payment links exist only in the operator's own email, which is what makes the anti-fraud line in BK-1 credible · a cancellation stops the reminder, the review request and the marketing rail · idempotency per booking per template, suppression evaluated at send time · <b>rail split:</b> BK-1 to BK-3R are transactional (contract basis, no marketing consent, no unsubscribe required, transactional subdomain); MK-1 is marketing (soft opt-in under ePrivacy 13(2), unsubscribe mandatory, separate marketing subdomain). MK-1 stays <b>tours only</b>: the moment an affiliate or partner product goes in, the soft-opt-in basis breaks and explicit consent is required · <b>cross-sell inventory:</b> the "More Curaçao experiences" block at the foot of BK-1, the soft-opt-in "Islanders also love..." block in BK-2, the optional block in BK-3 variant B, and MK-1. No win-back email exists.
+    </div>
+  </section>
+
+  <!-- ============ BK-1 CONFIRMATION ============ -->
+  <section class="stage" id="m1">
+    <div class="subjectbar"><b>Subject:</b> You're booked: Klein Curaçao Day Trip on 22 May 2026<div class="pre"><b>Preview:</b> Your spot is reserved. Here are your details and what happens next.</div></div>
+    <div class="trigbar"><b>Trigger:</b> booking confirmed · instant · transactional. Embedded <b>verbatim</b> from sources/canonical/island-tours-booking-confirmation-email-wireframe.html, rendered on operator_link. The other three payment models (on_arrival with card_or_cash and cash_only, paid_in_full, operator_full where the headline becomes "Reservation sent") and the cancel-request modal are shown <b>below the email</b>, also verbatim. <b>Block 6 (How to pay the rest) plus the anti-fraud line carry the C2 anti-phishing mitigation and must stay above the fold of the payment area.</b></div>
+    <div class="canvas"><div class="mount" data-tpl="tpl-confirm"></div></div>
+
+    <div style="margin-top:34px;border-top:1px solid rgba(255,255,255,.08);padding-top:22px">
+      <div style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#E8611A;margin-bottom:6px">The rest of the confirmation template</div>
+      <div style="color:#8b93a2;font-size:13px;line-height:1.7;max-width:760px">The email above renders <b style="color:#c7cdd8">operator_link</b>, the default. Below are the other three payment models and the cancel-request modal, lifted <b style="color:#c7cdd8">verbatim</b> from sources/canonical/island-tours-booking-confirmation-email-wireframe.html so the funnel and the canonical never drift. It is one template throughout: only the blocks shown here branch on <code style="color:#c7cdd8">paymentModel</code>. The only edit is the sample name, so the whole funnel reads on one booking.</div>
+    </div>
+<!-- ===== CANCEL CONFIRMATION MODAL (page on island.tours, not an email) ===== -->
+  <section style="margin-top:40px;border-top:1px solid rgba(255,255,255,.08);padding-top:26px">
+    <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#cdd3dd;margin-bottom:5px">Cancel confirmation modal</div>
+    <div style="color:#8b93a2;font-size:13px;line-height:1.6;margin-bottom:20px;max-width:640px">Opens when the traveler taps Cancel booking on the booking page. The link only opens this form, it never cancels on click. Submitting sends a cancellation request to the Island Tours admin by email; the admin processes the refund and confirms by email.</div>
+
+    <div style="background:rgba(8,10,14,.55);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:38px 20px;display:flex;justify-content:center">
+      <div style="width:430px;max-width:100%;background:#fff;border-radius:16px;box-shadow:0 26px 70px -20px rgba(0,0,0,.55);padding:24px 22px;font-family:'Plus Jakarta Sans',sans-serif;color:#1F2937">
+        <div style="font-size:18px;font-weight:800;letter-spacing:-.01em;margin-bottom:8px">Are you sure you want to cancel?</div>
+        <div style="font-size:13px;color:#9aa3b2;margin-bottom:10px">Klein Curaçao Day Trip &middot; 22 May 2026</div>
+        <div style="font-size:13.5px;color:#6B7280;line-height:1.5;margin-bottom:16px">Full refund, no questions asked. We'll email you to confirm.</div>
+        <textarea rows="3" placeholder="Optional. Anything you'd like us to know?" style="width:100%;font-family:inherit;font-size:13.5px;color:#1F2937;border:1.5px solid #D1D5DB;border-radius:10px;padding:11px 12px;resize:vertical;outline:none"></textarea>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:16px">
+          <button style="font-family:inherit;font-size:14px;font-weight:700;color:#fff;background:#1F2937;border:0;border-radius:10px;padding:11px 18px;cursor:pointer">Yes, cancel booking</button>
+          <button style="font-family:inherit;font-size:14px;font-weight:700;color:#374151;background:transparent;border:1.5px solid #D1D5DB;border-radius:10px;padding:11px 18px;cursor:pointer">Keep my booking</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== OPTION 2: BALANCE PAID ON ARRIVAL (paymentModel = on_arrival) ===== -->
+  <section style="margin-top:40px;border-top:1px solid rgba(255,255,255,.08);padding-top:26px">
+    <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#cdd3dd;margin-bottom:5px">Option 2 &middot; balance paid on arrival</div>
+    <div style="color:#8b93a2;font-size:13px;line-height:1.6;margin-bottom:20px;max-width:640px">Same template, branched on `paymentModel = on_arrival`. Only blocks 5 and 6 change; everything else is identical to option 1. Two sub-variants below, set by `onArrivalPayment`.</div>
+
+    <!-- Block 5 (on arrival) -->
+    <div style="background:#fff;border:1px solid #EAE7E1;border-radius:14px;padding:20px 22px;max-width:600px;font-family:'Plus Jakarta Sans',sans-serif;margin-bottom:22px">
+      <div style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#9aa3b2;margin-bottom:12px">Block 5 · Payment</div>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;font-size:14px;color:#374151">
+        <tr><td style="padding:4px 0">Deposit paid today (20%)</td><td style="padding:4px 0;text-align:right;color:#1f9d55;font-weight:700">$40.00</td></tr>
+        <tr><td style="padding:4px 0">Balance due on arrival</td><td style="padding:4px 0;text-align:right;font-weight:600">$160.00</td></tr>
+        <tr><td style="padding:8px 0 0;border-top:1px solid #EAE7E1;font-weight:800">Total</td><td style="padding:8px 0 0;border-top:1px solid #EAE7E1;text-align:right;font-weight:800">$200.00</td></tr>
+      </table>
+      <div style="font-size:13px;color:#6B7280;line-height:1.5;margin-top:12px">Cancel for a full refund up to <b>Wed, 20 May 2026, 08:00</b> (Curaçao time). After that the deposit is non-refundable.</div>
+    </div>
+
+    <!-- Block 6 variant A: card or cash -->
+    <div style="max-width:600px;margin-bottom:22px">
+      <div style="font-size:12px;color:#8b93a2;margin-bottom:8px">onArrivalPayment = card_or_cash</div>
+      <div style="background:#FBF1EA;border-left:4px solid #E8611A;border-radius:10px;padding:15px 17px;font-family:'Plus Jakarta Sans',sans-serif">
+        <div style="font-size:14px;font-weight:800;color:#9a4a16;margin-bottom:6px">Pay the rest on arrival</div>
+        <div style="font-size:14px;color:#5b3a22;line-height:1.55">You'll pay the remaining <b>$160.00</b> to <b>Miss Ann Boat Trips</b> when you arrive. Card and cash are both accepted.</div>
+      </div>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:12px"><tr>
+        <td style="vertical-align:top;padding-right:9px;padding-top:1px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v5c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6l7-3z" stroke="#6B7280" stroke-width="1.6" stroke-linejoin="round"/><path d="M9.2 12.2l2 2 3.6-3.8" stroke="#6B7280" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </td>
+        <td style="font-size:12.5px;color:#6B7280;line-height:1.5">You only pay the rest on arrival. We'll never send a link to pay the balance.</td>
+      </tr></table>
+    </div>
+
+    <!-- Block 6 variant B: cash only -->
+    <div style="max-width:600px">
+      <div style="font-size:12px;color:#8b93a2;margin-bottom:8px">onArrivalPayment = cash_only</div>
+      <div style="background:#FBF1EA;border-left:4px solid #E8611A;border-radius:10px;padding:15px 17px;font-family:'Plus Jakarta Sans',sans-serif">
+        <div style="font-size:14px;font-weight:800;color:#9a4a16;margin-bottom:6px">Pay the rest on arrival</div>
+        <div style="font-size:14px;color:#5b3a22;line-height:1.55">You'll pay the remaining <b>$160.00</b> to <b>Miss Ann Boat Trips</b> in cash when you arrive. Card isn't possible and there's no ATM on site, so bring the <b>$160.00</b> in cash with you.</div>
+      </div>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:12px"><tr>
+        <td style="vertical-align:top;padding-right:9px;padding-top:1px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v5c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6l7-3z" stroke="#6B7280" stroke-width="1.6" stroke-linejoin="round"/><path d="M9.2 12.2l2 2 3.6-3.8" stroke="#6B7280" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </td>
+        <td style="font-size:12.5px;color:#6B7280;line-height:1.5">You only pay the rest on arrival. We'll never send a link to pay the balance.</td>
+      </tr></table>
+    </div>
+  </section>
+
+  <!-- ===== OPTION 3: PAID IN FULL (paymentModel = paid_in_full) ===== -->
+  <section style="margin-top:40px;border-top:1px solid rgba(255,255,255,.08);padding-top:26px">
+    <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#cdd3dd;margin-bottom:5px">Option 3 &middot; paid in full</div>
+    <div style="color:#8b93a2;font-size:13px;line-height:1.6;margin-bottom:20px;max-width:640px">Same template, branched on `paymentModel = paid_in_full`. 100% is paid to Island Tours at booking and Island Tours refunds in full on cancellation. The operator (Dolphin Academy) also sends its own confirmation. Blocks 5 and 6 change; headline stays "You're booked".</div>
+
+    <!-- Block 5 (paid in full) -->
+    <div style="background:#fff;border:1px solid #EAE7E1;border-radius:14px;padding:20px 22px;max-width:600px;font-family:'Plus Jakarta Sans',sans-serif;margin-bottom:22px">
+      <div style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#9aa3b2;margin-bottom:12px">Block 5 · Payment</div>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;font-size:14px;color:#374151">
+        <tr><td style="padding:4px 0;font-weight:800">Paid in full</td><td style="padding:4px 0;text-align:right;color:#1f9d55;font-weight:800">$200.00</td></tr>
+      </table>
+      <div style="font-size:13px;color:#6B7280;line-height:1.5;margin-top:12px">Cancel for a full refund up to <b>Wed, 20 May 2026, 08:00</b> (Curaçao time). After that it is non-refundable.</div>
+    </div>
+
+    <!-- Block 6 (operator confirmation foreshadow) -->
+    <div style="max-width:600px">
+      <div style="font-size:12px;color:#8b93a2;margin-bottom:8px">Block 6 · operator also confirms</div>
+      <div style="background:#FBF1EA;border-left:4px solid #E8611A;border-radius:10px;padding:15px 17px;font-family:'Plus Jakarta Sans',sans-serif">
+        <div style="font-size:14px;font-weight:800;color:#9a4a16;margin-bottom:6px">From Dolphin Academy</div>
+        <div style="font-size:14px;color:#5b3a22;line-height:1.55">Dolphin Academy will also email you with their own confirmation and arrival details. Look out for it.</div>
+      </div>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:12px"><tr>
+        <td style="vertical-align:top;padding-right:9px;padding-top:1px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v5c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6l7-3z" stroke="#6B7280" stroke-width="1.6" stroke-linejoin="round"/><path d="M9.2 12.2l2 2 3.6-3.8" stroke="#6B7280" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </td>
+        <td style="font-size:12.5px;color:#6B7280;line-height:1.5">Your tour is fully paid. No one should ask you for further payment.</td>
+      </tr></table>
+    </div>
+  </section>
+
+  <!-- ===== OPTION 4: OPERATOR COLLECTS FULL PAYMENT (paymentModel = operator_full) ===== -->
+  <section style="margin-top:40px;border-top:1px solid rgba(255,255,255,.08);padding-top:26px">
+    <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#cdd3dd;margin-bottom:5px">Option 4 &middot; operator collects full payment</div>
+    <div style="color:#8b93a2;font-size:13px;line-height:1.6;margin-bottom:20px;max-width:640px">Same template, branched on `paymentModel = operator_full`. Island Tours takes no payment at booking. Zipline emails the full-payment link, confirms the spot, and settles commission with Island Tours afterward. Blocks 1, 5, 6 and 9 change.</div>
+
+    <!-- Block 1 headline variant -->
+    <div style="max-width:600px;margin-bottom:22px">
+      <div style="font-size:12px;color:#8b93a2;margin-bottom:8px">Block 1 · headline (reservation, not booked)</div>
+      <div style="background:#fff;border:1px solid #EAE7E1;border-radius:14px;padding:18px 22px;font-family:'Plus Jakarta Sans',sans-serif">
+        <div style="font-size:22px;font-weight:800;color:#1f2937">Reservation sent, Denley.</div>
+        <div style="font-size:13px;color:#6B7280;margin-top:5px">Booking reference: IT-2026-04821</div>
+      </div>
+    </div>
+
+    <!-- Block 5 (operator full) -->
+    <div style="background:#fff;border:1px solid #EAE7E1;border-radius:14px;padding:20px 22px;max-width:600px;font-family:'Plus Jakarta Sans',sans-serif;margin-bottom:22px">
+      <div style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#9aa3b2;margin-bottom:12px">Block 5 · Payment</div>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;font-size:14px;color:#374151">
+        <tr><td style="padding:4px 0;font-weight:800">Total</td><td style="padding:4px 0;text-align:right;font-weight:800">$200.00</td></tr>
+      </table>
+      <div style="font-size:13px;color:#6B7280;line-height:1.5;margin-top:12px">Payable to Zipline. Island Tours took no payment.</div>
+    </div>
+
+    <!-- Block 6 (operator full-payment foreshadow) -->
+    <div style="max-width:600px;margin-bottom:22px">
+      <div style="font-size:12px;color:#8b93a2;margin-bottom:8px">Block 6 · pay to confirm</div>
+      <div style="background:#FBF1EA;border-left:4px solid #E8611A;border-radius:10px;padding:15px 17px;font-family:'Plus Jakarta Sans',sans-serif">
+        <div style="font-size:14px;font-weight:800;color:#9a4a16;margin-bottom:6px">Pay to confirm your spot</div>
+        <div style="font-size:14px;color:#5b3a22;line-height:1.55">Zipline will email you a secure link to pay the full <b>$200.00</b>. Paying confirms your spot, so look out for that email.</div>
+      </div>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:12px"><tr>
+        <td style="vertical-align:top;padding-right:9px;padding-top:1px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v5c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6l7-3z" stroke="#6B7280" stroke-width="1.6" stroke-linejoin="round"/><path d="M9.2 12.2l2 2 3.6-3.8" stroke="#6B7280" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </td>
+        <td style="font-size:12.5px;color:#6B7280;line-height:1.5">We'll never ask you to send card details by reply, message, or phone. If you're ever unsure about a payment request, check with us on <span style="color:#1f2937;text-decoration:underline">WhatsApp</span> first.</td>
+      </tr></table>
+    </div>
+
+    <!-- Block 9 (cancel via Zipline) -->
+    <div style="max-width:600px">
+      <div style="font-size:12px;color:#8b93a2;margin-bottom:8px">Block 9 · cancel runs through Zipline</div>
+      <div style="background:#fff;border:1px solid #EAE7E1;border-radius:14px;padding:18px 22px;font-family:'Plus Jakarta Sans',sans-serif">
+        <div style="font-size:15px;font-weight:800;color:#1f2937;margin-bottom:6px">Need to cancel?</div>
+        <div style="font-size:13.5px;color:#6B7280;line-height:1.55">Zipline handles payment for this tour, so cancellation and refunds run through them under their terms. To cancel, contact Zipline directly. We're on <span style="color:#1f2937;text-decoration:underline">WhatsApp</span> if you have questions.</div>
+      </div>
+    </div>
+  </section>
+  </section>
+
+  <!-- ============ BK-2 PRE-TOUR REMINDER ============ -->
+  <section class="stage" id="m2">
+    <div class="subjectbar"><b>Subject:</b> Tomorrow: Klein Curaçao Day Trip · 08:00<div class="pre"><b>Preview:</b> Pickup at 07:15 from Hotel Brion. Your reference, what to bring, and who to call.</div></div>
+    <div class="trigbar"><b>Trigger:</b> 24h before tour start, tour-local · transactional · sibling of the confirmation template. Embedded <b>verbatim</b> from sources/canonical/island-tours-pre-tour-reminder-email-wireframe.html, rendered on operator_link with the soft-opt-in group. Rules it carries: never a payment link, no cancellation CTA, no balance nudge, zero-amount money lines hidden, weather block only on weather_dependent tours, operator_link never claims "all paid", subject and greeting switch to "today" for same-day starts.</div>
+    <div class="canvas"><div class="mount" data-tpl="tpl-remind"></div></div>
+  </section>
+
+  <!-- ============ BK-3 REVIEW REQUEST ============ -->
+  <section class="stage" id="m3">
+    <div class="subjectbar"><b>Subject:</b> How was Klein Curaçao Day Trip?<div class="pre"><b>Preview:</b> A few words help the next traveler pick their tour.</div></div>
+    <div class="trigbar"><b>Trigger:</b> tour_end_datetime passed · the morning after, around 10:00 tour-local · transactional · one review per booking (idempotency key review-request/{booking_id}) · suppressed for cancelled, forfeited, operator-cancelled and no-show. <b>Copy is the decided version</b> (autonomy cue, outward favor, the named operator as beneficiary, ease last, Masha danki sign-off), here re-skinned into the confirmation and reminder design system. The standalone prototypes (review-strategy/island-tours-review-email-clean.html and island-tours-review-email.html) hold variant A and variant B, <b>both now in this same design system and on this same sample booking</b>. The star row is the primary CTA and pre-fills the rating on the tokenized review page.</div>
+    <div class="canvas"><div class="mount" data-tpl="tpl-review"></div></div>
+  </section>
+
+  <!-- ============ MK-1 NEXT ADVENTURE ============ -->
+  <section class="stage" id="m4">
+    <div class="subjectbar"><b>Subject A:</b> Where our guides send people after Klein Curaçao Day Trip<div class="pre"><b>Subject B (A/B):</b> Open departures this week on Curaçao</div><div class="pre"><b>Preview:</b> Three with spots open this week. Already home? Save them for next time.</div></div>
+    <div class="trigbar"><b>Trigger:</b> tour_end plus 72h, Curaçao morning · <b>marketing rail</b>, soft opt-in, unsubscribe mandatory, tours only. Built as an <b>availability email, not a recommendation email</b>: in the 2025 benchmark set a generic cross-sell is the worst-performing automation there is (0.87% conversion, highest unsubscribe at 0.89%), while the availability archetype converts at 6.72% with a 0.37% unsubscribe. About 40% of tour bookings happen inside a two-day window, and that last-minute group is driven by <b>flexibility (41%), with price dead last (15%)</b>, which is why this email carries a free-reschedule line and <b>no discount</b>. Three cards only, selected as <b>contrast, adjacent, flagship</b>; availability is pulled live at send time and a tour with no open departure in 7 days is dropped. No countdown, no "only 2 spots left". Full detail: island-tours-next-adventure-email-wireframe.html.</div>
+    <div class="canvas"><div class="mount" data-tpl="tpl-next"></div></div>
+  </section>
+
+  <!-- ============ CX-1 CANCELLATION ============ -->
+  <section class="stage" id="mx">
+    <div class="subjectbar"><b>Subject:</b> Your booking is cancelled<div class="pre"><b>Preview:</b> Refund on its way. No forms, no questions asked.</div></div>
+    <div class="trigbar"><b>Trigger:</b> the traveler taps Cancel booking, which opens a tokenized confirmation page (never a raw one-click cancel), the request goes to the admin, the admin processes the refund and confirms by email. The deadline is judged on the request timestamp, not the admin action. <b>No wireframe has been built for this email;</b> the copy below is the locked wording from master 6.4, and it is payment-model aware (paid_in_full opens with "Your payment is on its way back from us"; operator_full carries no refund line and reads "Nothing was paid to Island Tours. Already paid the operator? Then the operator refunds you directly."). Cancellation stops the reminder, the review request and the marketing rail.</div>
+    <div class="canvas"><div class="mount" data-tpl="tpl-cancel"></div></div>
+  </section>
+
+</div>
+
+<!-- ================= TEMPLATES (verbatim from the built wireframes) ================= -->
+
+<template id="tpl-confirm">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">
+  <tr><td align="center" style="padding:0 16px">
+    <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#FFFFFF;border-radius:16px;overflow:hidden;border:1px solid #E8EAED;border-collapse:separate">
+      <tr><td style="padding:18px 28px;border-bottom:1px solid #E8EAED">
+        <span style="font-family:'Plus Jakarta Sans',Arial,sans-serif;font-weight:800;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:#1F2937">ISLAND <span style="color:#E8611A">TOURS</span></span>
+      </td></tr>
+      <tr><td style="padding:26px 28px 6px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+        <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+          <td style="vertical-align:middle;padding-right:10px">
+            <span style="display:inline-block;width:30px;height:30px;border-radius:50%;background:#E7F6ED;text-align:center;line-height:30px">
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" style="vertical-align:middle"><path d="M16.7 5.3 8 14l-4.7-4.7" stroke="#16A34A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+          </td>
+          <td style="vertical-align:middle"><div style="font-size:22px;font-weight:800;letter-spacing:-.02em;color:#1F2937">You're booked, Denley.</div></td>
+        </tr></table>
+        <div style="font-size:13px;color:#6B7280;margin-top:10px">Booking reference: <b style="color:#1F2937">IT-2026-04821</b></div>
+      </td></tr>
+      <tr><td style="padding:20px 28px 4px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%"><tr>
+          <td width="96" style="vertical-align:top;padding-right:14px">
+            <div style="width:96px;height:96px;border-radius:10px;background:linear-gradient(120deg,#0EA5B7,#1FB6C9 55%,#7FD9A6);position:relative;overflow:hidden">
+              <span style="position:absolute;left:6px;bottom:5px;color:#fff;font-size:9px;font-weight:600;background:rgba(0,0,0,.3);padding:2px 5px;border-radius:5px">featured img</span>
+            </div>
+          </td>
+          <td style="vertical-align:top">
+            <div style="font-size:17px;font-weight:800;color:#1F2937;line-height:1.25;letter-spacing:-.01em">Klein Curaçao Day Trip</div>
+            <div style="font-size:13.5px;color:#6B7280;margin-top:4px">Miss Ann Boat Trips</div>
+            <div style="font-size:14px;color:#374151;font-weight:600;margin-top:7px">Fri, 22 May 2026 · 08:00</div>
+          </td>
+        </tr></table>
+        <div style="height:1px;background:#E8EAED;margin:16px 0 14px"></div>
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="font-size:14.5px;color:#374151;line-height:1.45">
+          <tr><td style="padding:5px 0;width:26px;vertical-align:top">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11Z" stroke="#6B7280" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.4" stroke="#6B7280" stroke-width="1.6"/></svg>
+          </td><td style="padding:5px 0">Pickup: Hotel Brion, 07:15. <a href="#" style="color:#E8611A;font-weight:600;text-decoration:underline">Open in Maps</a></td></tr>
+          <tr><td style="padding:5px 0;vertical-align:top">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M5 5h14M5 5v3l5 5-5 5v3M19 5v3l-5 5 5 5v3M5 21h14" stroke="#6B7280" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </td><td style="padding:5px 0">Please be ready 5 minutes before pickup.</td></tr>
+          <tr><td style="padding:5px 0;vertical-align:top">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3" stroke="#6B7280" stroke-width="1.6"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 6.5a3 3 0 0 1 0 5.6M20.5 19a5.5 5.5 0 0 0-3.4-5.1" stroke="#6B7280" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </td><td style="padding:5px 0">2 adults, 1 child</td></tr>
+          <tr><td style="padding:5px 0;vertical-align:top">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#6B7280" stroke-width="1.6"/><path d="M12 8v4l2.5 1.5" stroke="#6B7280" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </td><td style="padding:5px 0">Duration: 9 hours</td></tr>
+          <tr><td style="padding:5px 0;vertical-align:top">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#6B7280" stroke-width="1.6"/><path d="M3.5 9h17M3.5 15h17M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" stroke="#6B7280" stroke-width="1.3"/></svg>
+          </td><td style="padding:5px 0">Language: English</td></tr>
+        </table>
+        <a href="#" style="display:inline-block;margin-top:12px;font-size:13.5px;color:#E8611A;font-weight:600;text-decoration:underline">View tour details</a><span style="color:#D1D5DB;margin:0 9px">·</span><a href="#" style="font-size:13.5px;color:#E8611A;font-weight:600;text-decoration:underline">Add to calendar</a>
+      </td></tr>
+      <tr><td style="padding:14px 28px 0;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+        <div style="background:#EEF4FB;border-radius:10px;padding:14px 16px">
+          <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+            <td style="vertical-align:top;padding-right:9px;padding-top:1px">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#3B6AA0" stroke-width="1.6"/><path d="M12 11v5M12 8h.01" stroke="#3B6AA0" stroke-width="1.8" stroke-linecap="round"/></svg>
+            </td>
+            <td>
+              <div style="font-size:13.5px;font-weight:700;color:#27496f;margin-bottom:3px">A note from Miss Ann Boat Trips</div>
+              <div style="font-size:13.5px;color:#3a516b;line-height:1.5">Seas can be rough on the way out to Klein Curaçao, mainly in some parts of the year. Bring something if you are sensitive to motion.</div>
+            </td>
+          </tr></table>
+        </div>
+      </td></tr>
+      <tr><td style="padding:18px 28px 4px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+        <div style="background:#F7F8FA;border:1px solid #E8EAED;border-radius:12px;padding:16px 18px">
+          <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9aa3b2;margin-bottom:12px">Payment</div>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14.5px;color:#374151">
+            <tr><td style="padding:3px 0">Deposit paid today (20%)</td><td align="right" style="padding:3px 0;font-weight:700;color:#16A34A">$40.00</td></tr>
+            <tr><td style="padding:3px 0">Balance due</td><td align="right" style="padding:3px 0;font-weight:600;color:#1F2937">$160.00</td></tr>
+            <tr><td colspan="2" style="border-top:1px solid #E8EAED;padding-top:8px"></td></tr>
+            <tr><td style="padding:3px 0;font-weight:700;color:#1F2937">Total</td><td align="right" style="padding:3px 0;font-weight:800;color:#1F2937">$200.00</td></tr>
+          </table>
+          <div style="font-size:13.5px;color:#4B5563;line-height:1.5;margin-top:12px;border-top:1px dashed #E0E3E8;padding-top:12px">
+            Pay your balance, or cancel for a full refund, up to <b>Wed, 20 May 2026, 08:00</b> (Curaçao time). After that the deposit is non-refundable, and an unpaid balance cancels the booking.
+          </div>
+        </div>
+      </td></tr>
+      <tr><td style="padding:16px 28px 4px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+        <div style="background:#FBF1EA;border-left:4px solid #E8611A;border-radius:10px;padding:15px 17px">
+          <div style="font-size:14px;font-weight:800;color:#9a4a16;margin-bottom:6px">How to pay the rest</div>
+          <div style="font-size:14px;color:#5b3a22;line-height:1.55">
+            <b>Miss Ann Boat Trips</b> will email you a secure link to pay the remaining <b>$160.00</b>. This is the only payment left on your booking, so look out for that email and pay before the deadline above.
+          </div>
+        </div>
+        <table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:12px"><tr>
+          <td style="vertical-align:top;padding-right:9px;padding-top:1px">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v5c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6l7-3z" stroke="#6B7280" stroke-width="1.6" stroke-linejoin="round"/><path d="M9.2 12.2l2 2 3.6-3.8" stroke="#6B7280" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </td>
+          <td style="font-size:12.5px;color:#6B7280;line-height:1.5">We'll never ask you to send card details by reply, message, or phone. If you're ever unsure about a payment request, check with us on <a href="#" style="color:#6B7280;text-decoration:underline">WhatsApp</a> first.</td>
+        </tr></table>
+      </td></tr>
+      <tr><td style="padding:18px 28px 4px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+        <div style="border-top:1px solid #E8EAED;padding-top:18px">
+          <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9aa3b2;margin-bottom:10px">What to bring</div>
+          <table role="presentation" cellpadding="0" cellspacing="0" style="font-size:14px;color:#374151;line-height:1.5">
+            <tr><td style="padding:2px 8px 2px 0;color:#E8611A">&bull;</td><td style="padding:2px 0">Swimwear and a towel</td></tr>
+            <tr><td style="padding:2px 8px 2px 0;color:#E8611A">&bull;</td><td style="padding:2px 0">Reef-safe sunscreen and a hat</td></tr>
+            <tr><td style="padding:2px 8px 2px 0;color:#E8611A">&bull;</td><td style="padding:2px 0">Cash. Card payments are not possible on Klein Curaçao.</td></tr>
+          </table>
+          <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9aa3b2;margin:16px 0 10px">Good to know</div>
+          <table role="presentation" cellpadding="0" cellspacing="0" style="font-size:14px;color:#374151;line-height:1.5">
+            <tr><td style="padding:2px 8px 2px 0;color:#E8611A">&bull;</td><td style="padding:2px 0">Vegetarian, vegan, and pescatarian options on request.</td></tr>
+          </table>
+        </div>
+      </td></tr>
+      <tr><td style="padding:18px 28px 4px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+        <div style="background:#F7F8FA;border:1px solid #E8EAED;border-radius:12px;padding:16px 18px">
+          <div style="font-size:15px;font-weight:700;color:#1F2937;margin-bottom:4px">Questions about the day?</div>
+          <div style="font-size:14px;color:#4B5563;line-height:1.5;margin-bottom:12px">Miss Ann Boat Trips runs your tour and knows it best.</div>
+          <a href="#" style="display:inline-block;font-size:14px;font-weight:700;color:#1F2937;background:#fff;text-decoration:none;border:1.5px solid #D1D5DB;border-radius:10px;padding:11px 18px;margin-right:8px">Call</a>
+          <a href="#" style="display:inline-block;font-size:14px;font-weight:700;color:#1F2937;background:#fff;text-decoration:none;border:1.5px solid #D1D5DB;border-radius:10px;padding:11px 18px">Email</a>
+          <div style="font-size:12px;color:#9aa3b2;margin-top:9px">+599 9 560 1367 · info@missannboattrips.com</div>
+          <div style="border-top:1px solid #E8EAED;margin:16px 0 14px"></div>
+          <div style="font-size:15px;font-weight:700;color:#1F2937;margin-bottom:4px">Questions about your booking?</div>
+          <div style="font-size:14px;color:#4B5563;line-height:1.5;margin-bottom:12px">We'll sort it out.</div>
+          <a href="#" style="display:inline-block;font-size:14px;font-weight:700;color:#fff;background:#E8611A;text-decoration:none;border-radius:10px;padding:11px 20px">Chat on WhatsApp</a>
+          <div style="font-size:12.5px;color:#9aa3b2;margin-top:11px">Mon to Sun, 8:00 to 20:00 Curaçao time</div>
+        </div>
+      </td></tr>
+      <tr><td style="padding:18px 28px 4px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+        <div style="border-top:1px solid #E8EAED;padding-top:18px">
+          <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9aa3b2;margin-bottom:8px">Need to cancel?</div>
+          <div style="font-size:14px;color:#374151;line-height:1.5;margin-bottom:12px">You can cancel for a full refund up to <b>Wed, 20 May 2026, 08:00</b> (Curaçao time).</div>
+          <a href="#" style="display:inline-block;font-size:14px;font-weight:700;color:#1F2937;text-decoration:none;border:1.5px solid #D1D5DB;border-radius:10px;padding:11px 20px">Cancel booking</a>
+          <div style="font-size:12.5px;color:#9aa3b2;margin-top:12px">Your booking details, history, and invoice are always in your Island Tours account at <a href="#" style="color:#E8611A;text-decoration:underline">island.tours/bookings</a>.</div>
+        </div>
+      </td></tr>
+      <tr><td style="padding:24px 28px 24px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+        <div style="border-top:1px solid #E8EAED;padding-top:18px">
+          <div style="font-size:13px;font-weight:800;color:#1F2937">Island Tours. Built by Islanders.</div>
+          <div style="font-size:12.5px;color:#9aa3b2;margin-top:4px">www.island.tours</div>
+          <div style="font-size:11.5px;color:#b6bcc7;margin-top:10px;line-height:1.6">ITG B.V. (Island Tours Group) · KvK Curaçao 169950<br>Caracasbaaiweg 366, Willemstad, Curaçao<br>This is a transactional booking email.</div>
+        </div>
+      </td></tr>
+      <tr><td style="padding:4px 28px 28px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+        <div style="background:#F7F8FA;border:1px solid #E8EAED;border-radius:12px;padding:16px 18px">
+          <div style="font-size:15px;font-weight:700;color:#1F2937;margin-bottom:14px">More Curaçao experiences</div>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+            <td width="50%" style="vertical-align:top;padding-right:7px">
+              <div style="height:150px;border-radius:9px;background:linear-gradient(120deg,#1FB6C9,#7FD9A6);position:relative;overflow:hidden"><span style="position:absolute;left:6px;bottom:5px;color:#fff;font-size:9px;font-weight:600;background:rgba(0,0,0,.3);padding:2px 5px;border-radius:5px">featured img</span></div>
+              <div style="font-size:13.5px;font-weight:700;color:#1F2937;margin-top:8px;line-height:1.3">Westpunt buggy tour</div>
+              <div style="font-size:12.5px;color:#6B7280;margin-top:3px">4.9 · $89</div>
+            </td>
+            <td width="50%" style="vertical-align:top;padding-left:7px">
+              <div style="height:150px;border-radius:9px;background:linear-gradient(120deg,#0EA5B7,#3DC7D8);position:relative;overflow:hidden"><span style="position:absolute;left:6px;bottom:5px;color:#fff;font-size:9px;font-weight:600;background:rgba(0,0,0,.3);padding:2px 5px;border-radius:5px">featured img</span></div>
+              <div style="font-size:13.5px;font-weight:700;color:#1F2937;margin-top:8px;line-height:1.3">Blue Room snorkel</div>
+              <div style="font-size:12.5px;color:#6B7280;margin-top:3px">4.7 · $65</div>
+            </td>
+          </tr></table>
+          <a href="#" style="display:inline-block;margin-top:14px;font-size:13.5px;color:#E8611A;font-weight:600;text-decoration:underline">Browse all Curaçao tours</a>
+        </div>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</template>
+
+<template id="tpl-remind">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">
+  <tr><td align="center" style="padding:0 16px">
+    <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#FFFFFF;border-radius:16px;overflow:hidden;border:1px solid #E8EAED;border-collapse:separate">
+      <tr><td style="padding:18px 28px;border-bottom:1px solid #E8EAED">
+        <span style="font-family:'Plus Jakarta Sans',Arial,sans-serif;font-weight:800;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:#1F2937">ISLAND <span style="color:#E8611A">TOURS</span></span>
+      </td></tr>
+      <tr><td style="padding:26px 28px 6px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+        <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+          <td style="vertical-align:middle;padding-right:10px">
+            <span style="display:inline-block;width:30px;height:30px;border-radius:50%;background:#FBF1EA;text-align:center;line-height:30px">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="vertical-align:middle"><circle cx="12" cy="12" r="9" stroke="#E8611A" stroke-width="2"/><path d="M12 7.5V12l3 2" stroke="#E8611A" stroke-width="2" stroke-linecap="round"/></svg>
+            </span>
+          </td>
+          <td style="vertical-align:middle"><div style="font-size:22px;font-weight:800;letter-spacing:-.02em;color:#1F2937">You're set for tomorrow, Denley.</div></td>
+        </tr></table>
+        <div style="font-size:13.5px;color:#6B7280;margin-top:10px">Klein Curaçao Day Trip · tomorrow at <b style="color:#1F2937">08:00</b> (local time)</div>
+        <div style="font-size:13px;color:#6B7280;margin-top:4px">Booking reference: <b style="color:#1F2937">IT-2026-04821</b></div>
+      </td></tr>
+      <tr><td style="padding:20px 28px 4px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%"><tr>
+          <td width="96" style="vertical-align:top;padding-right:14px">
+            <div style="width:96px;height:96px;border-radius:10px;background:linear-gradient(120deg,#0EA5B7,#1FB6C9 55%,#7FD9A6);position:relative;overflow:hidden">
+              <span style="position:absolute;left:6px;bottom:5px;color:#fff;font-size:9px;font-weight:600;background:rgba(0,0,0,.3);padding:2px 5px;border-radius:5px">featured img</span>
+            </div>
+          </td>
+          <td style="vertical-align:top">
+            <div style="font-size:17px;font-weight:800;color:#1F2937;line-height:1.25;letter-spacing:-.01em">Klein Curaçao Day Trip</div>
+            <div style="font-size:13.5px;color:#6B7280;margin-top:4px">Miss Ann Boat Trips</div>
+            <div style="font-size:14px;color:#374151;font-weight:600;margin-top:7px">Fri, 22 May 2026 · 08:00</div>
+          </td>
+        </tr></table>
+        <div style="height:1px;background:#E8EAED;margin:16px 0 14px"></div>
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="font-size:14.5px;color:#374151;line-height:1.45">
+          <tr><td style="padding:5px 0;width:26px;vertical-align:top">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11Z" stroke="#6B7280" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.4" stroke="#6B7280" stroke-width="1.6"/></svg>
+          </td><td style="padding:5px 0">Pickup: Hotel Brion, <b style="color:#1F2937">be ready at 07:15</b>. <a href="#" style="color:#E8611A;font-weight:600;text-decoration:underline">Open in Maps</a></td></tr>
+          <tr><td style="padding:5px 0;vertical-align:top">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3" stroke="#6B7280" stroke-width="1.6"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 6.5a3 3 0 0 1 0 5.6M20.5 19a5.5 5.5 0 0 0-3.4-5.1" stroke="#6B7280" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </td><td style="padding:5px 0">2 adults, 1 child</td></tr>
+          <tr><td style="padding:5px 0;vertical-align:top">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#6B7280" stroke-width="1.6"/><path d="M12 8v4l2.5 1.5" stroke="#6B7280" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </td><td style="padding:5px 0">Duration: 9 hours, back around 17:00</td></tr>
+        </table>
+      </td></tr>
+      <tr><td style="padding:18px 28px 0;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+        <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#6B7280">What to bring</div>
+        <table role="presentation" cellpadding="0" cellspacing="0" style="font-size:14.5px;color:#374151;line-height:1.5;margin-top:6px">
+          <tr><td style="padding:2px 8px 2px 0;color:#E8611A">•</td><td>Towel and swimwear</td></tr>
+          <tr><td style="padding:2px 8px 2px 0;color:#E8611A">•</td><td>Reef-safe sunscreen (protects the coral and your skin)</td></tr>
+          <tr><td style="padding:2px 8px 2px 0;color:#E8611A">•</td><td>A light jacket for the crossing</td></tr>
+        </table>
+      </td></tr>
+      <tr><td style="padding:18px 28px 0;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+        <div style="background:#F7F7F5;border:1px solid #E8EAED;border-radius:12px;padding:14px 16px">
+          <div style="font-size:13px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.04em">Remaining balance</div>
+          <div style="font-size:14.5px;color:#1F2937;margin-top:5px;line-height:1.5">Your remaining balance of <b>$160</b> runs through Miss Ann Boat Trips' payment link. Already paid? You're all set. Not yet? Find the link in their email, or contact them below.</div>
+        </div>
+      </td></tr>
+      <tr><td style="padding:16px 28px 0;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+        <table role="presentation" cellpadding="0" cellspacing="0" style="font-size:13.5px;color:#6B7280;line-height:1.5"><tr>
+          <td style="width:26px;vertical-align:top;padding-top:2px">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M7 18a5 5 0 1 1 .8-9.9A6 6 0 0 1 19 10a4 4 0 0 1-1 7.9H7Z" stroke="#6B7280" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          </td>
+          <td>Miss Ann Boat Trips watches the weather and contacts you directly if conditions force a change. If the operator cancels: a full refund or a free reschedule, always.</td>
+        </tr></table>
+      </td></tr>
+      <tr><td style="padding:20px 28px 0;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+        <div style="height:1px;background:#E8EAED;margin-bottom:16px"></div>
+        <div style="font-size:15px;font-weight:800;color:#1F2937">Questions about tomorrow?</div>
+        <div style="font-size:14px;color:#374151;margin-top:7px;line-height:1.55">
+          Talk to the locals running it: <b style="color:#1F2937">Miss Ann Boat Trips</b><br>
+          <a href="#" style="color:#E8611A;font-weight:600;text-decoration:underline">+599 9 123 4567</a> · <a href="#" style="color:#E8611A;font-weight:600;text-decoration:underline">reservation@missannboattrips.com</a>
+        </div>
+        <div style="font-size:12.5px;color:#6B7280;margin-top:8px">Booking or platform issue? <a href="#" style="color:#E8611A;font-weight:600;text-decoration:underline">WhatsApp us</a>, daily 08:00 to 20:00.</div>
+      </td></tr>
+      <tr><td style="padding:24px 28px 0;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+        <div style="height:1px;background:#E8EAED;margin-bottom:18px"></div>
+        <div style="font-size:18px;font-weight:800;letter-spacing:-.02em;color:#1F2937">Islanders also love...</div>
+        <div style="font-size:13px;color:#6B7280;margin-top:3px">Picked to pair with your booking</div>
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-top:14px"><tr>
+          <td width="50%" style="padding-right:7px;vertical-align:top">
+            <div style="border:1px solid #E8EAED;border-radius:12px;overflow:hidden">
+              <div style="height:92px;background:linear-gradient(120deg,#C97B2F,#E8A85C)"></div>
+              <div style="padding:10px 12px">
+                <div style="font-size:13.5px;font-weight:700;color:#1F2937;line-height:1.3">West Coast Buggy Adventure</div>
+                <div style="font-size:12.5px;color:#6B7280;margin-top:4px">★ 4.8 (212) · from <b style="color:#1F2937">$89</b></div>
+                <div style="font-size:11.5px;color:#16A34A;margin-top:3px">Open departures this week</div>
+              </div>
+            </div>
+          </td>
+          <td width="50%" style="padding-left:7px;vertical-align:top">
+            <div style="border:1px solid #E8EAED;border-radius:12px;overflow:hidden">
+              <div style="height:92px;background:linear-gradient(120deg,#7C5CC4,#E8611A)"></div>
+              <div style="padding:10px 12px">
+                <div style="font-size:13.5px;font-weight:700;color:#1F2937;line-height:1.3">Sunset Sailing Cruise</div>
+                <div style="font-size:12.5px;color:#6B7280;margin-top:4px">★ 4.7 (138) · from <b style="color:#1F2937">$65</b></div>
+                <div style="font-size:11.5px;color:#16A34A;margin-top:3px">Open departures this week</div>
+              </div>
+            </div>
+          </td>
+        </tr></table>
+        <div style="text-align:center;margin-top:14px"><a href="#" style="font-size:13.5px;color:#E8611A;font-weight:700;text-decoration:underline">Browse the Islanders' top picks</a></div>
+      </td></tr>
+      <tr><td style="padding:24px 28px 26px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+        <div style="height:1px;background:#E8EAED;margin-bottom:16px"></div>
+        <div style="font-size:12px;color:#6B7280;line-height:1.6">
+          Island Tours · www.island.tours · Willemstad, Curaçao<br>
+          You get these picks as an Island Tours guest. <a href="#" style="color:#6B7280;text-decoration:underline">Unsubscribe from offers</a> (your booking emails always arrive).
+        </div>
+        <div style="font-size:15px;font-weight:800;letter-spacing:-.01em;color:#1F2937;margin-top:14px">Built by Islanders.</div>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</template>
+
+<template id="tpl-review">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">
+  <tr><td align="center" style="padding:0 16px">
+    <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#FFFFFF;border-radius:16px;overflow:hidden;border:1px solid #E8EAED;border-collapse:separate">
+
+      <!-- Brand bar -->
+      <tr><td style="padding:18px 28px;border-bottom:1px solid #E8EAED">
+        <span style="font-family:'Plus Jakarta Sans',Arial,sans-serif;font-weight:800;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:#1F2937">ISLAND <span style="color:#E8611A">TOURS</span></span>
+      </td></tr>
+
+      <!-- Hero: the tour they were on, with the title over it -->
+      <tr><td style="padding:0">
+        <div style="height:190px;background:linear-gradient(120deg,#2C7A9B,#3D93B4 55%,#4EA7C6);position:relative" aria-label="Klein Curaçao Day Trip">
+          <div style="position:absolute;left:24px;bottom:18px;right:24px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+            <div style="color:#fff;font-size:21px;font-weight:800;letter-spacing:-.01em;text-shadow:0 1px 8px rgba(0,0,0,.45)">Klein Curaçao Day Trip</div>
+            <div style="color:#EDF2F5;font-size:13.5px;margin-top:3px;text-shadow:0 1px 8px rgba(0,0,0,.45)">Supplied by Miss Ann Boat Trips &middot; your trip, 22 May 2026</div>
+          </div>
+        </div>
+      </td></tr>
+
+      <!-- Greeting + the neutral warm opener. Island Tours is the platform, the operator ran the tour. -->
+      <tr><td style="padding:26px 28px 4px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+        <div style="font-size:22px;font-weight:800;letter-spacing:-.02em;color:#1F2937">Hi Denley,</div>
+        <div style="font-size:16px;color:#374151;line-height:1.6;margin-top:10px">We hope you had a great day.</div>
+      </td></tr>
+
+      <!-- The booking card, same 96px thumbnail pattern as the confirmation and the reminder -->
+      <tr><td style="padding:16px 28px 4px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#F7F8FA;border:1px solid #E8EAED;border-radius:12px"><tr>
+          <td width="96" style="vertical-align:top;padding:14px 0 14px 14px">
+            <div style="width:96px;height:96px;border-radius:10px;background:linear-gradient(120deg,#0EA5B7,#1FB6C9 55%,#7FD9A6);position:relative;overflow:hidden" aria-label="tour featured image">
+              <span style="position:absolute;left:6px;bottom:5px;color:#fff;font-size:9px;font-weight:600;background:rgba(0,0,0,.3);padding:2px 5px;border-radius:5px">featured img</span>
+            </div>
+          </td>
+          <td style="vertical-align:top;padding:14px 16px 14px 14px">
+            <div style="font-size:16px;font-weight:800;color:#1F2937;line-height:1.25;letter-spacing:-.01em">Klein Curaçao Day Trip</div>
+            <div style="font-size:13.5px;color:#6B7280;margin-top:5px">Miss Ann Boat Trips</div>
+            <div style="font-size:13.5px;color:#6B7280;margin-top:5px">Fri, 22 May 2026 &middot; 2 adults, 1 child</div>
+            <div style="font-size:13px;color:#9aa3b2;margin-top:5px">Booking reference: IT-2026-04821</div>
+          </td>
+        </tr></table>
+      </td></tr>
+
+      <!-- The ask: autonomy cue, outward favor, the named operator as beneficiary, ease last -->
+      <tr><td style="padding:18px 28px 0;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+        <div style="font-size:16px;color:#374151;line-height:1.6">If you have a minute, a few words on how it went helps the next traveler know what to expect, and it means a lot to <b style="color:#1F2937">Miss Ann Boat Trips</b> and the team. About thirty seconds is all it takes.</div>
+      </td></tr>
+
+      <!-- One-tap stars, the primary CTA. Each star deep-links with the rating pre-filled. -->
+      <tr><td style="padding:22px 28px 0;font-family:'Plus Jakarta Sans',Arial,sans-serif" align="center">
+        <div style="font-size:13px;color:#6B7280;margin-bottom:8px">Tap a star to start</div>
+        <table role="presentation" cellpadding="0" cellspacing="0" align="center"><tr>
+          <td style="padding:0 5px"><a href="#" style="font-size:36px;color:#f5b301;text-decoration:none">&#9733;</a></td>
+          <td style="padding:0 5px"><a href="#" style="font-size:36px;color:#f5b301;text-decoration:none">&#9733;</a></td>
+          <td style="padding:0 5px"><a href="#" style="font-size:36px;color:#f5b301;text-decoration:none">&#9733;</a></td>
+          <td style="padding:0 5px"><a href="#" style="font-size:36px;color:#f5b301;text-decoration:none">&#9733;</a></td>
+          <td style="padding:0 5px"><a href="#" style="font-size:36px;color:#f5b301;text-decoration:none">&#9733;</a></td>
+        </tr></table>
+      </td></tr>
+
+      <!-- Worded CTA + the verification disclosure (UCPD Art 7(6)) -->
+      <tr><td style="padding:16px 28px 0;font-family:'Plus Jakarta Sans',Arial,sans-serif" align="center">
+        <a href="#" style="display:inline-block;font-size:15px;font-weight:700;color:#fff;background:#E8611A;text-decoration:none;border-radius:10px;padding:13px 26px">Rate your tour</a>
+        <div style="font-size:12.5px;color:#9aa3b2;margin-top:12px;line-height:1.5">Only guests who booked through Island Tours can review.<br>We publish every review, good or bad.</div>
+      </td></tr>
+
+      <!-- Sign-off -->
+      <tr><td style="padding:22px 28px 0;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+        <div style="font-size:16px;color:#374151;line-height:1.6">Masha danki, thank you from all of us.</div>
+        <div style="font-size:15px;font-weight:800;color:#1F2937;margin-top:4px">The Island Tours crew &middot; Built by Islanders.</div>
+      </td></tr>
+
+      <!-- Footer -->
+      <tr><td style="padding:22px 28px 26px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+        <div style="height:1px;background:#E8EAED;margin-bottom:14px"></div>
+        <div style="font-size:11.5px;color:#b6bcc7;line-height:1.6">ITG B.V. (Island Tours Group) &middot; KvK Curaçao 169950 &middot; Caracasbaaiweg 366, Willemstad, Curaçao<br>You are receiving this because you took a tour booked through Island Tours. Booking reference IT-2026-04821.</div>
+      </td></tr>
+
+    </table>
+  </td></tr>
+</table>
+
+</template>
+
+<template id="tpl-next">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">
+  <tr><td align="center" style="padding:0 16px">
+    <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#FFFFFF;border-radius:16px;overflow:hidden;border:1px solid #E8EAED;border-collapse:separate">
+      <tr><td style="padding:18px 28px;border-bottom:1px solid #E8EAED">
+        <span style="font-family:'Plus Jakarta Sans',Arial,sans-serif;font-weight:800;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:#1F2937">ISLAND <span style="color:#E8611A">TOURS</span></span>
+      </td></tr>
+      <!-- Block 1: headline + intro. Availability first, and it has to work for someone who already flew home. -->
+      <tr><td style="padding:26px 28px 4px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+        <div style="font-size:22px;font-weight:800;letter-spacing:-.02em;color:#1F2937;line-height:1.25">Still have days left on the island?</div>
+        <div style="font-size:16px;color:#374151;line-height:1.6;margin-top:12px">
+          These three have open departures this week, and they are the ones we would send our own friends to after <b style="color:#1F2937">Klein Curaçao Day Trip</b>.
+        </div>
+        <div style="font-size:14px;color:#9aa3b2;line-height:1.5;margin-top:8px">Already home? Save them for the next trip.</div>
+      </td></tr>
+
+      <!-- Block 2: three cards, contrast / adjacent / flagship. Same 2-up card format as the confirmation and the reminder,
+           so every tour card in the funnel is the same size. Availability is resolved at send time. -->
+      <tr><td style="padding:18px 28px 0;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+          <tr>
+            <td width="50%" style="padding:0 7px 14px 0;vertical-align:top">
+            <a href="#" style="text-decoration:none;color:inherit;display:block">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #E8EAED;border-radius:12px;overflow:hidden">
+                <tr><td>
+                  <div style="height:92px;background:linear-gradient(120deg,#C97B2F,#E8A85C);position:relative" aria-label="West Coast Buggy Adventure"><span style="position:absolute;left:7px;bottom:5px;color:#fff;font-size:9px;font-weight:600;background:rgba(0,0,0,.3);padding:2px 5px;border-radius:5px">featured img</span></div>
+                  <div style="padding:11px 13px 13px">
+                    <div style="font-size:13.5px;font-weight:700;color:#1F2937;line-height:1.3">West Coast Buggy Adventure</div>
+                    <div style="font-size:12.5px;color:#6B7280;margin-top:5px">★ 4.8 (212) · 4 hrs · from <b style="color:#1F2937">$89</b></div>
+                    <div style="font-size:12px;color:#15803D;font-weight:700;margin-top:5px">Open: Thu, Fri, Sat</div>
+                    <div style="font-size:12.5px;color:#6B7280;line-height:1.5;margin-top:7px">You have been on the water. This is the land version of it.</div>
+                    <div style="font-size:12.5px;color:#E8611A;font-weight:700;margin-top:9px">See times &rsaquo;</div>
+                  </div>
+                </td></tr>
+              </table>
+            </a>
+            </td>
+            <td width="50%" style="padding:0 0 14px 7px;vertical-align:top">
+            <a href="#" style="text-decoration:none;color:inherit;display:block">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #E8EAED;border-radius:12px;overflow:hidden">
+                <tr><td>
+                  <div style="height:92px;background:linear-gradient(120deg,#0EA5B7,#3DC7D8);position:relative" aria-label="Blue Room and Coral Snorkel"><span style="position:absolute;left:7px;bottom:5px;color:#fff;font-size:9px;font-weight:600;background:rgba(0,0,0,.3);padding:2px 5px;border-radius:5px">featured img</span></div>
+                  <div style="padding:11px 13px 13px">
+                    <div style="font-size:13.5px;font-weight:700;color:#1F2937;line-height:1.3">Blue Room &amp; Coral Snorkel</div>
+                    <div style="font-size:12.5px;color:#6B7280;margin-top:5px">★ 4.7 (138) · 3 hrs · from <b style="color:#1F2937">$65</b></div>
+                    <div style="font-size:12px;color:#15803D;font-weight:700;margin-top:5px">Open: daily</div>
+                    <div style="font-size:12.5px;color:#6B7280;line-height:1.5;margin-top:7px">Half the day of Klein Curaçao, and the cave is the part people talk about after.</div>
+                    <div style="font-size:12.5px;color:#E8611A;font-weight:700;margin-top:9px">See times &rsaquo;</div>
+                  </div>
+                </td></tr>
+              </table>
+            </a>
+            </td>
+          </tr>
+          <tr>
+            <td width="50%" style="padding:0 7px 0 0;vertical-align:top">
+            <a href="#" style="text-decoration:none;color:inherit;display:block">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #E8EAED;border-radius:12px;overflow:hidden">
+                <tr><td>
+                  <div style="height:92px;background:linear-gradient(120deg,#7C5CC4,#E8611A);position:relative" aria-label="Sunset Sailing Cruise"><span style="position:absolute;left:7px;bottom:5px;color:#fff;font-size:9px;font-weight:600;background:rgba(0,0,0,.3);padding:2px 5px;border-radius:5px">featured img</span></div>
+                  <div style="padding:11px 13px 13px">
+                    <div style="font-size:13.5px;font-weight:700;color:#1F2937;line-height:1.3">Sunset Sailing Cruise</div>
+                    <div style="font-size:12.5px;color:#6B7280;margin-top:5px">★ 4.9 (486) · 2.5 hrs · from <b style="color:#1F2937">$75</b></div>
+                    <div style="font-size:12px;color:#15803D;font-weight:700;margin-top:5px">Open: Wed, Fri, Sun</div>
+                    <div style="font-size:12.5px;color:#6B7280;line-height:1.5;margin-top:7px">If you only do one more thing, most of us would pick this one.</div>
+                    <div style="font-size:12.5px;color:#E8611A;font-weight:700;margin-top:9px">See times &rsaquo;</div>
+                  </div>
+                </td></tr>
+              </table>
+            </a>
+            </td>
+            <td width="50%" style="padding:0 0 0 7px;vertical-align:top"></td>
+          </tr>
+        </table>
+      </td></tr>
+      <tr><td style="padding:16px 28px 0;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+        <div style="font-size:14px;color:#9aa3b2;text-align:center;line-height:1.5">Most boats leave before 8am and fill up a day or two ahead.</div>
+      </td></tr>
+      <tr><td style="padding:16px 28px 0;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+        <div style="text-align:center"><a href="#" style="font-size:14.5px;color:#E8611A;font-weight:700;text-decoration:underline">See all 25 tours on Curaçao &rsaquo;</a></div>
+      </td></tr>
+      <tr><td style="padding:20px 28px 0;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+        <div style="background:#F7F8FA;border:1px solid #E8EAED;border-radius:12px;padding:14px 16px">
+          <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+            <td style="vertical-align:top;padding-right:9px;padding-top:1px">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 12a8 8 0 1 1 2.3 5.6" stroke="#16A34A" stroke-width="1.8" stroke-linecap="round"/><path d="M4 8v4h4" stroke="#16A34A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </td>
+            <td style="font-size:14px;color:#374151;line-height:1.5"><b style="color:#1F2937">Free reschedule up to 24 hours before departure.</b> Plans on a holiday change. That is fine.</td>
+          </tr></table>
+        </div>
+      </td></tr>
+      <tr><td style="padding:20px 28px 0;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+        <div style="font-size:14.5px;color:#374151;line-height:1.6">Shanice<br><span style="color:#9aa3b2;font-size:13px">Island Tours · Willemstad, Curaçao</span></div>
+      </td></tr>
+      <tr><td style="padding:22px 28px 26px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+        <div style="height:1px;background:#E8EAED;margin-bottom:16px"></div>
+        <div style="font-size:12px;color:#6B7280;line-height:1.7">
+          You are getting this because you booked <b style="color:#6B7280">Klein Curaçao Day Trip</b> with Island Tours. Your booking emails always arrive.<br>
+          <a href="#" style="color:#6B7280;text-decoration:underline">Unsubscribe</a> · <a href="#" style="color:#6B7280;text-decoration:underline">Get fewer emails</a><br>
+          ITG B.V. (Island Tours Group) · KvK Curaçao 169950<br>Caracasbaaiweg 366, Willemstad, Curaçao
+        </div>
+        <div style="font-size:15px;font-weight:800;letter-spacing:-.01em;color:#1F2937;margin-top:14px">Built by Islanders.</div>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</template>
+
+<template id="tpl-cancel">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">
+  <tr><td align="center" style="padding:0 16px">
+    <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#FFFFFF;border-radius:16px;overflow:hidden;border:1px solid #E8EAED;border-collapse:separate">
+      <tr><td style="padding:18px 28px;border-bottom:1px solid #E8EAED">
+        <span style="font-family:'Plus Jakarta Sans',Arial,sans-serif;font-weight:800;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:#1F2937">ISLAND <span style="color:#E8611A">TOURS</span></span>
+      </td></tr>
+      <tr><td style="padding:26px 28px 6px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+        <div style="font-size:22px;font-weight:800;letter-spacing:-.02em;color:#1F2937">Your booking is cancelled</div>
+        <div style="font-size:13.5px;color:#6B7280;margin-top:10px">Klein Curaçao Day Trip · Fri, 22 May 2026 · Booking reference: <b style="color:#1F2937">IT-2026-04821</b></div>
+        <div style="font-size:16px;color:#374151;line-height:1.6;margin-top:14px">Plans change. No problem.</div>
+      </td></tr>
+      <tr><td style="padding:18px 28px 0;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+        <div style="background:#F7F8FA;border:1px solid #E8EAED;border-radius:12px;padding:16px 18px">
+          <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9aa3b2;margin-bottom:8px">Your refund</div>
+          <div style="font-size:14.5px;color:#374151;line-height:1.6">Your 20% deposit is on its way back from us, within 3 to 5 business days, to your original payment method. If you've already paid the balance, the tour operator refunds that part. Don't see your balance refund within 10 days? Message us and we'll chase it.</div>
+        </div>
+      </td></tr>
+      <tr><td style="padding:24px 28px 26px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+        <div style="height:1px;background:#E8EAED;margin-bottom:16px"></div>
+        <div style="font-size:12px;color:#6B7280;line-height:1.6">Copy locked in master 6.4 · payment-model aware · no wireframe built for this email yet.</div>
+        <div style="font-size:15px;font-weight:800;letter-spacing:-.01em;color:#1F2937;margin-top:12px">Built by Islanders.</div>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</template>
+
+<script>
+  document.querySelectorAll('.mount').forEach(function(m){
+    var t = document.getElementById(m.dataset.tpl);
+    if(t) m.appendChild(t.content.cloneNode(true));
+  });
+  var tabs = document.getElementById('tabs');
+  tabs.addEventListener('click', function(e){
+    if(e.target.tagName !== 'BUTTON') return;
+    var id = e.target.dataset.stage;
+    tabs.querySelectorAll('button').forEach(function(b){ b.classList.toggle('active', b === e.target); });
+    document.querySelectorAll('.stage').forEach(function(s){ s.classList.toggle('active', s.id === id); });
+    window.scrollTo({top:0, behavior:'smooth'});
+  });
+  document.querySelectorAll('a[href="#"]').forEach(function(a){ a.addEventListener('click', function(e){ e.preventDefault(); }); });
+</script>
+</body>
+</html>
