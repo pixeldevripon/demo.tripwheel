@@ -353,7 +353,9 @@ export class WishlistService {
       .map((id) => byId.get(id))
       .filter((t): t is NonNullable<typeof t> => Boolean(t));
 
-    const listUrl = `${islandToursBase()}/${locale}/wishlist?restore=${kept
+    // `/saved`, not `/wishlist`: the old path still 308s, but an email lives
+    // for years and should not spend a redirect on every open.
+    const listUrl = `${islandToursBase()}/${locale}/saved?restore=${kept
       .map((t) => t.id)
       .join(',')}`;
 

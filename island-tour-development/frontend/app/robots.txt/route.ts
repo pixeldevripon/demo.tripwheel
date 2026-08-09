@@ -25,6 +25,9 @@ const DISALLOW = [
     // this is crawl-budget hygiene rather than an indexing fix - but every
     // other private family is listed here and this one was the odd one out.
     '/*/traveller',
+    '/*/saved',
+    // The old path 308s to /saved; keep it listed so a crawler that still
+    // holds the old URL does not follow the hop into the personal page.
     '/*/wishlist',
     '/*/search',
     '/*/manage-cookies',

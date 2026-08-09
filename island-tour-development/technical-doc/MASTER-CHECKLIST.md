@@ -907,7 +907,7 @@ Pages/CMS module, observability (Sentry/backups/deep health), and founder-gated 
 
 ## Wishlist
 
-- [x] `/[locale]/wishlist` route, `noindex, nofollow`, server-localized chrome
+- [x] `/[locale]/saved` route, `noindex, nofollow`, server-localized chrome. **Renamed from `/wishlist` (mck-17)** - "Wishlist" is an internal word and the address bar is somewhere a visitor reads. `/[locale]/wishlist` 308s to it via `next.config.ts` `redirects()`, per locale and preserving the query string, so already-emailed `?restore=` links, shared `?list=` links and bookmarks all survive. Both paths stay in `robots.txt`
 - [x] `WishlistProvider` mounted in the `[locale]` layout
 - [x] Client `SavedToursView` fetching contents at request time
 - [x] `GET /wishlist/resolve` + `wishlistApi` backed by the real `src/wishlist/` backend module
@@ -918,8 +918,9 @@ Pages/CMS module, observability (Sentry/backups/deep health), and founder-gated 
 
 ### Saved tours page rebuild (mck-17, 2026-08-09)
 
-The page is **Saved**, not "Wishlist": `wishlist` survives only in the route, the
-GA4 event names and the backend module. Nothing a visitor reads says it.
+The page is **Saved**, not "Wishlist": `wishlist` survives only in the GA4 event
+names (`add_to_wishlist` / `remove_from_wishlist`) and the backend module and
+its endpoints. Nothing a visitor reads says it, the URL included.
 
 - [x] H1 "Saved tours", the locked subline, the `{n} tours · {Island}` meta row and the device line
 - [x] Share pill (`SharePill`, extracted from `CollectionShareButton` so one implementation serves both) producing a `?list=` link

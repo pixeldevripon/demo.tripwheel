@@ -148,7 +148,7 @@ export function SavedToursView({
             window.history.replaceState(
                 null,
                 '',
-                localizeHref(locale, '/wishlist')
+                localizeHref(locale, '/saved')
             );
         } else {
             const shared = parseIdList(params.get('list'));
@@ -276,7 +276,7 @@ export function SavedToursView({
             ? ''
             : `${window.location.origin}${localizeHref(
                   locale,
-                  '/wishlist'
+                  '/saved'
               )}?list=${visible.map(c => c.id).join(',')}`;
 
     if (!ready || !urlRead || loading) {
@@ -306,20 +306,33 @@ export function SavedToursView({
 
     return (
         <section className='it-section bg-it-white'>
-            <div className='it-container relative flex flex-col'>
-                {/* Share sits top right of the whole block, above the header
-                    on mobile too (mockup `.pageshare`). */}
-                <div className={'absolute right-0 top-0 z-5'}>
-                    <SharePill
-                        label={dict.share}
-                        copiedLabel={dict.shareCopied}
-                        url={shareUrl}
-                    />
-                </div>
+            {/* The positioning context is this INNER box, not `.it-container`.
+                An absolutely positioned child resolves `right-0` against its
+                containing block's PADDING edge, so anchoring to the container
+                itself put the Share pill out in the gutter - visibly hanging
+                off the right of the page on a phone, where the gutter is only
+                16px wide. */}
+            <div className='it-container'>
+                <div className='relative flex flex-col'>
+                    {/* Share sits top right of the whole block, above the
+                        header on mobile too (mockup `.pageshare`). */}
+                    <div className='absolute right-0 top-0 z-5'>
+                        <SharePill
+                            label={dict.share}
+                            copiedLabel={dict.shareCopied}
+                            url={shareUrl}
+                        />
+                    </div>
 
-                <div className='flex flex-wrap items-start justify-between gap-x-12 gap-y-6 max-sm:contents'>
-                    <div className='min-w-[300px] flex-1 basis-[460px] pr-28 max-sm:order-1 max-sm:basis-auto'>
-                        <h1 className='m-0 font-it-display text-[clamp(24px,3vw,32px)] font-bold leading-[1.12] tracking-[-0.015em] text-it-heading'>
+                    <div className='flex flex-wrap items-start justify-between gap-x-12 gap-y-6 max-sm:contents'>
+                        <div className='min-w-[300px] flex-1 basis-[460px] max-sm:order-1 max-sm:basis-auto'>
+                        {/* The reserve is on the HEADING, and only below `sm`.
+                            On a wide screen the pill sits above the email
+                            column, which clears it with its own top margin; it
+                            is only on a phone, where the header goes full
+                            width, that anything of ours runs under it - and
+                            only for the heading's one line. */}
+                        <h1 className='m-0 font-it-display text-[clamp(24px,3vw,32px)] font-bold leading-[1.12] tracking-[-0.015em] text-it-heading max-sm:pr-28'>
                             {dict.title}
                         </h1>
 
@@ -444,6 +457,7 @@ export function SavedToursView({
                             ))}
                         </AnimatePresence>
                     </div>
+                </div>
                 </div>
             </div>
         </section>

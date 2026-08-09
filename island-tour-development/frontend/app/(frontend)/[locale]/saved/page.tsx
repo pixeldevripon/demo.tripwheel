@@ -65,7 +65,7 @@ async function emptyStateFor(
 }
 
 /**
- * Saved tours - `/[locale]/wishlist`.
+ * Saved tours - `/[locale]/saved`.
  *
  * The route keeps the internal word; nothing a visitor READS does. mck-17 is
  * explicit that "Wishlist" survives only in the GA4 event names

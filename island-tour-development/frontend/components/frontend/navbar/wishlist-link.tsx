@@ -26,7 +26,7 @@ export function WishlistLink({
 
     return (
         <Link
-            href={localizeHref(locale, '/wishlist')}
+            href={localizeHref(locale, '/saved')}
             aria-label={dict.wishlist}
             className='relative flex items-center gap-1.5 no-underline'>
             {/* Mockup navpill: "Saved" label beside the heart. */}

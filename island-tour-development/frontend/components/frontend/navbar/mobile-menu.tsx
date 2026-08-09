@@ -90,7 +90,7 @@ export function MobileMenu({
                         )}
 
                         <Link
-                            href={localizeHref(locale, '/wishlist')}
+                            href={localizeHref(locale, '/saved')}
                             onClick={onClose}
                             aria-label={dict.wishlist}
                             className='flex items-center gap-2.5 no-underline py-2 text-it-ink'>
