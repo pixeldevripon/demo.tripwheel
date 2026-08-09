@@ -23,6 +23,14 @@ export type ExploreType = {
 const AUTO_ADVANCE_MS = 4000;
 
 /**
+ * Dwell on the FIRST card before the rail starts moving (ms). The rail leads
+ * with the destination's best seller (Klein Curaçao on Curaçao), so the
+ * opening card holds longer than the rest; also applies each time autoplay
+ * wraps back to the start. Tune here.
+ */
+const FIRST_CARD_ADVANCE_MS = 10000;
+
+/**
  * The horizontal rail of category/hub tiles - image, name, live tour count -
  * with round overlapping arrows on desktop and swipe below it.
  *
@@ -62,10 +70,12 @@ export function ExploreTypesRail({
      */
     linkQuery?: string;
 }) {
-    // Auto-advance: one card every AUTO_ADVANCE_MS. Pauses on hover
-    // (stopOnMouseEnter) and while dragging, resumes after (stopOnInteraction:
-    // false), and scrolls back to the first card at the end (plugin default
-    // when embla `loop` is off). Skipped entirely under reduced motion.
+    // Auto-advance: one card every AUTO_ADVANCE_MS, except the first card,
+    // which holds for FIRST_CARD_ADVANCE_MS (per-snap delay array). Pauses on
+    // hover (stopOnMouseEnter) and while dragging, resumes after
+    // (stopOnInteraction: false), and scrolls back to the first card at the
+    // end (plugin default when embla `loop` is off). Skipped entirely under
+    // reduced motion.
     const reduceMotion = useReducedMotion();
     const [emblaRef, emblaApi] = useEmblaCarousel(
         { align: 'start', containScroll: 'trimSnaps', dragFree: true },
@@ -73,7 +83,12 @@ export function ExploreTypesRail({
             ? []
             : [
                   Autoplay({
-                      delay: AUTO_ADVANCE_MS,
+                      delay: scrollSnaps =>
+                          scrollSnaps.map((_, index) =>
+                              index === 0
+                                  ? FIRST_CARD_ADVANCE_MS
+                                  : AUTO_ADVANCE_MS
+                          ),
                       stopOnInteraction: false,
                       stopOnMouseEnter: true,
                   }),
