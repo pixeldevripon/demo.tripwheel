@@ -2,7 +2,6 @@
     "nav": {
         "selectIsland": "Insel auswählen",
         "island": "Insel",
-        "wishlist": "Merkliste",
         "saved": "Gespeichert",
         "account": "Konto",
         "logout": "Abmelden",
@@ -88,12 +87,56 @@
         "seeAllTours": "Alle Touren ansehen"
     },
     "wishlist": {
-        "title": "Deine Wunschliste",
-        "empty": "Noch keine gespeicherten Touren",
-        "emptyHint": "Tippe bei einer Tour auf das Herz, um sie hier zu speichern.",
-        "signInTitle": "Melde dich an, um deine Wunschliste zu sehen",
-        "signInHint": "Deine gespeicherten Touren sind mit deinem Konto verknüpft.",
-        "signInCta": "Anmelden"
+        "title": "Gespeicherte Touren",
+        "subtitle": "Deine Auswahl, nebeneinander. Buche, wenn du so weit bist.",
+        "sharedNote": "Mit dir geteilt. Wann immer du magst. Tippe auf ein Herz, um eine davon auf deine eigene Liste zu setzen.",
+        "tourCount": {
+            "one": "{count} Tour",
+            "other": "{count} Touren"
+        },
+        "deviceLine": "Diese Liste liegt auf diesem Gerät. Schick sie dir per E-Mail, um sie überall zu öffnen.",
+        "share": "Teilen",
+        "shareCopied": "Link kopiert",
+        "availableOn": "Verfügbar am {date}",
+        "closedOn": "Geschlossen am {date}",
+        "priceWas": "Kostete {price}, als du sie gespeichert hast",
+        "removed": "{title} entfernt",
+        "undo": "Rückgängig",
+        "restored": "Deine gespeicherten Touren sind wieder auf diesem Gerät.",
+        "dateCheck": {
+            "checkDate": "Datum prüfen",
+            "clearDate": "Datum entfernen",
+            "travelers": {
+                "one": "{count} Reisender",
+                "other": "{count} Reisende"
+            },
+            "fewerTravelers": "Ein Reisender weniger",
+            "moreTravelers": "Ein Reisender mehr"
+        },
+        "email": {
+            "title": "Nimm deine Liste mit",
+            "placeholder": "Deine E-Mail",
+            "cta": "Schick mir diese Liste",
+            "help": "Eine E-Mail mit einem Link zu dieser Liste. Sonst nichts, außer du möchtest es.",
+            "sent": "Verschickt. Öffne den Link auf jedem Gerät und mach dort weiter, wo du aufgehört hast.",
+            "error": "Das hat nicht geklappt. Versuch es gleich noch einmal.",
+            "emailRequired": "Gib deine E-Mail-Adresse ein",
+            "emailInvalid": "Das sieht nicht nach einer E-Mail-Adresse aus"
+        },
+        "empty": {
+            "title": "Noch nichts gespeichert",
+            "body": "Tippe bei einer Tour auf das Herz und sie bleibt genau hier. Deine Pläne, an einem Ort.",
+            "cta": "Alle Touren in {destination} ansehen",
+            "ctaGeneric": "Alle Touren ansehen",
+            "favouritesTitle": "Favoriten der Einheimischen",
+            "popularTitle": "Beliebt in {destination}",
+            "favouritesHint": "Tippe auf ein Herz, um deine Liste zu beginnen."
+        },
+        "unbookable": {
+            "notBookable": "Zurzeit nicht buchbar",
+            "seeSimilar": "Ähnliche Touren ansehen",
+            "removeFromList": "{title} von deiner Liste entfernen"
+        }
     },
     "home": {
         "hero": {
@@ -614,6 +657,8 @@
             "likelyToSellOut": "Wahrscheinlich ausverkauft",
             "mostPopular": "Am beliebtesten",
             "sponsored": "Gesponsert",
+            "saveAria": "{title} speichern",
+            "removeAria": "{title} aus deinen gespeicherten Touren entfernen",
             "pickupAvailable": "Abholung verfügbar",
             "freeCancellation": "Kostenlose Stornierung",
             "priceVaries": "Preis variiert je nach Gruppengröße",

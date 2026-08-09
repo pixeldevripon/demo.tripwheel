@@ -46,11 +46,14 @@ import {
   storedStatusForFill,
 } from './availability-status.util';
 import { AvailabilityMaterializerService } from './availability-materializer.service';
+import { BATCH_CHECK_MAX_TOURS } from './dto/availability.dto';
 import type {
   AgendaDayDto,
   AgendaDepartureDto,
   AgendaQueryDto,
   AgendaResponseDto,
+  AvailabilityBatchDto,
+  AvailabilityBatchResponseDto,
   AvailabilityCalendarDto,
   AvailabilityCheckDto,
   AvailabilitySummaryDto,
@@ -1624,6 +1627,119 @@ export class AvailabilityService {
       if (isDepartureBookable(live)) result.set(r.tourId, dateKey(r.date));
     }
     return result;
+  }
+
+  /**
+   * Which of `tourIds` can actually be booked on ONE given day, for a party of
+   * `seats` (mck-17 "Check a date" on the saved tours page).
+   *
+   * The saved page asks the same question of every card at once, so this is one
+   * query for the whole list rather than N round trips - a traveller with
+   * twenty saved tours would otherwise fire twenty requests to colour twenty
+   * chips.
+   *
+   * Bookability is the same rule the public calendar and reserve apply
+   * ({@link liveDepartureStatus} + {@link isDepartureBookable}) plus a seats
+   * check, so a chip saying "Available" and the booking widget can never
+   * disagree. Every tour carries its own clock, so a departure that is past
+   * cutoff in Curacao is past cutoff here too.
+   *
+   * A tour absent from the returned set is "closed on that date" for ANY
+   * reason - no departure scheduled, sold out, past cutoff, or not enough
+   * seats left. The page draws one muted chip for all of them, because to a
+   * traveller choosing a day they are the same answer.
+   */
+  async bookableOnDateByTour(
+    tourIds: string[],
+    onDateKey: string,
+    seats = 1,
+  ): Promise<Set<string>> {
+    const bookable = new Set<string>();
+    if (tourIds.length === 0) return bookable;
+
+    const day = dayDate(onDateKey);
+    const [tours, rows] = await Promise.all([
+      this.prisma.tour.findMany({
+        where: { id: { in: tourIds } },
+        select: { id: true, timeZone: true, bookingCutoffMinutes: true },
+      }),
+      this.prisma.departure.findMany({
+        where: {
+          tourId: { in: tourIds },
+          status: DepartureStatus.OPEN,
+          date: day,
+        },
+        select: {
+          tourId: true,
+          date: true,
+          startTime: true,
+          capacity: true,
+          bookedCount: true,
+          status: true,
+        },
+        orderBy: [{ startTime: 'asc' }],
+      }),
+    ]);
+
+    const clocks = new Map(
+      tours.map((t) => [
+        t.id,
+        {
+          timeZone: t.timeZone,
+          bookingCutoffMinutes: t.bookingCutoffMinutes,
+        } satisfies TourClock,
+      ]),
+    );
+    // One `now` per DISTINCT time zone, not per row.
+    const nowByZone = new Map<string, Date>();
+
+    for (const r of rows) {
+      // One bookable departure is enough to light the chip; the rest of that
+      // tour's slots for the day cannot change the answer.
+      if (bookable.has(r.tourId)) continue;
+      if (r.capacity - r.bookedCount < seats) continue;
+      const clock = clocks.get(r.tourId);
+      if (!clock) continue;
+      let now = nowByZone.get(clock.timeZone);
+      if (!now) {
+        now = localNow(clock.timeZone);
+        nowByZone.set(clock.timeZone, now);
+      }
+      const start = combineDateTime(r.date, r.startTime);
+      const live = liveDepartureStatus({
+        status: r.status,
+        capacity: r.capacity,
+        bookedCount: r.bookedCount,
+        cutoffPassed: cutoffReached(
+          start.getTime(),
+          now.getTime(),
+          clock.bookingCutoffMinutes,
+        ),
+      });
+      if (isDepartureBookable(live)) bookable.add(r.tourId);
+    }
+    return bookable;
+  }
+
+  /**
+   * `bookableOnDateByTour` shaped for the wire: every requested id comes back
+   * with an answer, in the order it was asked for, so the caller can zip the
+   * response straight onto its cards without a lookup that can miss.
+   */
+  async checkBatch(
+    dto: AvailabilityBatchDto,
+  ): Promise<AvailabilityBatchResponseDto> {
+    const unique = [...new Set(dto.tourIds)].slice(0, BATCH_CHECK_MAX_TOURS);
+    const seats = dto.guests ?? 1;
+    const bookable = await this.bookableOnDateByTour(unique, dto.date, seats);
+    return {
+      date: dto.date,
+      guests: seats,
+      tours: unique.map((tourId) => ({
+        tourId,
+        available: bookable.has(tourId),
+      })),
+    };
   }
 
   /**

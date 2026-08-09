@@ -14,6 +14,7 @@ import {
     saveTravellerAccount,
     storeTravelerSession,
 } from '@/lib/traveler-booking';
+import { EMAIL_SHAPE } from '@/lib/email-shape';
 
 import {
     ErrorNote,
@@ -28,19 +29,6 @@ import { TravellerOtpField } from './traveller-otp-field';
 
 /** Matches the backend's per-target cap of one code per minute. */
 const RESEND_COOLDOWN_S = 60;
-
-/**
- * Deliberately a TYPO-CATCHER, not an RFC validator: "something@something.tld,
- * no spaces, exactly one @". The AUTHORITY on validity is the backend's
- * `@IsEmail()` (validator.js) - anything this shape wrongly lets through gets
- * a 400 there, which the card surfaces as the same invalid-email message.
- * The one hard requirement on this regex: it must never be STRICTER than
- * `@IsEmail()`, or a real traveller (whose booking email passed `@IsEmail()`
- * at checkout) could be locked out of login client-side. IsEmail demands a
- * dotted domain, an alpha TLD of >=2 and no bare spaces, so every storable
- * address passes this shape.
- */
-const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 /** Per-tab memory of addresses the backend called unknown (`|a|b|` format). */
 const UNKNOWN_EMAILS_KEY = 'it.travellerUnknownEmails';

@@ -15,8 +15,15 @@ export type NavDict = {
     selectIsland: string;
     /** Short island label for the mobile selector pill (mockup .nss). */
     island: string;
-    wishlist: string;
-    /** "Saved" - the wishlist pill's visible label (mockup navpill). */
+    /**
+     * "Saved" - the visible label on the nav pill and in the mobile menu, and
+     * the aria-label on both.
+     *
+     * There is deliberately no `wishlist` key beside it any more. mck-17 makes
+     * "Wishlist" an internal word - it survives in the GA4 event names and the
+     * backend module, and nowhere a visitor can read it - and an unused
+     * dictionary key still holding the old label is how it finds its way back.
+     */
     saved: string;
     account: string;
     myAccount: string;

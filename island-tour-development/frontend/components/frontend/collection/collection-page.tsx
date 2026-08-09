@@ -180,6 +180,8 @@ export async function CollectionPage({
                     likelyToSellOut: listings.likelyToSellOut,
                     mostPopular: listings.mostPopular,
                     sponsored: listings.sponsored,
+                    saveAria: listings.saveAria,
+                    removeAria: listings.removeAria,
                     pickupAvailable: listings.pickupAvailable,
                     freeCancellation: listings.freeCancellation,
                     priceVaries: listings.priceVaries,

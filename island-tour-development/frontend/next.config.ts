@@ -37,6 +37,29 @@ const nextConfig: NextConfig = {
             pathname: '/**',
         })),
     },
+    async redirects() {
+        return [
+            {
+                /**
+                 * The saved list moved from /wishlist to /saved (mck-17).
+                 *
+                 * "Wishlist" is an internal word: it stays in the GA4 event
+                 * names and the backend module, and nowhere a visitor can read
+                 * it - which includes the address bar. The redirect is
+                 * permanent because the old path is dead, and it keeps three
+                 * things working that would otherwise break silently: links
+                 * already emailed by "Email me this list", lists people have
+                 * shared with each other, and anyone's bookmark.
+                 *
+                 * The query string rides along automatically, so a `?restore=`
+                 * or `?list=` link survives the hop intact.
+                 */
+                source: '/:locale/wishlist',
+                destination: '/:locale/saved',
+                permanent: true,
+            },
+        ];
+    },
 };
 
 export default nextConfig;

@@ -1,6 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Currency, Locale } from '@prisma/client';
-import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  IsEmail,
+  IsEnum,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 import { MoneyDto } from '@/fx/dto/money.dto';
 
 // ── Query ─────────────────────────────────────────────────────────────────────
@@ -35,6 +41,46 @@ export class ResolveWishlistQueryDto extends WishlistQueryDto {
   @IsString()
   @MaxLength(4000)
   ids!: string;
+}
+
+// ── Request ─────────────────────────────────────────────────────────────────
+
+/**
+ * "Email me this list" (mck-17). The address is used once, for this send, and
+ * is not stored - there is no subscriber list on the platform for it to join.
+ */
+export class EmailWishlistDto {
+  @ApiProperty({ example: 'traveller@example.com' })
+  @IsEmail()
+  @MaxLength(254)
+  email!: string;
+
+  @ApiProperty({
+    example: 'd1f1a0…,e2b2c1…',
+    description:
+      'Comma-separated tour ids from the it.wishlist cookie (max 100)',
+  })
+  @IsString()
+  @MaxLength(4000)
+  ids!: string;
+
+  @ApiPropertyOptional({
+    enum: Locale,
+    default: Locale.en,
+    description: 'Locale for the tour titles and the link in the email',
+  })
+  @IsOptional()
+  @IsEnum(Locale)
+  locale?: Locale = Locale.en;
+
+  @ApiPropertyOptional({
+    enum: Currency,
+    description:
+      'Shopper display currency, so the price in the inbox matches the price they were looking at',
+  })
+  @IsOptional()
+  @IsEnum(Currency)
+  currency?: Currency;
 }
 
 // ── Response ────────────────────────────────────────────────────────────────
@@ -93,6 +139,15 @@ export class WishlistTourDto {
   @ApiProperty({ type: [WishlistTourImageDto] })
   images!: WishlistTourImageDto[];
   @ApiProperty({ example: '2026-06-20T10:00:00.000Z' }) savedAt!: string;
+}
+
+export class EmailWishlistResponseDto {
+  @ApiProperty({
+    example: 3,
+    description:
+      'How many tours the email actually named - ids that can no longer be booked are left out',
+  })
+  sent!: number;
 }
 
 export class WishlistMutationResponseDto {

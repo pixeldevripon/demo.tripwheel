@@ -15,7 +15,7 @@ import { springPop } from '@/lib/motion';
 import type { PriceUnitKey } from '@/lib/tours/pricing-label';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
-import { MapPin, X } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { TourBadgeChip, type TourBadge } from './tour-badge';
@@ -27,6 +27,15 @@ export type TourCardDict = {
     likelyToSellOut: string;
     mostPopular: string;
     sponsored: string;
+    /**
+     * Heart aria-labels, carrying `{title}`.
+     *
+     * They used to be hardcoded English on every card on every surface, in all
+     * seven locales - the one piece of card copy a sighted visitor never sees,
+     * which is exactly why it survived six languages of review.
+     */
+    saveAria: string;
+    removeAria: string;
     pickupAvailable: string;
     freeCancellation: string;
     priceVaries: string;
@@ -175,12 +184,26 @@ export interface TourCardProps {
     dict: TourCardDict;
     className?: string;
     /**
-     * Top-right wishlist control. 'heart' (default) toggles save state on every
-     * listing surface; 'remove' renders an X instead - used on the wishlist
-     * page, where the card is by definition saved and the only action is
-     * taking it out.
+     * Intercept the wishlist heart instead of toggling the store directly.
+     *
+     * The saved tours page uses it: removing there is not a bare toggle but a
+     * collapse plus a snackbar offering Undo, and the page owns both. Every
+     * other surface leaves it unset and the heart toggles as it always has.
      */
-    wishlistVariant?: 'heart' | 'remove';
+    onWishlistToggle?: (tourId: string) => void;
+    /**
+     * A muted line under the price - the saved page's price-integrity note
+     * ("Was $79 when you saved it"). Rendered verbatim, no styling opinion
+     * beyond muted small text, because mck-17 is explicit that it carries no
+     * color and no animation in either direction.
+     */
+    priceNote?: string;
+    /**
+     * The date-check answer for this card: whether the tour can be booked on
+     * the day the traveller asked about, and the localized label for it.
+     * Omitted whenever no date is being checked.
+     */
+    availability?: { available: boolean; label: string };
     /**
      * Peach card (master §B.63 + design v2 .tc.peach): the warm surface with
      * its hairline border. Position-based, applied by the LISTING (card #1 of
@@ -232,7 +255,9 @@ function DefaultTourCard({
     tour,
     dict,
     className = '',
-    wishlistVariant = 'heart',
+    onWishlistToggle,
+    priceNote,
+    availability,
     tinted = false,
     highlighted = false,
     priority = false,
@@ -240,7 +265,6 @@ function DefaultTourCard({
 }: TourCardProps) {
     const { isSaved, toggle } = useWishlist();
     const wishlisted = isSaved(tour.id);
-    const isRemove = wishlistVariant === 'remove';
     const isRated = tour.rating !== undefined;
     const priceLabel = dict[tour.priceUnit];
     // Design v2 .tc.peach: the highlighted (first) / tinted card sits on the
@@ -292,61 +316,73 @@ function DefaultTourCard({
                 {tour.images.length > 0 && (
                     <div className='pointer-events-none absolute inset-0 z-1 bg-[image:var(--it-scrim-tile)]' />
                 )}
-                {/* Badge (top-left) + Wishlist button (top-right).
-                    The inset and gap tighten on a narrow image (the mobile row
-                    card): 10px of inset either side plus an 8px gap is a big
-                    share of a ~144px photo, and it was the last few pixels that
-                    forced "Likely to sell out" onto a second line. */}
-                <div className='absolute inset-x-2 top-2 @[220px]:inset-x-2.5 @[220px]:top-2.5 flex items-start justify-between gap-1.5 @[220px]:gap-2 z-10'>
+                {/* Badge (top-left).
+                    The inset tightens on a narrow image (the mobile row card):
+                    10px of inset either side is a big share of a ~144px photo,
+                    and it was the last few pixels that forced "Likely to sell
+                    out" onto a second line. The right padding reserves the
+                    heart's corner - except on the mobile row card, where the
+                    heart has moved to the bottom and the badge gets the full
+                    width of the thumbnail to wrap into. */}
+                <div
+                    className={cn(
+                        'absolute inset-x-2 top-2 @[220px]:inset-x-2.5 @[220px]:top-2.5 z-10 flex items-start pr-7 @[220px]:pr-10',
+                        mobileRow && 'max-sm:pr-0'
+                    )}>
                     <BadgeChip type={tour.badge} dict={dict} />
-
-                    <motion.button
-                        type='button'
-                        aria-label={
-                            isRemove || wishlisted
-                                ? 'Remove from wishlist'
-                                : 'Add to wishlist'
-                        }
-                        onClick={e => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            toggle(tour.id);
-                        }}
-                        whileTap={{ scale: 0.9 }}
-                        transition={springPop}
-                        /* Smaller on a narrow image so the badge gets the room
-                           instead - the founder chose a spread-out badge over a
-                           larger heart here (2026-08-05). It stays 34px in a
-                           normal card, where nothing is competing for width.
-                           24px on the mobile row card, where the photo is only
-                           ~145px wide and a 27px disc read as a paste-on.
-                           `before:` keeps a 40px invisible tap target centred on
-                           it, so the control shrinks visually without becoming
-                           harder to hit - the disc is decoration, the hit area
-                           is what a thumb aims at. */
-                        className='relative ml-auto flex size-6 @[220px]:size-[34px] shrink-0 items-center justify-center rounded-full bg-it-white/92 shadow-it-sm border-none cursor-pointer transition-transform duration-(--it-duration-xs) ease-(--it-ease) hover:scale-[1.08] before:absolute before:left-1/2 before:top-1/2 before:size-10 before:-translate-x-1/2 before:-translate-y-1/2 before:content-[""] @[220px]:before:hidden'>
-                        {isRemove ? (
-                            <X
-                                className='size-[13px] @[220px]:size-4 text-it-ink'
-                                strokeWidth={1.5}
-                                aria-hidden='true'
-                            />
-                        ) : (
-                            <Image
-                                src={
-                                    wishlisted
-                                        ? '/icons/heart-filled.svg'
-                                        : '/icons/heart-outline.svg'
-                                }
-                                alt=''
-                                width={24}
-                                height={24}
-                                className='size-[13px] @[220px]:size-[17px]'
-                                aria-hidden='true'
-                            />
-                        )}
-                    </motion.button>
                 </div>
+
+                {/* Wishlist heart. Top-right normally; BOTTOM-right on the
+                    horizontal mobile card, per master §3.5 ("mobile:
+                    bottom-right overlay, avoids badge collision") - on a 40%
+                    thumbnail the badge and the heart were fighting over the
+                    same corner. */}
+                <motion.button
+                    type='button'
+                    aria-label={(wishlisted ? dict.removeAria : dict.saveAria).replace(
+                        '{title}',
+                        tour.title
+                    )}
+                    aria-pressed={wishlisted}
+                    onClick={e => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (onWishlistToggle) onWishlistToggle(tour.id);
+                        else
+                            toggle(tour.id, {
+                                price: tour.price,
+                                currency: tour.currency,
+                            });
+                    }}
+                    whileTap={{ scale: 0.9 }}
+                    transition={springPop}
+                    /* Smaller on a narrow image so the badge gets the room
+                       instead - the founder chose a spread-out badge over a
+                       larger heart here (2026-08-05). It stays 34px in a
+                       normal card, where nothing is competing for width.
+                       24px on the mobile row card, where the photo is only
+                       ~145px wide and a 27px disc read as a paste-on.
+                       `before:` keeps a 40px invisible tap target centred on
+                       it, so the control shrinks visually without becoming
+                       harder to hit - the disc is decoration, the hit area
+                       is what a thumb aims at. */
+                    className={cn(
+                        'absolute right-2 top-2 @[220px]:right-2.5 @[220px]:top-2.5 z-10 flex size-6 @[220px]:size-[34px] shrink-0 items-center justify-center rounded-full bg-it-white/92 shadow-it-sm border-none cursor-pointer transition-transform duration-(--it-duration-xs) ease-(--it-ease) hover:scale-[1.08] before:absolute before:left-1/2 before:top-1/2 before:size-10 before:-translate-x-1/2 before:-translate-y-1/2 before:content-[""] @[220px]:before:hidden',
+                        mobileRow && 'max-sm:top-auto max-sm:bottom-2'
+                    )}>
+                    <Image
+                        src={
+                            wishlisted
+                                ? '/icons/heart-filled.svg'
+                                : '/icons/heart-outline.svg'
+                        }
+                        alt=''
+                        width={24}
+                        height={24}
+                        className='size-[13px] @[220px]:size-[17px]'
+                        aria-hidden='true'
+                    />
+                </motion.button>
             </div>
 
             {/* ── Card info (design v2 .tc .body) ─────────────────────────── */}
@@ -413,6 +449,33 @@ function DefaultTourCard({
                     )}
                 </div>
 
+                {/* Date-check answer (mck-17). Sits above the foot so it reads
+                    as an answer about the tour rather than about its price. A
+                    green tick when the day is bookable; muted and tickless when
+                    it is not - a red cross on a card the traveller chose to
+                    save would be scolding them for the operator's calendar. */}
+                {availability && (
+                    <p
+                        className={cn(
+                            'm-0 mt-2.5 inline-flex items-center gap-[7px] text-[12.5px] font-bold leading-[1.6]',
+                            availability.available
+                                ? 'text-it-green-text'
+                                : 'text-it-ink-muted'
+                        )}>
+                        {availability.available && (
+                            <Image
+                                src='/icons/check-green.svg'
+                                alt=''
+                                width={24}
+                                height={24}
+                                className='size-[15px] shrink-0'
+                                aria-hidden='true'
+                            />
+                        )}
+                        {availability.label}
+                    </p>
+                )}
+
                 {/* Foot: price + free cancellation (pinned to the bottom) */}
                 <div className='mt-auto flex flex-col gap-[3px] pt-2'>
                     <div className='flex items-baseline flex-wrap gap-x-1 text-[11px] @[220px]:text-[12.5px] leading-[1.6] text-it-text-muted'>
@@ -432,6 +495,15 @@ function DefaultTourCard({
                             </>
                         )}
                     </div>
+
+                    {/* Price integrity (mck-17): what it cost when it was
+                        saved, both directions, with no color and no animation.
+                        Nothing at all when the price has not moved. */}
+                    {priceNote && (
+                        <p className='m-0 text-[11px] @[220px]:text-[12.5px] leading-[1.6] text-it-text-muted'>
+                            {priceNote}
+                        </p>
+                    )}
 
                     {tour.freeCancellation && (
                         <p
@@ -531,15 +603,17 @@ function RankedTourCard({
                     </span>
                     <motion.button
                         type='button'
-                        aria-label={
-                            wishlisted
-                                ? 'Remove from wishlist'
-                                : 'Add to wishlist'
-                        }
+                        aria-label={(wishlisted
+                            ? dict.removeAria
+                            : dict.saveAria
+                        ).replace('{title}', tour.title)}
                         onClick={e => {
                             e.preventDefault();
                             e.stopPropagation();
-                            toggle(tour.id);
+                            toggle(tour.id, {
+                                price: tour.price,
+                                currency: tour.currency,
+                            });
                         }}
                         whileTap={{ scale: 0.9 }}
                         transition={springPop}

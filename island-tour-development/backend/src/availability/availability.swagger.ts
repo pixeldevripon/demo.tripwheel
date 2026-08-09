@@ -17,6 +17,7 @@ import {
   AgendaResponseDto,
   AvailabilityOverviewResponseDto,
   AvailabilitySummaryDto,
+  AvailabilityBatchResponseDto,
   CalendarDayResponseDto,
   CloseAgendaDayResultDto,
   CloseRangeResultDto,
@@ -265,5 +266,16 @@ export const ApiCalendarDocs = () =>
     }),
     ApiOkResponse({ type: CalendarDayResponseDto, isArray: true }),
     ApiNotFoundResponse({ type: NotFoundErrorDto }),
+    ApiBadRequestResponse({ type: BadRequestErrorDto }),
+  );
+
+export const ApiCheckBatchDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Bookability of many tours on one date',
+      description:
+        'Answers "can I book each of these on this day, for this many people?" in a single call - the saved tours page date check. Unknown tour ids come back as unavailable rather than as an error, so one stale saved id never fails the whole list.',
+    }),
+    ApiOkResponse({ type: AvailabilityBatchResponseDto }),
     ApiBadRequestResponse({ type: BadRequestErrorDto }),
   );

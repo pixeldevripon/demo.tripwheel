@@ -46,7 +46,9 @@ export type HubTourCardDict = {
     badges: { sponsored: string; mostPopular: string; likelyToSellOut: string };
     from: string;
     freeCancellation: string;
-    save: string;
+    /** Heart aria-labels, carrying {title}. */
+    saveAria: string;
+    removeAria: string;
 };
 
 /**
@@ -119,7 +121,10 @@ export function HubTourCard({
                             e.stopPropagation();
                             toggle(tour.id);
                         }}
-                        aria-label={dict.save}
+                        aria-label={(saved ? dict.removeAria : dict.saveAria).replace(
+                            '{title}',
+                            tour.title
+                        )}
                         aria-pressed={saved}
                         whileTap={{ scale: 0.9 }}
                         transition={springPop}

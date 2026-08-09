@@ -2,7 +2,6 @@
     "nav": {
         "selectIsland": "Elige tu isla",
         "island": "Isla",
-        "wishlist": "Lista de deseos",
         "saved": "Guardados",
         "account": "Cuenta",
         "logout": "Cerrar sesión",
@@ -88,12 +87,56 @@
         "seeAllTours": "Ver todos los tours"
     },
     "wishlist": {
-        "title": "Tu lista de deseos",
-        "empty": "Aún no hay tours guardados",
-        "emptyHint": "Toca el corazón en cualquier tour para guardarlo aquí.",
-        "signInTitle": "Inicia sesión para ver tu lista de deseos",
-        "signInHint": "Tus tours guardados están vinculados a tu cuenta.",
-        "signInCta": "Iniciar sesión"
+        "title": "Tours guardados",
+        "subtitle": "Tus favoritos, uno al lado del otro. Reserva cuando quieras.",
+        "sharedNote": "Compartido contigo. Cuando quieras. Toca un corazón para guardar cualquiera de estos en tu propia lista.",
+        "tourCount": {
+            "one": "{count} tour",
+            "other": "{count} tours"
+        },
+        "deviceLine": "Esta lista vive en este dispositivo. Envíatela por correo para abrirla en cualquier lugar.",
+        "share": "Compartir",
+        "shareCopied": "Enlace copiado",
+        "availableOn": "Disponible el {date}",
+        "closedOn": "Cerrado el {date}",
+        "priceWas": "Costaba {price} cuando lo guardaste",
+        "removed": "{title} eliminado",
+        "undo": "Deshacer",
+        "restored": "Tus tours guardados están de nuevo en este dispositivo.",
+        "dateCheck": {
+            "checkDate": "Consultar una fecha",
+            "clearDate": "Quitar fecha",
+            "travelers": {
+                "one": "{count} viajero",
+                "other": "{count} viajeros"
+            },
+            "fewerTravelers": "Un viajero menos",
+            "moreTravelers": "Un viajero más"
+        },
+        "email": {
+            "title": "Lleva tu lista contigo",
+            "placeholder": "Tu correo electrónico",
+            "cta": "Enviarme esta lista",
+            "help": "Un correo con un enlace a esta lista. Nada más, salvo que tú lo pidas.",
+            "sent": "Enviado. Abre el enlace en cualquier dispositivo para continuar donde lo dejaste.",
+            "error": "No se pudo enviar. Inténtalo de nuevo en un momento.",
+            "emailRequired": "Introduce tu correo electrónico",
+            "emailInvalid": "Eso no parece un correo electrónico"
+        },
+        "empty": {
+            "title": "Aún no has guardado nada",
+            "body": "Toca el corazón en cualquier tour y se queda aquí. Tus planes, en un solo lugar.",
+            "cta": "Ver todos los tours en {destination}",
+            "ctaGeneric": "Ver todos los tours",
+            "favouritesTitle": "Favoritos de los locales",
+            "popularTitle": "Populares en {destination}",
+            "favouritesHint": "Toca un corazón para empezar tu lista."
+        },
+        "unbookable": {
+            "notBookable": "No se puede reservar ahora",
+            "seeSimilar": "Ver tours similares",
+            "removeFromList": "Quitar {title} de tu lista"
+        }
     },
     "home": {
         "hero": {
@@ -614,6 +657,8 @@
             "likelyToSellOut": "Probable de agotarse",
             "mostPopular": "Más popular",
             "sponsored": "Patrocinado",
+            "saveAria": "Guardar {title}",
+            "removeAria": "Quitar {title} de tus tours guardados",
             "pickupAvailable": "Recogida disponible",
             "freeCancellation": "Cancelación gratuita",
             "priceVaries": "El precio varía según el tamaño del grupo",

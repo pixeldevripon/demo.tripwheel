@@ -7,9 +7,11 @@ import { applyDecorators } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { Locale } from '@prisma/client';
 import {
+  EmailWishlistResponseDto,
   WishlistMutationResponseDto,
   WishlistTourDto,
 } from './dto/wishlist.dto';
+import { BadRequestErrorDto } from '@/common/dto/error-responses.dto';
 
 const authErrors = [
   ApiResponse({
@@ -34,6 +36,31 @@ export function ApiGetWishlistDocs() {
       type: [WishlistTourDto],
     }),
     ...authErrors,
+  );
+}
+
+export function ApiEmailWishlistDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Email a saved list back to the traveller',
+      description:
+        'Sends one email containing a link that restores the list on any device. The address is used for this send and not stored - there is no subscriber list to join. Ids that are no longer bookable are left out; if none survive, this is a 400 rather than an empty email.',
+    }),
+    ApiResponse({
+      status: 201,
+      description: 'Email queued',
+      type: EmailWishlistResponseDto,
+    }),
+    ApiResponse({
+      status: 400,
+      description: 'No ids, or none of them can be booked',
+      type: BadRequestErrorDto,
+    }),
+    ApiResponse({
+      status: 500,
+      description: 'Internal Server Error',
+      type: InternalServerErrorDto,
+    }),
   );
 }
 
