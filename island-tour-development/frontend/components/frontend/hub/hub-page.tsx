@@ -871,8 +871,6 @@ async function HubTripsData({
                 title: picksDict.heading,
                 subtitle: picksDict.subtitle,
                 footerNote: picksDict.footerNote,
-                seeAllLabel: picksDict.seeAllTours,
-                seeAllHref: localizeHref(locale, `/${destinationSlug}/tours`),
                 items: picks,
                 card: {
                     from: listingsDict.from,
