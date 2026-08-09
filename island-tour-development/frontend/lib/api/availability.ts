@@ -66,6 +66,13 @@ export interface CalendarDay {
     status: string;
     remaining: number | null;
     departureCount: number;
+    /**
+     * Why the OPERATOR closed the day, when they said so - `SOLD_OUT` or
+     * `NOT_RUNNING`. Null on an open day, on a fill, and on the read-time
+     * booking cutoff. It outranks `status`, because a close is always stored
+     * as CLOSED and only the reason tells the two apart.
+     */
+    closureReason: string | null;
 }
 
 /**

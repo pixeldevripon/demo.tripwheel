@@ -49,6 +49,8 @@ export interface CalendarDayState {
     available: boolean;
     status: string;
     remaining: number | null;
+    /** Operator's reason for closing, when given - see `calendarDayReason`. */
+    closureReason?: string | null;
 }
 
 /**

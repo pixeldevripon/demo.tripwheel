@@ -57,6 +57,7 @@ export function useAvailabilitySync(): void {
                         available: d.available,
                         status: d.status,
                         remaining: d.remaining,
+                        closureReason: d.closureReason,
                     };
                 }
                 setCalendarDays(map);

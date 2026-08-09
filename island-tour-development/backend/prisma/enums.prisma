@@ -335,6 +335,24 @@ enum AvailabilityExceptionType {
   @@map("availability_exception_type")
 }
 
+// Why an operator closed a date or a departure (mck-15 §4). Two reasons, and
+// they decide what a TRAVELLER is told - the stored status stays CLOSED either
+// way, because a manual stop-sell must not reopen itself the way a fill does:
+//
+//   SOLD_OUT     -> "Sold out", struck through. The trip is full, however it
+//                   filled: our own bookings or a channel we cannot see.
+//   NOT_RUNNING  -> "No departure", plain grey, no line. Nothing was ever on
+//                   sale that day - weather, maintenance, a day off.
+//
+// A closure with no reason is a cutoff-passed CLOSED, which is computed live and
+// never stored. Only SOLD_OUT counts toward the §3.7 demand signal.
+enum ClosureReason {
+  SOLD_OUT    @map("sold_out")
+  NOT_RUNNING @map("not_running")
+
+  @@map("closure_reason")
+}
+
 enum DepartureStatus {
   OPEN      @map("open")
   CLOSED    @map("closed")

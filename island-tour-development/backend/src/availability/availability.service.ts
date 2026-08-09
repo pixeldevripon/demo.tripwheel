@@ -5,6 +5,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import {
   AvailabilityExceptionType,
@@ -380,6 +381,20 @@ export class AvailabilityService {
     }
     if (dto.type === AvailabilityExceptionType.ADD_SLOT)
       this.assertResolvableCapacity();
+    // A reason answers "why did you close this", so it only means anything on a
+    // closure. Accepting it on an ADD_SLOT would store an answer to a question
+    // nobody asked, and the traveller calendar reads this field to decide what
+    // to say - a stray SOLD_OUT on an added departure would show a date that
+    // sells as struck through.
+    if (
+      dto.closureReason != null &&
+      dto.type !== AvailabilityExceptionType.CLOSE_DATE &&
+      dto.type !== AvailabilityExceptionType.CLOSE_SLOT
+    ) {
+      throw new UnprocessableEntityException(
+        'closureReason applies to close_date / close_slot only',
+      );
+    }
     if (
       dto.type === AvailabilityExceptionType.SET_CAPACITY &&
       dto.capacity != null
@@ -399,6 +414,9 @@ export class AvailabilityService {
         type: dto.type,
         capacity: dto.capacity ?? null,
         note: dto.note ?? null,
+        // Only a closure carries a reason; the guard above already rejects a
+        // reason on ADD_SLOT / SET_CAPACITY.
+        closureReason: dto.closureReason ?? null,
         createdBy: userId,
       },
     });
@@ -1139,6 +1157,7 @@ export class AvailabilityService {
           note: dto.note ?? null,
           createdBy: userId,
           closureBatchId,
+          closureReason: dto.closureReason ?? null,
         });
       }
       if (data.length > 0) await tx.availabilityException.createMany({ data });
@@ -1984,6 +2003,7 @@ function mapException(
     type: row.type,
     capacity: row.capacity,
     note: row.note,
+    closureReason: row.closureReason,
     // Audit surface (dev spec §6.5): every override answers "who, when" so an
     // "I never closed that date" dispute is resolvable from the screen.
     createdAt: row.createdAt.toISOString(),
@@ -2028,6 +2048,10 @@ function mapDeparture(
     status,
     available: isDepartureBookable(status),
     soldOutAt: row.soldOutAt ? row.soldOutAt.toISOString() : null,
+    // Only meaningful on an OPERATOR-closed row. A departure that reads CLOSED
+    // because its cutoff passed carries none, and that absence is what makes it
+    // a plain "Closed" on the traveller calendar.
+    closureReason: status === DepartureStatus.CLOSED ? row.closureReason : null,
     manuallyEdited: row.manuallyEdited,
   };
 }
@@ -2049,12 +2073,25 @@ function aggregateDay(
     .filter((d) => d.available && d.remaining != null)
     .map((d) => d.remaining as number);
 
+  // The day's reason, when every departure on it agrees. A day where one slot
+  // is "Not running" and another sold out has no single answer, so it falls
+  // back to null and reads as a plain "Closed" - which is the honest summary of
+  // a mixed day rather than a guess at which reason to promote.
+  const reasons = new Set(
+    slots.map((d) => d.closureReason).filter((r) => r != null),
+  );
+  const closureReason =
+    reasons.size === 1 && slots.every((d) => d.closureReason != null)
+      ? [...reasons][0]
+      : null;
+
   return {
     date,
     available: slots.some((d) => d.available),
     status,
     remaining: disclosed.length ? Math.max(...disclosed) : null,
     departureCount: slots.length,
+    closureReason,
   };
 }
 

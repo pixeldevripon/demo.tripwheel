@@ -16,6 +16,7 @@ import {
 import {
   AvailabilityExceptionType,
   AvailabilityScheduleStatus,
+  ClosureReason,
   DepartureStatus,
 } from '@prisma/client';
 import { IsLocalDate } from '@/common/validators/is-local-date.validator';
@@ -64,6 +65,15 @@ export class ExceptionResponseDto {
   })
   capacity!: number | null;
   @ApiPropertyOptional({ nullable: true }) note!: string | null;
+  @ApiPropertyOptional({
+    enum: ClosureReason,
+    nullable: true,
+    description:
+      'Why the operator closed. Drives what a traveller is told: SOLD_OUT reads ' +
+      '"Sold out" with the date struck through, NOT_RUNNING reads "No departure", ' +
+      'plain. Null on non-closure types and on closures written before reasons existed.',
+  })
+  closureReason!: ClosureReason | null;
   @ApiProperty({
     example: '2026-07-28T18:02:11.000Z',
     description: 'When this change was made - the audit half of §6.5.',
@@ -105,6 +115,14 @@ export class DepartureResponseDto {
   available!: boolean;
   @ApiPropertyOptional({ nullable: true, example: '2026-07-02T17:00:00.000Z' })
   soldOutAt!: string | null;
+  @ApiPropertyOptional({
+    enum: ClosureReason,
+    nullable: true,
+    description:
+      'Set only on an operator-closed departure. Null when the closure is the ' +
+      'read-time booking cutoff, which is a plain "Closed".',
+  })
+  closureReason!: ClosureReason | null;
   @ApiProperty({ example: false }) manuallyEdited!: boolean;
 }
 
@@ -121,6 +139,15 @@ export class CalendarDayResponseDto {
   remaining!: number | null;
   @ApiProperty({ example: 3, description: 'Number of departures on the day.' })
   departureCount!: number;
+  @ApiPropertyOptional({
+    enum: ClosureReason,
+    nullable: true,
+    description:
+      'Why the day is unbookable, when an operator closed it. NOT_RUNNING means ' +
+      'the traveller calendar shows "No departure" plain rather than a struck-out ' +
+      '"Closed". Nothing was ever on sale that day.',
+  })
+  closureReason!: ClosureReason | null;
 }
 
 /** Operator month-grid day state (management view, not the public calendar). */
@@ -466,6 +493,17 @@ export class CloseRangeDto {
   @IsString()
   tourId!: string;
 
+  @ApiPropertyOptional({
+    enum: ClosureReason,
+    description:
+      'Why the range is being closed. The same two reasons as a single-day ' +
+      'close, and both have to reach Date changes so the register reads ' +
+      '"Whole day closed · Sold out" rather than just "closed".',
+  })
+  @IsOptional()
+  @IsEnum(ClosureReason)
+  closureReason?: ClosureReason;
+
   @ApiProperty({ example: '2026-09-01' })
   @IsLocalDate()
   from!: string;
@@ -697,6 +735,15 @@ export class CreateExceptionDto {
   @IsString()
   @MaxLength(500)
   note?: string;
+
+  @ApiPropertyOptional({
+    enum: ClosureReason,
+    description:
+      'Why the operator is closing (CLOSE_DATE / CLOSE_SLOT only). SOLD_OUT shows the traveller "Sold out" with the date struck through; NOT_RUNNING shows "No departure", plain, because nothing was ever on sale that day. Omitted, the closure reads as a plain "Closed".',
+  })
+  @IsOptional()
+  @IsEnum(ClosureReason)
+  closureReason?: ClosureReason;
 }
 
 export class UpdateExceptionDto {

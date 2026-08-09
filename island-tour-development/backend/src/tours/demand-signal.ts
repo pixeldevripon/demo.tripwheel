@@ -20,7 +20,11 @@
  *
  * Companion doc: technical-doc/03-implementation/TOUR-BADGES.md.
  */
-import { AvailabilityExceptionType, DepartureStatus } from '@prisma/client';
+import {
+  AvailabilityExceptionType,
+  ClosureReason,
+  DepartureStatus,
+} from '@prisma/client';
 
 import type { PrismaService } from '@/prisma/prisma.service';
 
@@ -51,8 +55,17 @@ type DemandPrisma = Pick<
  * and both feed the same number (client clarification, Aug 7 2026):
  *
  *  1. it fills to capacity with us - `departures.sold_out_at`;
- *  2. the operator closes the date, which is how a sell-out on the operator's
- *     own channels reaches us - a whole-day CLOSE_DATE exception.
+ *  2. the operator closes the date AND SAYS IT SOLD OUT, which is how a sell-out
+ *     on the operator's own channels reaches us - a whole-day CLOSE_DATE
+ *     exception carrying `closureReason: SOLD_OUT`.
+ *
+ * A "Not running" close is evidence of a day off, weather or maintenance -
+ * the opposite of demand - so it does not count (mck-15 §4: "An
+ * operator-marked sold out counts; a Not running does not"). Neither does a
+ * closure written before reasons existed: an unexplained close cannot be read
+ * as a sell-out without inventing the operator's intent, and the alternative -
+ * counting them all - is what puts a scarcity badge on a tour that shut for a
+ * fortnight's maintenance.
  *
  * A bulk blackout is ONE operator action however many dates it spans, so rows
  * sharing a `closureBatchId` collapse to a single event. Counting per closed
@@ -77,6 +90,7 @@ async function countRecentSellouts(
       where: {
         tourId,
         type: AvailabilityExceptionType.CLOSE_DATE,
+        closureReason: ClosureReason.SOLD_OUT,
         createdAt: { gte: windowStart, lte: now },
       },
       select: { id: true, closureBatchId: true },
