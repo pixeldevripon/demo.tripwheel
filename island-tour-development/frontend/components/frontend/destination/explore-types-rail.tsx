@@ -20,7 +20,7 @@ export type ExploreType = {
 };
 
 /** Auto-advance interval for the card slider (ms). Tune here. */
-const AUTO_ADVANCE_MS = 4000;
+const AUTO_ADVANCE_MS = 8000;
 
 /**
  * Dwell on the FIRST card before the rail starts moving (ms). The rail leads
@@ -28,7 +28,7 @@ const AUTO_ADVANCE_MS = 4000;
  * opening card holds longer than the rest; also applies each time autoplay
  * wraps back to the start. Tune here.
  */
-const FIRST_CARD_ADVANCE_MS = 10000;
+const FIRST_CARD_ADVANCE_MS = 30000;
 
 /**
  * The horizontal rail of category/hub tiles - image, name, live tour count -
