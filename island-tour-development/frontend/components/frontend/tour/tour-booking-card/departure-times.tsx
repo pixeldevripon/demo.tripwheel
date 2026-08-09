@@ -164,11 +164,19 @@ export function DepartureTimes() {
                         // Default chips carry the subtle hairline so they
                         // read as pickable boxes on the white card (.slot);
                         // the selected chip swaps to the orange tint (.slot.on).
-                        const chipBorder = isSelected
+                        // Border AND fill in ONE branch, with the white on the
+                        // unselected side rather than in the base class. Both
+                        // are background-color utilities, and Tailwind settles
+                        // a conflict by CSS source order, not by the order they
+                        // appear in the attribute - so a base `bg-it-white`ns
+                        // silently beat the selected tint and the chip showed
+                        // an orange border on a white fill. The spec is "the
+                        // orange border and fill".
+                        const chipSkin = isSelected
                             ? 'border-it-primary bg-it-primary-subtle'
                             : missingSlot && !soldOut
-                              ? 'border-it-primary/45'
-                              : 'border-it-border';
+                              ? 'border-it-primary/45 bg-it-white'
+                              : 'border-it-border bg-it-white';
                         return (
                             <motion.button
                                 key={slot.time}
@@ -188,7 +196,7 @@ export function DepartureTimes() {
                                 // 13.5px bold tabular, centred. Selection is
                                 // the orange border and tint; a sold-out chip
                                 // simply fades to half.
-                                className={`rounded-it-sm border bg-it-white px-3.5 py-2 text-center transition-colors duration-200 ${chipBorder} ${
+                                className={`rounded-it-sm border px-3.5 py-2 text-center transition-colors duration-200 ${chipSkin} ${
                                     soldOut
                                         ? 'cursor-not-allowed opacity-50'
                                         : 'cursor-pointer'
