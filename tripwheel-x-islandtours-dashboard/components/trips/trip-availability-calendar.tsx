@@ -54,6 +54,23 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 const WEEKDAY_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+/**
+ * The two reasons an operator can give for closing (mck-15 §4), in the order
+ * the mockup puts them. One word per idea: "Sold out" here, on the state pill,
+ * on the traveller calendar and on the time chips - never "Fully booked".
+ *
+ * They are not cosmetic. Sold out shows a traveller a struck-through "Sold out"
+ * and only the operator reopens it; Not running shows "No departure", plain,
+ * because nothing was ever on sale that day. Only Sold out counts toward the
+ * §3.7 demand signal.
+ */
+const CLOSURE_REASONS = ['SOLD_OUT', 'NOT_RUNNING'] as const;
+type ClosureReason = (typeof CLOSURE_REASONS)[number];
+const CLOSURE_REASON_LABEL: Record<ClosureReason, string> = {
+    SOLD_OUT: 'Sold out',
+    NOT_RUNNING: 'Not running',
+};
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 const STATUS_LABEL: Record<ManageCalendarDayStatus, string> = {
@@ -493,29 +510,46 @@ export function TripAvailabilityCalendar({
                         </motion.div>
                     </div>
 
+                    {/* The legend shows the SHAPES the cells actually use
+                        (mck-15 §4). It used to describe dots the grid had
+                        stopped drawing and a "3/26 booked" chip in a format no
+                        cell produced - two of its four states could not be
+                        made from the day card at all. */}
                     <div className='flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground'>
                         <span className='flex items-center gap-1.5'>
-                            <span className='size-2 rounded-full bg-success-solid' />
-                            open departure
-                        </span>
-                        <span className='flex items-center gap-1.5'>
-                            <span className='size-2 rounded-full bg-info-solid' />
-                            sold out
-                        </span>
-                        <span className='flex items-center gap-1.5'>
-                            <span className='size-2.5 rounded-sm bg-warning-subtle ring-1 ring-warning-border' />
-                            partially closed
-                        </span>
-                        <span className='flex items-center gap-1.5'>
-                            <span className='size-2.5 rounded-sm bg-destructive/15 ring-1 ring-destructive/30' />
-                            closed
-                        </span>
-                        <span className='flex items-center gap-1.5'>
-                            <span className='rounded-sm bg-primary-subtle px-1 py-px text-2xs font-medium text-primary-subtle-content'>
-                                3/26 booked
+                            <span className='rounded-full border border-success-solid/50 bg-success-subtle px-1.5 py-px text-2xs font-semibold tabular-nums leading-none text-success-fg'>
+                                07:00 34/70
                             </span>
-                            seats sold / day capacity
+                            open, booked of capacity
                         </span>
+                        <span className='flex items-center gap-1.5'>
+                            <span className='rounded-full bg-info-solid px-1.5 py-px text-2xs font-semibold leading-none text-white'>
+                                Sold out
+                            </span>
+                            full
+                        </span>
+                        <span className='flex items-center gap-1.5'>
+                            <span className='rounded-full bg-muted px-1.5 py-px text-2xs font-semibold leading-none text-muted-foreground line-through'>
+                                Closed
+                            </span>
+                            closed by you
+                        </span>
+                        <span className='flex items-center gap-1.5'>
+                            <span className='rounded-full border border-dashed border-success-solid/50 px-1.5 py-px text-2xs font-semibold tabular-nums leading-none text-muted-foreground'>
+                                14:30
+                            </span>
+                            dashed = scheduled, not materialized yet
+                        </span>
+                        <span>
+                            Today is ringed. Past days fade and cannot be
+                            changed.
+                        </span>
+                        <p className='w-full text-xs text-muted-foreground'>
+                            Counts are Island Tours bookings only. A boat that
+                            fills through another channel still reads low here,
+                            which is exactly why you need to be able to say Sold
+                            out.
+                        </p>
                     </div>
                 </>
             )}
@@ -689,13 +723,14 @@ function DayCell({
         day.status !== 'closed' &&
         day.departures.length > 0 &&
         day.departures.every(d => d.status === 'SOLD_OUT');
-    // `scheduled` keeps not-yet-materialized pattern days actionable, so an
-    // operator can pre-close a date months out before the nightly sync fills it.
-    const actionable =
-        !isPast &&
-        (day.departures.length > 0 ||
-            day.exceptions.length > 0 ||
-            day.scheduled);
+    // EVERY future day opens (mck-15 §4). A day the weekly pattern skips used to
+    // be a dead cell, which is the one thing that made "add a one-off"
+    // impossible where it is most needed: a Saturday could never be added to a
+    // Monday-to-Friday tour, because Saturday could not be tapped at all.
+    //
+    // Past days stay closed to interaction - history stays readable, but nothing
+    // can be closed after the fact.
+    const actionable = !isPast;
     const offDay = day.status === 'no_service' && !day.scheduled;
 
     return (
@@ -763,102 +798,71 @@ function DayCell({
                             </span>
                         )}
                     </span>
-                    <span className='flex w-full items-end justify-between gap-1'>
-                        {day.departures.length > 0 ? (
-                            <span className='flex items-center gap-0.5'>
-                                {/* Sold out gets its own color (F17): it flips back by
-                                    itself on a cancellation, a manual close only by
-                                    hand. Painting both green hid the difference - and
-                                    hid the good news. */}
-                                {day.departures.slice(0, 3).map(d => (
-                                    <span
-                                        key={d.id}
-                                        className={cn(
-                                            'size-1.5 rounded-full',
-                                            isPast
-                                                ? 'bg-foreground/20'
-                                                : d.status === 'SOLD_OUT'
-                                                  ? 'bg-info-solid'
-                                                  : d.status === 'OPEN'
-                                                    ? 'bg-success-solid'
-                                                    : 'bg-destructive/50'
-                                        )}
-                                    />
-                                ))}
-                                {day.departures.length > 3 && (
-                                    <span className='text-2xs leading-none text-muted-foreground'>
-                                        +{day.departures.length - 3}
-                                    </span>
-                                )}
-                            </span>
-                        ) : day.scheduled && !isPast ? (
-                            /* Pattern covers this day but the engine hasn't filled it yet -
-                 hollow dots, one per upcoming pattern time. */
-                            <span className='flex items-center gap-0.5'>
-                                {day.scheduledTimes.slice(0, 3).map(t => (
-                                    <span
-                                        key={t}
-                                        className='size-1.5 rounded-full ring-1 ring-success-solid/60'
-                                    />
-                                ))}
-                                {day.scheduledTimes.length > 3 && (
-                                    <span className='text-2xs leading-none text-muted-foreground'>
-                                        +{day.scheduledTimes.length - 3}
-                                    </span>
-                                )}
-                            </span>
-                        ) : (
-                            <span />
-                        )}
-                        {/* The seat picture, on every day that has materialized
-                            departures - not only booked ones. "3/26 booked"
-                            answers how full AND how big the day is in one
-                            read; an untouched day shows its capacity quietly
-                            (plain muted text, no chip) so an all-open month
-                            does not become a wall of chips. Unit charters:
-                            guests, never seat math (F10). */}
-                        {isUnit
-                            ? day.bookedTotal > 0 && (
-                                  <span
-                                      className={cn(
-                                          'whitespace-nowrap rounded-sm px-1 py-px text-2xs font-medium tabular-nums leading-none',
-                                          isPast
-                                              ? 'text-muted-foreground/60'
-                                              : 'bg-primary-subtle text-primary-subtle-content'
-                                      )}>
-                                      {day.bookedTotal}{' '}
-                                      {day.bookedTotal === 1
-                                          ? 'guest'
-                                          : 'guests'}
-                                  </span>
-                              )
-                            : day.departures.length > 0 &&
-                              (day.bookedTotal > 0 ? (
-                                  <span
-                                      className={cn(
-                                          'whitespace-nowrap rounded-sm px-1 py-px text-2xs font-medium tabular-nums leading-none',
-                                          isPast
-                                              ? 'text-muted-foreground/60'
-                                              : 'bg-primary-subtle text-primary-subtle-content'
-                                      )}>
-                                      {day.bookedTotal}/
-                                      {day.departures.reduce(
-                                          (s, d) => s + d.capacity,
-                                          0
-                                      )}{' '}
-                                      booked
-                                  </span>
-                              ) : (
-                                  !isPast && (
-                                      <span className='whitespace-nowrap text-2xs tabular-nums leading-none text-muted-foreground'>
-                                          {day.departures.reduce(
-                                              (s, d) => s + d.capacity,
-                                              0
-                                          )}{' '}
-                                          seats
+                    {/* Departure pills (mck-15 §4). Each one says the TIME and
+                        how full it is - "07:00 34/70" - because a cell reading
+                        "70 seats" answered a question nobody asked: capacity is
+                        a fixed property, not how the day is going. Sold out and
+                        Closed take a filled pill and read as words, since the
+                        number stops meaning anything once nothing is for sale.
+
+                        Counts are Island Tours bookings ONLY. A boat that fills
+                        through another channel still reads low here, which is
+                        exactly why an operator needs to be able to say Sold out. */}
+                    <span className='flex w-full flex-col items-start gap-0.5'>
+                        {day.departures.length > 0
+                            ? day.departures.slice(0, 3).map(d => {
+                                  const soldOut = d.status === 'SOLD_OUT';
+                                  const stopped =
+                                      d.status === 'CLOSED' ||
+                                      d.status === 'CANCELLED';
+                                  return (
+                                      <span
+                                          key={d.id}
+                                          className={cn(
+                                              'max-w-full truncate rounded-full border px-1.5 py-px text-2xs font-semibold tabular-nums leading-none',
+                                              isPast && 'opacity-45',
+                                              soldOut
+                                                  ? 'border-transparent bg-info-solid text-white'
+                                                  : stopped
+                                                    ? 'border-transparent bg-muted text-muted-foreground line-through'
+                                                    : 'border-success-solid/50 bg-success-subtle text-success-fg'
+                                          )}>
+                                          {d.startTime}{' '}
+                                          {soldOut
+                                              ? 'Sold out'
+                                              : stopped
+                                                ? 'Closed'
+                                                : isUnit
+                                                  ? `${d.bookedCount} booked`
+                                                  : `${d.bookedCount}/${d.capacity}`}
                                       </span>
-                                  )
-                              ))}
+                                  );
+                              })
+                            : day.scheduled &&
+                              !isPast && (
+                                  /* The weekly pattern covers this day but the
+                                     engine has not filled it yet - dashed, so
+                                     "will run" never reads as "is selling". */
+                                  <span className='max-w-full truncate rounded-full border border-dashed border-success-solid/50 px-1.5 py-px text-2xs font-semibold tabular-nums leading-none text-muted-foreground'>
+                                      {day.scheduledTimes[0] ?? '—'}
+                                  </span>
+                              )}
+                        {day.departures.length > 3 && (
+                            <span className='text-2xs leading-none text-muted-foreground'>
+                                +{day.departures.length - 3} more
+                            </span>
+                        )}
+                        {/* An empty cell carries the quiet hint and nothing
+                            else - and it is still tappable, because adding a
+                            one-off to a day the weekly pattern skips is the
+                            whole point of opening it. */}
+                        {day.departures.length === 0 &&
+                            !day.scheduled &&
+                            !isPast && (
+                                <span className='text-2xs leading-none text-muted-foreground/70'>
+                                    No departures
+                                </span>
+                            )}
                     </span>
                 </button>
             </PopoverAnchor>
@@ -889,6 +893,10 @@ function DayCell({
 type PanelState =
     | { kind: 'none' }
     | { kind: 'close-day' }
+    // Closing ONE departure asks the same question as closing the day: the
+    // reason reaches a traveller either way, and a slot closed without one
+    // would be the only close on this screen that could not say why.
+    | { kind: 'close-slot'; startTime: string }
     | { kind: 'add-slot' };
 
 interface DayPopoverProps {
@@ -953,16 +961,31 @@ function DayPopover({
 
     function write(
         payload: Parameters<typeof createException>[0]['payload'],
-        successMsg: string
+        successMsg: string,
+        /** Offer to take it straight back off - every close ends with an Undo. */
+        undoable = false
     ) {
         createException(
             { tripId, payload },
             {
-                onSuccess: () => {
+                onSuccess: created => {
                     // The threaded successMsg was never surfaced, so closing a
                     // day / adding-closing-reopening a slot completed silently
                     // (code-review M8).
-                    toast.success(successMsg);
+                    toast.success(successMsg, {
+                        duration: undoable ? 10_000 : 4_000,
+                        action:
+                            undoable && created?.id
+                                ? {
+                                      label: 'Undo',
+                                      onClick: () =>
+                                          removeException({
+                                              tripId,
+                                              exceptionId: created.id,
+                                          }),
+                                  }
+                                : undefined,
+                    });
                     onClose();
                 },
                 onError: err =>
@@ -993,16 +1016,39 @@ function DayPopover({
         );
     }
 
-    function submitPanel() {
+    function submitPanel(closureReason?: ClosureReason) {
         setError(null);
+        if (panel.kind === 'close-slot') {
+            if (!closureReason) return; // the reason IS the commit
+            write(
+                {
+                    date: day.date,
+                    type: 'CLOSE_SLOT',
+                    startTime: panel.startTime,
+                    note: note.trim() || undefined,
+                    closureReason,
+                },
+                `${panel.startTime} closed · ${CLOSURE_REASON_LABEL[closureReason]}. New sales stopped.`,
+                true
+            );
+            return;
+        }
         if (panel.kind === 'close-day') {
+            if (!closureReason) return; // the reason IS the commit
             write(
                 {
                     date: day.date,
                     type: 'CLOSE_DATE',
                     note: note.trim() || undefined,
+                    closureReason,
                 },
-                `Closed ${formatDayLong(day.date)}.`
+                // Name the consequence, not the action. The guest count is the
+                // reassurance an operator needs before closing a full day, and
+                // it is the reason they hesitated in the first place.
+                day.bookedTotal > 0
+                    ? `${formatDayLong(day.date)} closed · ${CLOSURE_REASON_LABEL[closureReason]}. New sales stopped. ${day.bookedTotal} booked guest${day.bookedTotal === 1 ? '' : 's'} keep their booking${day.bookedTotal === 1 ? '' : 's'}.`
+                    : `${formatDayLong(day.date)} closed · ${CLOSURE_REASON_LABEL[closureReason]}. New sales stopped.`,
+                true
             );
             return;
         }
@@ -1036,6 +1082,12 @@ function DayPopover({
     // The guarantee, not a warning. Shown on the close panel whether or not the
     // day has bookings: the operator who needs to read it most is the one who
     // has not yet dared to close a day that does.
+    // Departures still on sale - what decides whether "close the day" is a
+    // different action from "close that departure".
+    const openDepartureCount = day.departures.filter(
+        d => d.status === 'OPEN',
+    ).length;
+
     const closeReassurance =
         day.bookedTotal > 0
             ? `${day.bookedTotal} booked guest${day.bookedTotal === 1 ? '' : 's'} keep their booking${day.bookedTotal === 1 ? '' : 's'}. Closing only stops new sales.`
@@ -1118,14 +1170,10 @@ function DayPopover({
                             )}
                             busy={busy}
                             onCloseSlot={() =>
-                                write(
-                                    {
-                                        date: day.date,
-                                        type: 'CLOSE_SLOT',
-                                        startTime: d.startTime,
-                                    },
-                                    `Closed the ${d.startTime} departure.`
-                                )
+                                openPanel({
+                                    kind: 'close-slot',
+                                    startTime: d.startTime,
+                                })
                             }
                             onReopenSlot={id =>
                                 reopen(
@@ -1194,7 +1242,21 @@ function DayPopover({
                     </>
                 ) : panel.kind === 'none' ? (
                     <>
-                        <div className='grid grid-cols-2 gap-2'>
+                        {/* "Close entire day" only where the day IS more than
+                            one thing (mck-15 §4). With a single open departure
+                            it is the same action as the Close on that row, and
+                            two controls for one outcome is how an operator ends
+                            up unsure which one they just used. On a day with
+                            nothing on it, Add departure is the only sensible
+                            offer - and reaching it is the reason the cell opens
+                            at all. */}
+                        <div
+                            className={cn(
+                                'grid gap-2',
+                                openDepartureCount >= 2
+                                    ? 'grid-cols-2'
+                                    : 'grid-cols-1'
+                            )}>
                             <Button
                                 size='sm'
                                 variant='outline'
@@ -1202,13 +1264,17 @@ function DayPopover({
                                 onClick={() => openPanel({ kind: 'add-slot' })}>
                                 Add departure
                             </Button>
-                            <Button
-                                size='sm'
-                                variant='destructive'
-                                disabled={busy}
-                                onClick={() => openPanel({ kind: 'close-day' })}>
-                                Close entire day
-                            </Button>
+                            {openDepartureCount >= 2 && (
+                                <Button
+                                    size='sm'
+                                    variant='destructive'
+                                    disabled={busy}
+                                    onClick={() =>
+                                        openPanel({ kind: 'close-day' })
+                                    }>
+                                    Close entire day
+                                </Button>
+                            )}
                         </div>
                         {/* The other half of "close is not cancel": if the departure
                             genuinely will not run, the operator needs somewhere to
@@ -1307,42 +1373,87 @@ function DayPopover({
                             maxLength={500}
                             className='h-8 text-xs'
                         />
-                        {panel.kind === 'close-day' && (
-                            <p className='text-xs text-muted-foreground'>
-                                {closeReassurance}
-                            </p>
-                        )}
                         {error && (
                             <p className='text-xs text-destructive'>{error}</p>
                         )}
-                        <div className='flex gap-2'>
-                            <Button
-                                size='sm'
-                                variant='ghost'
-                                className='flex-1'
-                                disabled={busy}
-                                onClick={() => openPanel({ kind: 'none' })}>
-                                Cancel
-                            </Button>
-                            <Button
-                                size='sm'
-                                variant={
-                                    panel.kind === 'close-day'
-                                        ? 'destructive'
-                                        : 'default'
-                                }
-                                className='flex-1'
-                                disabled={busy}
-                                onClick={submitPanel}>
-                                {isWriting && (
-                                    <HugeiconsIcon
-                                        icon={Loading03Icon}
-                                        className='size-4 animate-spin'
-                                    />
-                                )}
-                                {panel.kind === 'close-day' ? 'Close day' : 'Add'}
-                            </Button>
-                        </div>
+                        {panel.kind === 'close-day' ||
+                        panel.kind === 'close-slot' ? (
+                            // The reason IS the commit (mck-15 §4). Two buttons,
+                            // not a dropdown plus a Close: the operator is
+                            // answering one question, and the answer decides
+                            // what a traveller is told - "Sold out" with the
+                            // date struck through, or "No departure" as if it
+                            // never ran.
+                            <>
+                                <p className='text-xs font-medium'>
+                                    {panel.kind === 'close-slot'
+                                        ? `Why are you closing the ${panel.startTime} departure?`
+                                        : 'Why are you closing this day?'}
+                                </p>
+                                <div className='flex gap-2'>
+                                    {CLOSURE_REASONS.map(reason => (
+                                        <Button
+                                            key={reason}
+                                            size='sm'
+                                            variant='outline'
+                                            className='flex-1'
+                                            disabled={busy}
+                                            onClick={() => submitPanel(reason)}>
+                                            {isWriting && (
+                                                <HugeiconsIcon
+                                                    icon={Loading03Icon}
+                                                    className='size-4 animate-spin'
+                                                />
+                                            )}
+                                            {CLOSURE_REASON_LABEL[reason]}
+                                        </Button>
+                                    ))}
+                                </div>
+                                <p className='text-xs text-muted-foreground'>
+                                    Sold out means the trip is full, however it
+                                    filled. Not running covers weather,
+                                    maintenance, a day off, anything else.
+                                </p>
+                                <p className='text-xs text-muted-foreground'>
+                                    {closeReassurance}
+                                </p>
+                                {/* Tapping Close by accident must never force a
+                                    choice, so the way out is a full-width
+                                    control rather than a small × somewhere. */}
+                                <Button
+                                    size='sm'
+                                    variant='ghost'
+                                    className='w-full'
+                                    disabled={busy}
+                                    onClick={() => openPanel({ kind: 'none' })}>
+                                    Cancel, leave it open
+                                </Button>
+                            </>
+                        ) : (
+                            <div className='flex gap-2'>
+                                <Button
+                                    size='sm'
+                                    variant='ghost'
+                                    className='flex-1'
+                                    disabled={busy}
+                                    onClick={() => openPanel({ kind: 'none' })}>
+                                    Cancel
+                                </Button>
+                                <Button
+                                    size='sm'
+                                    className='flex-1'
+                                    disabled={busy}
+                                    onClick={() => submitPanel()}>
+                                    {isWriting && (
+                                        <HugeiconsIcon
+                                            icon={Loading03Icon}
+                                            className='size-4 animate-spin'
+                                        />
+                                    )}
+                                    Add
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

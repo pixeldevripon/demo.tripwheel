@@ -397,6 +397,16 @@ export interface TourSchedule {
 
 // Date-specific override of the recurring pattern (the daily operational tool).
 // Materialized into departures alongside the schedules.
+/**
+ * Why an operator closed (mck-15 §4). Mirrors the backend `ClosureReason`.
+ *
+ * It decides what a TRAVELLER is told, so it is not a note: SOLD_OUT reads
+ * "Sold out" with the date struck through and only the operator reopens it;
+ * NOT_RUNNING reads "No departure", plain, because nothing was ever on sale
+ * that day. Only SOLD_OUT counts toward the §3.7 demand signal.
+ */
+export type TourClosureReason = 'SOLD_OUT' | 'NOT_RUNNING';
+
 export type TourExceptionType =
   | 'CLOSE_DATE' // stop-sell the whole date
   | 'CLOSE_SLOT' // stop-sell one slot on a date
@@ -411,6 +421,9 @@ export interface TourException {
   type: TourExceptionType;
   capacity: number | null; // add_slot / set_capacity
   note: string | null;
+  // Null on non-closures, and on closures written before reasons existed -
+  // those keep reading as a plain "Closed", which is what they always meant.
+  closureReason: TourClosureReason | null;
   // Audit surface (dev spec §6.5): who made the change, and when.
   createdAt: string; // ISO
   createdByName: string | null;
@@ -433,6 +446,9 @@ export interface TourDeparture {
   status: DepartureStatus;
   available: boolean;
   soldOutAt: string | null;
+  // Set only on an operator-closed departure; null when the closure is the
+  // read-time booking cutoff, which is a plain "Closed".
+  closureReason: TourClosureReason | null;
   manuallyEdited: boolean;
 }
 
@@ -960,4 +976,6 @@ export interface CreateTourExceptionPayload {
   startTime?: string; // 'HH:MM' — required for close_slot/add_slot; omit = whole date
   capacity?: number; // required for add_slot/set_capacity
   note?: string;
+  // CLOSE_DATE / CLOSE_SLOT only — the backend rejects it on the other two.
+  closureReason?: TourClosureReason;
 }
