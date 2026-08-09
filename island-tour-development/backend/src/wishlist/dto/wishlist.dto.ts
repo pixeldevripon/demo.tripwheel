@@ -72,6 +72,15 @@ export class EmailWishlistDto {
   @IsOptional()
   @IsEnum(Locale)
   locale?: Locale = Locale.en;
+
+  @ApiPropertyOptional({
+    enum: Currency,
+    description:
+      'Shopper display currency, so the price in the inbox matches the price they were looking at',
+  })
+  @IsOptional()
+  @IsEnum(Currency)
+  currency?: Currency;
 }
 
 // ── Response ────────────────────────────────────────────────────────────────

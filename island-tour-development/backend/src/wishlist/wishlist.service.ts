@@ -340,6 +340,20 @@ export class WishlistService {
       select: {
         id: true,
         name: true,
+        slug: true,
+        priceFrom: true,
+        basePrice: true,
+        defaultCurrency: true,
+        durationMinutesFrom: true,
+        durationMinutesTo: true,
+        aggregateRating: true,
+        aggregateReviewCount: true,
+        destination: { select: { slug: true } },
+        images: {
+          where: { isHero: true },
+          select: { url: true },
+          take: 1,
+        },
         translations: { where: { locale }, select: { title: true } },
       },
     });
@@ -353,17 +367,45 @@ export class WishlistService {
       .map((id) => byId.get(id))
       .filter((t): t is NonNullable<typeof t> => Boolean(t));
 
+    // Same converter the resolved cards use, so the price in the inbox is the
+    // price the traveller was looking at when they asked us to send it.
+    await this.fx.attachMoney(kept, dto.currency, 'defaultCurrency');
+
+    const base = islandToursBase();
     // `/saved`, not `/wishlist`: the old path still 308s, but an email lives
     // for years and should not spend a redirect on every open.
-    const listUrl = `${islandToursBase()}/${locale}/saved?restore=${kept
+    const listUrl = `${base}/${locale}/saved?restore=${kept
       .map((t) => t.id)
       .join(',')}`;
 
-    await this.mail.sendSavedToursEmail(
-      dto.email,
-      listUrl,
-      kept.map((t) => t.translations?.[0]?.title?.trim() || t.name),
-    );
+    await this.mail.sendSavedToursEmail(dto.email, listUrl, {
+      locale,
+      tours: kept.map((t) => {
+        const money = (
+          t as { money?: { priceFrom?: string; currency?: string } }
+        ).money;
+        const amount = Number(
+          money?.priceFrom ?? t.priceFrom ?? t.basePrice ?? 0,
+        );
+        return {
+          title: t.translations?.[0]?.title?.trim() || t.name,
+          // Every tour is flat: /{locale}/{destination}/{tour-slug}. A tour
+          // with no destination has no page, so it gets no link rather than a
+          // link to nowhere.
+          url: t.destination?.slug
+            ? `${base}/${locale}/${encodeURIComponent(
+                t.destination.slug,
+              )}/${encodeURIComponent(t.slug)}`
+            : null,
+          imageUrl: t.images[0]?.url ?? null,
+          price: Number.isFinite(amount) && amount > 0 ? amount : null,
+          currency: money?.currency ?? t.defaultCurrency,
+          durationMinutes: t.durationMinutesFrom,
+          rating: t.aggregateReviewCount > 0 ? t.aggregateRating : null,
+          reviewCount: t.aggregateReviewCount,
+        };
+      }),
+    });
     // The address is the traveller's own and is not stored anywhere, so it is
     // not logged either - only that a send happened, and how big it was.
     this.logger.log(`Emailed a saved list of ${kept.length} tours`);

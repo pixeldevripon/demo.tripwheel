@@ -118,11 +118,12 @@ export const wishlistApi = {
     email: string,
     ids: string[],
     locale?: Locale,
+    currency?: Currency,
   ): Promise<{ sent: number }> {
     const res = await fetch(`${BACKEND_API_BASE}/wishlist/email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, ids: ids.join(','), locale }),
+      body: JSON.stringify({ email, ids: ids.join(','), locale, currency }),
     });
     if (!res.ok) throw new Error(await readError(res));
     return res.json() as Promise<{ sent: number }>;

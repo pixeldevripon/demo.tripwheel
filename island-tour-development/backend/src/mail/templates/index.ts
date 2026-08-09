@@ -6,7 +6,7 @@ export {
 } from './staff-invite.template';
 export { emailVerificationTemplate } from './email-verification.template';
 export { travellerLoginCodeTemplate } from './traveller-login-code.template';
-export { savedToursTemplate } from './saved-tours.template';
+export { savedToursTemplate, type SavedTourCard } from './saved-tours.template';
 export { changeEmailConfirmationTemplate } from './change-email-confirmation.template';
 export {
   passwordChangeConfirmationTemplate,

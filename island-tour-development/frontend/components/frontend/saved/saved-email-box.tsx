@@ -5,6 +5,7 @@ import { Mail } from 'lucide-react';
 import { useState } from 'react';
 
 import { wishlistApi } from '@/lib/api/wishlist';
+import { currencyFromCookie } from '@/lib/currency/current';
 import type { Locale } from '@/lib/constants/locales';
 import { springPop } from '@/lib/motion';
 
@@ -49,7 +50,14 @@ export function SavedEmailBox({
         if (status === 'sending' || ids.length === 0) return;
         setStatus('sending');
         try {
-            await wishlistApi.emailList(email, ids, locale);
+            // The shopper's display currency rides along, so the prices on the
+            // cards in the inbox are the prices they were just looking at.
+            await wishlistApi.emailList(
+                email,
+                ids,
+                locale,
+                currencyFromCookie(document.cookie, locale)
+            );
             setStatus('sent');
             setEmail('');
         } catch {

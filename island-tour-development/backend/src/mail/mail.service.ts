@@ -8,6 +8,7 @@ import {
   changeEmailConfirmationTemplate,
   emailVerificationTemplate,
   savedToursTemplate,
+  type SavedTourCard,
   travellerLoginCodeTemplate,
   hatAddedSubject,
   hatAddedTemplate,
@@ -204,12 +205,13 @@ export class MailService {
   async sendSavedToursEmail(
     to: string,
     listUrl: string,
-    tourTitles: string[],
+    list: { locale: string; tours: SavedTourCard[] },
   ): Promise<void> {
     const siteLogoUrl = await this.getSiteLogo();
     const { html, text } = savedToursTemplate({
       listUrl,
-      tourTitles,
+      locale: list.locale,
+      tours: list.tours,
       siteLogoUrl,
     });
     await this.sendMail({
