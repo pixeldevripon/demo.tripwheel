@@ -164,6 +164,10 @@ export async function CollectionPage({
                     tours: collectionDict?.tours ?? 'tours',
                     from: listings?.from ?? 'From',
                     share: collectionDict?.share ?? 'Share',
+                    // Borrowed from the tour page rather than duplicated into
+                    // the collections block: it is the same confirmation of the
+                    // same action, and one string cannot drift from itself.
+                    linkCopied: dict.destination.tour.linkCopied,
                 }}
             />
 

@@ -2,7 +2,13 @@ import Image from 'next/image';
 import { MountReveal } from '../mount-reveal';
 import { CollectionShareButton } from './collection-share-button';
 
-export type CollectionHeroDict = { tours: string; from: string; share: string };
+export type CollectionHeroDict = {
+    tours: string;
+    from: string;
+    share: string;
+    /** Confirmation shown after the URL is copied (no native share sheet). */
+    linkCopied: string;
+};
 
 interface CollectionHeroProps {
     title: string;
@@ -78,10 +84,23 @@ export function CollectionHero({
                 rather than switching to `it-container`, whose padding drops to
                 16px below 768px. Under the max-width this is byte-identical to
                 the previous markup; only wide screens move. */}
-            <div className='pointer-events-none absolute inset-x-0 top-[18px] z-10'>
+            {/* z-20, ABOVE the text block below - not the z-10 they used to
+                share. The text block is `absolute inset-0`, so it covers this
+                whole band; at an equal z-index the later element in the DOM
+                wins, and every click on the pill landed on the title's box
+                instead. The button was never broken - nothing could reach it,
+                on any viewport.
+
+                The text block keeps `pointer-events: auto` so its heading and
+                subtitle stay selectable; the control that floats over it is
+                simply the thing on top. */}
+            <div className='pointer-events-none absolute inset-x-0 top-[18px] z-20'>
                 <div className='mx-auto flex w-full max-w-(--it-container-max) justify-end px-6'>
                     <div className='pointer-events-auto'>
-                        <CollectionShareButton label={dict.share} />
+                        <CollectionShareButton
+                            label={dict.share}
+                            copiedLabel={dict.linkCopied}
+                        />
                     </div>
                 </div>
             </div>
