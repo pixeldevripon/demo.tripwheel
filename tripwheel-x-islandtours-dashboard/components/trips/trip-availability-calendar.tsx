@@ -10,6 +10,16 @@ import {
 import { HugeiconsIcon } from '@hugeicons/react';
 import Link from 'next/link';
 
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { DatePickerField } from '@/components/date-picker-field';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -40,6 +50,7 @@ import {
     useRemoveException,
     useReopenRange,
 } from '@/hooks/trips/use-trips';
+import { settleAll } from '@/lib/async/settle-all';
 import { crossFade, swapFade } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import type {
@@ -184,6 +195,9 @@ export function TripAvailabilityCalendar({
     const [rangeTo, setRangeTo] = useState('');
     const [rangeNote, setRangeNote] = useState('');
     const [rangeError, setRangeError] = useState<string | null>(null);
+    const [resetOpen, setResetOpen] = useState(false);
+    const [isResetting, setIsResetting] = useState(false);
+    const { mutate: removeExceptionRow } = useRemoveException();
     const { mutate: closeRange, isPending: isClosingRange } = useCloseRange();
     const { mutate: reopenRange, isPending: isReopeningRange } =
         useReopenRange();
@@ -280,6 +294,61 @@ export function TripAvailabilityCalendar({
     const todayKey = new Intl.DateTimeFormat('en-CA', { timeZone }).format(
         new Date()
     );
+    /**
+     * The operator's own date-level changes in the visible month, FROM TODAY
+     * ONWARD - what "Reset the month" puts back.
+     *
+     * Past days are excluded deliberately: they cannot be changed from this
+     * grid in the first place, and removing a closure that has already happened
+     * would rewrite history and re-materialise departures for dates nobody can
+     * book. A reset undoes what you can still undo.
+     *
+     * It removes EXCEPTIONS, never bookings. Closing was only ever a stop-sell,
+     * so there is nothing here that could cancel on anyone.
+     */
+    const monthLabel = format(monthDate, 'MMMM yyyy');
+    const resettable = (days ?? [])
+        .filter(d => d.date >= todayKey)
+        .flatMap(d => d.exceptions);
+    const resetCounts = {
+        closures: resettable.filter(
+            e => e.type === 'CLOSE_DATE' || e.type === 'CLOSE_SLOT',
+        ).length,
+        added: resettable.filter(e => e.type === 'ADD_SLOT').length,
+        capacity: resettable.filter(e => e.type === 'SET_CAPACITY').length,
+    };
+
+    async function resetMonth() {
+        setIsResetting(true);
+        const { succeeded, failed } = await settleAll(
+            resettable,
+            exception =>
+                new Promise<void>((resolve, reject) =>
+                    removeExceptionRow(
+                        { tripId, exceptionId: exception.id },
+                        { onSuccess: () => resolve(), onError: reject },
+                    ),
+                ),
+        );
+        setIsResetting(false);
+        setResetOpen(false);
+        if (failed.length === 0) {
+            toast.success(
+                `${monthLabel} is back to its weekly schedule. ${succeeded.length} change${succeeded.length === 1 ? '' : 's'} removed.`,
+            );
+            return;
+        }
+        // Say what actually happened. A reset that half-ran and reported
+        // success is worse than one that failed outright.
+        toast.error(
+            `${succeeded.length} removed, ${failed.length} could not be. ${
+                failed[0].error instanceof Error
+                    ? failed[0].error.message
+                    : 'The server did not say why.'
+            }`,
+        );
+    }
+
     const canGoPrev = month > todayKey.slice(0, 7);
     // The nightly job materializes ~364 days ahead (master E.9: "12 rolling
     // months"), so departures genuinely stop there. Cap paging at that horizon
@@ -407,6 +476,23 @@ export function TripAvailabilityCalendar({
         </div>
     );
 
+    /**
+     * Nothing to put back = nothing to press. A reset that is always live
+     * invites a destructive tap on a month that was never touched, and the
+     * count in the label is the honest version of "reset": it says how much
+     * there is to undo before the dialog says what.
+     */
+    const resetButton = resettable.length > 0 && (
+        <Button
+            size='sm'
+            variant='ghost'
+            className='h-8 text-muted-foreground'
+            disabled={isResetting}
+            onClick={() => setResetOpen(true)}>
+            Reset the month
+        </Button>
+    );
+
     const body = (
         <div className='space-y-3'>
             {bare && (
@@ -421,6 +507,7 @@ export function TripAvailabilityCalendar({
                         }}>
                         Close / reopen a range
                     </Button>
+                    {resetButton}
                     {monthNav}
                 </div>
             )}
@@ -649,6 +736,73 @@ export function TripAvailabilityCalendar({
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Reset names exactly what it will take back, by type and count.
+                "Reset the month" on its own is a promise the operator cannot
+                check, and this is the one control here that removes several
+                things at once. */}
+            <AlertDialog open={resetOpen} onOpenChange={setResetOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Reset {monthLabel}?</AlertDialogTitle>
+                        <AlertDialogDescription asChild>
+                            <div className='space-y-2 text-sm'>
+                                <p>
+                                    This puts {monthLabel} back to what the
+                                    weekly schedule produces, from today onward.
+                                    It removes:
+                                </p>
+                                <ul className='list-disc space-y-0.5 pl-4'>
+                                    {resetCounts.closures > 0 && (
+                                        <li>
+                                            {resetCounts.closures} closure
+                                            {resetCounts.closures === 1
+                                                ? ''
+                                                : 's'}{' '}
+                                            — those dates go back on sale
+                                        </li>
+                                    )}
+                                    {resetCounts.added > 0 && (
+                                        <li>
+                                            {resetCounts.added} added departure
+                                            {resetCounts.added === 1 ? '' : 's'}
+                                        </li>
+                                    )}
+                                    {resetCounts.capacity > 0 && (
+                                        <li>
+                                            {resetCounts.capacity} capacity
+                                            override
+                                            {resetCounts.capacity === 1
+                                                ? ''
+                                                : 's'}
+                                        </li>
+                                    )}
+                                </ul>
+                                <p className='text-muted-foreground'>
+                                    Bookings are never touched — closing only
+                                    ever stopped new sales. Past days are left
+                                    exactly as they are.
+                                </p>
+                            </div>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isResetting}>
+                            Keep my changes
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            disabled={isResetting}
+                            onClick={e => {
+                                e.preventDefault();
+                                void resetMonth();
+                            }}>
+                            {isResetting
+                                ? 'Resetting…'
+                                : `Reset ${resettable.length} change${resettable.length === 1 ? '' : 's'}`}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 
@@ -678,6 +832,7 @@ export function TripAvailabilityCalendar({
                             }}>
                             Close / reopen a range
                         </Button>
+                        {resetButton}
                         {monthNav}
                     </div>
                 </div>
