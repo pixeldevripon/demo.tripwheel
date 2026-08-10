@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MCK-19 · Where an activity hub lives in discovery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<!--
+  MCK-19 · Where an activity hub lives in discovery. Raised by the founder August 9, 2026.
+  Founder decision August 9: no group headings in the dropdown, and no divider on the destination page, only the place label.
+  Sources: master 3.9 nav, 2.4 categories ("the curated discovery list per destination draws from this set"),
+  3.10 footer, 5.2 destination page section order (review-locked), 5.10 search, the 1.x hub-vs-collection slug registry rule;
+  mck-02 .cat component and nav dropdown, mck-01c footer Explore column; founder screenshots of the live build, August 9 2026.
+  Build review rows: R1-186 (a hub is presented as a category, and the nav has no route to one), R1-59 (autocomplete does not offer hubs).
+  Thumbnails here are flat colour on purpose; the real tiles use island photography, see R1-187.
+-->
+<style>
+:root{--white:#FFFFFF;--paper:#F7F7F5;--peach:#FDF6F0;--peach-border:#F2E2D6;--cta-tint:#FDEEE4;
+--ink:#1F2937;--soft:#6B7280;--faint:#9CA3AF;--border:#E5E7EB;--divider:#F3F4F6;
+--cta:#E8611A;--cta-deep:#C7500F;--green-text:#15803D;--e1:0 1px 2px rgba(31,41,55,.05);
+--e2:0 2px 6px rgba(31,41,55,.05),0 12px 28px rgba(31,41,55,.07);
+--r-xs:6px;--r-sm:10px;--r-md:12px;--r-lg:16px;--r-pill:999px;
+--sans:'Source Sans 3',system-ui,sans-serif;--display:'Bricolage Grotesque',system-ui,sans-serif;
+--mono:ui-monospace,SFMono-Regular,Menlo,monospace;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);color:var(--ink);background:#FBFBFA;font-size:15px;line-height:1.6}
+.wrap{max-width:1360px;margin:0 auto;padding:30px 24px 90px}
+.kicker{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:700}
+h1.pt{font-family:var(--display);font-size:25px;font-weight:800;letter-spacing:-.02em;margin:4px 0 6px}
+.lede{color:var(--soft);font-size:14px;max-width:1000px}
+h2{font-family:var(--display);font-size:17px;font-weight:800;margin:42px 0 4px;padding-top:20px;border-top:1px solid var(--border)}
+.h2sub{color:var(--soft);font-size:13.5px;margin-bottom:16px;max-width:1000px}
+h3.lbl{font-size:12px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px}
+.badl{color:#B4341C}.goodl{color:#15803D}
+.cap{font-size:12.5px;color:var(--soft);max-width:330px;margin-bottom:11px;min-height:104px}
+.row{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start}
+code{font-family:var(--mono);font-size:12.5px;background:var(--paper);border:1px solid var(--divider);border-radius:5px;padding:1px 5px}
+/* nav dropdown */
+.dd{width:330px;background:#fff;border-radius:var(--r-lg);box-shadow:var(--e2);border:1px solid var(--divider);padding:10px 0;overflow:hidden}
+.dd a{display:flex;gap:12px;align-items:center;padding:8px 16px;text-decoration:none;color:var(--ink)}
+.dd a:hover{background:var(--paper)}
+.dd .th{width:44px;height:44px;border-radius:var(--r-md);flex:none;background:linear-gradient(120deg,#BFD8DE,#E6EFF1)}
+.dd .th.sand{background:linear-gradient(120deg,#D9CFC1,#F0E9E0)}
+.dd b{display:block;font-size:14.5px;font-weight:700;letter-spacing:-.005em}
+.dd span{display:block;font-size:12.5px;color:var(--soft);font-variant-numeric:tabular-nums}
+.dd .hdr{font-size:10.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);padding:9px 16px 5px}
+.dd .sep{height:1px;background:var(--divider);margin:8px 0}
+.dd .all{padding:11px 16px 6px;font-size:13.5px;font-weight:700;color:var(--cta-deep);border-top:1px solid var(--divider);margin-top:8px}
+.dd .place b{display:inline-flex;align-items:center;gap:6px}
+.pin{width:13px;height:13px;fill:none;stroke:var(--cta);stroke-width:2;stroke-linejoin:round;flex:none}
+.dd .place{background:linear-gradient(90deg,rgba(253,238,228,.55),rgba(253,238,228,0))}
+/* destination page category row */
+.dp{border:1px solid var(--border);border-radius:18px;background:#fff;padding:20px 22px 22px;width:640px;overflow:hidden}
+.dp h4{font-family:var(--display);font-size:19px;font-weight:700;letter-spacing:-.015em}
+.dp .sub{font-size:12.5px;color:var(--soft);margin-top:3px}
+.catrow{display:flex;gap:14px;margin-top:16px}
+.cat{flex:0 0 140px;text-decoration:none;color:var(--ink)}
+.cat .im{aspect-ratio:4/3;border-radius:var(--r-md);background:linear-gradient(120deg,#BFD8DE,#E6EFF1);position:relative;overflow:hidden}
+.cat.sand .im{background:linear-gradient(120deg,#D9CFC1,#F0E9E0)}
+.cat b{display:block;font-size:13.5px;letter-spacing:-.005em;margin-top:9px}
+.cat span{font-size:12px;color:var(--soft)}
+.cat.place .tagp{position:absolute;left:7px;top:7px;display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.94);
+ border-radius:var(--r-pill);padding:3px 9px 3px 7px;font-size:10.5px;font-weight:800;color:var(--cta-deep)}
+.cat.place b{display:flex;align-items:center;gap:5px}
+.dp .eyed{font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--cta-deep);margin-bottom:4px}
+.cat span.clash{color:#B4341C;font-weight:700}
+.fade{flex:0 0 40px;background:linear-gradient(90deg,rgba(255,255,255,0),#fff)}
+.note{margin-top:22px;border-left:3px solid var(--cta);background:var(--white);border-radius:0 var(--r-md) var(--r-md) 0;padding:14px 18px;font-size:13px;color:var(--soft);max-width:1240px}
+.note b{color:var(--ink)}
+.note ul{margin:6px 0 0 18px}.note li{margin-top:5px}
+.note.flag{border-left-color:#B4341C}
+.pick{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-radius:var(--r-xs);
+ padding:3px 8px;background:#EEF6EF;color:#15803D;border:1px solid #CFE7D4;margin-left:8px}
+.alt{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-radius:var(--r-xs);
+ padding:3px 8px;background:var(--paper);color:var(--soft);border:1px solid var(--border);margin-left:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">MCK-19</div>
+  <h1 class="pt">Where an activity hub lives in discovery</h1>
+  <p class="lede">The Cura&ccedil;ao page already routes people to Klein Cura&ccedil;ao, twice: in the hero quick links and as the first tile under Explore by type. What it does not do is say what kind of thing it is, so a place is dressed as a category and given a tour count that sits next to the category counts. The nav dropdown, meanwhile, has no way in at all. Two small changes, no new page and no new section: give the place a label instead of a count, and give the dropdown a row.</p>
+
+  <h2>1 &middot; The Categories dropdown</h2>
+  <p class="h2sub">This is the one surface with no route to a hub. The row goes above the categories rather than inside the list, because master 2.4 defines the list as drawn from the 19 global categories and because the sets overlap: the same boats sit in Klein Cura&ccedil;ao, in Day Trips and in Boat Tours at once. A rule and a pin carry the distinction; the row takes no count, for the reason under the drawing.</p>
+  <div class="row">
+    <div><h3 class="lbl badl">As built</h3><div class="cap">Seven categories and a footer link. Correct against 2.4, and there is no way from here to the island&rsquo;s best-selling trip. It is the only surface in the chrome with no route to a hub at all.</div><div class="dd"><a href="#"><div class="th "></div><div><b>Boat Tours &amp; Cruises</b><span>13 tours</span></div></a><a href="#"><div class="th sand"></div><div><b>Snorkeling Tours</b><span>8 tours</span></div></a><a href="#"><div class="th "></div><div><b>Scuba Diving</b><span>4 tours</span></div></a><a href="#"><div class="th sand"></div><div><b>Yacht Charters</b><span>5 tours</span></div></a><a href="#"><div class="th "></div><div><b>Day Trips</b><span>9 tours</span></div></a><a href="#"><div class="th sand"></div><div><b>Off-Road Tours</b><span>4 tours</span></div></a><a href="#"><div class="th "></div><div><b>Cultural &amp; Historical Tours</b><span>3 tours</span></div></a><div class="all">All Cura&ccedil;ao tours &rarr;</div></div></div>
+    <div><h3 class="lbl goodl">Proposed <span class="pick">Decided Aug 9</span></h3><div class="cap">The place row first, tinted, carrying the pin and no tour count, then a rule, then the categories exactly as they are. No group headings: the button that opens this menu already says Categories, so a heading repeating that word inside it is a heading for nothing, and the hero quick links on the same page already mix a hub, a collection and a category in one unlabelled row.</div><div class="dd"><a href="#" class="place"><div class="th"></div><div><b><svg class="pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.6"/></svg>Klein Cura&ccedil;ao</b><span>Day trips and private charters</span></div></a><div class="sep"></div><a href="#"><div class="th "></div><div><b>Boat Tours &amp; Cruises</b><span>13 tours</span></div></a><a href="#"><div class="th sand"></div><div><b>Snorkeling Tours</b><span>8 tours</span></div></a><a href="#"><div class="th "></div><div><b>Scuba Diving</b><span>4 tours</span></div></a><a href="#"><div class="th sand"></div><div><b>Yacht Charters</b><span>5 tours</span></div></a><a href="#"><div class="th "></div><div><b>Day Trips</b><span>9 tours</span></div></a><a href="#"><div class="th sand"></div><div><b>Off-Road Tours</b><span>4 tours</span></div></a><a href="#"><div class="th "></div><div><b>Cultural &amp; Historical Tours</b><span>3 tours</span></div></a><div class="all">All Cura&ccedil;ao tours &rarr;</div></div></div>
+  </div>
+  <div class="note flag"><b>Why the row has no count, and why this is already live.</b> Every category row counts tours in that category. A hub is not a slice of the catalogue, it is a place, and its number depends on what you count: the shared day trips, or those plus the private charters. On the Cura&ccedil;ao page today the place tile reads <b>10 tours</b> two tiles away from <b>Day Trips, 9 tours</b>, and the hub&rsquo;s own page shows nine day trips, so the same product has two numbers and neither is explained. Replacing the count with what kind of thing it is fixes the ambiguity and the arithmetic in one move.</div>
+
+  <h2>2 &middot; The destination page</h2>
+  <p class="h2sub">The tile is already there and already first, so this is the smallest change in the file: drop the tour count, add the place label. No divider, no reordering, no new section, and the review-locked order in 5.2 is untouched.</p>
+  <div class="row">
+    <div><h3 class="lbl badl">As built</h3><div class="cap">The tile is already first, which is right. It is dressed as a category: same shape, same count position, and the number collides with the Day Trips tile two along. Nothing on it says this is a place rather than a facet.</div><div class="dp"><div class="eyed">Cura&ccedil;ao</div><h4>Explore by type</h4><div class="catrow"><a href="#" class="cat"><div class="im"></div><b>Klein Cura&ccedil;ao</b><span class="clash">10 tours</span></a><a href="#" class="cat "><div class="im"></div><b>Boat Tours &amp; Cruises</b><span>13 tours</span></a><a href="#" class="cat sand"><div class="im"></div><b>Day Trips</b><span class="clash">9 tours</span></a><a href="#" class="cat "><div class="im"></div><b>Snorkeling Tours</b><span>8 tours</span></a><a href="#" class="cat sand"><div class="im"></div><b>Scuba Diving</b><span>4 tours</span></a><div class="fade"></div></div></div></div>
+    <div><h3 class="lbl goodl">Proposed</h3><div class="cap">Same row, same tile, same position. The count becomes the place label with the pin, and the line under the title says what is there. No divider between it and the categories: the label is doing that work, and a rule inside a horizontally scrolling row breaks as soon as it scrolls.</div><div class="dp"><div class="eyed">Cura&ccedil;ao</div><h4>Explore by type</h4><div class="catrow"><a href="#" class="cat place"><div class="im"><span class="tagp"><svg class="pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.6"/></svg>Place</span></div><b>Klein Cura&ccedil;ao</b><span>Day trips and charters</span></a><a href="#" class="cat "><div class="im"></div><b>Boat Tours &amp; Cruises</b><span>13 tours</span></a><a href="#" class="cat sand"><div class="im"></div><b>Day Trips</b><span>9 tours</span></a><a href="#" class="cat "><div class="im"></div><b>Snorkeling Tours</b><span>8 tours</span></a><a href="#" class="cat sand"><div class="im"></div><b>Scuba Diving</b><span>4 tours</span></a><div class="fade"></div></div></div></div>
+  </div>
+
+  <div class="note"><b>What this is, and what it is not.</b>
+  <ul>
+    <li>It is <b>not</b> a hub becoming a category. The category list still draws only from the 19 in 2.4, which keeps the slug registry&rsquo;s separation of hub and category intact in the UI as well as in the URL space.</li>
+    <li>It is <b>not</b> a new section, a new tile or a reorder on the destination page. 5.2&rsquo;s order is review-locked and stays as it is; one tile loses a number and gains a label.</li>
+    <li>The place tile carries no tour count, for the reason above, and its label says what kind of thing it is.</li>
+    <li>On mobile nothing changes: the dropdown keeps its rule and the destination row keeps its horizontal scroll, with the place tile already in first position so it is on screen without scrolling.</li>
+    <li>Both surfaces use the pin the tour card eyebrow already uses, so a place reads as a place everywhere on the platform.</li>
+    <li>No group headings in the dropdown, decided August 9. The trigger button already says Categories, and the hero quick links on the destination page already run a hub, a collection and a category together in one unlabelled row, so an unlabelled mixed list is the pattern this platform already has rather than a new one.</li>
+  </ul></div>
+
+  <div class="note flag"><b>Three things to settle before this is built.</b>
+  <ul>
+    <li><b>2.4 needs one sentence either way.</b> It currently says the curated discovery list draws from the 19 categories, full stop. If a hub gets a row above the rule, that sentence has to say so, or the next person to read 2.4 removes the row as a bug. Same edit, same day, as the 3.5 note that is already owed.</li>
+    <li><b>Which hubs qualify.</b> Klein Cura&ccedil;ao is obvious. Willemstad is a hub too. A rule is cheaper than a judgement call per island: a hub appears here when it has its own page and a minimum number of bookable tours, the same shape of gate 2.4 already applies to categories below three published tours.</li>
+    <li><b>Autocomplete first.</b> The search panel is the one surface already specced to offer hubs as their own entries, and it does not. Fixing that is smaller than either change here and it is already a finding, so it is worth doing in the same pass rather than after.</li>
+  </ul></div>
+
+</div>
+</body>
+</html>
