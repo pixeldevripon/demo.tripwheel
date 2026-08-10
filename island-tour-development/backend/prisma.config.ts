@@ -14,9 +14,9 @@ export default defineConfig({
   },
   datasource: {
     url: env<Env>('DATABASE_URL'),
-    // Only needed by `prisma migrate diff --from/to-migrations` (e.g. the
-    // re-baseline procedure in scripts/loadtest/../BOOKING-CONCURRENCY-
-    // HARDENING.md F5 note). Optional: unset for all normal commands.
+    // Only needed by `prisma migrate diff --from/to-migrations` (the
+    // re-baseline procedure in prisma/MIGRATION-BASELINE.md). Optional:
+    // unset for all normal commands.
     ...(process.env.SHADOW_DATABASE_URL
       ? { shadowDatabaseUrl: process.env.SHADOW_DATABASE_URL }
       : {}),

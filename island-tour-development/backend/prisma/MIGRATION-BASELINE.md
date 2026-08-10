@@ -1,6 +1,6 @@
 # Migration baseline (2026-08-10) — what happened and what to run
 
-The 118-migration history was squashed into a single verified baseline,
+The 117-migration history was squashed into a single verified baseline,
 `migrations/20260810160000_baseline`, for the fresh-VPS production deploy.
 
 ## Why this is safe (the verification, not the promise)
@@ -12,12 +12,12 @@ The 118-migration history was squashed into a single verified baseline,
   at the end of the baseline): the `unaccent` extension + `immutable_unaccent`
   wrapper, the `departures_booked_within_capacity` CHECK, and one `NOT NULL`
   the diff engine drops on enum-array columns.
-- **Equivalence gate:** a database built from the old 118-migration history
+- **Equivalence gate:** a database built from the old 117-migration history
   and one built from the baseline produced IDENTICAL `pg_dump --schema-only`
   output (empty diff). The gate also caught and led to dropping two orphaned
   reverted layers (resources, iCal) before the freeze.
 
-## Fresh database (new VPS, new dev machine, CI)
+## Fresh database (new VPS, new dev machine)
 
 Nothing special — the normal flow just works:
 
@@ -29,20 +29,47 @@ pnpm prisma:seed              # RUN_SEED=true does this in the container
 ## EXISTING database (current prod, an old dev clone)
 
 An existing DB already HAS the schema — it must be re-pointed, never reset.
-**Do this BEFORE booting the new image** (docker-entrypoint runs
-`migrate deploy` at startup and will fail loudly on the old history rows):
+
+**PROD TIMING — read this sentence twice:** pushing to `prod` AUTO-DEPLOYS
+(`.github/workflows/deploy-backend.yml`), and the container entrypoint runs
+`migrate deploy` at boot. So "re-point before booting the new image" means
+**re-point before (or immediately at) merging the squash to `prod`** — and do
+not restart the OLD container in the window after the re-point (its checkout
+still carries the old 117 migrations and would try to re-apply them).
+
+**On the prod VPS the DB is only reachable from inside the compose network**
+(postgres publishes no ports; the host has no psql/node and must not carry a
+`DATABASE_URL`). Run the container-scoped forms, from the app directory,
+with the NEW commit checked out:
 
 ```bash
 # 1) forget the old history (rows reference deleted migration folders)
-psql "$DATABASE_URL" -c 'DELETE FROM "_prisma_migrations";'
+docker compose exec postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+  -c 'DELETE FROM "_prisma_migrations";'
 # 2) mark the baseline as already applied (computes the correct checksum)
-npx prisma migrate resolve --applied 20260810160000_baseline
+docker compose run --rm --no-deps --entrypoint \
+  "npx prisma migrate resolve --applied 20260810160000_baseline" backend
 # 3) sanity: must print "No pending migrations to apply."
-npx prisma migrate deploy
+docker compose run --rm --no-deps --entrypoint \
+  "npx prisma migrate deploy" backend
 ```
 
-Run from the NEW checkout (the one whose `migrations/` contains only the
-baseline), with `DATABASE_URL` pointing at the target DB. No data is touched.
+On a machine where you CAN reach the DB directly (an old dev clone, or the
+dockerized dev stack's persistent `island-dev-postgres` volume from
+`docker-compose.dev.yml`), the plain forms work from the new checkout:
+
+```bash
+psql "$DATABASE_URL" -c 'DELETE FROM "_prisma_migrations";'
+npx prisma migrate resolve --applied 20260810160000_baseline
+npx prisma migrate deploy   # must print "No pending migrations to apply."
+```
+
+No data is touched either way.
+
+**Forgot the re-point?** The failure is loud and non-corrupting: the baseline
+aborts on its first duplicate `CREATE TYPE`, rolls back in one transaction,
+and the container restart-loops. Recovery is exactly the three steps above —
+step 1's DELETE also clears the failed baseline row.
 
 ## Re-baselining again someday (the procedure that was used)
 

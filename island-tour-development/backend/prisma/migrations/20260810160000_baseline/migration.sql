@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════
--- SQUASHED BASELINE (2026-08-10) - replaces the previous 118-migration
+-- SQUASHED BASELINE (2026-08-10) - replaces the previous 117-migration
 -- history. See prisma/MIGRATION-BASELINE.md for why, how it was verified,
 -- and what to do with databases that predate it.
 --
@@ -11,7 +11,7 @@
 --      section near the end): the unaccent extension + immutable wrapper,
 --      the departures seat-invariant CHECK, and one NOT NULL the diff
 --      engine drops on enum-array columns.
---   3. EQUIVALENCE GATE: a database built from the old 118-migration history
+--   3. EQUIVALENCE GATE: a database built from the old 117-migration history
 --      and one built from this file produce IDENTICAL
 --      `pg_dump --schema-only` output (empty diff, 2026-08-10).
 --
