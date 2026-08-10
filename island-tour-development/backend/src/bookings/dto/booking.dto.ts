@@ -1402,7 +1402,10 @@ export class ReserveBookingDto {
     description: 'Client-supplied id - idempotency key. Generated if omitted.',
   })
   @IsOptional()
-  @IsUUID()
+  // v4 ONLY: the widget mints these via crypto.randomUUID(). Looser versions
+  // admit predictable ids (NIL, timestamp-based v1) that a squatter could
+  // pre-create to collide with a future buggy client's deterministic keys.
+  @IsUUID(4)
   id?: string;
 
   @ApiProperty({ example: 'tour-uuid' })

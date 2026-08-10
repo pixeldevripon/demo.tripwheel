@@ -156,7 +156,7 @@ These are ranked. Each is expanded in its section below.
 - [x] **F1 - atomic `releaseSeats`** (SQL `GREATEST` decrement, no read-modify-write). DONE 2026-08-10.
 - [x] **F2 - `claimSeats()` helper, guard in SQL** (one raw guarded UPDATE, fused `SOLD_OUT` flip, 4 call sites; live-column capacity guard closes the concurrent-capacity-edit hole). DONE 2026-08-10.
 - [x] **F3 - claim last in the reserve transaction** (hot-row lock ≈ one statement + commit). DONE 2026-08-10.
-- [ ] **F4 - idempotent replay on reserve** (`dto.id` honoured: pre-check + P2002 catch).
+- [x] **F4 - idempotent replay on reserve.** DONE 2026-08-10. The replay pre-check already existed; added the key-reuse 409 (`assertSameReservation`), the in-flight duplicate P2002-on-PK catch (loser answers with the winner's booking, fires no side effects), and fixed the constraint-error predicates to read the pg driver adapter's NESTED meta (`driverAdapterError.cause.constraint`) - a top-level-only read never matches in production. `Test:` `test/booking-idempotency.e2e-spec.ts` (real HTTP: sequential replay, parallel duplicates → one row, mismatched reuse → 409, replay reports current state).
 - [ ] **F5 - DB CHECK constraint** `0 <= bookedCount <= capacity` + capacity-edit 409 guards.
 - [ ] **F6 - explicit pool + timeouts** (pool max, connect/statement/lock timeouts).
 - [ ] **F7 - load test with postconditions** (exact-capacity assertion; the exit gate).
