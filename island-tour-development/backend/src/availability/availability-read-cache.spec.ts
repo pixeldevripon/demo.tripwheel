@@ -37,6 +37,19 @@ describe('AvailabilityReadCache', () => {
     );
   });
 
+  it('single-flights concurrent cold reads - one compute, both callers served', async () => {
+    const cache = new AvailabilityReadCache();
+    let resolve!: (v: string) => void;
+    const compute = jest
+      .fn()
+      .mockReturnValue(new Promise<string>((r) => (resolve = r)));
+    const [p1, p2] = [cache.through('k', compute), cache.through('k', compute)];
+    resolve('once');
+    expect(await p1).toBe('once');
+    expect(await p2).toBe('once');
+    expect(compute).toHaveBeenCalledTimes(1);
+  });
+
   it('a rejected compute caches NOTHING - the next read retries', async () => {
     const cache = new AvailabilityReadCache();
     const compute = jest

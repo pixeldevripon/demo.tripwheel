@@ -25,16 +25,22 @@ export class AvailabilityReadCache {
 
   private readonly store = new Map<
     string,
-    { value: unknown; expires: number }
+    { value: Promise<unknown>; expires: number }
   >();
 
-  /** Serve `compute()` through the cache under `key`. */
-  async through<T>(key: string, compute: () => Promise<T>): Promise<T> {
+  /**
+   * Serve `compute()` through the cache under `key`. Stores the IN-FLIGHT
+   * promise, not the resolved value: concurrent cold reads on the same key
+   * share one compute (single-flight - a rush's first 15s window costs one
+   * DB round-trip, not one per concurrent request). A rejection evicts
+   * itself, so failures cache nothing and the next read retries.
+   */
+  through<T>(key: string, compute: () => Promise<T>): Promise<T> {
     const hit = this.store.get(key);
-    if (hit && hit.expires > Date.now()) return hit.value as T;
+    if (hit && hit.expires > Date.now()) return hit.value as Promise<T>;
     if (hit) this.store.delete(key);
 
-    const value = await compute();
+    const value = compute();
     if (this.store.size >= AvailabilityReadCache.MAX_ENTRIES) {
       // Map iterates in insertion order: dropping the first key is a cheap
       // oldest-out eviction - plenty at this TTL.
@@ -44,6 +50,11 @@ export class AvailabilityReadCache {
     this.store.set(key, {
       value,
       expires: Date.now() + AvailabilityReadCache.TTL_MS,
+    });
+    value.catch(() => {
+      // Evict only if OUR promise still occupies the slot - a fresh entry
+      // written after this one expired must not be collateral damage.
+      if (this.store.get(key)?.value === value) this.store.delete(key);
     });
     return value;
   }
