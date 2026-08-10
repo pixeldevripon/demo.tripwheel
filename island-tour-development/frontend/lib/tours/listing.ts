@@ -89,6 +89,7 @@ export function collectionTourToListing(
     // tour's own localized overview (Option 1) so the blurb stays correct as the
     // filter set changes.
     description: tour.rationale ?? tour.overview ?? undefined,
+    shortDescription: tour.shortDescription ?? null,
     duration: formatDuration(tour.durationMinutesFrom, tour.durationMinutesTo, duration),
     hub: tour.hubs?.[0] ?? null,
     pickupAvailable: tour.pickupModel !== 'NONE',
@@ -131,6 +132,7 @@ export function searchHitToListing(
     rating: hasReviews ? hit.aggregateRating ?? undefined : undefined,
     reviewCount: hasReviews ? hit.aggregateReviewCount : undefined,
     title: hit.title,
+    shortDescription: hit.shortDescription ?? null,
     duration: formatDuration(hit.durationMinutesFrom, hit.durationMinutesTo, duration),
     hub: hit.hubs?.[0] ?? null,
     pickupAvailable: hit.pickupModel !== 'NONE',

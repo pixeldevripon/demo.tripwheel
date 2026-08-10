@@ -86,6 +86,8 @@ export interface CollectionRenderTour {
   rationale?: string | null;
   /** DYNAMIC: the tour's own localized overview, used as the card blurb (Option 1). */
   overview?: string | null;
+  /** Card teaser for the carousel description slide (S4j); backend falls back to an overview excerpt. */
+  shortDescription?: string | null;
 }
 
 export interface CollectionRelated {

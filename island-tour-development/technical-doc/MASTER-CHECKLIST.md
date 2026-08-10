@@ -760,7 +760,7 @@ Pages/CMS module, observability (Sentry/backups/deep health), and founder-gated 
 - [x] `TourCardSkeleton`
 - [x] Fix 1 — no 01/02/03 ranking ribbon (position is the only ranking signal)
 - [~] Fix 2 — badge colour hierarchy (urgency red/deep-orange · authority dark · New ivory), max 1 badge per card, priority `Likely to sell out > Bestseller > New` — a badge system exists; the locked colour hierarchy and the max-1 rule are unverified
-- [ ] Fix 4 — desktop 5–7 photo carousel with always-visible dots, hover arrows, lazy loading after the first image, and a final description slide (~150 chars, word-boundary truncation, `...More`); mobile stays a single hero image
+- [x] Fix 4 — photo carousel (5 photos max) with always-visible quiet dots (S4j: 60% + soft shadow at rest, full on hover/focus), position-aware hover/focus chevrons, lazy loading after the first image, and a final description slide (`shortDescription`, else a ≤160-char word-boundary overview excerpt) on every card payload incl. wishlist; mobile swipes natively (scroll-snap, no chevrons) with the same dots as the signal — DIT-20 (2026-08-06) sanctions image-led mobile cards over the old single hero; the horizontal 40/60 `mobileRow` card still opts in per listing and swipes too
 - [ ] Fix 6 — outlined check-circle icon for Free Cancellation, matched in style/stroke/size/colour to the duration and pickup icons
 - [ ] Fix 8 — locale-aware thousands separator on the review count plus `aria-label="4.8 out of 5 stars, 1,738 reviews"`
 - [ ] Fix 9 — locale-aware duration formatter with all six locked rules (<60min, exactly 60, whole hours, hours+minutes, whole-hour range, mixed range; never decimals, never string concatenation)

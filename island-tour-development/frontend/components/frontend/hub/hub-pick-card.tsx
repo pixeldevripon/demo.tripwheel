@@ -28,7 +28,7 @@ export type HubPick = {
     priceDisplay: string;
     /** Localized price-unit suffix (e.g. "/per boat" or "/per"); appended after the price. */
     priceUnit: string;
-    /** Hero-first image set for the hover carousel. */
+    /** Hero-first image set for the card carousel (quiet dots always, S4j). */
     images: string[];
 };
 
@@ -37,6 +37,11 @@ export type HubPickCardDict = {
     bookTrip: string;
     learnMore: string;
     readLess: string;
+    /** Carousel chevron aria-labels (S4j) - "Previous photo" / "Next photo". */
+    prevPhotoAria: string;
+    nextPhotoAria: string;
+    /** The description slide's closing line - "Full details on the tour page". */
+    fullDetails: string;
 };
 
 const LABEL_ICON: Record<HubPickLabel, string> = {
@@ -156,12 +161,19 @@ export function HubPickCard({
                 </MotionLink>
             </div>
 
-            {/* Image carousel - controls reveal on card hover */}
+            {/* Image carousel - quiet dots always, arrows on hover/focus (S4j) */}
             <div className='relative aspect-16/10 w-full shrink-0 overflow-hidden rounded-it-md bg-it-bg max-md:order-1'>
                 <TourCardCarousel
                     images={pick.images}
                     alt={pick.title}
                     sizes='(max-width: 768px) 42vw, 600px'
+                    prevAria={dict.prevPhotoAria}
+                    nextAria={dict.nextPhotoAria}
+                    descSlide={{
+                        title: pick.title,
+                        description: pick.description,
+                        linkLabel: dict.fullDetails,
+                    }}
                 />
             </div>
         </article>

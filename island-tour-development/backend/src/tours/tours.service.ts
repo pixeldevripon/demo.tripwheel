@@ -25,6 +25,7 @@ import {
   buildDerivedAttributeWhere,
 } from '@/attributes/derived-attributes';
 import { PAID_TIER_MAX_RANK } from '@/tiers/tiers.service';
+import { cardTeaser, cardTeaserTranslationSelect } from './card-teaser';
 import { evaluateLikelyToSellOut } from './demand-signal';
 import { computeQualityScore, listingCompleteness } from './quality-score';
 import {
@@ -553,7 +554,7 @@ export class ToursService {
    * Resolves an ordered list of tour ids to flattened LIVE tours, preserving the input
    * order and dropping any that are missing/not live. Used by manual Collections.
    */
-  async findPublicByIds(ids: string[], target?: Currency) {
+  async findPublicByIds(ids: string[], target?: Currency, locale?: Locale) {
     if (!ids.length) return [];
     const tours = await this.prisma.tour.findMany({
       // Bookability gate (master §7.2): excluded from EVERY ranked result set -
@@ -567,9 +568,23 @@ export class ToursService {
       select: {
         ...this.tourSelect,
         images: this.cardImagesArgs,
+        // Card teaser for the carousel description slide (S4j). English when
+        // the caller is not locale-aware (legacy resolution paths).
+        translations: {
+          where: { locale: locale ?? Locale.en },
+          select: cardTeaserTranslationSelect,
+        },
       },
     });
-    const byId = new Map(tours.map((t) => [t.id, this.flattenTour(t)]));
+    const byId = new Map(
+      tours.map(({ translations, ...t }) => [
+        t.id,
+        {
+          ...this.flattenTour(t),
+          shortDescription: cardTeaser(translations[0]),
+        },
+      ]),
+    );
     const result = ids
       .map((id) => byId.get(id))
       .filter((t): t is NonNullable<typeof t> => Boolean(t));
@@ -738,7 +753,10 @@ export class ToursService {
       select: {
         ...this.tourSelect,
         destination: { select: { slug: true } },
-        translations: { where: { locale }, select: { title: true } },
+        translations: {
+          where: { locale },
+          select: { title: true, ...cardTeaserTranslationSelect },
+        },
         images: this.cardImagesArgs,
       },
     });
@@ -847,9 +865,12 @@ export class ToursService {
     const hitSelect = {
       ...this.tourSelect,
       // Each hit must carry enough to build its flat URL (/{dest}/{slug}) and
-      // show a localized title without a second round-trip.
+      // show a localized title + card teaser without a second round-trip.
       destination: { select: { slug: true } },
-      translations: { where: { locale }, select: { title: true } },
+      translations: {
+        where: { locale },
+        select: { title: true, ...cardTeaserTranslationSelect },
+      },
       images: this.cardImagesArgs,
       // Widened from tourSelect's id-only shape: the typeahead groups hits
       // under their (localized) primary-category name.
@@ -951,7 +972,11 @@ export class ToursService {
     T extends {
       name: string;
       destination?: { slug: string } | null;
-      translations?: { title: string | null }[];
+      translations?: {
+        title: string | null;
+        shortDescription?: string | null;
+        overview?: string | null;
+      }[];
       categories?: { categoryId: string; isPrimary: boolean }[];
       hubs?: { hubId: string; hub?: { name: string; slug: string } | null }[];
     },
@@ -961,6 +986,8 @@ export class ToursService {
       ...this.flattenTour(rest),
       destinationSlug: destination?.slug ?? null,
       title: translations?.[0]?.title?.trim() || hit.name,
+      // Null when the select did not ask for it (e.g. typeahead suggestions).
+      shortDescription: cardTeaser(translations?.[0]),
     };
   }
 
@@ -1583,11 +1610,12 @@ export class ToursService {
         where,
         select: {
           ...this.tourSelect,
-          // Localized title + overview for the card (title falls back to the
-          // canonical name; overview backs the DYNAMIC collection card's blurb).
+          // Localized title + overview + teaser for the card (title falls back
+          // to the canonical name; overview backs the DYNAMIC collection card's
+          // blurb; shortDescription backs the carousel description slide).
           translations: {
             where: { locale },
-            select: { title: true, overview: true },
+            select: { title: true, ...cardTeaserTranslationSelect },
           },
           // Destination slug so a listing item can build its flat URL even when
           // the list is not scoped to a single destination.
@@ -1609,6 +1637,7 @@ export class ToursService {
         ...this.flattenTour(t),
         title: translations[0]?.title ?? t.name,
         overview: translations[0]?.overview ?? null,
+        shortDescription: cardTeaser(translations[0]),
         destinationSlug: destination?.slug ?? null,
         badge: this.deriveTourBadge(t),
         attributes: attributesByTour.get(t.id) ?? [],

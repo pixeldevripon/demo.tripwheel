@@ -36,6 +36,11 @@ export type TourCardDict = {
      */
     saveAria: string;
     removeAria: string;
+    /** Carousel chevron aria-labels (S4j) - "Previous photo" / "Next photo". */
+    prevPhotoAria: string;
+    nextPhotoAria: string;
+    /** The description slide's closing line - "Full details on the tour page". */
+    fullDetails: string;
     pickupAvailable: string;
     freeCancellation: string;
     priceVaries: string;
@@ -64,8 +69,14 @@ export type TourListing = {
      * never trigger navigation).
      */
     href?: string;
-    /** Array of image paths for the hover-gallery slider */
+    /** Hero-first image set for the card carousel (quiet dots always, S4j). */
     images: string[];
+    /**
+     * Card teaser (≤160 chars) - the carousel's description slide (S4j #4).
+     * The backend derives it (`shortDescription`, else an overview excerpt);
+     * null/absent means the carousel is photos only.
+     */
+    shortDescription?: string | null;
     badge: TourBadge;
     /** Omit to hide the star-rating row entirely */
     rating?: number;
@@ -267,6 +278,9 @@ function DefaultTourCard({
     const wishlisted = isSaved(tour.id);
     const isRated = tour.rating !== undefined;
     const priceLabel = dict[tour.priceUnit];
+    // One stripped title for the h3 AND the description slide, so the slide
+    // can never disagree with the heading under it.
+    const displayTitle = stripHubPrefix(tour.title, tour.hub?.name);
     // Design v2 .tc.peach: the highlighted (first) / tinted card sits on the
     // warm peach surface with its hairline border; every other card is white
     // and flat, lifting 2px with the card-hover shadow.
@@ -305,17 +319,26 @@ function DefaultTourCard({
                     mobileRow &&
                         'max-sm:w-2/5 max-sm:aspect-auto max-sm:rounded-l-[12px] max-sm:rounded-tr-none'
                 )}>
+                {/* The design-v2 bottom scrim rides inside the carousel, per
+                    photo, so the description slide's paper surface stays clean. */}
                 <TourCardCarousel
                     images={tour.images}
                     alt={tour.title}
                     sizes='(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 384px'
                     priority={priority}
+                    prevAria={dict.prevPhotoAria}
+                    nextAria={dict.nextPhotoAria}
+                    scrim
+                    descSlide={
+                        tour.shortDescription
+                            ? {
+                                  title: displayTitle,
+                                  description: tour.shortDescription,
+                                  linkLabel: dict.fullDetails,
+                              }
+                            : undefined
+                    }
                 />
-                {/* Soft bottom scrim over the photo edge (design v2) - only
-                    when a photo exists; the empty paper fallback stays flat. */}
-                {tour.images.length > 0 && (
-                    <div className='pointer-events-none absolute inset-0 z-1 bg-[image:var(--it-scrim-tile)]' />
-                )}
                 {/* Badge (top-left).
                     The inset tightens on a narrow image (the mobile row card):
                     10px of inset either side is a big share of a ~144px photo,
@@ -417,7 +440,7 @@ function DefaultTourCard({
 
                 {/* Tour title */}
                 <h3 className='m-0 font-it-body font-bold text-[13px] @[220px]:text-[15.5px] leading-[1.3] tracking-[-0.005em] text-it-ink line-clamp-2 @[220px]:min-h-[2.6em]'>
-                    {stripHubPrefix(tour.title, tour.hub?.name)}
+                    {displayTitle}
                 </h3>
 
                 {/* Meta column: duration, pickup (design v2 .tc .meta) */}
@@ -549,8 +572,8 @@ function DefaultTourCard({
 // ── RankedTourCard ────────────────────────────────────────────────────────────
 /**
  * Ranked collection card (Figma node 47433:2088). A surface (#f8f8f8) card,
- * radius 24, with a numbered badge over the image carousel (hover-revealed
- * arrows + dots, like every tour card), then rating, title, a short
+ * radius 24, with a numbered badge over the image carousel (quiet dots always,
+ * hover/focus arrows - the sitewide S4j rule), then rating, title, a short
  * description, a combined "duration · From $price" row, and a free
  * cancellation note. Carries the same top-right wishlist heart as the
  * standard card (it stops propagation, so the card link never fires).
@@ -566,6 +589,7 @@ function RankedTourCard({
     const wishlisted = isSaved(tour.id);
     const rank = String(tour.rank).padStart(2, '0');
     const isRated = tour.rating !== undefined;
+    const displayTitle = stripHubPrefix(tour.title, tour.hub?.name);
 
     // Design v2 collection card (5.6): the standard v2 chassis + a 34px orange
     // rank circle on the photo, the italic curation rationale under the title,
@@ -592,10 +616,19 @@ function RankedTourCard({
                     alt={tour.title}
                     sizes='(max-width: 640px) 40vw, (max-width: 1024px) 50vw, 384px'
                     priority={priority}
+                    prevAria={dict.prevPhotoAria}
+                    nextAria={dict.nextPhotoAria}
+                    scrim
+                    descSlide={
+                        tour.shortDescription
+                            ? {
+                                  title: displayTitle,
+                                  description: tour.shortDescription,
+                                  linkLabel: dict.fullDetails,
+                              }
+                            : undefined
+                    }
                 />
-                {tour.images.length > 0 && (
-                    <div className='pointer-events-none absolute inset-0 z-1 bg-[image:var(--it-scrim-tile)]' />
-                )}
                 {/* Rank circle (top-left) + Wishlist (top-right) */}
                 <div className='absolute inset-x-2.5 top-2.5 z-10 flex items-start justify-between gap-2'>
                     <span className='grid size-[34px] place-items-center rounded-it-full bg-it-primary text-[13px] font-bold text-it-white shadow-it-sm tabular-nums'>
@@ -650,7 +683,7 @@ function RankedTourCard({
                     </div>
                 )}
                 <h3 className='m-0 font-it-body font-bold text-[13px] @[220px]:text-[15.5px] leading-[1.3] tracking-[-0.005em] text-it-ink line-clamp-2'>
-                    {stripHubPrefix(tour.title, tour.hub?.name)}
+                    {displayTitle}
                 </h3>
 
                 {/* Curation rationale - the required CMS line, italic. */}
