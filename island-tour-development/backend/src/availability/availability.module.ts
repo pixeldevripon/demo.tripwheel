@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { NotificationsModule } from '@/notifications/notifications.module';
 import { AvailabilityController } from './availability.controller';
 import { AvailabilityMaterializerService } from './availability-materializer.service';
+import { AvailabilityReadCache } from './availability-read-cache';
 import { AvailabilityService } from './availability.service';
 
 /**
@@ -14,7 +15,11 @@ import { AvailabilityService } from './availability.service';
 @Module({
   imports: [NotificationsModule],
   controllers: [AvailabilityController],
-  providers: [AvailabilityService, AvailabilityMaterializerService],
+  providers: [
+    AvailabilityService,
+    AvailabilityMaterializerService,
+    AvailabilityReadCache,
+  ],
   exports: [AvailabilityService, AvailabilityMaterializerService],
 })
 export class AvailabilityModule {}
