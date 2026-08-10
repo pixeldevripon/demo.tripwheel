@@ -6,7 +6,9 @@ import { HubScrollButton } from './hub-scroll-button';
  * Activity Hub "Discover {hub}" editorial section (Figma node 48371:20778 desktop
  * / 48618:8207 + 48618:8212 mobile). A full-bleed image banner with the heading +
  * summary overlaid at the bottom-left, a grid of editorial cards (two columns
- * desktop, single column mobile), and a single "Book your trip" outline CTA.
+ * desktop, single column mobile), and a closing CTA band (mck-16 §5): one line,
+ * one fact, one button on a cta-tint band - the old lone outline pill floated
+ * unheld on white and read as less than a button.
  *
  * Rendered as the "Discover" panel inside <HubTripsSection> (a scroll-nav target,
  * like Trips and Private charters), so it sits inside the page's `it-container`.
@@ -27,8 +29,19 @@ export type HubDiscoverDict = {
     title: string;
     /** Banner sub-line beneath the heading. */
     subtitle: string;
-    /** Outline CTA label, e.g. "Book your trip". */
-    bookTrip: string;
+    /** Closing CTA band: one line, one fact, one button (mck-16 §5). */
+    cta: {
+        /** The one claim, e.g. "You can only get there by boat." */
+        title: string;
+        /**
+         * The fact line, count already bound to the live trips-grid count by the
+         * parent (e.g. "9 of them leave from Curaçao, most days."). Null drops
+         * the line (a hub with no per-person trips has no honest number).
+         */
+        fact: string | null;
+        /** Button label, e.g. "Pick your boat" - it jumps to the trips grid. */
+        button: string;
+    };
     /** Mobile "Learn More" toggle (expand). */
     learnMore: string;
     /** Mobile "Read Less" toggle (collapse). */
@@ -52,7 +65,7 @@ export function HubDiscoverSection({
     items: HubDiscoverItem[];
     /** Full-bleed banner photo - falls back to a neutral placeholder. */
     bannerImage?: string | null;
-    /** On-page element id the "Book your trip" CTA smooth-scrolls to. */
+    /** On-page element id the closing CTA band's button smooth-scrolls to. */
     bookTripTargetId?: string;
     dict: HubDiscoverDict;
 }) {
@@ -89,14 +102,29 @@ export function HubDiscoverSection({
                     ))}
                 </Reveal>
 
-                {/* "Book your trip" - outlined orange pill. Full-width on mobile
-                    (h-46, 40px sides), hugged + centered on desktop (h-48). */}
-                <Reveal className='flex md:justify-center'>
-                    <HubScrollButton
-                        targetId={bookTripTargetId}
-                        className='inline-flex h-[46px] w-full cursor-pointer items-center justify-center rounded-it-full border border-it-primary bg-transparent px-10 font-normal text-[14px] leading-[1.6] tracking-[-0.012em] text-it-primary no-underline transition-colors hover:bg-it-primary/5 md:h-12 md:w-auto md:text-[16px]'>
-                        {dict.bookTrip}
-                    </HubScrollButton>
+                {/* Closing CTA band (mck-16 §5): the claim + the fact left, the
+                    button right (stacked, full-width button on mobile). The band
+                    carries the visual weight so the button stays honest in size;
+                    its fill is cta-deep, not cta - white text on cta is 3.41:1
+                    where 4.5:1 is needed (4.58:1 on cta-deep). */}
+                <Reveal>
+                    <div className='flex flex-col gap-5 rounded-it-lg bg-it-primary-subtle p-6 md:flex-row md:items-center md:justify-between md:gap-8 md:px-8 md:py-7'>
+                        <div className='flex max-w-[560px] flex-col gap-1'>
+                            <h3 className='m-0 font-it-display text-[19px] font-bold leading-[1.3] tracking-[-0.013em] text-it-ink md:text-[21px]'>
+                                {dict.cta.title}
+                            </h3>
+                            {dict.cta.fact && (
+                                <p className='m-0 text-[14.5px] leading-[1.6] text-it-ink-secondary'>
+                                    {dict.cta.fact}
+                                </p>
+                            )}
+                        </div>
+                        <HubScrollButton
+                            targetId={bookTripTargetId}
+                            className='inline-flex h-[46px] w-full shrink-0 cursor-pointer items-center justify-center rounded-it-full bg-it-primary-hover px-8 text-[14px] font-bold leading-none text-it-white no-underline transition-colors hover:bg-(--it-primary-active) md:h-12 md:w-auto md:text-[15px]'>
+                            {dict.cta.button}
+                        </HubScrollButton>
+                    </div>
                 </Reveal>
             </div>
         </div>

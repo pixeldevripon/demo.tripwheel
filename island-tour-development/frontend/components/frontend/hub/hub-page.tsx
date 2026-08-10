@@ -693,6 +693,7 @@ export async function HubPage({
                 render={render}
                 destinationId={destination.id}
                 destinationSlug={destinationSlug}
+                destinationName={destinationName}
                 locale={locale}
                 currency={currency}
                 dict={dict}
@@ -728,6 +729,7 @@ async function HubTripsData({
     render,
     destinationId,
     destinationSlug,
+    destinationName,
     locale,
     currency,
     dict,
@@ -735,6 +737,8 @@ async function HubTripsData({
     render: HubRender;
     destinationId: string;
     destinationSlug: string;
+    /** Proper-noun destination name for the Discover CTA band's fact line. */
+    destinationName: string;
     locale: Locale;
     /** Shopper currency, already resolved by HubPage - no second await here. */
     currency: Currency;
@@ -831,6 +835,17 @@ async function HubTripsData({
         render.name
     );
 
+    // Discover CTA band fact line (mck-16 §5): the number is BOUND to the same
+    // count the trips grid renders - a hardcoded figure goes stale the first
+    // time a boat is added. No per-person trips -> no honest number -> the
+    // line drops (band keeps the claim + button).
+    const discoverCtaFact =
+        trips.length > 0
+            ? discoverDict.cta.fact
+                  .replace('{count}', String(trips.length))
+                  .replace('{destination}', destinationName)
+            : null;
+
     const tripsTitle = hubDict.tripsHeading
         .replace('{count}', String(trips.length))
         .replace('{hub}', render.name);
@@ -899,7 +914,11 @@ async function HubTripsData({
                 title: discoverTitle,
                 // Per-hub editorial intro (dashboard) with the static string as fallback.
                 subtitle: render.discoverIntro ?? discoverDict.subtitle,
-                bookTrip: discoverDict.bookTrip,
+                cta: {
+                    title: discoverDict.cta.title,
+                    fact: discoverCtaFact,
+                    button: discoverDict.cta.button,
+                },
                 learnMore: dict.destination.about.learnMore,
                 readLess: dict.destination.about.readLess,
             }}

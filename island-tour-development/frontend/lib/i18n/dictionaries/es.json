@@ -365,7 +365,11 @@
             "discover": {
                 "titlePattern": "Descubre {hub}",
                 "subtitle": "Lo que conviene saber antes de ir.",
-                "bookTrip": "Reserva tu excursión"
+                "cta": {
+                    "title": "Solo se puede llegar en barco.",
+                    "fact": "{count} de ellos salen de {destination} casi todos los días.",
+                    "button": "Elige tu barco"
+                }
             },
             "frequencyDaily": "Todos los días",
             "frequencyWeekly": "{count} días a la semana",
