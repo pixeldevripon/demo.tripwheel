@@ -3596,7 +3596,22 @@ export class BookingsService {
     let expired = 0;
     for (const b of stale) {
       try {
-        await this.prisma.$transaction(async (tx) => {
+        const won = await this.prisma.$transaction(async (tx) => {
+          // Guarded ON_HOLD -> EXPIRED flip FIRST (hardening F8 review): two
+          // overlapping sweeps (a tick that outruns its interval, or a
+          // second worker) could both hold this booking in their `stale`
+          // lists. Releasing seats before an unguarded status write let the
+          // loser re-release - GREATEST clamps at zero but is not
+          // per-booking idempotent, so the double decrement undercounted
+          // bookedCount and the claim guard would then oversell. The flip's
+          // WHERE re-evaluates status under the row lock: exactly one sweep
+          // wins; the loser leaves without touching inventory. Same guarded-
+          // transition pattern as restore/confirm.
+          const flip = await tx.booking.updateMany({
+            where: { id: b.id, status: BookingStatus.ON_HOLD },
+            data: { status: BookingStatus.EXPIRED },
+          });
+          if (flip.count === 0) return false; // raced: expired/paid elsewhere
           if (b.departureId) {
             await this.releaseSeats(
               tx,
@@ -3609,11 +3624,9 @@ export class BookingsService {
             where: { bookingId: b.id },
             data: { status: BookingStatus.EXPIRED },
           });
-          await tx.booking.update({
-            where: { id: b.id },
-            data: { status: BookingStatus.EXPIRED },
-          });
+          return true;
         });
+        if (!won) continue;
         expired++;
         // Seats released back to inventory + booking expired.
         this.emitBookingEvents(b, { availability: !!b.departureId });

@@ -2450,11 +2450,38 @@ describe('BookingsService', () => {
       });
       const count = await svc.expireStaleHolds();
       expect(count).toBe(1);
-      // Seats released via the clamped count-down; SOLD_OUT departure reopens to OPEN.
-      expect(m.departure.update).toHaveBeenCalled();
-      expect(m.booking.update).toHaveBeenCalledWith(
-        expect.objectContaining({ data: { status: BookingStatus.EXPIRED } }),
+      // The guarded ON_HOLD->EXPIRED flip runs FIRST (F8: overlapping sweeps).
+      expect(m.booking.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'b1', status: BookingStatus.ON_HOLD },
+          data: { status: BookingStatus.EXPIRED },
+        }),
       );
+      // Seats released via the clamped count-down; SOLD_OUT departure reopens to OPEN.
+      expect(rawReleaseCalls(m).length).toBeGreaterThan(0);
+    });
+
+    it('a sweep that loses the flip race releases NOTHING (overlapping ticks)', async () => {
+      // Two overlapping sweeps can both list the same stale hold. The loser's
+      // guarded flip matches 0 rows and must leave inventory alone - before
+      // this guard, both released and bookedCount undercounted, which is the
+      // door to overselling (the claim guard trusts that number).
+      m.booking.findMany.mockResolvedValue([
+        {
+          id: 'b1',
+          departureId: 'dep1',
+          tourId: 't1',
+          localDate: new Date('2030-06-05T00:00:00.000Z'),
+          operatorId: 'op1',
+          publicRef: 'p1',
+          _count: { unitItems: 2 },
+        },
+      ]);
+      m.booking.updateMany.mockResolvedValue({ count: 0 }); // rival won
+      const count = await svc.expireStaleHolds();
+      expect(count).toBe(0);
+      expect(rawReleaseCalls(m)).toHaveLength(0); // no re-release
+      expect(m.bookingUnitItem.updateMany).not.toHaveBeenCalled();
     });
   });
 

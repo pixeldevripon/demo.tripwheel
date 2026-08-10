@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Queue } from 'bullmq';
 
 import { AvailabilityService } from '@/availability/availability.service';
 import { BookingsService } from '@/bookings/bookings.service';
@@ -9,25 +10,32 @@ import { SettlementsService } from '@/settlements/settlements.service';
 import { TiersService } from '@/tiers/tiers.service';
 import { ToursService } from '@/tours/tours.service';
 
+import {
+  PLATFORM_QUEUE,
+  PLATFORM_SCHEDULES,
+  PLATFORM_SCHEDULE_OPTS,
+} from './platform-queue';
 import { PublicCacheService } from './public-cache.service';
 
 /**
- * Nightly platform jobs (master §7 / §3.7). In-process scheduler via
- * `@nestjs/schedule` - these are idempotent recomputes, not retry/concurrency
- * queues, so a cron is the right tool (no Redis/BullMQ needed). Each job is a
- * plain service method that can also be triggered on demand (admin endpoint /
- * seed / tests); the cron just calls them on a schedule.
+ * Scheduled platform jobs (master §7 / §3.7), SINGLE-RUNNER via BullMQ job
+ * schedulers (hardening F8). These used to be in-process `@Cron` methods: a
+ * second app replica double-ran every tick - merely wasteful for these
+ * idempotent recomputes after F1 made seat releases atomic, but exactly the
+ * concurrent-release corruption before it, and always a double-send risk for
+ * the review-request mailer. Now every replica upserts the SAME scheduler ids
+ * on boot (idempotent - Redis keeps one schedule per id) and whichever
+ * replica's worker picks up the tick runs it alone.
  *
- * Currently wired:
- *   - Spotlight lifecycle: APPROVED -> ACTIVE at startsAt, ACTIVE -> EXPIRED at
- *     endsAt, mirroring `tour.isSponsored` (drives the §3.6 "Sponsored" badge).
- *   - Demand signal: recompute `tour.likelyToSellOut` (§3.7, "Likely to sell out").
- *
- * TODO (master §7, when built): quality_score recompute + tier eligibility/grace
- * /demotion lifecycle hook in here next to these.
+ * Each job body stays a plain service method that can also be invoked on
+ * demand (admin endpoint / seed / tests); the PlatformJobsProcessor is the
+ * only scheduled caller. Bodies no longer swallow errors: the old try/catch
+ * existed to protect the in-process scheduler, but a queue worker WANTS the
+ * throw - a failed sweep lands in the retained failed set (visible) and the
+ * next tick is the retry (PLATFORM_SCHEDULE_OPTS: attempts 1 by design).
  */
 @Injectable()
-export class NightlyJobsService {
+export class NightlyJobsService implements OnModuleInit {
   private readonly logger = new Logger(NightlyJobsService.name);
 
   constructor(
@@ -39,7 +47,65 @@ export class NightlyJobsService {
     private readonly bookings: BookingsService,
     private readonly settlements: SettlementsService,
     private readonly contentTranslation: ContentTranslationService,
+    @InjectQueue(PLATFORM_QUEUE) private readonly queue: Queue,
   ) {}
+
+  /**
+   * Kick off schedule registration WITHOUT awaiting it. This must not block
+   * bootstrap: the queue's ioredis connection has enableOfflineQueue on, so
+   * with Redis down a command never rejects - it queues and the promise
+   * PENDS until Redis returns. An awaited registration would therefore hang
+   * `onModuleInit` and the app would never serve (review finding on this
+   * branch; the old @Cron code booted fine with Redis down). Fire-and-forget
+   * keeps the boot contract, and the queued upserts flush themselves the
+   * moment Redis reconnects - which is also why there is no retry loop here.
+   */
+  onModuleInit(): void {
+    void this.registerSchedulers().catch((err: unknown) => {
+      this.logger.error(
+        `Failed to register job schedulers: ${
+          err instanceof Error ? err.message : 'unknown'
+        }`,
+      );
+    });
+  }
+
+  /**
+   * Upsert every schedule under its fixed id - safe from N replicas
+   * concurrently (`upsertJobScheduler` is an override-in-place) - then prune
+   * any scheduler on the queue that is NOT in PLATFORM_SCHEDULES, so a
+   * renamed entry (or a legacy `repeat` job from reverted code - a
+   * `calendar.ical-poll-tick` from commit 9cf46d4/515a0e7 still ticks every
+   * 15 min on long-lived Redis instances) cannot orphan-tick forever.
+   */
+  private async registerSchedulers(): Promise<void> {
+    const known = new Set<string>(
+      Object.values(PLATFORM_SCHEDULES).map((s) => s.name),
+    );
+    for (const schedule of Object.values(PLATFORM_SCHEDULES)) {
+      await this.queue.upsertJobScheduler(
+        schedule.name,
+        'every' in schedule
+          ? { every: schedule.every }
+          : { pattern: schedule.pattern, tz: 'UTC' },
+        { name: schedule.name, opts: PLATFORM_SCHEDULE_OPTS },
+      );
+    }
+    let pruned = 0;
+    for (const stale of await this.queue.getJobSchedulers()) {
+      const id = stale.key ?? stale.name;
+      const name = stale.name ?? stale.key;
+      if ((name && known.has(name)) || (id && known.has(id))) continue;
+      if (!id) continue;
+      await this.queue.removeJobScheduler(id);
+      pruned++;
+      this.logger.warn(`Pruned stale job scheduler '${name ?? id}'`);
+    }
+    this.logger.log(
+      `Registered ${known.size} job schedulers` +
+        (pruned ? `, pruned ${pruned} stale` : ''),
+    );
+  }
 
   /**
    * Settlement self-heal sweep (master SETTLEMENT-AND-PAYOUTS §2). Voids any
@@ -49,41 +115,21 @@ export class NightlyJobsService {
    * dashboard (founder decision 2026-07-26: v1 payouts are hand-made bank
    * transfers, so only a human confirms one happened). Hourly, idempotent.
    */
-  @Cron(CronExpression.EVERY_HOUR, {
-    name: 'settlement-reverse-sweep',
-    timeZone: 'UTC',
-  })
   async settlementReverseSweep(): Promise<void> {
-    try {
-      await this.settlements.reverseStaleCancelledSettlements();
-    } catch (err) {
-      this.logger.error(
-        `Settlement reverse sweep failed: ${err instanceof Error ? err.message : 'unknown'}`,
-      );
-    }
+    await this.settlements.reverseStaleCancelledSettlements();
   }
 
   /**
    * Hold-expiry sweeper (master §5 / booking checklist flaw 4). Releases seats from
    * ON_HOLD bookings past their `utcExpiresAt` so an abandoned checkout never causes
-   * a phantom sold-out. Idempotent recompute over an indexed working set, so a
-   * frequent in-process `@Cron` is the right tool (no BullMQ). Every minute keeps
-   * inventory tight; a no-op in the minutes nothing is stale. A payment that lands
-   * AFTER expiry is handled by `confirmFromPayment`'s pay-after-expiry recovery.
+   * a phantom sold-out. Runs as the `booking.hold-expiry-sweep` scheduler tick
+   * (every 60s, single-runner across replicas - F8). Idempotent recompute over an
+   * indexed working set; a no-op in the minutes nothing is stale. A payment that
+   * lands AFTER expiry is handled by `confirmFromPayment`'s pay-after-expiry
+   * recovery.
    */
-  @Cron(CronExpression.EVERY_MINUTE, {
-    name: 'hold-expiry-sweeper',
-    timeZone: 'UTC',
-  })
   async holdExpirySweep(): Promise<void> {
-    try {
-      await this.bookings.expireStaleHolds();
-    } catch (err) {
-      // Never let a sweep failure kill the scheduler; the next minute retries.
-      this.logger.error(
-        `Hold-expiry sweep failed: ${err instanceof Error ? err.message : 'unknown'}`,
-      );
-    }
+    await this.bookings.expireStaleHolds();
   }
 
   /**
@@ -98,29 +144,8 @@ export class NightlyJobsService {
    * Cheap: the query is indexed on exactly the two working sets it scans, and it
    * is a no-op in the 23 hours a given booking is not due.
    */
-  @Cron(CronExpression.EVERY_HOUR, {
-    name: 'review-requests',
-    timeZone: 'UTC',
-  })
   async reviewRequestsHourly(): Promise<void> {
-    try {
-      await this.reviewRequests.run();
-    } catch (err) {
-      // Never let a mail failure kill the scheduler: the next hour retries.
-      this.logger.error(
-        `Review requests job failed: ${err instanceof Error ? err.message : 'unknown'}`,
-      );
-    }
-  }
-
-  // 03:00 UTC daily. "Evaluated daily" is the master's cadence for both the
-  // spotlight lifecycle (§7.2) and the demand signal (§3.7).
-  @Cron(CronExpression.EVERY_DAY_AT_3AM, {
-    name: 'nightly-commercial-jobs',
-    timeZone: 'UTC',
-  })
-  async nightly(): Promise<void> {
-    await this.run();
+    await this.reviewRequests.run();
   }
 
   /** Job body, exposed so it can be invoked outside the schedule (admin/tests). */

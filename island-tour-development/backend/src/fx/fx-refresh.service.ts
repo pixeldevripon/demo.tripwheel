@@ -16,9 +16,11 @@ function envInt(name: string, fallback: number): number {
 }
 
 /**
- * Keeps the `fx_rates` cache warm (guide §20.1). Follows the platform's in-process
- * scheduler convention (`@nestjs/schedule`, no BullMQ - same as {@link NightlyJobsService}):
- * FX refresh is an idempotent recompute, not a retry/concurrency queue.
+ * Keeps the `fx_rates` cache warm (guide §20.1). Runs on `@nestjs/schedule`
+ * in-process (NightlyJobsService moved to BullMQ job schedulers in hardening
+ * F8; this one deliberately did not - an FX refresh double-running on two
+ * replicas is a harmless idempotent upsert, and it must keep working with
+ * Redis down since rates gate bookings).
  *
  * Two triggers:
  *   - **Startup**: one refresh at boot so the first booking quote does not pay the
