@@ -82,11 +82,22 @@ Why a queue is the wrong tool here:
 
 ### Stays synchronous and transactional (the critical path)
 
-Inside one DB transaction, in order:
+Inside one DB transaction (as built - truth-up 2026-08-10):
 
-1. Atomic seat claim (`UPDATE departures ... WHERE booked_count + :seats <= capacity`).
-2. Create `Booking` (+ `BookingUnitItem`, `BookingAddOn`, `Settlement` row).
-3. Write an `outbox` row for each domain event this booking emits (see §5.2).
+1. Create `Booking` (+ `BookingUnitItem`, `BookingAddOn`) FIRST - the insert
+   does not contend on the hot departure row.
+2. Atomic seat claim LAST (raw guarded `UPDATE departures ... WHERE
+   "bookedCount" + :seats <= "capacity"`, `SOLD_OUT` flip fused) - hardening
+   F3 inverted the designed order so the contended row's lock spans ~one
+   statement + commit instead of the whole insert.
+3. Outbox rows are written at CONFIRMATION (`booking.confirmed`) and at a
+   FULL-refund cancellation of a confirmed booking (`booking.refund-owed`) -
+   never at reserve. No DURABLE reserve-stage side effects exist (reserve
+   does emit non-durable SSE dashboard events post-commit; an ON_HOLD
+   booking writes nothing durable until it confirms or dies). The `Settlement` row is also a
+   confirmation-time write. This section previously described a designed
+   reserve-stage outbox write that was never built; if a reserve-stage event
+   ever appears, it belongs in this transaction per §5.2.
 
 Then, outside the transaction:
 
