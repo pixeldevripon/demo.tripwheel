@@ -598,110 +598,123 @@ export class BookingsService {
       // off the contended row's lock window. Rivals on a hot departure then
       // wait only for the claim UPDATE + commit, not for this insert. A losing
       // claim below rolls the booking rows back with the transaction.
-      const booking = await tx.booking.create({
-        data: {
-          id,
-          tourId: dto.tourId,
-          departureId: dto.departureId,
-          operatorId: ctx.tour.operatorId,
-          userId: userId ?? null,
-          displayRef,
-          status,
-          paymentModel: ctx.tour.paymentModel,
-          currency: bookingCurrency,
-          localDate: ctx.departure.date,
-          startTime: timeOfDay(ctx.departure.startTime),
-          tourStartDateTime: localStart,
-          tourEndDateTime,
-          tourTimeZone: ctx.tour.timeZone,
-          // Denormalized destination SLUG - it builds the TYP deep link
-          // (`/{island}/thank-you/{publicRef}`) and the page 404s on any
-          // mismatch, so the fallback must be slug-shaped too. `destination`
-          // is a required relation that `loadContext` always selects, so this
-          // only guards the impossible case; it used to read 'Curaçao', a
-          // display NAME, which would have 404'd that booking's TYP forever.
-          island: ctx.tour.destination?.slug ?? 'curacao',
-          utcExpiresAt: operatorFull
-            ? null
-            : new Date(
-                Date.now() +
-                  (dto.expirationMinutes ?? DEFAULT_HOLD_MINUTES) * 60_000,
-              ),
-          utcConfirmedAt: operatorFull ? new Date() : null,
-          exclusiveDeparture: exclusive,
-          pickupRequested: dto.pickupRequested ?? false,
-          pickupLocationId: dto.pickupLocationId ?? null,
-          pickupAddress: ctx.pickupSnapshot.address,
-          pickupMinutesPrior: ctx.pickupSnapshot.minutesPrior,
-          pickupWindowStart: ctx.pickupSnapshot.windowStart,
-          pickupWindowEnd: ctx.pickupSnapshot.windowEnd,
-          // Priced pickup snapshot (booking currency) - already inside totalRetail.
-          pickupUnitPrice: pricing.pickup?.unitPrice ?? null,
-          pickupTotalPrice: pricing.pickup?.totalPrice ?? null,
-          // Only ON_ARRIVAL bookings collect on site, so the terms are meaningless
-          // (and misleading in the email) on any other model.
-          onArrivalPayment:
-            ctx.tour.paymentModel === PaymentModel.ON_ARRIVAL
-              ? ctx.tour.onArrivalPayment
-              : null,
-          notes: dto.notes ?? null,
-          newsletterOptIn: dto.newsletterOptIn ?? false,
-          // Attribution snapshot (master 8.1.6 / E.8) - written at creation only, so
-          // the idempotent re-reserve early-return above never overwrites the original
-          // click ids/UTMs. Feeds the booking_complete push (8.3) + later ad adjustments.
-          gclid: dto.attribution?.gclid ?? null,
-          gbraid: dto.attribution?.gbraid ?? null,
-          wbraid: dto.attribution?.wbraid ?? null,
-          fbclid: dto.attribution?.fbclid ?? null,
-          utmSource: dto.attribution?.utmSource ?? null,
-          utmMedium: dto.attribution?.utmMedium ?? null,
-          utmCampaign: dto.attribution?.utmCampaign ?? null,
-          utmTerm: dto.attribution?.utmTerm ?? null,
-          utmContent: dto.attribution?.utmContent ?? null,
-          // Discount/coupon deferred (flaw #2): with no server-side coupon-validation
-          // engine, a client-supplied discount is untrusted, so we never write one -
-          // the full price stays authoritative. Wire this when the coupon engine exists.
-          totalRetail: pricing.totalRetail,
-          totalNet: pricing.totalNet,
-          depositAmount: pricing.depositAmount,
-          balanceAmount: pricing.balanceAmount,
-          commissionRate: pricing.commissionRate,
-          commissionAmount: pricing.commissionAmount,
-          totalEur: pricing.totalEur,
-          fxRateToEur: pricing.fxRateToEur,
-          // Multi-currency source snapshot + FX audit (guide §20.2/§20.8). Rates are
-          // frozen here and never refetched at payment/TYP/email/tracking time.
-          sourceCurrency,
-          sourceTotalRetail: pricing.sourceTotalRetail,
-          sourceDepositAmount: pricing.sourceDepositAmount,
-          sourceBalanceAmount: pricing.sourceBalanceAmount,
-          sourceFxRateToBooking: pricing.sourceFxRateToBooking,
-          sourceFxProvider: sourceRate.provider,
-          sourceFxProviderAsOf: sourceRate.providerAsOf,
-          eurFxProvider: eurRate.provider,
-          eurFxProviderAsOf: eurRate.providerAsOf,
-          unitItems: {
-            create: pricing.unitItems.map((u, idx) => ({
-              ageBandId: u.ageBandId,
-              status,
-              priceRetail: u.priceRetail,
-              priceNet: u.priceNet,
-              travelerAge: seatAges[idx] ?? null,
-            })),
+      let booking: Prisma.BookingGetPayload<{ include: { unitItems: true } }>;
+      try {
+        booking = await tx.booking.create({
+          data: {
+            id,
+            tourId: dto.tourId,
+            departureId: dto.departureId,
+            operatorId: ctx.tour.operatorId,
+            userId: userId ?? null,
+            displayRef,
+            status,
+            paymentModel: ctx.tour.paymentModel,
+            currency: bookingCurrency,
+            localDate: ctx.departure.date,
+            startTime: timeOfDay(ctx.departure.startTime),
+            tourStartDateTime: localStart,
+            tourEndDateTime,
+            tourTimeZone: ctx.tour.timeZone,
+            // Denormalized destination SLUG - it builds the TYP deep link
+            // (`/{island}/thank-you/{publicRef}`) and the page 404s on any
+            // mismatch, so the fallback must be slug-shaped too. `destination`
+            // is a required relation that `loadContext` always selects, so this
+            // only guards the impossible case; it used to read 'Curaçao', a
+            // display NAME, which would have 404'd that booking's TYP forever.
+            island: ctx.tour.destination?.slug ?? 'curacao',
+            utcExpiresAt: operatorFull
+              ? null
+              : new Date(
+                  Date.now() +
+                    (dto.expirationMinutes ?? DEFAULT_HOLD_MINUTES) * 60_000,
+                ),
+            utcConfirmedAt: operatorFull ? new Date() : null,
+            exclusiveDeparture: exclusive,
+            pickupRequested: dto.pickupRequested ?? false,
+            pickupLocationId: dto.pickupLocationId ?? null,
+            pickupAddress: ctx.pickupSnapshot.address,
+            pickupMinutesPrior: ctx.pickupSnapshot.minutesPrior,
+            pickupWindowStart: ctx.pickupSnapshot.windowStart,
+            pickupWindowEnd: ctx.pickupSnapshot.windowEnd,
+            // Priced pickup snapshot (booking currency) - already inside totalRetail.
+            pickupUnitPrice: pricing.pickup?.unitPrice ?? null,
+            pickupTotalPrice: pricing.pickup?.totalPrice ?? null,
+            // Only ON_ARRIVAL bookings collect on site, so the terms are meaningless
+            // (and misleading in the email) on any other model.
+            onArrivalPayment:
+              ctx.tour.paymentModel === PaymentModel.ON_ARRIVAL
+                ? ctx.tour.onArrivalPayment
+                : null,
+            notes: dto.notes ?? null,
+            newsletterOptIn: dto.newsletterOptIn ?? false,
+            // Attribution snapshot (master 8.1.6 / E.8) - written at creation only, so
+            // the idempotent re-reserve early-return above never overwrites the original
+            // click ids/UTMs. Feeds the booking_complete push (8.3) + later ad adjustments.
+            gclid: dto.attribution?.gclid ?? null,
+            gbraid: dto.attribution?.gbraid ?? null,
+            wbraid: dto.attribution?.wbraid ?? null,
+            fbclid: dto.attribution?.fbclid ?? null,
+            utmSource: dto.attribution?.utmSource ?? null,
+            utmMedium: dto.attribution?.utmMedium ?? null,
+            utmCampaign: dto.attribution?.utmCampaign ?? null,
+            utmTerm: dto.attribution?.utmTerm ?? null,
+            utmContent: dto.attribution?.utmContent ?? null,
+            // Discount/coupon deferred (flaw #2): with no server-side coupon-validation
+            // engine, a client-supplied discount is untrusted, so we never write one -
+            // the full price stays authoritative. Wire this when the coupon engine exists.
+            totalRetail: pricing.totalRetail,
+            totalNet: pricing.totalNet,
+            depositAmount: pricing.depositAmount,
+            balanceAmount: pricing.balanceAmount,
+            commissionRate: pricing.commissionRate,
+            commissionAmount: pricing.commissionAmount,
+            totalEur: pricing.totalEur,
+            fxRateToEur: pricing.fxRateToEur,
+            // Multi-currency source snapshot + FX audit (guide §20.2/§20.8). Rates are
+            // frozen here and never refetched at payment/TYP/email/tracking time.
+            sourceCurrency,
+            sourceTotalRetail: pricing.sourceTotalRetail,
+            sourceDepositAmount: pricing.sourceDepositAmount,
+            sourceBalanceAmount: pricing.sourceBalanceAmount,
+            sourceFxRateToBooking: pricing.sourceFxRateToBooking,
+            sourceFxProvider: sourceRate.provider,
+            sourceFxProviderAsOf: sourceRate.providerAsOf,
+            eurFxProvider: eurRate.provider,
+            eurFxProviderAsOf: eurRate.providerAsOf,
+            unitItems: {
+              create: pricing.unitItems.map((u, idx) => ({
+                ageBandId: u.ageBandId,
+                status,
+                priceRetail: u.priceRetail,
+                priceNet: u.priceNet,
+                travelerAge: seatAges[idx] ?? null,
+              })),
+            },
+            addOns: {
+              create: pricing.addOns.map((a) => ({
+                addOnId: a.addOnId,
+                name: a.name,
+                unit: a.unit,
+                quantity: a.quantity,
+                unitPrice: a.unitPrice,
+                totalPrice: a.totalPrice,
+              })),
+            },
           },
-          addOns: {
-            create: pricing.addOns.map((a) => ({
-              addOnId: a.addOnId,
-              name: a.name,
-              unit: a.unit,
-              quantity: a.quantity,
-              unitPrice: a.unitPrice,
-              totalPrice: a.totalPrice,
-            })),
-          },
-        },
-        include: { unitItems: true },
-      });
+          include: { unitItems: true },
+        });
+      } catch (err) {
+        // The materializer hard-deletes unbooked departures, so one can
+        // vanish between loadContext and this insert; the FK violation IS
+        // that race. The old in-txn pre-read answered it with a clean 422 -
+        // keep that contract instead of surfacing a 500. Any other failure
+        // rethrows untouched.
+        if (BookingsService.isDepartureFkViolation(err)) {
+          throw new UnprocessableEntityException('Departure not found');
+        }
+        throw err;
+      }
 
       // Atomic guarded seat claim - the overbooking backstop (master §5), as
       // the FINAL statement so the hot-row lock is held for ~one statement +
@@ -5809,7 +5822,11 @@ export class BookingsService {
   ): Promise<void> {
     if (exclusive) {
       // Exclusive charter release: the whole unit was claimed, so reset to empty.
-      // An absolute write is already idempotent under concurrency.
+      // An absolute write is already idempotent under concurrency. NOTE: this
+      // branch still throws P2025 on a vanished departure (as the old code
+      // did) while the shared branch below silently matches 0 rows - a
+      // release for a hard-deleted departure has nothing left to free either
+      // way.
       await tx.departure.update({
         where: { id: departureId },
         data: { bookedCount: 0 },
@@ -5821,12 +5838,36 @@ export class BookingsService {
       // erased the earlier release - seats leaked until an admin noticed.
       // GREATEST re-evaluates against the current row under the row lock, so
       // concurrent releases compose and the count can never go negative.
+      // `updatedAt` is stamped by hand: @updatedAt is Prisma-client-side and
+      // raw SQL bypasses it, but the iCal feed derives SEQUENCE/LAST-MODIFIED
+      // from this column.
       await tx.$executeRaw`
         UPDATE "departures"
-        SET "bookedCount" = GREATEST("bookedCount" - ${seats}, 0)
+        SET "bookedCount" = GREATEST("bookedCount" - ${seats}, 0),
+            "updatedAt" = now()
         WHERE "id" = ${departureId}`;
     }
     await this.recomputeStoredStatus(tx, departureId);
+  }
+
+  /**
+   * True when a Prisma P2003 names the bookings→departures FK - meaning the
+   * departure was hard-deleted between `loadContext` and the booking insert
+   * (the materializer's orphan sweep removes unbooked departures). Meta shape
+   * varies across Prisma versions (`constraint` vs `field_name`, string or
+   * array), so both are checked.
+   */
+  private static isDepartureFkViolation(err: unknown): boolean {
+    if (
+      !(err instanceof Prisma.PrismaClientKnownRequestError) ||
+      err.code !== 'P2003'
+    ) {
+      return false;
+    }
+    const meta = err.meta ?? {};
+    return [meta.constraint, meta.field_name]
+      .flatMap((v) => (Array.isArray(v) ? v : [v]))
+      .some((v) => typeof v === 'string' && v.includes('departureId'));
   }
 
   /**
@@ -5843,7 +5884,9 @@ export class BookingsService {
    *
    * Postgres enum literals are the MAPPED (lowercase) values of
    * `departure_status`; booking statuses are a different type (UPPERCASE) -
-   * do not mix them up.
+   * do not mix them up. Every variant stamps `updatedAt` by hand: @updatedAt
+   * is Prisma-client-side and raw SQL bypasses it, but the iCal feed derives
+   * SEQUENCE/LAST-MODIFIED from that column.
    *
    * @param intoSticky Restore-only: accept a SOLD_OUT/CLOSED departure (sticky
    *   states stop NEW sales, not the return of a seat that was wrongly
@@ -5878,7 +5921,8 @@ export class BookingsService {
                                 ELSE 'sold_out'::"departure_status" END,
                 "soldOutAt" = CASE WHEN "status" = 'closed'::"departure_status"
                                    THEN "soldOutAt"
-                                   ELSE COALESCE("soldOutAt", now()) END
+                                   ELSE COALESCE("soldOutAt", now()) END,
+                "updatedAt" = now()
             WHERE "id" = ${departureId} AND "tourId" = ${tourId}
               AND "status" <> 'cancelled'::"departure_status"
               AND "bookedCount" = 0`
@@ -5886,7 +5930,8 @@ export class BookingsService {
             UPDATE "departures"
             SET "bookedCount" = "capacity",
                 "status"      = 'sold_out'::"departure_status",
-                "soldOutAt"   = COALESCE("soldOutAt", now())
+                "soldOutAt"   = COALESCE("soldOutAt", now()),
+                "updatedAt"   = now()
             WHERE "id" = ${departureId} AND "tourId" = ${tourId}
               AND "status" = 'open'::"departure_status"
               AND "bookedCount" = 0`;
@@ -5907,7 +5952,8 @@ export class BookingsService {
                   WHEN "status" <> 'closed'::"departure_status"
                    AND "bookedCount" + ${seats} >= "capacity"
                     THEN COALESCE("soldOutAt", now())
-                  ELSE "soldOutAt" END
+                  ELSE "soldOutAt" END,
+                "updatedAt" = now()
             WHERE "id" = ${departureId} AND "tourId" = ${tourId}
               AND "status" <> 'cancelled'::"departure_status"
               AND "bookedCount" + ${seats} <= "capacity"`
@@ -5919,7 +5965,8 @@ export class BookingsService {
                                 ELSE "status" END,
                 "soldOutAt" = CASE WHEN "bookedCount" + ${seats} >= "capacity"
                                    THEN COALESCE("soldOutAt", now())
-                                   ELSE "soldOutAt" END
+                                   ELSE "soldOutAt" END,
+                "updatedAt" = now()
             WHERE "id" = ${departureId} AND "tourId" = ${tourId}
               AND "status" = 'open'::"departure_status"
               AND "bookedCount" + ${seats} <= "capacity"`;

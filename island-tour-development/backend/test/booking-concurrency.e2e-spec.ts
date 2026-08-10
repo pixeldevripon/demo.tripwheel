@@ -54,7 +54,6 @@ describe('booking seat claim/release under concurrency (real Postgres)', () => {
   let userId: string;
   let operatorId: string;
   let destinationId: string;
-  const departureIds: string[] = [];
 
   beforeAll(async () => {
     const adapter = new PrismaPg({
@@ -137,7 +136,6 @@ describe('booking seat claim/release under concurrency (real Postgres)', () => {
         soldOutAt: over.soldOutAt ?? null,
       },
     });
-    departureIds.push(dep.id);
     return dep;
   }
 
@@ -166,7 +164,6 @@ describe('booking seat claim/release under concurrency (real Postgres)', () => {
         const after = await readDep(dep.id);
         expect(after.bookedCount).toBe(5);
         await prisma.departure.delete({ where: { id: dep.id } });
-        departureIds.pop();
       }
     }, 120_000);
 
@@ -234,7 +231,6 @@ describe('booking seat claim/release under concurrency (real Postgres)', () => {
         expect(after.status).toBe(DepartureStatus.SOLD_OUT);
         expect(after.soldOutAt).not.toBeNull();
         await prisma.departure.delete({ where: { id: dep.id } });
-        departureIds.pop();
       }
     }, 120_000);
 

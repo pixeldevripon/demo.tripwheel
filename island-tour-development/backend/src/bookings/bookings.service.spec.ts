@@ -333,6 +333,12 @@ function setupUnitReserveContext(
  * Every raw statement (`$executeRaw` tagged template) that ran, flattened for
  * assertion: `sql` is the template joined with `?` placeholders, `values` the
  * interpolated params in order.
+ *
+ * INVARIANT the classifiers below lean on: the ONLY raw statements in
+ * BookingsService are the `claimSeats` guarded UPDATEs and the `releaseSeats`
+ * GREATEST decrement. If another raw statement is ever added to the service,
+ * the `GREATEST` substring split stops being a valid claim/release separator
+ * - revisit these helpers then.
  */
 function rawCalls(m: any): { sql: string; values: any[] }[] {
   return m.$executeRaw.mock.calls.map((c: any[]) => ({
@@ -600,6 +606,35 @@ describe('BookingsService', () => {
       await expect(svc.reserve(reserveDto)).rejects.toBeInstanceOf(
         UnprocessableEntityException,
       );
+    });
+
+    // The materializer hard-deletes unbooked departures, so one can vanish
+    // between loadContext and the insert. The FK violation IS that race and
+    // must keep the old pre-read's clean 422 contract, never a 500.
+    it('422s (not 500) when the departure was hard-deleted mid-flight', async () => {
+      setupReserveContext(prisma);
+      m.booking.create.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('FK violation', {
+          code: 'P2003',
+          clientVersion: 'test',
+          meta: { constraint: 'bookings_departureId_fkey' },
+        }),
+      );
+      await expect(svc.reserve(reserveDto)).rejects.toMatchObject({
+        constructor: UnprocessableEntityException,
+        message: 'Departure not found',
+      });
+    });
+
+    it('rethrows a P2003 on any OTHER foreign key untouched', async () => {
+      setupReserveContext(prisma);
+      const fkErr = new Prisma.PrismaClientKnownRequestError('FK violation', {
+        code: 'P2003',
+        clientVersion: 'test',
+        meta: { constraint: 'booking_unit_items_ageBandId_fkey' },
+      });
+      m.booking.create.mockRejectedValue(fkErr);
+      await expect(svc.reserve(reserveDto)).rejects.toBe(fkErr);
     });
 
     it('rejects a party below the minimum size', async () => {
@@ -894,7 +929,9 @@ describe('BookingsService', () => {
         claimCalls(m).some(
           (c) =>
             c.sql.includes('SET "bookedCount" = "capacity"') &&
-            c.sql.includes('AND "bookedCount" = 0'),
+            c.sql.includes('AND "bookedCount" = 0') &&
+            // Reserve is the STRICT variant - never restore's intoSticky.
+            c.sql.includes(`"status" = 'open'::"departure_status"`),
         ),
       ).toBe(true);
     });
