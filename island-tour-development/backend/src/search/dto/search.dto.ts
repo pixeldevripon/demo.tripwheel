@@ -131,6 +131,15 @@ export class SearchHitDto extends TourResponseDto {
   destinationSlug!: string | null;
 
   @ApiProperty({
+    example:
+      'A full day to Klein Curaçao: the white beach, snorkeling straight off the boat, and a BBQ lunch on board.',
+    nullable: true,
+    description:
+      'Localized card teaser (≤160 chars) for the carousel description slide (S4j). Falls back to a truncated overview when the operator left shortDescription empty.',
+  })
+  shortDescription!: string | null;
+
+  @ApiProperty({
     example: 'mostPopular',
     nullable: true,
     enum: ['sponsored', 'likelyToSellOut', 'mostPopular', 'new'],

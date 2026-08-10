@@ -10,6 +10,12 @@ export interface SearchHit {
   id: string;
   /** Localized title (falls back to the canonical name). */
   title: string;
+  /**
+   * Localized card teaser (≤160 chars) - the carousel description slide
+   * (S4j). The backend falls back to a truncated overview excerpt when the
+   * operator left `shortDescription` empty; null when neither exists.
+   */
+  shortDescription?: string | null;
   /** Canonical English name. */
   name: string;
   slug: string;

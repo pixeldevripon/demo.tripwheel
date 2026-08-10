@@ -336,6 +336,7 @@ function hitToHubTour(
         reviewCount:
             hit.aggregateReviewCount > 0 ? hit.aggregateReviewCount : undefined,
         title: hit.title,
+        shortDescription: hit.shortDescription ?? null,
         attributes: buildCardChips(hit, labels),
         priceDisplay,
         priceUnit,
@@ -903,6 +904,9 @@ async function HubTripsData({
                     bookTrip: picksDict.bookTrip,
                     learnMore: dict.destination.about.learnMore,
                     readLess: dict.destination.about.readLess,
+                    prevPhotoAria: listingsDict.prevPhotoAria,
+                    nextPhotoAria: listingsDict.nextPhotoAria,
+                    fullDetails: listingsDict.fullDetails,
                 },
             },
         },
@@ -956,6 +960,9 @@ async function HubTripsData({
                     freeCancellation: listingsDict.freeCancellation,
                     saveAria: listingsDict.saveAria,
                     removeAria: listingsDict.removeAria,
+                    prevPhotoAria: listingsDict.prevPhotoAria,
+                    nextPhotoAria: listingsDict.nextPhotoAria,
+                    fullDetails: listingsDict.fullDetails,
                 },
             }}
         />

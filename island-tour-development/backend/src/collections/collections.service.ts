@@ -1392,6 +1392,7 @@ export class CollectionsService {
     const cards = (await this.toursService.findPublicByIds(
       orderedIds,
       target,
+      locale,
     )) as Array<{ id: string }>;
     return cards.map((card) => ({
       ...card,

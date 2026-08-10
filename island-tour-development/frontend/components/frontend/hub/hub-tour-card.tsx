@@ -24,8 +24,10 @@ export type HubTour = {
      * propagation so it never triggers navigation.
      */
     href?: string;
-    /** Hero-first image set for the hover carousel. */
+    /** Hero-first image set for the card carousel (quiet dots always, S4j). */
     images: string[];
+    /** Card teaser for the carousel's description slide (S4j #4); null = photos only. */
+    shortDescription?: string | null;
     badge: HubTourBadge;
     /** Omit to hide the rating row - an unrated tour is not a 0-star tour. */
     rating?: number;
@@ -49,13 +51,18 @@ export type HubTourCardDict = {
     /** Heart aria-labels, carrying {title}. */
     saveAria: string;
     removeAria: string;
+    /** Carousel chevron aria-labels (S4j) - "Previous photo" / "Next photo". */
+    prevPhotoAria: string;
+    nextPhotoAria: string;
+    /** The description slide's closing line - "Full details on the tour page". */
+    fullDetails: string;
 };
 
 /**
  * Hub trips card (Figma node 48024:11222 desktop / 48540:21220 mobile). Distinct
- * from the shared <TourCard>: single image (no carousel), an attribute tag row
- * (8h · Yacht · Beach house …) instead of duration/pickup, and a "from $X /per"
- * price. 3-col desktop / 2-col compact mobile.
+ * from the shared <TourCard>: an attribute tag row (8h · Yacht · Beach house …)
+ * instead of duration/pickup, and a "from $X /per" price. 3-col desktop /
+ * 2-col compact mobile. The image area is the shared card carousel (S4j).
  */
 export function HubTourCard({
     tour,
@@ -96,14 +103,25 @@ export function HubTourCard({
                 sit in THIS box, which on the mobile row card is 2/5 of the card
                 they were previously measuring. */}
             <div className='@container relative aspect-3/2 w-full shrink-0 overflow-hidden rounded-t-[12px] bg-it-bg [&_img]:transition-transform [&_img]:duration-(--it-duration-md) [&_img]:ease-(--it-ease) group-hover:[&_img]:scale-[1.03] max-sm:w-2/5 max-sm:aspect-auto max-sm:rounded-l-[12px] max-sm:rounded-tr-none'>
+                {/* The design-v2 bottom scrim rides inside the carousel, per
+                    photo, so the description slide's paper surface stays clean. */}
                 <TourCardCarousel
                     images={tour.images}
                     alt={tour.title}
                     sizes='(max-width: 640px) 40vw, (max-width: 1024px) 50vw, 384px'
+                    prevAria={dict.prevPhotoAria}
+                    nextAria={dict.nextPhotoAria}
+                    scrim
+                    descSlide={
+                        tour.shortDescription
+                            ? {
+                                  title: tour.title,
+                                  description: tour.shortDescription,
+                                  linkLabel: dict.fullDetails,
+                              }
+                            : undefined
+                    }
                 />
-                {tour.images.length > 0 && (
-                    <div className='pointer-events-none absolute inset-0 z-1 bg-[image:var(--it-scrim-tile)]' />
-                )}
                 <div className='pointer-events-none absolute inset-0 z-10 flex items-start justify-between gap-1.5 p-2 @[220px]:gap-2 @[220px]:p-2.5 md:p-4'>
                     {badgeLabel ? (
                         <TourBadgeChip

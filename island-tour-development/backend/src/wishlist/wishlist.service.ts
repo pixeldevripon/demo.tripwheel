@@ -1,5 +1,6 @@
 import { FxRatesService } from '@/fx/fx-rates.service';
 import { PrismaService } from '@/prisma/prisma.service';
+import { cardTeaser, cardTeaserTranslationSelect } from '@/tours/card-teaser';
 import {
   applyMostPopularCap,
   badgeSelect,
@@ -176,7 +177,10 @@ export class WishlistService {
             ...this.tourSelect,
             status: true,
             isActive: true,
-            translations: { where: { locale }, select: { title: true } },
+            translations: {
+              where: { locale },
+              select: { title: true, ...cardTeaserTranslationSelect },
+            },
           },
         },
       },
@@ -189,6 +193,7 @@ export class WishlistService {
       .map(({ savedAt, tour }) => ({
         ...tour,
         title: tour.translations?.[0]?.title?.trim() || tour.name,
+        shortDescription: cardTeaser(tour.translations?.[0]),
         savedAt,
       }));
 
@@ -258,7 +263,10 @@ export class WishlistService {
         ...this.tourSelect,
         status: true,
         isActive: true,
-        translations: { where: { locale }, select: { title: true } },
+        translations: {
+          where: { locale },
+          select: { title: true, ...cardTeaserTranslationSelect },
+        },
       },
     });
 
@@ -270,6 +278,7 @@ export class WishlistService {
       .map((tour) => ({
         ...tour,
         title: tour.translations?.[0]?.title?.trim() || tour.name,
+        shortDescription: cardTeaser(tour.translations?.[0]),
       }));
 
     const withBadges = ordered
