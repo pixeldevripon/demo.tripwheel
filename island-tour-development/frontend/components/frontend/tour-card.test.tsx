@@ -8,10 +8,10 @@ import { TourCard, type TourCardDict, type TourListing } from './tour-card';
  *
  * The stored title is HUB-FREE (mck-18 §3: the data pass strips each tour's
  * prefix using its own hub) and the card renders it verbatim - there is no
- * render-time stripping left to compensate for dirty data. The eyebrow is its
- * own element above the title, never nested in the rating row: it belongs to
- * the SURFACE, while the rating row belongs to the review count, and the two
- * must be able to come and go independently (mck-18 §4).
+ * render-time stripping left to compensate for dirty data. The default card
+ * draws the eyebrow inline with the rating (founder, Aug 10 2026), but the
+ * mck-18 §4 rule survives in behaviour: the eyebrow belongs to the SURFACE,
+ * the rating to the review count, and each must render without the other.
  *
  * The equivalence tests matter too: the default card and the ranked collection
  * card must treat `hub` identically, so the same tour reads the same way on

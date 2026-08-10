@@ -535,14 +535,14 @@ export class HubService {
       },
       select: {
         ...this.hubSelect,
-        // Both locales: heroTagline needs English to fall back to (the nav
-        // dropdown and "Explore by type" print it as the place row's subtitle).
+        // Both locales: the translated name needs English to fall back to.
+        // The place row's subtitle is the base `description` (already in
+        // hubSelect) - the listings blurb, not the hub-page heroTagline.
         translations: {
           where: { locale: { in: [locale, Locale.en] } },
           select: {
             locale: true,
             name: true,
-            heroTagline: true,
             isMachineTranslated: true,
           },
         },
@@ -554,7 +554,6 @@ export class HubService {
       const t = mergeTranslation(translations, locale);
       return {
         ...applyTranslation(hub, t, locale),
-        heroTagline: t?.heroTagline ?? null,
         publishedTourCount: countByHub.get(hub.id) ?? 0,
       };
     });

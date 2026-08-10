@@ -177,7 +177,9 @@ export function Navbar({
                         name: h.name,
                         slug: h.slug,
                         // The count-less subtitle: what is there, not how many.
-                        tagline: h.heroTagline || h.description || null,
+                        // `description` is the listings blurb (master E.4);
+                        // heroTagline belongs to the hub page hero only.
+                        tagline: h.description || null,
                         image: h.heroImage ?? null,
                     }));
                 hubCache.current.set(cacheKey, mapped);
