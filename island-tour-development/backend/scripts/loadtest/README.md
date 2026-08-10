@@ -14,7 +14,22 @@ whether the box is enough.**
   IP, which no real rush is; the per-departure reserve limiter stays active on
   purpose, its 429s are part of the system under test)
 
-## Run
+## Run — the short way (pure pnpm, e.g. on the VPS)
+
+```bash
+cd backend
+pnpm loadtest:seed      # isolated fixture (own dest/operator/tour)
+pnpm loadtest:full      # whole ladder: hot-100, hot-1000, spread-500, mixed
+                        # + postconditions after each; stops on first failure
+pnpm loadtest:cleanup   # removes everything the seed created
+```
+
+`loadtest:full` reads the fixture ids and INTERNAL_API_SECRET itself - no
+exports needed. `API=https://api.example.com pnpm loadtest:full` tests
+through the proxy instead of localhost. Single scenarios:
+`pnpm loadtest:run hot 500` / `pnpm loadtest:run spread 500`.
+
+## Run — the long way (manual control per scenario)
 
 ```bash
 cd backend
