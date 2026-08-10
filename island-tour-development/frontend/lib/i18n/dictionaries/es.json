@@ -356,6 +356,8 @@
             "selectDate": "Seleccionar fecha",
             "clearDate": "Borrar fecha",
             "checkAvailability": "Ver disponibilidad",
+            "share": "Compartir",
+            "linkCopied": "Enlace copiado",
             "comparison": {
                 "title": "¿Qué excursión es la ideal para ti?",
                 "subtitle": "Esto es lo que realmente diferencia estas excursiones, una al lado de la otra.",
@@ -371,7 +373,7 @@
                     "button": "Elige tu barco"
                 }
             },
-            "frequencyDaily": "Todos los días",
+            "frequencyDaily": "Salidas diarias",
             "frequencyWeekly": "{count} días a la semana",
             "durationFullDay": "Día completo",
             "durationHalfDay": "Medio día",
@@ -402,10 +404,10 @@
                 "perPackage": "/por paquete"
             },
             "heroInclusion": {
-                "bbq": "Almuerzo BBQ",
-                "beachHouse": "Casa de playa",
-                "openBar": "Barra libre",
-                "breakfast": "Desayuno"
+                "bbq": "Almuerzo BBQ incluido",
+                "beachHouse": "Casa de playa incluida",
+                "openBar": "Barra libre incluida",
+                "breakfast": "Desayuno incluido"
             }
         },
         "tour": {

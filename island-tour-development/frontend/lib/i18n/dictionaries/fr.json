@@ -356,6 +356,8 @@
             "selectDate": "Sélectionner une date",
             "clearDate": "Effacer la date",
             "checkAvailability": "Vérifier la disponibilité",
+            "share": "Partager",
+            "linkCopied": "Lien copié",
             "comparison": {
                 "title": "Quelle excursion vous convient ?",
                 "subtitle": "Voici ce qui distingue vraiment ces excursions, côte à côte.",
@@ -371,7 +373,7 @@
                     "button": "Choisissez votre bateau"
                 }
             },
-            "frequencyDaily": "Tous les jours",
+            "frequencyDaily": "Départs quotidiens",
             "frequencyWeekly": "{count} jours par semaine",
             "durationFullDay": "Journée complète",
             "durationHalfDay": "Demi-journée",
@@ -402,10 +404,10 @@
                 "perPackage": "/par forfait"
             },
             "heroInclusion": {
-                "bbq": "Déjeuner BBQ",
-                "beachHouse": "Maison de plage",
-                "openBar": "Open bar",
-                "breakfast": "Petit-déjeuner"
+                "bbq": "Déjeuner BBQ inclus",
+                "beachHouse": "Maison de plage incluse",
+                "openBar": "Open bar inclus",
+                "breakfast": "Petit-déjeuner inclus"
             }
         },
         "tour": {

@@ -356,6 +356,8 @@
             "selectDate": "选择日期",
             "clearDate": "清除日期",
             "checkAvailability": "查看可用性",
+            "share": "分享",
+            "linkCopied": "链接已复制",
             "comparison": {
                 "title": "哪一趟行程适合你？",
                 "subtitle": "这些行程之间的真正差别，一目了然。",
@@ -371,7 +373,7 @@
                     "button": "选择你的船"
                 }
             },
-            "frequencyDaily": "每日",
+            "frequencyDaily": "每日出发",
             "frequencyWeekly": "每周{count}天",
             "durationFullDay": "全天",
             "durationHalfDay": "半天",
@@ -402,10 +404,10 @@
                 "perPackage": "/每套餐"
             },
             "heroInclusion": {
-                "bbq": "BBQ 午餐",
-                "beachHouse": "海滩屋",
-                "openBar": "无限畅饮",
-                "breakfast": "早餐"
+                "bbq": "含 BBQ 午餐",
+                "beachHouse": "含海滩屋",
+                "openBar": "含无限畅饮",
+                "breakfast": "含早餐"
             }
         },
         "tour": {

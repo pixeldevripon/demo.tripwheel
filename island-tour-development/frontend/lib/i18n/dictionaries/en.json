@@ -356,6 +356,8 @@
             "selectDate": "Select date",
             "clearDate": "Clear date",
             "checkAvailability": "Check availability",
+            "share": "Share",
+            "linkCopied": "Link copied",
             "comparison": {
                 "title": "Which trip is right for you?",
                 "subtitle": "Here's what actually differs between these trips, side by side.",
@@ -371,7 +373,7 @@
                     "button": "Pick your boat"
                 }
             },
-            "frequencyDaily": "Daily",
+            "frequencyDaily": "Daily departures",
             "frequencyWeekly": "{count} days a week",
             "durationFullDay": "Full day",
             "durationHalfDay": "Half day",
@@ -402,10 +404,10 @@
                 "perPackage": "/per package"
             },
             "heroInclusion": {
-                "bbq": "BBQ lunch",
-                "beachHouse": "Beach house",
-                "openBar": "Open bar",
-                "breakfast": "Breakfast"
+                "bbq": "BBQ lunch included",
+                "beachHouse": "Beach house included",
+                "openBar": "Open bar included",
+                "breakfast": "Breakfast included"
             }
         },
         "tour": {

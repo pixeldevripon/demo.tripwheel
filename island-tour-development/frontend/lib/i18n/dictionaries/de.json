@@ -356,6 +356,8 @@
             "selectDate": "Datum auswählen",
             "clearDate": "Datum löschen",
             "checkAvailability": "Verfügbarkeit prüfen",
+            "share": "Teilen",
+            "linkCopied": "Link kopiert",
             "comparison": {
                 "title": "Welcher Ausflug passt zu dir?",
                 "subtitle": "Das sind die tatsächlichen Unterschiede zwischen diesen Touren, direkt nebeneinander.",
@@ -371,7 +373,7 @@
                     "button": "Wähl dein Boot"
                 }
             },
-            "frequencyDaily": "Täglich",
+            "frequencyDaily": "Tägliche Abfahrten",
             "frequencyWeekly": "{count} Tage pro Woche",
             "durationFullDay": "Ganzer Tag",
             "durationHalfDay": "Halber Tag",
@@ -402,10 +404,10 @@
                 "perPackage": "/pro Paket"
             },
             "heroInclusion": {
-                "bbq": "BBQ-Mittagessen",
-                "beachHouse": "Strandhaus",
-                "openBar": "Open Bar",
-                "breakfast": "Frühstück"
+                "bbq": "BBQ-Mittagessen inklusive",
+                "beachHouse": "Strandhaus inklusive",
+                "openBar": "Open Bar inklusive",
+                "breakfast": "Frühstück inklusive"
             }
         },
         "tour": {

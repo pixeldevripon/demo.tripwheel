@@ -356,6 +356,8 @@
             "selectDate": "Selecteer datum",
             "clearDate": "Datum wissen",
             "checkAvailability": "Beschikbaarheid bekijken",
+            "share": "Delen",
+            "linkCopied": "Link gekopieerd",
             "comparison": {
                 "title": "Welke trip past bij jou?",
                 "subtitle": "Dit is wat deze trips echt van elkaar onderscheidt, naast elkaar.",
@@ -371,7 +373,7 @@
                     "button": "Kies je boot"
                 }
             },
-            "frequencyDaily": "Dagelijks",
+            "frequencyDaily": "Dagelijks vertrek",
             "frequencyWeekly": "{count} dagen per week",
             "durationFullDay": "Hele dag",
             "durationHalfDay": "Halve dag",
@@ -402,10 +404,10 @@
                 "perPackage": "/per pakket"
             },
             "heroInclusion": {
-                "bbq": "BBQ-lunch",
-                "beachHouse": "Strandhuis",
-                "openBar": "Open bar",
-                "breakfast": "Ontbijt"
+                "bbq": "BBQ-lunch inbegrepen",
+                "beachHouse": "Strandhuis inbegrepen",
+                "openBar": "Open bar inbegrepen",
+                "breakfast": "Ontbijt inbegrepen"
             }
         },
         "tour": {
