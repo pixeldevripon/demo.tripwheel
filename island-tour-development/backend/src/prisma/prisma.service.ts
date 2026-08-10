@@ -16,7 +16,8 @@ export class PrismaService
     // performance knob; F7's load test is what tunes the numbers.
     //
     // Postgres sizing rule: max_connections must cover
-    // DB_POOL_MAX x app processes + headroom for cron/psql/studio.
+    // (DB_POOL_MAX + 10) x app processes + headroom for cron/psql/studio -
+    // the +10 is the second pool in auth-prisma.client.ts (Better Auth).
     const adapter = new PrismaPg({
       connectionString: process.env.DATABASE_URL,
       // Pool ceiling. More connections than CPU can serve makes Postgres

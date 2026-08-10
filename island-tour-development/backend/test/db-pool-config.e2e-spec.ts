@@ -162,20 +162,28 @@ describe('DB pool config (F6) - real Postgres', () => {
   });
 
   it('sheds a reserve stuck behind a held row lock as 503, not 500', async () => {
-    // A rival holds the departure row lock for longer than lock_timeout; the
-    // reserve's claim (last statement of its txn) queues behind it and must
-    // be aborted by Postgres at ~3s and answered as "try again".
+    // A rival holds FOR UPDATE on the departure row for longer than
+    // lock_timeout. In THIS shape the statement that times out is the
+    // booking INSERT (its FK check takes FOR KEY SHARE, which conflicts
+    // with FOR UPDATE) - i.e. the bare DriverAdapterError branch of
+    // isLockTimeout. Production claim-vs-claim rivals lock via FOR NO KEY
+    // UPDATE, which does NOT block the insert; that branch is the raw-SQL
+    // P2010 shape, unit-pinned.
     let release!: () => void;
     const hold = new Promise<void>((resolve) => (release = resolve));
+    let lockAcquired!: () => void;
+    const locked = new Promise<void>((resolve) => (lockAcquired = resolve));
     const rivalTxn = rival.$transaction(
       async (tx) => {
         await tx.$executeRaw`SELECT 1 FROM "departures" WHERE "id" = ${departureId} FOR UPDATE`;
+        lockAcquired();
         await hold;
       },
       { timeout: 15_000 },
     );
-    // Let the rival acquire the lock before firing the booking.
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    // Deterministic, not a sleep: the booking fires only once the rival
+    // provably holds the lock.
+    await locked;
 
     const started = Date.now();
     const res = await request(server)

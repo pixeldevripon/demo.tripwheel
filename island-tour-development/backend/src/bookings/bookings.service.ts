@@ -754,11 +754,19 @@ export class BookingsService {
         { maxWait: 2_000, timeout: 5_000 },
       );
     } catch (err) {
-      // A rush on one departure serializes on its row lock; the pool's
-      // lock_timeout (3s, prisma.service.ts) aborts waiters so they free
-      // their pool slots. That abort is nobody's bug - tell the traveller to
-      // retry (503), never a 500.
-      if (BookingsService.isLockTimeout(err)) {
+      // Rush shedding (F6): every timeout-ladder rung that means "the system
+      // is busy and NOTHING was written" answers 503 "try again", never 500:
+      // - 55P03: the claim/insert waited past lock_timeout on the hot row.
+      // - P2028: the transaction could not start within maxWait, or its
+      //   budget expired while queueing behind the rush - under real load
+      //   this rung sheds MORE traffic than lock_timeout does, because every
+      //   lock-waiter holds a pool slot. Both roll back with zero side
+      //   effects, so the retry semantics are identical.
+      if (
+        BookingsService.isLockTimeout(err) ||
+        (err instanceof Prisma.PrismaClientKnownRequestError &&
+          err.code === 'P2028')
+      ) {
         throw new ServiceUnavailableException(
           'This departure is receiving heavy booking traffic. Please try again.',
         );
@@ -5960,6 +5968,12 @@ export class BookingsService {
    * - CLIENT queries (`booking.create` blocked on the departure row): a bare
    *   DriverAdapterError - NOT a KnownRequestError - with the code on
    *   `err.cause`. Duck-typed by name: the class is adapter-internal.
+   *
+   * UPGRADE RISK: the only test exercising the REAL shapes is
+   * test/db-pool-config.e2e-spec.ts, which CI does not run (no e2e in
+   * ci.yml). An @prisma/adapter-pg upgrade that reshapes these errors
+   * silently reverts 503 -> 500 while the fabricated-shape unit tests stay
+   * green - rerun that spec locally after any adapter bump.
    */
   private static isLockTimeout(err: unknown): boolean {
     const is55P03 = (cause?: { code?: unknown; originalCode?: unknown }) =>

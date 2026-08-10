@@ -784,6 +784,23 @@ describe('BookingsService', () => {
       );
     });
 
+    it('503s (retry) when the transaction times out queueing behind the rush (P2028)', async () => {
+      setupReserveContext(prisma);
+      // Under real load this rung sheds MORE than lock_timeout: every
+      // lock-waiter holds a pool slot, so late arrivals die on maxWait/
+      // timeout instead. Rolled back, nothing persisted - same retry
+      // semantics as 55P03.
+      m.$transaction.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError(
+          'Transaction API error: Unable to start a transaction in the given time.',
+          { code: 'P2028', clientVersion: 'test' },
+        ),
+      );
+      await expect(svc.reserve(reserveDto)).rejects.toBeInstanceOf(
+        ServiceUnavailableException,
+      );
+    });
+
     it('does NOT shed a statement timeout (57014) as a retryable 503', async () => {
       setupReserveContext(prisma);
       const stmtTimeout = new Prisma.PrismaClientKnownRequestError(
