@@ -759,8 +759,10 @@ export class BookingsService {
       });
       if (!winner) throw err; // winner rolled back after all - a real failure
       this.assertSameReservation(winner, dto);
+      // displayRef only - the raw id is a bearer capability (it drives the
+      // public confirm/cancel routes) and does not belong in the log stream.
       this.logger.log(
-        `Booking ${winner.displayRef} replayed for in-flight duplicate id ${id}`,
+        `Booking ${winner.displayRef} replayed for an in-flight duplicate reserve`,
       );
       return mapBookingPublic(winner);
     }
@@ -5934,6 +5936,12 @@ export class BookingsService {
    * duplicate-id race (hardening F4). A displayRef/publicRef/uuid collision
    * must NOT be swallowed as a replay: their identifiers ('displayRef',
    * 'bookings_displayRef_key', ...) match neither `'id'` nor `'pkey'`.
+   *
+   * A nested-table PK clash (booking_unit_items_pkey - also `fields: ['id']`)
+   * CAN match here; that is safe only because the caller re-fetches the
+   * winner by id and rethrows when none exists - a child-PK collision implies
+   * our own bookings insert succeeded, so no committed rival holds this id.
+   * Keep the null-winner rethrow if this predicate is ever refactored.
    */
   private static isBookingPkViolation(err: unknown): boolean {
     if (

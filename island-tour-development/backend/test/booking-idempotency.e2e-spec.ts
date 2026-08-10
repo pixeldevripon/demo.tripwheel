@@ -193,23 +193,73 @@ describe('reserve idempotency (F4) - real HTTP + real Postgres', () => {
     expect(await prisma.booking.count({ where: { id } })).toBe(1);
   });
 
-  it('(b) same id in parallel: exactly one booking row, both responses carry it', async () => {
+  it('(b) same id in parallel x8: exactly one booking row, every response carries it', async () => {
+    // Eight rivals, not two: a pair can serialize so cleanly that the second
+    // request replays via the layer-1 pre-check and the P2002 path never
+    // runs. Eight overlapping requests make a fully-serialized (vacuous) pass
+    // improbable; the DETERMINISTIC exercise of the P2002 path is test (b2).
     const id = randomUUID();
     const body = { id, tourId, departureId, guests: 2 };
     const before = await bookedCount(departureId);
 
-    const [r1, r2] = await Promise.all([reserve(body), reserve(body)]);
+    const responses = await Promise.all(
+      Array.from({ length: 8 }, () => reserve(body)),
+    );
 
-    expect(r1.status).toBe(201);
-    expect(r2.status).toBe(201);
-    expect(r1.body.id).toBe(id);
-    expect(r2.body.id).toBe(id);
-    expect(r1.body.publicRef).toBe(r2.body.publicRef);
-
+    for (const r of responses) {
+      expect(r.status).toBe(201);
+      expect(r.body.id).toBe(id);
+      expect(r.body.publicRef).toBe(responses[0].body.publicRef);
+    }
     expect(await prisma.booking.count({ where: { id } })).toBe(1);
-    // Exactly ONE claim landed - the loser never touched the departure row.
+    // Exactly ONE claim landed - no loser ever touched the departure row.
     expect(await bookedCount(departureId)).toBe(before + 2);
   });
+
+  it('(b2) in-flight duplicate, deterministic: the insert collides on an uncommitted PK', async () => {
+    // Forces the exact interleaving test (b) can only make probable: a rival
+    // holds an UNCOMMITTED row under this id, so the layer-1 pre-check sees
+    // nothing (read committed), the HTTP request's own insert blocks on the
+    // PK, and when the rival commits it P2002s - the layer-2 catch must
+    // answer with the winner's booking, not a 500.
+    const id = randomUUID();
+    let commit!: () => void;
+    const gate = new Promise<void>((resolve) => (commit = resolve));
+
+    const winnerTxn = prisma.$transaction(async (tx) => {
+      await tx.booking.create({
+        data: {
+          id,
+          tourId,
+          departureId,
+          operatorId,
+          displayRef: `IT-2031-B2${suffix.slice(-3).toUpperCase()}`,
+          paymentModel: PaymentModel.OPERATOR_LINK,
+          currency: Currency.EUR,
+          localDate: new Date('2031-06-05'),
+          island: 'curacao',
+          totalRetail: 100,
+          totalNet: 80,
+          depositAmount: 20,
+          balanceAmount: 80,
+          commissionRate: 0.2,
+          commissionAmount: 20,
+        },
+      });
+      await gate; // hold the PK lock until the loser is blocked on it
+    });
+
+    const loser = reserve({ id, tourId, departureId, guests: 2 });
+    // Let the request run its pre-check (sees nothing) and reach the insert.
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    commit();
+    await winnerTxn;
+
+    const res = await loser;
+    expect(res.status).toBe(201);
+    expect(res.body.id).toBe(id);
+    expect(await prisma.booking.count({ where: { id } })).toBe(1);
+  }, 20_000);
 
   it('(c) reused id with a different departure: 409, nothing created or claimed', async () => {
     const id = randomUUID();
@@ -241,7 +291,10 @@ describe('reserve idempotency (F4) - real HTTP + real Postgres', () => {
     );
     expect(first.body.status).toBe('ON_HOLD');
 
-    // The hold lapses (swept elsewhere); the replay reports the truth.
+    // The hold lapses (swept elsewhere); the replay reports the truth. The
+    // direct flip skips the sweeper's seat release, so compensate the claim
+    // below - otherwise this test leaks a phantom seat into any later
+    // assertion on this departure's bookedCount.
     await prisma.booking.update({
       where: { id },
       data: { status: 'EXPIRED' },
@@ -250,5 +303,8 @@ describe('reserve idempotency (F4) - real HTTP + real Postgres', () => {
       201,
     );
     expect(replay.body.status).toBe('EXPIRED');
+    await prisma.$executeRaw`
+      UPDATE "departures" SET "bookedCount" = GREATEST("bookedCount" - 1, 0)
+      WHERE "id" = ${departureId}`;
   });
 });
