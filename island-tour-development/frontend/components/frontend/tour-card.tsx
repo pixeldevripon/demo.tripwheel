@@ -388,28 +388,26 @@ function DefaultTourCard({
                 className={cn(
                     'flex flex-1 min-w-0 flex-col gap-1 px-3 pt-2.5 pb-3 @[220px]:px-3.5 @[220px]:pt-3 @[220px]:pb-3.5'
                 )}>
-                {/* Rating row - amber star glyph + soft count. Renders only for
-                    a rated tour; nothing else lives on this line, so it can
-                    come and go on its own. */}
-                {isRated && (
-                    <div className='flex items-center gap-1.5 text-[10.5px] @[220px]:text-[12.5px] leading-[1.6]'>
-                        <span className='font-bold text-it-star'>
-                            ★ {tour.rating}
-                        </span>
-                        <span className='text-it-text-muted tabular-nums'>
-                            ({tour.reviewCount?.toLocaleString()})
-                        </span>
-                    </div>
-                )}
-
-                {/* Hub eyebrow - its OWN element directly above the title,
-                    never nested in the rating row (mck-18 §4). The eyebrow is a
-                    property of the SURFACE (master 3.5); nesting it in `.rate`
-                    made it a property of the review count, so an unrated tour
-                    lost its hub label along with the hidden row. */}
-                {tour.hub && (
-                    <div className='mb-0.5 flex'>
-                        <HubEyebrow name={tour.hub.name} />
+                {/* Rating + hub row - amber star glyph + soft count, with the
+                    hub eyebrow INLINE after the rating (founder, Aug 10 2026;
+                    supersedes the own-row layout). The mck-18 §4 rule still
+                    holds in the way that matters: the eyebrow is a property of
+                    the SURFACE, not of the review count, so an unrated tour
+                    with a hub still renders this row with the chip alone -
+                    the hub label never comes and goes with the rating. */}
+                {(isRated || tour.hub) && (
+                    <div className='mb-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10.5px] @[220px]:text-[12.5px] leading-[1.6]'>
+                        {isRated && (
+                            <span className='inline-flex items-center gap-1.5'>
+                                <span className='font-bold text-it-star'>
+                                    ★ {tour.rating}
+                                </span>
+                                <span className='text-it-text-muted tabular-nums'>
+                                    ({tour.reviewCount?.toLocaleString()})
+                                </span>
+                            </span>
+                        )}
+                        {tour.hub && <HubEyebrow name={tour.hub.name} />}
                     </div>
                 )}
 
@@ -644,11 +642,12 @@ function RankedTourCard({
 
             {/* ── Card info ───────────────────────────────────────────────── */}
             <div className='flex flex-1 min-w-0 flex-col gap-1 px-3 pt-2.5 pb-3 @[220px]:px-3.5 @[220px]:pt-3 @[220px]:pb-3.5'>
-                {/* Hub eyebrow - the SAME treatment as the default card
-                    (Pastel #49): its own element above the title. The eyebrow
-                    shows on collection pages even when every card shares one
-                    hub - suppression is bound to a surface, not to what the
-                    other cards are (founder, Aug 6 2026 / mck-18 §2). */}
+                {/* Hub eyebrow - above the title. (The default card inlines it
+                    with its rating row; here the rating sits in the meta line
+                    below the description, so the chip keeps its own row.) The
+                    eyebrow shows on collection pages even when every card
+                    shares one hub - suppression is bound to a surface, not to
+                    what the other cards are (founder, Aug 6 2026 / mck-18 §2). */}
                 {tour.hub && (
                     <div className='mb-0.5 flex'>
                         <HubEyebrow name={tour.hub.name} />

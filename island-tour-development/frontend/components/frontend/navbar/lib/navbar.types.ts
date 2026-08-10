@@ -18,7 +18,7 @@ export type Category = {
 export type NavHub = {
     name: string;
     slug: string;
-    /** Short editorial line under the name - heroTagline, else description. */
+    /** Short line under the name - the hub's `description` (listings blurb). */
     tagline?: string | null;
     /** Hub thumbnail for the dropdown row; null keeps the fallback surface. */
     image?: string | null;

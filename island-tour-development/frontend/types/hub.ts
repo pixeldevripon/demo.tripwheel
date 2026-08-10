@@ -28,15 +28,15 @@ export interface HubLocalized extends Hub {
   isMachineTranslated: boolean;
 }
 
-/** Returned by the destination-scoped, tour-gated public endpoint. */
+/**
+ * Returned by the destination-scoped, tour-gated public endpoint. The place
+ * row's subtitle in the nav dropdown and "Explore by type" (MCK-19) is the
+ * inherited `description` (the listings blurb) - it replaces the tour count a
+ * hub must not carry. `heroTagline` is the hub PAGE's hero subtitle and is
+ * deliberately absent here.
+ */
 export interface HubByDestination extends HubLocalized {
   publishedTourCount: number;
-  /**
-   * Short editorial line (locale-resolved, English fallback) - the place row's
-   * subtitle in the nav dropdown and "Explore by type" (MCK-19), replacing the
-   * tour count a hub must not carry.
-   */
-  heroTagline: string | null;
 }
 
 export interface HubDetail extends HubLocalized {
