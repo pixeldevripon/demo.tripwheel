@@ -597,154 +597,180 @@ export class BookingsService {
 
     let created: Prisma.BookingGetPayload<{ include: { unitItems: true } }>;
     try {
-      created = await this.prisma.$transaction(async (tx) => {
-        const status = operatorFull
-          ? BookingStatus.CONFIRMED
-          : BookingStatus.ON_HOLD;
-        // Insert FIRST, claim LAST. The booking rows don't depend on the claim
-        // result, and their FK to `departures` takes FOR KEY SHARE, which does
-        // NOT conflict with the claim's row lock - so the multi-row insert runs
-        // off the contended row's lock window. Rivals on a hot departure then
-        // wait only for the claim UPDATE + commit, not for this insert. A losing
-        // claim below rolls the booking rows back with the transaction.
-        let booking: Prisma.BookingGetPayload<{ include: { unitItems: true } }>;
-        try {
-          booking = await tx.booking.create({
-            data: {
-              id,
-              tourId: dto.tourId,
-              departureId: dto.departureId,
-              operatorId: ctx.tour.operatorId,
-              userId: userId ?? null,
-              displayRef,
-              status,
-              paymentModel: ctx.tour.paymentModel,
-              currency: bookingCurrency,
-              localDate: ctx.departure.date,
-              startTime: timeOfDay(ctx.departure.startTime),
-              tourStartDateTime: localStart,
-              tourEndDateTime,
-              tourTimeZone: ctx.tour.timeZone,
-              // Denormalized destination SLUG - it builds the TYP deep link
-              // (`/{island}/thank-you/{publicRef}`) and the page 404s on any
-              // mismatch, so the fallback must be slug-shaped too. `destination`
-              // is a required relation that `loadContext` always selects, so this
-              // only guards the impossible case; it used to read 'Curaçao', a
-              // display NAME, which would have 404'd that booking's TYP forever.
-              island: ctx.tour.destination?.slug ?? 'curacao',
-              utcExpiresAt: operatorFull
-                ? null
-                : new Date(
-                    Date.now() +
-                      (dto.expirationMinutes ?? DEFAULT_HOLD_MINUTES) * 60_000,
-                  ),
-              utcConfirmedAt: operatorFull ? new Date() : null,
-              exclusiveDeparture: exclusive,
-              pickupRequested: dto.pickupRequested ?? false,
-              pickupLocationId: dto.pickupLocationId ?? null,
-              pickupAddress: ctx.pickupSnapshot.address,
-              pickupMinutesPrior: ctx.pickupSnapshot.minutesPrior,
-              pickupWindowStart: ctx.pickupSnapshot.windowStart,
-              pickupWindowEnd: ctx.pickupSnapshot.windowEnd,
-              // Priced pickup snapshot (booking currency) - already inside totalRetail.
-              pickupUnitPrice: pricing.pickup?.unitPrice ?? null,
-              pickupTotalPrice: pricing.pickup?.totalPrice ?? null,
-              // Only ON_ARRIVAL bookings collect on site, so the terms are meaningless
-              // (and misleading in the email) on any other model.
-              onArrivalPayment:
-                ctx.tour.paymentModel === PaymentModel.ON_ARRIVAL
-                  ? ctx.tour.onArrivalPayment
-                  : null,
-              notes: dto.notes ?? null,
-              newsletterOptIn: dto.newsletterOptIn ?? false,
-              // Attribution snapshot (master 8.1.6 / E.8) - written at creation only, so
-              // the idempotent re-reserve early-return above never overwrites the original
-              // click ids/UTMs. Feeds the booking_complete push (8.3) + later ad adjustments.
-              gclid: dto.attribution?.gclid ?? null,
-              gbraid: dto.attribution?.gbraid ?? null,
-              wbraid: dto.attribution?.wbraid ?? null,
-              fbclid: dto.attribution?.fbclid ?? null,
-              utmSource: dto.attribution?.utmSource ?? null,
-              utmMedium: dto.attribution?.utmMedium ?? null,
-              utmCampaign: dto.attribution?.utmCampaign ?? null,
-              utmTerm: dto.attribution?.utmTerm ?? null,
-              utmContent: dto.attribution?.utmContent ?? null,
-              // Discount/coupon deferred (flaw #2): with no server-side coupon-validation
-              // engine, a client-supplied discount is untrusted, so we never write one -
-              // the full price stays authoritative. Wire this when the coupon engine exists.
-              totalRetail: pricing.totalRetail,
-              totalNet: pricing.totalNet,
-              depositAmount: pricing.depositAmount,
-              balanceAmount: pricing.balanceAmount,
-              commissionRate: pricing.commissionRate,
-              commissionAmount: pricing.commissionAmount,
-              totalEur: pricing.totalEur,
-              fxRateToEur: pricing.fxRateToEur,
-              // Multi-currency source snapshot + FX audit (guide §20.2/§20.8). Rates are
-              // frozen here and never refetched at payment/TYP/email/tracking time.
-              sourceCurrency,
-              sourceTotalRetail: pricing.sourceTotalRetail,
-              sourceDepositAmount: pricing.sourceDepositAmount,
-              sourceBalanceAmount: pricing.sourceBalanceAmount,
-              sourceFxRateToBooking: pricing.sourceFxRateToBooking,
-              sourceFxProvider: sourceRate.provider,
-              sourceFxProviderAsOf: sourceRate.providerAsOf,
-              eurFxProvider: eurRate.provider,
-              eurFxProviderAsOf: eurRate.providerAsOf,
-              unitItems: {
-                create: pricing.unitItems.map((u, idx) => ({
-                  ageBandId: u.ageBandId,
-                  status,
-                  priceRetail: u.priceRetail,
-                  priceNet: u.priceNet,
-                  travelerAge: seatAges[idx] ?? null,
-                })),
+      created = await this.prisma.$transaction(
+        async (tx) => {
+          const status = operatorFull
+            ? BookingStatus.CONFIRMED
+            : BookingStatus.ON_HOLD;
+          // Insert FIRST, claim LAST. The booking rows don't depend on the claim
+          // result, and their FK to `departures` takes FOR KEY SHARE, which does
+          // NOT conflict with the claim's row lock - so the multi-row insert runs
+          // off the contended row's lock window. Rivals on a hot departure then
+          // wait only for the claim UPDATE + commit, not for this insert. A losing
+          // claim below rolls the booking rows back with the transaction.
+          let booking: Prisma.BookingGetPayload<{
+            include: { unitItems: true };
+          }>;
+          try {
+            booking = await tx.booking.create({
+              data: {
+                id,
+                tourId: dto.tourId,
+                departureId: dto.departureId,
+                operatorId: ctx.tour.operatorId,
+                userId: userId ?? null,
+                displayRef,
+                status,
+                paymentModel: ctx.tour.paymentModel,
+                currency: bookingCurrency,
+                localDate: ctx.departure.date,
+                startTime: timeOfDay(ctx.departure.startTime),
+                tourStartDateTime: localStart,
+                tourEndDateTime,
+                tourTimeZone: ctx.tour.timeZone,
+                // Denormalized destination SLUG - it builds the TYP deep link
+                // (`/{island}/thank-you/{publicRef}`) and the page 404s on any
+                // mismatch, so the fallback must be slug-shaped too. `destination`
+                // is a required relation that `loadContext` always selects, so this
+                // only guards the impossible case; it used to read 'Curaçao', a
+                // display NAME, which would have 404'd that booking's TYP forever.
+                island: ctx.tour.destination?.slug ?? 'curacao',
+                utcExpiresAt: operatorFull
+                  ? null
+                  : new Date(
+                      Date.now() +
+                        (dto.expirationMinutes ?? DEFAULT_HOLD_MINUTES) *
+                          60_000,
+                    ),
+                utcConfirmedAt: operatorFull ? new Date() : null,
+                exclusiveDeparture: exclusive,
+                pickupRequested: dto.pickupRequested ?? false,
+                pickupLocationId: dto.pickupLocationId ?? null,
+                pickupAddress: ctx.pickupSnapshot.address,
+                pickupMinutesPrior: ctx.pickupSnapshot.minutesPrior,
+                pickupWindowStart: ctx.pickupSnapshot.windowStart,
+                pickupWindowEnd: ctx.pickupSnapshot.windowEnd,
+                // Priced pickup snapshot (booking currency) - already inside totalRetail.
+                pickupUnitPrice: pricing.pickup?.unitPrice ?? null,
+                pickupTotalPrice: pricing.pickup?.totalPrice ?? null,
+                // Only ON_ARRIVAL bookings collect on site, so the terms are meaningless
+                // (and misleading in the email) on any other model.
+                onArrivalPayment:
+                  ctx.tour.paymentModel === PaymentModel.ON_ARRIVAL
+                    ? ctx.tour.onArrivalPayment
+                    : null,
+                notes: dto.notes ?? null,
+                newsletterOptIn: dto.newsletterOptIn ?? false,
+                // Attribution snapshot (master 8.1.6 / E.8) - written at creation only, so
+                // the idempotent re-reserve early-return above never overwrites the original
+                // click ids/UTMs. Feeds the booking_complete push (8.3) + later ad adjustments.
+                gclid: dto.attribution?.gclid ?? null,
+                gbraid: dto.attribution?.gbraid ?? null,
+                wbraid: dto.attribution?.wbraid ?? null,
+                fbclid: dto.attribution?.fbclid ?? null,
+                utmSource: dto.attribution?.utmSource ?? null,
+                utmMedium: dto.attribution?.utmMedium ?? null,
+                utmCampaign: dto.attribution?.utmCampaign ?? null,
+                utmTerm: dto.attribution?.utmTerm ?? null,
+                utmContent: dto.attribution?.utmContent ?? null,
+                // Discount/coupon deferred (flaw #2): with no server-side coupon-validation
+                // engine, a client-supplied discount is untrusted, so we never write one -
+                // the full price stays authoritative. Wire this when the coupon engine exists.
+                totalRetail: pricing.totalRetail,
+                totalNet: pricing.totalNet,
+                depositAmount: pricing.depositAmount,
+                balanceAmount: pricing.balanceAmount,
+                commissionRate: pricing.commissionRate,
+                commissionAmount: pricing.commissionAmount,
+                totalEur: pricing.totalEur,
+                fxRateToEur: pricing.fxRateToEur,
+                // Multi-currency source snapshot + FX audit (guide §20.2/§20.8). Rates are
+                // frozen here and never refetched at payment/TYP/email/tracking time.
+                sourceCurrency,
+                sourceTotalRetail: pricing.sourceTotalRetail,
+                sourceDepositAmount: pricing.sourceDepositAmount,
+                sourceBalanceAmount: pricing.sourceBalanceAmount,
+                sourceFxRateToBooking: pricing.sourceFxRateToBooking,
+                sourceFxProvider: sourceRate.provider,
+                sourceFxProviderAsOf: sourceRate.providerAsOf,
+                eurFxProvider: eurRate.provider,
+                eurFxProviderAsOf: eurRate.providerAsOf,
+                unitItems: {
+                  create: pricing.unitItems.map((u, idx) => ({
+                    ageBandId: u.ageBandId,
+                    status,
+                    priceRetail: u.priceRetail,
+                    priceNet: u.priceNet,
+                    travelerAge: seatAges[idx] ?? null,
+                  })),
+                },
+                addOns: {
+                  create: pricing.addOns.map((a) => ({
+                    addOnId: a.addOnId,
+                    name: a.name,
+                    unit: a.unit,
+                    quantity: a.quantity,
+                    unitPrice: a.unitPrice,
+                    totalPrice: a.totalPrice,
+                  })),
+                },
               },
-              addOns: {
-                create: pricing.addOns.map((a) => ({
-                  addOnId: a.addOnId,
-                  name: a.name,
-                  unit: a.unit,
-                  quantity: a.quantity,
-                  unitPrice: a.unitPrice,
-                  totalPrice: a.totalPrice,
-                })),
-              },
-            },
-            include: { unitItems: true },
-          });
-        } catch (err) {
-          // The materializer hard-deletes unbooked departures, so one can
-          // vanish between loadContext and this insert; the FK violation IS
-          // that race. The old in-txn pre-read answered it with a clean 422 -
-          // keep that contract instead of surfacing a 500. Any other failure
-          // rethrows untouched.
-          if (BookingsService.isDepartureFkViolation(err)) {
-            throw new UnprocessableEntityException('Departure not found');
+              include: { unitItems: true },
+            });
+          } catch (err) {
+            // The materializer hard-deletes unbooked departures, so one can
+            // vanish between loadContext and this insert; the FK violation IS
+            // that race. The old in-txn pre-read answered it with a clean 422 -
+            // keep that contract instead of surfacing a 500. Any other failure
+            // rethrows untouched.
+            if (BookingsService.isDepartureFkViolation(err)) {
+              throw new UnprocessableEntityException('Departure not found');
+            }
+            throw err;
           }
-          throw err;
-        }
 
-        // Atomic guarded seat claim - the overbooking backstop (master §5), as
-        // the FINAL statement so the hot-row lock is held for ~one statement +
-        // commit. The guard compares live columns in SQL, so a concurrent
-        // capacity edit is honoured too (no frozen pre-read).
-        const claimed = await this.claimSeats(tx, {
-          departureId: dto.departureId,
-          tourId: dto.tourId,
-          seats,
-          exclusive,
-        });
-        if (!claimed) {
-          throw new UnprocessableEntityException(
-            exclusive
-              ? 'This departure is no longer available for a private charter'
-              : 'Not enough availability for this departure',
-          );
-        }
-        return booking;
-      });
+          // Atomic guarded seat claim - the overbooking backstop (master §5), as
+          // the FINAL statement so the hot-row lock is held for ~one statement +
+          // commit. The guard compares live columns in SQL, so a concurrent
+          // capacity edit is honoured too (no frozen pre-read).
+          const claimed = await this.claimSeats(tx, {
+            departureId: dto.departureId,
+            tourId: dto.tourId,
+            seats,
+            exclusive,
+          });
+          if (!claimed) {
+            throw new UnprocessableEntityException(
+              exclusive
+                ? 'This departure is no longer available for a private charter'
+                : 'Not enough availability for this departure',
+            );
+          }
+          return booking;
+        },
+        // Explicit bounds (F6) - these were the implicit defaults; written out
+        // so F7's load test tunes numbers that are visible in code. maxWait:
+        // waiting for a txn slot; timeout: the whole interactive transaction.
+        { maxWait: 2_000, timeout: 5_000 },
+      );
     } catch (err) {
+      // Rush shedding (F6): every timeout-ladder rung that means "the system
+      // is busy and NOTHING was written" answers 503 "try again", never 500:
+      // - 55P03: the claim/insert waited past lock_timeout on the hot row.
+      // - P2028: the transaction could not start within maxWait, or its
+      //   budget expired while queueing behind the rush - under real load
+      //   this rung sheds MORE traffic than lock_timeout does, because every
+      //   lock-waiter holds a pool slot. Both roll back with zero side
+      //   effects, so the retry semantics are identical.
+      if (
+        BookingsService.isLockTimeout(err) ||
+        (err instanceof Prisma.PrismaClientKnownRequestError &&
+          err.code === 'P2028')
+      ) {
+        throw new ServiceUnavailableException(
+          'This departure is receiving heavy booking traffic. Please try again.',
+        );
+      }
       // Idempotency layer 2: two same-id requests can BOTH pass the replay
       // pre-check, and only one insert can win the PK. Because the claim runs
       // LAST (F3), the loser's P2002 fires on its own insert - it never
@@ -5929,6 +5955,42 @@ export class BookingsService {
     ]
       .flatMap((v) => (Array.isArray(v) ? v : [v]))
       .filter((v): v is string => typeof v === 'string');
+  }
+
+  /**
+   * True when the error is a Postgres lock-wait abort (55P03) - the pool's
+   * `lock_timeout` (prisma.service.ts, hardening F6) cancelling a statement
+   * that waited too long on a contended row. BOTH shapes verified against
+   * live Postgres through the pg driver adapter:
+   *
+   * - `$executeRaw` (the seat claim): PrismaClientKnownRequestError P2010
+   *   with the Postgres code at `meta.driverAdapterError.cause.code`.
+   * - CLIENT queries (`booking.create` blocked on the departure row): a bare
+   *   DriverAdapterError - NOT a KnownRequestError - with the code on
+   *   `err.cause`. Duck-typed by name: the class is adapter-internal.
+   *
+   * UPGRADE RISK: the only test exercising the REAL shapes is
+   * test/db-pool-config.e2e-spec.ts, which CI does not run (no e2e in
+   * ci.yml). An @prisma/adapter-pg upgrade that reshapes these errors
+   * silently reverts 503 -> 500 while the fabricated-shape unit tests stay
+   * green - rerun that spec locally after any adapter bump.
+   */
+  private static isLockTimeout(err: unknown): boolean {
+    const is55P03 = (cause?: { code?: unknown; originalCode?: unknown }) =>
+      cause?.code === '55P03' || cause?.originalCode === '55P03';
+    if (err instanceof Prisma.PrismaClientKnownRequestError) {
+      const meta = (err.meta ?? {}) as {
+        driverAdapterError?: {
+          cause?: { code?: unknown; originalCode?: unknown };
+        };
+      };
+      return is55P03(meta.driverAdapterError?.cause);
+    }
+    const bare = err as {
+      name?: unknown;
+      cause?: { code?: unknown; originalCode?: unknown };
+    } | null;
+    return bare?.name === 'DriverAdapterError' && is55P03(bare.cause);
   }
 
   /**

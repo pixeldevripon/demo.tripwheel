@@ -741,6 +741,89 @@ describe('BookingsService', () => {
       await expect(svc.reserve(reserveDto)).rejects.toBe(refClash);
     });
 
+    // ── Lock-timeout shedding, hardening F6 ────────────────────────────────
+
+    it('503s (retry) when the claim aborts on the pool lock_timeout (55P03)', async () => {
+      setupReserveContext(prisma);
+      // Real pg driver-adapter shape, verified against live Postgres.
+      m.$executeRaw.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('Raw query failed', {
+          code: 'P2010',
+          clientVersion: 'test',
+          meta: {
+            driverAdapterError: {
+              cause: {
+                code: '55P03',
+                message: 'canceling statement due to lock timeout',
+              },
+            },
+          },
+        }),
+      );
+      await expect(svc.reserve(reserveDto)).rejects.toBeInstanceOf(
+        ServiceUnavailableException,
+      );
+    });
+
+    it('503s when the INSERT (not the claim) is the statement that hits lock_timeout', async () => {
+      setupReserveContext(prisma);
+      // CLIENT queries surface 55P03 as a BARE DriverAdapterError (no
+      // KnownRequestError wrapper) - real shape, probed on live Postgres.
+      m.booking.create.mockRejectedValue(
+        Object.assign(new Error('canceling statement due to lock timeout'), {
+          name: 'DriverAdapterError',
+          cause: {
+            kind: 'postgres',
+            code: '55P03',
+            message: 'canceling statement due to lock timeout',
+          },
+        }),
+      );
+      await expect(svc.reserve(reserveDto)).rejects.toBeInstanceOf(
+        ServiceUnavailableException,
+      );
+    });
+
+    it('503s (retry) when the transaction times out queueing behind the rush (P2028)', async () => {
+      setupReserveContext(prisma);
+      // Under real load this rung sheds MORE than lock_timeout: every
+      // lock-waiter holds a pool slot, so late arrivals die on maxWait/
+      // timeout instead. Rolled back, nothing persisted - same retry
+      // semantics as 55P03.
+      m.$transaction.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError(
+          'Transaction API error: Unable to start a transaction in the given time.',
+          { code: 'P2028', clientVersion: 'test' },
+        ),
+      );
+      await expect(svc.reserve(reserveDto)).rejects.toBeInstanceOf(
+        ServiceUnavailableException,
+      );
+    });
+
+    it('does NOT shed a statement timeout (57014) as a retryable 503', async () => {
+      setupReserveContext(prisma);
+      const stmtTimeout = new Prisma.PrismaClientKnownRequestError(
+        'Raw query failed',
+        {
+          code: 'P2010',
+          clientVersion: 'test',
+          meta: {
+            driverAdapterError: {
+              cause: {
+                code: '57014',
+                message: 'canceling statement due to statement timeout',
+              },
+            },
+          },
+        },
+      );
+      m.$executeRaw.mockRejectedValue(stmtTimeout);
+      // A statement that ran 10s is a real problem, not rush contention -
+      // it must surface loudly, never as "please try again".
+      await expect(svc.reserve(reserveDto)).rejects.toBe(stmtTimeout);
+    });
+
     it('rethrows the P2002 when no winner row exists (winner rolled back)', async () => {
       setupReserveContext(prisma);
       const pkClash = new Prisma.PrismaClientKnownRequestError(

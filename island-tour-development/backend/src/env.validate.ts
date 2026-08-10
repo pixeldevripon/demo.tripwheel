@@ -57,6 +57,9 @@ const REQUIRED: Record<string, (v: string) => string | null> = {
 };
 
 const OPTIONAL: Record<string, (v: string) => string | null> = {
+  // Connection-pool ceiling (hardening F6); default 25 in PrismaService.
+  // Postgres max_connections must cover DB_POOL_MAX x app processes + headroom.
+  DB_POOL_MAX: positiveIntEnv,
   // Public traveller site origin - booking-email links (TYP, /bookings, the
   // cancel page) send travellers here. Supersedes FRONTEND_URL for email
   // links (FRONTEND_URL remains as a fallback). No trailing slash/junk: the
