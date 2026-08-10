@@ -402,6 +402,7 @@ export function Navbar({
                 locale={locale}
                 dict={dict}
                 categories={categories ?? []}
+                hubs={hubs}
                 currentIsland={currentIsland}
                 isHome={isHome}
             />

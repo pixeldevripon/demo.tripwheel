@@ -1,18 +1,23 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
+import { MapPin } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 
 import { useWishlist } from '@/components/frontend/wishlist-provider';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 
-import type { Category, Island, NavDict } from './lib/navbar.types';
+import type { Category, Island, NavDict, NavHub } from './lib/navbar.types';
 
 /**
- * Mobile drawer below the bar: (inner pages) categories + a wishlist link with
- * a live saved-count. Pure presentation - open state is owned by the navbar
- * (the toggle lives in the action cluster).
+ * Mobile drawer below the bar: (inner pages) hubs + categories + a wishlist
+ * link with a live saved-count. Pure presentation - open state is owned by
+ * the navbar (the toggle lives in the action cluster).
+ *
+ * The island's qualifying hubs sit ABOVE the categories (MCK-19), same order
+ * as the desktop dropdown, distinguished by the pin rather than a heading -
+ * a place reads as a place everywhere.
  *
  * Islands deliberately do NOT appear here: the bar's own island pill opens the
  * same list a couple of inches away (client, 2026-08-05).
@@ -23,6 +28,7 @@ export function MobileMenu({
     locale,
     dict,
     categories,
+    hubs = [],
     currentIsland,
     isHome,
 }: {
@@ -31,6 +37,7 @@ export function MobileMenu({
     locale: Locale;
     dict: NavDict;
     categories: Category[];
+    hubs?: NavHub[];
     currentIsland: Island | null;
     isHome: boolean;
 }) {
@@ -64,13 +71,37 @@ export function MobileMenu({
                                 <span className='px-1 pb-1 text-xs font-normal text-it-ink-muted'>
                                     {dict.categories}
                                 </span>
+                                {hubs.map((hub, i) => (
+                                    <motion.div
+                                        key={hub.slug}
+                                        initial={{ opacity: 0, x: -12 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{
+                                            delay: 0.1 + i * 0.05,
+                                            duration: 0.25,
+                                        }}>
+                                        <Link
+                                            href={categoryHref(hub.slug)}
+                                            onClick={onClose}
+                                            className='flex items-center gap-1.5 text-it-ink text-base no-underline py-2'>
+                                            <MapPin
+                                                className='size-3.5 shrink-0 text-it-primary'
+                                                strokeWidth={2}
+                                                aria-hidden='true'
+                                            />
+                                            {hub.name}
+                                        </Link>
+                                    </motion.div>
+                                ))}
                                 {categories.map((cat, i) => (
                                     <motion.div
                                         key={cat.slug}
                                         initial={{ opacity: 0, x: -12 }}
                                         animate={{ opacity: 1, x: 0 }}
                                         transition={{
-                                            delay: 0.1 + i * 0.05,
+                                            delay:
+                                                0.1 +
+                                                (hubs.length + i) * 0.05,
                                             duration: 0.25,
                                         }}>
                                         <Link
