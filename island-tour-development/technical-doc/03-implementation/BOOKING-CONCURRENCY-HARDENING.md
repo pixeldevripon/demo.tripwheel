@@ -1,6 +1,6 @@
 # Booking Concurrency Hardening — Fix Plan
 
-> **Status: in progress — F1/F2/F3 landed 2026-08-10 (PR-1), F4 landed 2026-08-10 (PR-2); F5–F11 not built yet.** Scope: the seat-claim/release
+> **Status: in progress — F1/F2/F3 landed 2026-08-10 (PR-1), F4 (PR-2) and F5 (PR-3) same day; F6–F11 not built yet.** Scope: the seat-claim/release
 > transaction path under `backend/` and the operational settings around it (pool, sweeper,
 > load verification). This plan is the outcome of an as-built audit (2026-08-10) of
 > `bookings.service.ts` against `AVAILABILITY-BOOKING-ARCHITECTURE.md`,
@@ -24,7 +24,7 @@ independent and can land in parallel; F7 is the exit gate for the whole batch.
 | [x] F2 | 🔴 P0 | `claimSeats()` helper, guard in SQL | **DONE 2026-08-10** - one raw guarded UPDATE (check + increment + `SOLD_OUT` flip fused), 4 call sites; `intoSticky` mode preserves restore's accept-SOLD_OUT/CLOSED semantics | `bookings.service.ts:claimSeats` | M |
 | [x] F3 | 🔴 P0* | Claim last in the transaction | **DONE 2026-08-10** - `booking.create` first, `claimSeats` is the final statement of the reserve txn | `bookings.service.ts` `reserve` txn | S (with F2) |
 | [x] F4 | 🟠 P1 | Idempotent replay on reserve | **DONE 2026-08-10** - layer 1 (pre-check) already existed on prod (this doc's audit was stale there); added the key-reuse 409 guard, the in-flight P2002-on-PK catch, and fixed BOTH constraint-error predicates to read the pg driver adapter's nested meta (`driverAdapterError.cause.constraint`) - the top-level-only read never matched in production. e2e: `test/booking-idempotency.e2e-spec.ts` | `bookings.service.ts` `reserve` entry | M |
-| [ ] F5 | 🟠 P1 | DB CHECK constraint | `0 <= "bookedCount" <= "capacity"` as a database backstop | new migration + capacity-edit paths | S/M |
+| [x] F5 | 🟠 P1 | DB CHECK constraint | **DONE 2026-08-10** - migration `20260810120000` (ledger-based repair of drifted rows, `soldOutAt`/`updatedAt` stamped as at runtime, `lock_timeout 5s`, then `NOT VALID`/`VALIDATE`). Capacity-edit guards mostly pre-existed (`updateDeparture` floor → 400 + optimistic lock → 409; booked rows never resized); review found ONE reachable 23514 - the materializer's unbooked-row reprojection raced a first booking (pre-F5 that silently oversold; likely origin of the repaired dev fossils) - now a guarded `updateMany(bookedCount: 0)` that demotes a lost race to `skipped`. With that, no 23514 is reachable through a service writer and no error mapping is needed. NOTE: CHECK constraints cannot live in the Prisma schema DSL - this one exists ONLY in the raw migration, so any future migration re-baseline must carry it forward by hand | migration + materializer guard + `test/booking-concurrency.e2e-spec.ts` | S/M |
 | [ ] F6 | 🟠 P1 | Explicit pool + timeouts | Pool max, connect/statement/lock timeouts — today everything is node-postgres defaults (max **10**, no timeouts) | `prisma.service.ts:10-19`, `env.validate.ts`, `.env.example` | S |
 | [ ] F7 | 🟠 P1 | Load test with postconditions | 100/500/1000 concurrent claims on one departure; assert exact-capacity outcome. **Gate for trusting the stack under load.** | new `scripts/loadtest/` | M |
 | [ ] F8 | 🟡 P2 | Replica-safe sweeper | Hold-expiry (and materialization) must not double-run when a second app process appears | `workers/nightly-jobs.service.ts:74-87, 118-146` | S |

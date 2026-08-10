@@ -73,10 +73,21 @@ function mockPrisma() {
     departure: {
       findMany: jest.fn().mockResolvedValue([]),
       update: jest.fn().mockReturnValue({ op: 'update' }),
+      // The unbooked-row reprojection is a GUARDED updateMany (bookedCount: 0)
+      // whose batch result the service inspects - default: the guard matched.
+      updateMany: jest.fn().mockReturnValue({ op: 'updateMany' }),
       createMany: jest.fn().mockReturnValue({ op: 'createMany' }),
       deleteMany: jest.fn().mockReturnValue({ op: 'deleteMany' }),
     },
-    $transaction: jest.fn().mockResolvedValue([]),
+    // Echo one result per queued op so the service's post-batch accounting
+    // (guarded reprojections read `count`) sees a realistic shape.
+    $transaction: jest
+      .fn()
+      .mockImplementation((ops: { op?: string }[]) =>
+        Promise.resolve(
+          ops.map((o) => (o?.op === 'updateMany' ? { count: 1 } : o)),
+        ),
+      ),
   };
 }
 
@@ -173,12 +184,33 @@ describe('AvailabilityMaterializerService', () => {
     ]);
     const res = await svc.materializeTour('t1', DAY, DAY);
     expect(res).toMatchObject({ created: 0, updated: 1 });
-    expect(prisma.departure.update).toHaveBeenCalledWith(
+    // GUARDED on bookedCount: 0 - the "unbooked" read is stale by the time
+    // the batch runs, and an unguarded capacity write onto a just-booked row
+    // would trip the F5 CHECK constraint (pre-F5 it silently oversold).
+    expect(prisma.departure.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 'd1' },
+        where: { id: 'd1', bookedCount: 0 },
         data: expect.objectContaining({ capacity: 12, status: 'OPEN' }),
       }),
     );
+  });
+
+  it('counts a reprojection that lost the race to a first booking as skipped', async () => {
+    prisma.availabilitySchedule.findMany.mockResolvedValue([
+      schedule({ capacityOverride: 12 }),
+    ]);
+    prisma.departure.findMany.mockResolvedValue([
+      existingDeparture({ bookedCount: 0 }),
+    ]);
+    // The guard matched 0 rows: a traveller claimed the first seats between
+    // the read and the batch. The row is protected now; nothing was written.
+    prisma.$transaction.mockImplementation((ops: { op?: string }[]) =>
+      Promise.resolve(
+        ops.map((o) => (o?.op === 'updateMany' ? { count: 0 } : o)),
+      ),
+    );
+    const res = await svc.materializeTour('t1', DAY, DAY);
+    expect(res).toMatchObject({ created: 0, updated: 0, skipped: 1 });
   });
 
   it('never touches a departure that has bookings (protected, master §3)', async () => {

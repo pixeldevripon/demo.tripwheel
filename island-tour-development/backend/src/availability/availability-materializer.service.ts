@@ -286,6 +286,9 @@ export class AvailabilityMaterializerService {
     }) => row.manuallyEdited || row.source === DepartureSource.API;
 
     const ops: Prisma.PrismaPromise<unknown>[] = [];
+    // Indices of the guarded unbooked-row reprojections in `ops`, so the
+    // batch results can demote a lost race (0 rows matched) to `skipped`.
+    const guardedReprojections: number[] = [];
     const creates: Prisma.DepartureCreateManyInput[] = [];
     let updated = 0;
     let skipped = 0;
@@ -344,13 +347,22 @@ export class AvailabilityMaterializerService {
         continue;
       }
       // Unbooked, unmanaged: full re-projection of capacity + status + source.
+      // GUARDED on bookedCount = 0: the "unbooked" decision above came from a
+      // read taken before this batch runs, and a traveller can claim the
+      // row's first seats in that gap. Unguarded, the capacity write would
+      // land on a now-booked row - before F5 that silently wrote an oversold
+      // departure (the likely origin of the repaired dev fossils); after F5
+      // it would trip the CHECK constraint and 500 the whole batch. A 0-row
+      // match is counted as skipped below; the next pass sees the booking
+      // and takes the protected branch.
       const status =
         want.status === DepartureStatus.CLOSED
           ? DepartureStatus.CLOSED
           : storedStatusForFill(want.capacity, row.bookedCount);
+      guardedReprojections.push(ops.length);
       ops.push(
-        this.prisma.departure.update({
-          where: { id: row.id },
+        this.prisma.departure.updateMany({
+          where: { id: row.id, bookedCount: 0 },
           data: {
             capacity: want.capacity,
             status,
@@ -382,7 +394,18 @@ export class AvailabilityMaterializerService {
         }),
       );
     }
-    if (ops.length) await this.prisma.$transaction(ops);
+    if (ops.length) {
+      const results = await this.prisma.$transaction(ops);
+      for (const i of guardedReprojections) {
+        // A reprojection that matched 0 rows lost the race to a first
+        // booking; the row is protected now, exactly as if the read had
+        // seen it booked.
+        if ((results[i] as { count: number }).count === 0) {
+          updated--;
+          skipped++;
+        }
+      }
+    }
 
     const result = {
       created: creates.length,
