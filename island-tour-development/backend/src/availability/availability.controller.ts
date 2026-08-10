@@ -17,6 +17,7 @@ import { Public } from '@/auth/decorators/public.decorator';
 import { RequireAnyPermission } from '@/auth/decorators/require-any-permission.decorator';
 import { RequirePermissions } from '@/auth/decorators/require-permissions.decorator';
 import type { TypedAuthUser } from '@/auth/auth.types';
+import { AvailabilityReadCache } from './availability-read-cache';
 import { AvailabilityService } from './availability.service';
 import {
   AgendaQueryDto,
@@ -78,29 +79,41 @@ import {
 @ApiTags('Availability')
 @Controller('availability')
 export class AvailabilityController {
-  constructor(private readonly availability: AvailabilityService) {}
+  constructor(
+    private readonly availability: AvailabilityService,
+    private readonly readCache: AvailabilityReadCache,
+  ) {}
 
   // ── Public real-time reads ──────────────────────────────────────────────────
+  // Cached 15s in-process (hardening F9) HERE, in the controller, so nothing
+  // on the booking path can ever consult the cache - display staleness only.
+  // Keys serialize the validated DTO, so distinct queries never collide.
 
   @Post('check')
   @Public()
   @ApiCheckAvailabilityDocs()
   check(@Body() dto: AvailabilityCheckDto) {
-    return this.availability.checkAvailability(dto);
+    return this.readCache.through(`check:${JSON.stringify(dto)}`, () =>
+      this.availability.checkAvailability(dto),
+    );
   }
 
   @Post('calendar')
   @Public()
   @ApiCalendarDocs()
   calendar(@Body() dto: AvailabilityCalendarDto) {
-    return this.availability.calendar(dto);
+    return this.readCache.through(`calendar:${JSON.stringify(dto)}`, () =>
+      this.availability.calendar(dto),
+    );
   }
 
   @Post('check-batch')
   @Public()
   @ApiCheckBatchDocs()
   checkBatch(@Body() dto: AvailabilityBatchDto) {
-    return this.availability.checkBatch(dto);
+    return this.readCache.through(`batch:${JSON.stringify(dto)}`, () =>
+      this.availability.checkBatch(dto),
+    );
   }
 
   // ── Daily agenda (Surface B - cross-tour) ───────────────────────────────────

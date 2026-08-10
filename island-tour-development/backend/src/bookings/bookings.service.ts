@@ -562,6 +562,31 @@ export class BookingsService {
       );
     }
 
+    // UNIT + PRIVATE = exclusive charter: one booking takes the whole departure
+    // (master E.3). SHARED unit + all per-person bookings consume the guest headcount.
+    const exclusive =
+      ctx.isUnit && ctx.tour.bookingType === TourBookingType.PRIVATE;
+
+    // Shed doomed requests BEFORE the expensive work (hardening F9). In a
+    // rush on a sold-out departure, every rival otherwise pays pricing + two
+    // FX snapshots + a transaction just to lose the claim - this comparison
+    // rejects them for the cost of the loadContext read already in hand.
+    // ADVISORY by design: the read may be stale, so it only rejects CERTAIN
+    // doom (departure not open, or zero seats free regardless of party
+    // size); the guarded claimSeats UPDATE inside the transaction remains
+    // the only authority, and anything stale that slips through is caught
+    // there with the same messages.
+    const certainlyFull = exclusive
+      ? ctx.departure.bookedCount > 0
+      : ctx.departure.bookedCount >= ctx.departure.capacity;
+    if (ctx.departure.status !== DepartureStatus.OPEN || certainlyFull) {
+      throw new UnprocessableEntityException(
+        exclusive
+          ? 'This departure is no longer available for a private charter'
+          : 'Not enough availability for this departure',
+      );
+    }
+
     // FX-aware pricing: charge in the shopper currency (default = tour currency),
     // snapshotting the source-currency quote + both rates. Commission stays EUR
     // (rule #22). The effective commission (tier + any ACTIVE Spotlight) is resolved
@@ -575,11 +600,6 @@ export class BookingsService {
 
     // Per-seat traveler ages, expanded in the same order as pricing.unitItems.
     const seatAges = ctx.seatAges;
-
-    // UNIT + PRIVATE = exclusive charter: one booking takes the whole departure
-    // (master E.3). SHARED unit + all per-person bookings consume the guest headcount.
-    const exclusive =
-      ctx.isUnit && ctx.tour.bookingType === TourBookingType.PRIVATE;
 
     // Full local end instant = local start + tour duration (master E.8 TYP time range).
     const tourEndDateTime =
@@ -5632,6 +5652,7 @@ export class BookingsService {
           startTime: true,
           capacity: true,
           bookedCount: true,
+          status: true, // feeds the F9 sold-out shed (advisory read)
         },
       }),
     ]);

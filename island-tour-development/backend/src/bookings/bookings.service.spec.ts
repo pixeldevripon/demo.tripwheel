@@ -243,6 +243,9 @@ function setupReserveContext(prisma: any, over: Record<string, unknown> = {}) {
     id: 'dep1',
     date: day('2030-06-05'),
     startTime: time('09:00'),
+    capacity: 10,
+    bookedCount: 2,
+    status: 'OPEN', // seats free: the F9 shed must NOT fire in the base setup
   });
   m.tourAgeBand.findMany.mockResolvedValue([
     {
@@ -312,6 +315,7 @@ function setupUnitReserveContext(
     startTime: time('16:30'),
     capacity: 12,
     bookedCount: 0,
+    status: 'OPEN',
   });
   // The claim guard reads capacity in SQL; $executeRaw defaults to 1 (wins).
   m.departure.findUnique.mockResolvedValue({
@@ -606,6 +610,77 @@ describe('BookingsService', () => {
       await expect(svc.reserve(reserveDto)).rejects.toBeInstanceOf(
         UnprocessableEntityException,
       );
+    });
+
+    // ── Sold-out shed, hardening F9 ─────────────────────────────────────────
+
+    it('sheds a full departure BEFORE pricing/FX - no rate fetch, no txn, no claim', async () => {
+      setupReserveContext(prisma);
+      m.departure.findFirst.mockResolvedValue({
+        id: 'dep1',
+        date: day('2030-06-05'),
+        startTime: time('09:00'),
+        capacity: 10,
+        bookedCount: 10, // certain doom regardless of party size
+        status: 'OPEN',
+      });
+      await expect(svc.reserve(reserveDto)).rejects.toMatchObject({
+        constructor: UnprocessableEntityException,
+        message: 'Not enough availability for this departure',
+      });
+      // The whole point: the loser pays ONE comparison, not the rush's
+      // pricing + FX snapshots + a rolled-back transaction.
+      expect(fx.getRate).not.toHaveBeenCalled();
+      expect(m.$transaction).not.toHaveBeenCalled();
+      expect(m.$executeRaw).not.toHaveBeenCalled();
+    });
+
+    it('sheds a SOLD_OUT/CLOSED status even when the fill looks free (stale-safe)', async () => {
+      setupReserveContext(prisma);
+      m.departure.findFirst.mockResolvedValue({
+        id: 'dep1',
+        date: day('2030-06-05'),
+        startTime: time('09:00'),
+        capacity: 10,
+        bookedCount: 2,
+        status: 'CLOSED', // reserve claims only OPEN - certain doom
+      });
+      await expect(svc.reserve(reserveDto)).rejects.toBeInstanceOf(
+        UnprocessableEntityException,
+      );
+      expect(fx.getRate).not.toHaveBeenCalled();
+    });
+
+    it('does NOT shed a merely-tight departure - party size is the claim guard s job', async () => {
+      setupReserveContext(prisma);
+      m.departure.findFirst.mockResolvedValue({
+        id: 'dep1',
+        date: day('2030-06-05'),
+        startTime: time('09:00'),
+        capacity: 10,
+        bookedCount: 9, // 1 seat free, party of 2: NOT certain doom pre-pricing
+        status: 'OPEN',
+      });
+      // The claim (mocked to win here) stays the authority; the shed only
+      // rejects seats-independent certainties, never a maybe.
+      const res = await svc.reserve(reserveDto);
+      expect(res.status).toBe(BookingStatus.ON_HOLD);
+    });
+
+    it('sheds an exclusive charter the moment ANY seat is taken', async () => {
+      setupUnitReserveContext(prisma, { bookingType: TourBookingType.PRIVATE });
+      m.departure.findFirst.mockResolvedValue({
+        id: 'dep1',
+        date: day('2030-06-05'),
+        startTime: time('16:30'),
+        capacity: 12,
+        bookedCount: 1, // a private charter needs the WHOLE departure
+        status: 'OPEN',
+      });
+      await expect(svc.reserve(unitReserveDto)).rejects.toMatchObject({
+        message: 'This departure is no longer available for a private charter',
+      });
+      expect(fx.getRate).not.toHaveBeenCalled();
     });
 
     // The materializer hard-deletes unbooked departures, so one can vanish
