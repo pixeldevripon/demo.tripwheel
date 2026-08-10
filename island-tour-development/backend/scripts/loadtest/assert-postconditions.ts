@@ -3,16 +3,24 @@
  * "Assert with SQL, not vibes" - the doc's words.
  *
  * PASS criteria, checked against the database the rush actually hit:
- *  1. Hot departure: bookedCount == min(capacity, successful claims) AND
- *     bookedCount == active-booking seat ledger EXACTLY (no phantom seats,
- *     no lost claims). Under demand > capacity this means == capacity.
- *  2. Global invariant sweep: zero rows violate 0 <= bookedCount <= capacity
- *     (F5's constraint makes >capacity impossible; this also catches
- *     anything below zero on databases predating it).
- *  3. Every ON_HOLD/CONFIRMED booking on the loadtest tour has unit items
+ *  1. Hot departure: bookedCount == active-booking seat ledger EXACTLY (no
+ *     phantom seats, no lost claims) - and with EXPECT_FULL=1 (any hot
+ *     scenario, where demand > capacity) bookedCount must equal capacity,
+ *     so a run that never claimed a seat can NOT pass vacuously.
+ *  2. Global invariant sweep: zero rows violate 0 <= bookedCount <= capacity.
+ *  3. Every spread departure agrees with its ledger - including the rows
+ *     claiming bookedCount 0, which is where a lost increment would hide.
+ *  4. Every ON_HOLD/CONFIRMED booking on the loadtest tour has unit items
  *     (no half-written bookings escaped a transaction).
  *
+ * The ledger definition (bookedCount == count of active unit items) is valid
+ * for NON-EXCLUSIVE bookings only: an exclusive charter sets bookedCount =
+ * capacity with fewer unit items by design. The seeded tour is SHARED and
+ * `exclusiveDeparture` is server-derived, so the equality holds here - do
+ * not copy this checker onto a PRIVATE/UNIT tour without changing it.
+ *
  * Exits non-zero on any failure. Run: pnpm loadtest:assert
+ *                        Hot runs: EXPECT_FULL=1 pnpm loadtest:assert
  */
 import { readFileSync } from 'fs';
 import { join } from 'path';
@@ -69,6 +77,18 @@ async function main() {
   if (hot.bookedCount === hot.capacity && hot.status !== 'SOLD_OUT') {
     fail(`hot departure full but status=${hot.status}, expected SOLD_OUT`);
   }
+  if (hot.bookedCount < hot.capacity && hot.status === 'SOLD_OUT') {
+    fail(
+      `hot departure ${hot.bookedCount}/${hot.capacity} but status=SOLD_OUT (stale flip)`,
+    );
+  }
+  // The anti-vacuous gate: a hot rush has demand > capacity by construction,
+  // so anything short of a full departure means the run never really ran.
+  if (process.env.EXPECT_FULL === '1' && hot.bookedCount !== hot.capacity) {
+    fail(
+      `EXPECT_FULL: hot departure not full (${hot.bookedCount}/${hot.capacity}) - did the rush reach the booking path at all?`,
+    );
+  }
 
   // 2) Global invariant sweep (0 rows expected).
   const violations = await prisma.$queryRaw<{ id: string }[]>`
@@ -80,28 +100,40 @@ async function main() {
     pass('global invariant sweep clean (0 rows)');
   }
 
-  // 3) Spread departures: same ledger equality on every touched row.
+  // 3) Spread departures: ledger equality on EVERY row - including the ones
+  // claiming bookedCount 0. Filtering to bookedCount > 0 would hide exactly
+  // the lost-increment drift this check exists to catch (a booking whose
+  // rows committed but whose count write vanished sits at 0).
   const spread = await prisma.departure.findMany({
-    where: { id: { in: env.spreadDepartureIds }, bookedCount: { gt: 0 } },
+    where: { id: { in: env.spreadDepartureIds } },
     select: { id: true, bookedCount: true },
   });
-  let spreadMismatch = 0;
-  for (const dep of spread) {
-    const seats = await prisma.bookingUnitItem.count({
-      where: {
-        booking: {
-          departureId: dep.id,
-          status: { in: ['ON_HOLD', 'CONFIRMED'] },
-        },
-      },
-    });
-    if (seats !== dep.bookedCount) spreadMismatch++;
+  const activeBookings = await prisma.booking.findMany({
+    where: {
+      departureId: { in: env.spreadDepartureIds },
+      status: { in: ['ON_HOLD', 'CONFIRMED'] },
+    },
+    select: { departureId: true, _count: { select: { unitItems: true } } },
+  });
+  const ledger = new Map<string, number>();
+  for (const b of activeBookings) {
+    if (!b.departureId) continue;
+    ledger.set(
+      b.departureId,
+      (ledger.get(b.departureId) ?? 0) + b._count.unitItems,
+    );
   }
-  if (spreadMismatch > 0) {
-    fail(`${spreadMismatch} spread departure(s) disagree with their ledger`);
+  const spreadMismatch = spread.filter(
+    (dep) => (ledger.get(dep.id) ?? 0) !== dep.bookedCount,
+  );
+  if (spreadMismatch.length > 0) {
+    fail(
+      `${spreadMismatch.length} spread departure(s) disagree with their ledger`,
+    );
   } else {
     pass(
-      `spread departures agree with their ledgers (${spread.length} touched)`,
+      `all ${spread.length} spread departures agree with their ledgers (` +
+        `${[...ledger.values()].reduce((a, b) => a + b, 0)} seats accounted)`,
     );
   }
 

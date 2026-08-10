@@ -42,10 +42,10 @@ async function main() {
   });
   await prisma.booking.deleteMany({ where: { id: { in: bookingIds } } });
   await prisma.departure.deleteMany({ where: { tourId: env.tourId } });
-  await prisma.tour.delete({ where: { id: env.tourId } });
-  await prisma.operator.delete({ where: { id: env.operatorId } });
-  await prisma.user.delete({ where: { id: env.userId } });
-  await prisma.destination.delete({ where: { id: env.destinationId } });
+  await prisma.tour.deleteMany({ where: { id: env.tourId } });
+  await prisma.operator.deleteMany({ where: { id: env.operatorId } });
+  await prisma.user.deleteMany({ where: { id: env.userId } });
+  await prisma.destination.deleteMany({ where: { id: env.destinationId } });
 
   unlinkSync(file);
   console.log(

@@ -38,6 +38,12 @@ const ITERATIONS = Number(__ENV.ITERATIONS || VUS);
 const API = __ENV.API || 'http://localhost:5050';
 
 const serverErrors = new Counter('server_errors_5xx');
+// ANY status outside the verdict table - including 0 (k6's connection
+// failure), 400/404 (bad seed ids / wrong API), 409 (key reuse, impossible
+// under unique-id-per-request) - fails the run via its own threshold.
+// Without this the harness passes VACUOUSLY on a run that never reached the
+// booking path: all-400s means zero 5xx, and the DB assert sees 0 == 0.
+const unexpectedStatus = new Counter('unexpected_status');
 // The verdict split IS the baseline data: how a rush was answered.
 const claimed201 = new Counter('reserve_201_claimed');
 const soldOut422 = new Counter('reserve_422_sold_out');
@@ -56,13 +62,21 @@ export const options = {
   thresholds: {
     // The whole point: a rush may reject, it may NEVER break.
     server_errors_5xx: ['count==0'],
+    // ...and it may never answer OUTSIDE the verdict table (see above).
+    unexpected_status: ['count==0'],
+    checks: ['rate==1'],
     // 503 is a correct shed, so http_req_failed is not a useful threshold
     // here; p95 is recorded as the baseline the doc asks to file.
     http_req_duration: ['p(95)<10000'],
   },
 };
 
-/** RFC4122-shaped v4 id (the DTO enforces @IsUUID(4)); offline, no jslib. */
+/**
+ * RFC4122-shaped v4 id (the DTO enforces @IsUUID(4)); offline, no jslib.
+ * Collision odds at n=1000: ~n^2/2^123 = 1e-31 - and even a hit is benign
+ * (identical payload -> F4 replay). Do NOT run k6 with --seed: deterministic
+ * VU PRNG streams would make collisions real.
+ */
 function uuid4() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
@@ -92,6 +106,7 @@ function reserve(departureId) {
   else if (res.status === 429) limiter429.add(1);
   else if (res.status === 503) shed503.add(1);
   else if (res.status >= 500) serverErrors.add(1);
+  else unexpectedStatus.add(1); // 0/4xx/3xx: the run never reached the path
   check(res, {
     'claimed or cleanly rejected': (r) =>
       r.status === 201 ||

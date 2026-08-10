@@ -14,7 +14,7 @@
  *
  * Run: pnpm loadtest:seed  (from backend/)
  */
-import { writeFileSync } from 'fs';
+import { existsSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -27,6 +27,14 @@ const HOT_CAPACITY = 20;
 const SPREAD_DEPARTURES = 100;
 
 async function main() {
+  // Re-seeding over a live fixture would overwrite .loadtest-env.json and
+  // ORPHAN the previous rows (cleanup keys off the file). Refuse instead.
+  if (existsSync(OUT)) {
+    console.error(
+      `${OUT} exists - a fixture is still live. Run \`pnpm loadtest:cleanup\` first.`,
+    );
+    process.exit(1);
+  }
   const prisma = new PrismaClient({
     adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
   });

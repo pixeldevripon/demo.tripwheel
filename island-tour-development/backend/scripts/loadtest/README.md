@@ -23,15 +23,20 @@ export API=http://localhost:5050
 export TOUR_ID=...                 # printed by the seed
 export DEPARTURE_ID=...            # hot departure (capacity 20)
 export DEPARTURE_IDS=...           # 100 spread departures
-export INTERNAL_KEY=...            # backend INTERNAL_API_SECRET
+# Never type the secret inline (shell history):
+export INTERNAL_KEY=$(grep -m1 '^INTERNAL_API_SECRET' .env | cut -d'"' -f2)
 
+# Hot scenarios assert with EXPECT_FULL=1: demand > capacity by construction,
+# so a hot run that did not FILL the departure never really ran - this is the
+# gate that stops a wrong TOUR_ID / dead backend from passing vacuously
+# (k6 also fails itself on any status outside the verdict table).
 SCENARIO=hot    VUS=100 ITERATIONS=100  k6 run scripts/loadtest/rush.js
-pnpm loadtest:assert               # DB postconditions after EVERY scenario
+EXPECT_FULL=1 pnpm loadtest:assert
 
 SCENARIO=hot    VUS=500 ITERATIONS=500  k6 run scripts/loadtest/rush.js
-pnpm loadtest:assert
+EXPECT_FULL=1 pnpm loadtest:assert
 SCENARIO=hot    VUS=1000 ITERATIONS=1000 k6 run scripts/loadtest/rush.js
-pnpm loadtest:assert
+EXPECT_FULL=1 pnpm loadtest:assert
 SCENARIO=spread VUS=500 ITERATIONS=500  k6 run scripts/loadtest/rush.js
 pnpm loadtest:assert
 SCENARIO=mixed  VUS=100 ITERATIONS=1000 k6 run scripts/loadtest/rush.js
@@ -63,10 +68,13 @@ Re-seed between hot scenarios if you want a fresh (unsold) hot departure —
 
 ## Pass criteria (the doc's, verbatim in spirit)
 
-1. k6 exits 0 (thresholds: zero unexpected 5xx, p95 < 10s)
-2. `pnpm loadtest:assert` passes: hot `bookedCount == capacity == active-seat
-   ledger` exactly; global invariant sweep returns 0 rows; no half-written
-   bookings
+1. k6 exits 0 (thresholds: zero unexpected 5xx, zero statuses outside the
+   verdict table - including 0/4xx from a bad seed or dead backend - all
+   checks green, p95 < 10s)
+2. `EXPECT_FULL=1 pnpm loadtest:assert` passes on hot runs: `bookedCount ==
+   capacity == active-seat ledger` exactly; every spread row (including the
+   0-count ones) agrees with its ledger; invariant sweep 0 rows; no
+   half-written bookings
 3. Record p95/p99 below — the baseline future changes are judged against
 
 ## Observe during the run
