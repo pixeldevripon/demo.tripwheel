@@ -589,162 +589,151 @@ export class BookingsService {
     const displayRef = await this.allocateDisplayRef(localStart);
 
     const created = await this.prisma.$transaction(async (tx) => {
-      // Fresh capacity read inside the txn - the guard threshold below is a literal,
-      // so re-reading here keeps it correct against a concurrent capacity edit.
-      const dep = await tx.departure.findUnique({
-        where: { id: dto.departureId },
-        select: { capacity: true },
-      });
-      if (!dep) {
-        throw new UnprocessableEntityException('Departure not found');
+      const status = operatorFull
+        ? BookingStatus.CONFIRMED
+        : BookingStatus.ON_HOLD;
+      // Insert FIRST, claim LAST. The booking rows don't depend on the claim
+      // result, and their FK to `departures` takes FOR KEY SHARE, which does
+      // NOT conflict with the claim's row lock - so the multi-row insert runs
+      // off the contended row's lock window. Rivals on a hot departure then
+      // wait only for the claim UPDATE + commit, not for this insert. A losing
+      // claim below rolls the booking rows back with the transaction.
+      let booking: Prisma.BookingGetPayload<{ include: { unitItems: true } }>;
+      try {
+        booking = await tx.booking.create({
+          data: {
+            id,
+            tourId: dto.tourId,
+            departureId: dto.departureId,
+            operatorId: ctx.tour.operatorId,
+            userId: userId ?? null,
+            displayRef,
+            status,
+            paymentModel: ctx.tour.paymentModel,
+            currency: bookingCurrency,
+            localDate: ctx.departure.date,
+            startTime: timeOfDay(ctx.departure.startTime),
+            tourStartDateTime: localStart,
+            tourEndDateTime,
+            tourTimeZone: ctx.tour.timeZone,
+            // Denormalized destination SLUG - it builds the TYP deep link
+            // (`/{island}/thank-you/{publicRef}`) and the page 404s on any
+            // mismatch, so the fallback must be slug-shaped too. `destination`
+            // is a required relation that `loadContext` always selects, so this
+            // only guards the impossible case; it used to read 'Curaçao', a
+            // display NAME, which would have 404'd that booking's TYP forever.
+            island: ctx.tour.destination?.slug ?? 'curacao',
+            utcExpiresAt: operatorFull
+              ? null
+              : new Date(
+                  Date.now() +
+                    (dto.expirationMinutes ?? DEFAULT_HOLD_MINUTES) * 60_000,
+                ),
+            utcConfirmedAt: operatorFull ? new Date() : null,
+            exclusiveDeparture: exclusive,
+            pickupRequested: dto.pickupRequested ?? false,
+            pickupLocationId: dto.pickupLocationId ?? null,
+            pickupAddress: ctx.pickupSnapshot.address,
+            pickupMinutesPrior: ctx.pickupSnapshot.minutesPrior,
+            pickupWindowStart: ctx.pickupSnapshot.windowStart,
+            pickupWindowEnd: ctx.pickupSnapshot.windowEnd,
+            // Priced pickup snapshot (booking currency) - already inside totalRetail.
+            pickupUnitPrice: pricing.pickup?.unitPrice ?? null,
+            pickupTotalPrice: pricing.pickup?.totalPrice ?? null,
+            // Only ON_ARRIVAL bookings collect on site, so the terms are meaningless
+            // (and misleading in the email) on any other model.
+            onArrivalPayment:
+              ctx.tour.paymentModel === PaymentModel.ON_ARRIVAL
+                ? ctx.tour.onArrivalPayment
+                : null,
+            notes: dto.notes ?? null,
+            newsletterOptIn: dto.newsletterOptIn ?? false,
+            // Attribution snapshot (master 8.1.6 / E.8) - written at creation only, so
+            // the idempotent re-reserve early-return above never overwrites the original
+            // click ids/UTMs. Feeds the booking_complete push (8.3) + later ad adjustments.
+            gclid: dto.attribution?.gclid ?? null,
+            gbraid: dto.attribution?.gbraid ?? null,
+            wbraid: dto.attribution?.wbraid ?? null,
+            fbclid: dto.attribution?.fbclid ?? null,
+            utmSource: dto.attribution?.utmSource ?? null,
+            utmMedium: dto.attribution?.utmMedium ?? null,
+            utmCampaign: dto.attribution?.utmCampaign ?? null,
+            utmTerm: dto.attribution?.utmTerm ?? null,
+            utmContent: dto.attribution?.utmContent ?? null,
+            // Discount/coupon deferred (flaw #2): with no server-side coupon-validation
+            // engine, a client-supplied discount is untrusted, so we never write one -
+            // the full price stays authoritative. Wire this when the coupon engine exists.
+            totalRetail: pricing.totalRetail,
+            totalNet: pricing.totalNet,
+            depositAmount: pricing.depositAmount,
+            balanceAmount: pricing.balanceAmount,
+            commissionRate: pricing.commissionRate,
+            commissionAmount: pricing.commissionAmount,
+            totalEur: pricing.totalEur,
+            fxRateToEur: pricing.fxRateToEur,
+            // Multi-currency source snapshot + FX audit (guide §20.2/§20.8). Rates are
+            // frozen here and never refetched at payment/TYP/email/tracking time.
+            sourceCurrency,
+            sourceTotalRetail: pricing.sourceTotalRetail,
+            sourceDepositAmount: pricing.sourceDepositAmount,
+            sourceBalanceAmount: pricing.sourceBalanceAmount,
+            sourceFxRateToBooking: pricing.sourceFxRateToBooking,
+            sourceFxProvider: sourceRate.provider,
+            sourceFxProviderAsOf: sourceRate.providerAsOf,
+            eurFxProvider: eurRate.provider,
+            eurFxProviderAsOf: eurRate.providerAsOf,
+            unitItems: {
+              create: pricing.unitItems.map((u, idx) => ({
+                ageBandId: u.ageBandId,
+                status,
+                priceRetail: u.priceRetail,
+                priceNet: u.priceNet,
+                travelerAge: seatAges[idx] ?? null,
+              })),
+            },
+            addOns: {
+              create: pricing.addOns.map((a) => ({
+                addOnId: a.addOnId,
+                name: a.name,
+                unit: a.unit,
+                quantity: a.quantity,
+                unitPrice: a.unitPrice,
+                totalPrice: a.totalPrice,
+              })),
+            },
+          },
+          include: { unitItems: true },
+        });
+      } catch (err) {
+        // The materializer hard-deletes unbooked departures, so one can
+        // vanish between loadContext and this insert; the FK violation IS
+        // that race. The old in-txn pre-read answered it with a clean 422 -
+        // keep that contract instead of surfacing a 500. Any other failure
+        // rethrows untouched.
+        if (BookingsService.isDepartureFkViolation(err)) {
+          throw new UnprocessableEntityException('Departure not found');
+        }
+        throw err;
       }
-      const capacity = dep.capacity;
 
-      // Atomic guarded seat claim - the overbooking backstop (master §5). A single
-      // conditional updateMany (type-safe columns): its WHERE re-evaluates against the
-      // current bookedCount under concurrency, so two bookings can't both claim the
-      // last seats (the loser matches 0 rows). The OPEN->SOLD_OUT flip + soldOutAt
-      // stamp follow via recomputeStoredStatus, which derives status from the new fill.
-      const claim = exclusive
-        ? // Exclusive charter (D5): only an OPEN, still-empty departure can be taken;
-          // claim the WHOLE unit so no one else can book it.
-          await tx.departure.updateMany({
-            where: {
-              id: dto.departureId,
-              tourId: dto.tourId,
-              status: DepartureStatus.OPEN,
-              bookedCount: 0,
-            },
-            data: { bookedCount: capacity },
-          })
-        : // Shared / per-person: guarded count-up; claims only if seats remain.
-          await tx.departure.updateMany({
-            where: {
-              id: dto.departureId,
-              tourId: dto.tourId,
-              status: DepartureStatus.OPEN,
-              bookedCount: { lte: capacity - seats },
-            },
-            data: { bookedCount: { increment: seats } },
-          });
-      if (claim.count === 0) {
+      // Atomic guarded seat claim - the overbooking backstop (master §5), as
+      // the FINAL statement so the hot-row lock is held for ~one statement +
+      // commit. The guard compares live columns in SQL, so a concurrent
+      // capacity edit is honoured too (no frozen pre-read).
+      const claimed = await this.claimSeats(tx, {
+        departureId: dto.departureId,
+        tourId: dto.tourId,
+        seats,
+        exclusive,
+      });
+      if (!claimed) {
         throw new UnprocessableEntityException(
           exclusive
             ? 'This departure is no longer available for a private charter'
             : 'Not enough availability for this departure',
         );
       }
-      // Re-derive OPEN/SOLD_OUT + stamp soldOutAt from the new fill (sticky
-      // CLOSED/CANCELLED states are left untouched).
-      await this.recomputeStoredStatus(tx, dto.departureId);
-
-      const status = operatorFull
-        ? BookingStatus.CONFIRMED
-        : BookingStatus.ON_HOLD;
-      return tx.booking.create({
-        data: {
-          id,
-          tourId: dto.tourId,
-          departureId: dto.departureId,
-          operatorId: ctx.tour.operatorId,
-          userId: userId ?? null,
-          displayRef,
-          status,
-          paymentModel: ctx.tour.paymentModel,
-          currency: bookingCurrency,
-          localDate: ctx.departure.date,
-          startTime: timeOfDay(ctx.departure.startTime),
-          tourStartDateTime: localStart,
-          tourEndDateTime,
-          tourTimeZone: ctx.tour.timeZone,
-          // Denormalized destination SLUG - it builds the TYP deep link
-          // (`/{island}/thank-you/{publicRef}`) and the page 404s on any
-          // mismatch, so the fallback must be slug-shaped too. `destination`
-          // is a required relation that `loadContext` always selects, so this
-          // only guards the impossible case; it used to read 'Curaçao', a
-          // display NAME, which would have 404'd that booking's TYP forever.
-          island: ctx.tour.destination?.slug ?? 'curacao',
-          utcExpiresAt: operatorFull
-            ? null
-            : new Date(
-                Date.now() +
-                  (dto.expirationMinutes ?? DEFAULT_HOLD_MINUTES) * 60_000,
-              ),
-          utcConfirmedAt: operatorFull ? new Date() : null,
-          exclusiveDeparture: exclusive,
-          pickupRequested: dto.pickupRequested ?? false,
-          pickupLocationId: dto.pickupLocationId ?? null,
-          pickupAddress: ctx.pickupSnapshot.address,
-          pickupMinutesPrior: ctx.pickupSnapshot.minutesPrior,
-          pickupWindowStart: ctx.pickupSnapshot.windowStart,
-          pickupWindowEnd: ctx.pickupSnapshot.windowEnd,
-          // Priced pickup snapshot (booking currency) - already inside totalRetail.
-          pickupUnitPrice: pricing.pickup?.unitPrice ?? null,
-          pickupTotalPrice: pricing.pickup?.totalPrice ?? null,
-          // Only ON_ARRIVAL bookings collect on site, so the terms are meaningless
-          // (and misleading in the email) on any other model.
-          onArrivalPayment:
-            ctx.tour.paymentModel === PaymentModel.ON_ARRIVAL
-              ? ctx.tour.onArrivalPayment
-              : null,
-          notes: dto.notes ?? null,
-          newsletterOptIn: dto.newsletterOptIn ?? false,
-          // Attribution snapshot (master 8.1.6 / E.8) - written at creation only, so
-          // the idempotent re-reserve early-return above never overwrites the original
-          // click ids/UTMs. Feeds the booking_complete push (8.3) + later ad adjustments.
-          gclid: dto.attribution?.gclid ?? null,
-          gbraid: dto.attribution?.gbraid ?? null,
-          wbraid: dto.attribution?.wbraid ?? null,
-          fbclid: dto.attribution?.fbclid ?? null,
-          utmSource: dto.attribution?.utmSource ?? null,
-          utmMedium: dto.attribution?.utmMedium ?? null,
-          utmCampaign: dto.attribution?.utmCampaign ?? null,
-          utmTerm: dto.attribution?.utmTerm ?? null,
-          utmContent: dto.attribution?.utmContent ?? null,
-          // Discount/coupon deferred (flaw #2): with no server-side coupon-validation
-          // engine, a client-supplied discount is untrusted, so we never write one -
-          // the full price stays authoritative. Wire this when the coupon engine exists.
-          totalRetail: pricing.totalRetail,
-          totalNet: pricing.totalNet,
-          depositAmount: pricing.depositAmount,
-          balanceAmount: pricing.balanceAmount,
-          commissionRate: pricing.commissionRate,
-          commissionAmount: pricing.commissionAmount,
-          totalEur: pricing.totalEur,
-          fxRateToEur: pricing.fxRateToEur,
-          // Multi-currency source snapshot + FX audit (guide §20.2/§20.8). Rates are
-          // frozen here and never refetched at payment/TYP/email/tracking time.
-          sourceCurrency,
-          sourceTotalRetail: pricing.sourceTotalRetail,
-          sourceDepositAmount: pricing.sourceDepositAmount,
-          sourceBalanceAmount: pricing.sourceBalanceAmount,
-          sourceFxRateToBooking: pricing.sourceFxRateToBooking,
-          sourceFxProvider: sourceRate.provider,
-          sourceFxProviderAsOf: sourceRate.providerAsOf,
-          eurFxProvider: eurRate.provider,
-          eurFxProviderAsOf: eurRate.providerAsOf,
-          unitItems: {
-            create: pricing.unitItems.map((u, idx) => ({
-              ageBandId: u.ageBandId,
-              status,
-              priceRetail: u.priceRetail,
-              priceNet: u.priceNet,
-              travelerAge: seatAges[idx] ?? null,
-            })),
-          },
-          addOns: {
-            create: pricing.addOns.map((a) => ({
-              addOnId: a.addOnId,
-              name: a.name,
-              unit: a.unit,
-              quantity: a.quantity,
-              unitPrice: a.unitPrice,
-              totalPrice: a.totalPrice,
-            })),
-          },
-        },
-        include: { unitItems: true },
-      });
+      return booking;
     });
 
     this.logger.log(
@@ -1145,34 +1134,24 @@ export class BookingsService {
         if (flip.count === 0) throw new HoldRecoveryAbort('already handled');
 
         if (booking.departureId) {
+          // Existence check only (the claim's guard reads live capacity in
+          // SQL) - kept so a deleted departure logs 'departure gone', not
+          // 'sold out'.
           const dep = await tx.departure.findUnique({
             where: { id: booking.departureId },
-            select: { capacity: true },
+            select: { id: true },
           });
           if (!dep) throw new HoldRecoveryAbort('departure gone');
-          // Same guarded seat-claim as reserve (master §5): exclusive charter takes
-          // the whole still-empty departure; else a conditional count-up.
-          const claim = booking.exclusiveDeparture
-            ? await tx.departure.updateMany({
-                where: {
-                  id: booking.departureId,
-                  tourId: booking.tourId,
-                  status: DepartureStatus.OPEN,
-                  bookedCount: 0,
-                },
-                data: { bookedCount: dep.capacity },
-              })
-            : await tx.departure.updateMany({
-                where: {
-                  id: booking.departureId,
-                  tourId: booking.tourId,
-                  status: DepartureStatus.OPEN,
-                  bookedCount: { lte: dep.capacity - seats },
-                },
-                data: { bookedCount: { increment: seats } },
-              });
-          if (claim.count === 0) throw new HoldRecoveryAbort('sold out');
-          await this.recomputeStoredStatus(tx, booking.departureId);
+          // Same guarded seat-claim as reserve (master §5): exclusive charter
+          // takes the whole still-empty departure; else a conditional
+          // count-up. Status flip + soldOutAt stamp are fused into the claim.
+          const claimed = await this.claimSeats(tx, {
+            departureId: booking.departureId,
+            tourId: booking.tourId,
+            seats,
+            exclusive: booking.exclusiveDeparture,
+          });
+          if (!claimed) throw new HoldRecoveryAbort('sold out');
         }
 
         await tx.bookingUnitItem.updateMany({
@@ -2948,46 +2927,37 @@ export class BookingsService {
         throw new ConflictException('This booking was already restored');
       }
       if (booking.departureId) {
+        // Pre-check kept for its DISTINCT error: a cancelled/deleted departure
+        // is a dead end ("cannot be restored into it"), not a seat shortage.
         const dep = await tx.departure.findUnique({
           where: { id: booking.departureId },
-          select: { capacity: true, status: true },
+          select: { status: true },
         });
         if (!dep || dep.status === DepartureStatus.CANCELLED) {
           throw new ConflictException(
             'This departure was cancelled - the booking cannot be restored into it',
           );
         }
-        // Guarded seat re-claim, mirroring the reserve-time claim: the WHERE
-        // re-evaluates fill under concurrency, so a restore can never overbook
-        // seats that were resold after the cancellation. Unlike reserve it
-        // accepts a SOLD_OUT/CLOSED departure (sticky states stop NEW sales,
-        // not the return of a seat that was wrongly released) - only a
-        // CANCELLED departure is a dead end, checked above.
-        const claim = booking.exclusiveDeparture
-          ? await tx.departure.updateMany({
-              where: {
-                id: booking.departureId,
-                status: { not: DepartureStatus.CANCELLED },
-                bookedCount: 0,
-              },
-              data: { bookedCount: dep.capacity },
-            })
-          : await tx.departure.updateMany({
-              where: {
-                id: booking.departureId,
-                status: { not: DepartureStatus.CANCELLED },
-                bookedCount: { lte: dep.capacity - seats },
-              },
-              data: { bookedCount: { increment: seats } },
-            });
-        if (claim.count === 0) {
+        // Guarded seat re-claim, mirroring the reserve-time claim: the guard
+        // re-evaluates fill (and capacity) under concurrency, so a restore can
+        // never overbook seats that were resold after the cancellation.
+        // `intoSticky`: unlike reserve it accepts a SOLD_OUT/CLOSED departure
+        // (sticky states stop NEW sales, not the return of a seat that was
+        // wrongly released) - only a CANCELLED departure is a dead end.
+        const claimed = await this.claimSeats(tx, {
+          departureId: booking.departureId,
+          tourId: booking.tourId,
+          seats,
+          exclusive: booking.exclusiveDeparture,
+          intoSticky: true,
+        });
+        if (!claimed) {
           throw new ConflictException(
             booking.exclusiveDeparture
               ? 'The departure was rebooked after the cancellation - the private charter cannot be restored'
               : 'Not enough seats left on this departure to restore the booking',
           );
         }
-        await this.recomputeStoredStatus(tx, booking.departureId);
       }
       await tx.bookingUnitItem.updateMany({
         where: { bookingId: booking.id },
@@ -4681,8 +4651,8 @@ export class BookingsService {
     const oldDepartureId = booking.departureId;
 
     const moved = await this.prisma.$transaction(async (tx) => {
-      // Fresh read INSIDE the txn, same reason as reserve: the capacity
-      // threshold below re-evaluates against current state under concurrency.
+      // Read kept for the wrong-tour 404 and the date/startTime the booking
+      // update below snapshots; the claim's guard reads live capacity in SQL.
       const dep = await tx.departure.findUnique({
         where: { id: departureId },
         select: {
@@ -4690,37 +4660,23 @@ export class BookingsService {
           tourId: true,
           date: true,
           startTime: true,
-          capacity: true,
-          status: true,
         },
       });
       if (!dep || dep.tourId !== booking.tourId) {
         throw new NotFoundException('Departure not found for this tour');
       }
 
-      const claim = booking.exclusiveDeparture
-        ? await tx.departure.updateMany({
-            where: {
-              id: departureId,
-              status: DepartureStatus.OPEN,
-              bookedCount: 0,
-            },
-            data: { bookedCount: dep.capacity },
-          })
-        : await tx.departure.updateMany({
-            where: {
-              id: departureId,
-              status: DepartureStatus.OPEN,
-              bookedCount: { lte: dep.capacity - seats },
-            },
-            data: { bookedCount: { increment: seats } },
-          });
-      if (claim.count === 0) {
+      const claimed = await this.claimSeats(tx, {
+        departureId,
+        tourId: booking.tourId,
+        seats,
+        exclusive: booking.exclusiveDeparture,
+      });
+      if (!claimed) {
         throw new UnprocessableEntityException(
           'That departure is no longer available',
         );
       }
-      await this.recomputeStoredStatus(tx, departureId);
       if (oldDepartureId) {
         await this.releaseSeats(
           tx,
@@ -5866,23 +5822,156 @@ export class BookingsService {
   ): Promise<void> {
     if (exclusive) {
       // Exclusive charter release: the whole unit was claimed, so reset to empty.
+      // An absolute write is already idempotent under concurrency. NOTE: this
+      // branch still throws P2025 on a vanished departure (as the old code
+      // did) while the shared branch below silently matches 0 rows - a
+      // release for a hard-deleted departure has nothing left to free either
+      // way.
       await tx.departure.update({
         where: { id: departureId },
         data: { bookedCount: 0 },
       });
     } else {
-      // GREATEST(0, bookedCount - seats): read-modify-write inside the txn so a
-      // release can never drive bookedCount negative.
-      const dep = await tx.departure.findUnique({
-        where: { id: departureId },
-        select: { bookedCount: true },
-      });
-      await tx.departure.update({
-        where: { id: departureId },
-        data: { bookedCount: Math.max(0, (dep?.bookedCount ?? 0) - seats) },
-      });
+      // Atomic clamped decrement IN SQL. The previous read-modify-write lost
+      // decrements when two releases raced (sweeper vs. cancel): both read the
+      // same bookedCount, both wrote from that snapshot, and the later commit
+      // erased the earlier release - seats leaked until an admin noticed.
+      // GREATEST re-evaluates against the current row under the row lock, so
+      // concurrent releases compose and the count can never go negative.
+      // `updatedAt` is stamped by hand: @updatedAt is Prisma-client-side and
+      // raw SQL bypasses it, but the iCal feed derives SEQUENCE/LAST-MODIFIED
+      // from this column.
+      await tx.$executeRaw`
+        UPDATE "departures"
+        SET "bookedCount" = GREATEST("bookedCount" - ${seats}, 0),
+            "updatedAt" = now()
+        WHERE "id" = ${departureId}`;
     }
     await this.recomputeStoredStatus(tx, departureId);
+  }
+
+  /**
+   * True when a Prisma P2003 names the bookings→departures FK - meaning the
+   * departure was hard-deleted between `loadContext` and the booking insert
+   * (the materializer's orphan sweep removes unbooked departures). Meta shape
+   * varies across Prisma versions (`constraint` vs `field_name`, string or
+   * array), so both are checked.
+   */
+  private static isDepartureFkViolation(err: unknown): boolean {
+    if (
+      !(err instanceof Prisma.PrismaClientKnownRequestError) ||
+      err.code !== 'P2003'
+    ) {
+      return false;
+    }
+    const meta = err.meta ?? {};
+    return [meta.constraint, meta.field_name]
+      .flatMap((v) => (Array.isArray(v) ? v : [v]))
+      .some((v) => typeof v === 'string' && v.includes('departureId'));
+  }
+
+  /**
+   * Atomic seat claim - THE overbooking backstop (master §5, invariant 6).
+   * Capacity check + increment + SOLD_OUT flip + `soldOutAt` stamp in ONE
+   * guarded UPDATE, so the contended departure row is held for a single
+   * statement.
+   *
+   * Raw SQL because the guard compares two columns
+   * (`bookedCount + seats <= capacity`), which Prisma's `where` cannot
+   * express - the old shape computed `capacity - seats` in JS from a pre-read,
+   * and under READ COMMITTED that frozen capacity snapshot missed a concurrent
+   * capacity reduction. In-SQL comparison always evaluates the newest row.
+   *
+   * Postgres enum literals are the MAPPED (lowercase) values of
+   * `departure_status`; booking statuses are a different type (UPPERCASE) -
+   * do not mix them up. Every variant stamps `updatedAt` by hand: @updatedAt
+   * is Prisma-client-side and raw SQL bypasses it, but the iCal feed derives
+   * SEQUENCE/LAST-MODIFIED from that column.
+   *
+   * @param intoSticky Restore-only: accept a SOLD_OUT/CLOSED departure (sticky
+   *   states stop NEW sales, not the return of a seat that was wrongly
+   *   released - only CANCELLED is a dead end). Status is then re-derived from
+   *   the new fill with CLOSED kept sticky, exactly as `recomputeStoredStatus`
+   *   used to do after the claim.
+   * @returns false when the claim lost (sold out, closed, or wrong tour/id).
+   */
+  private async claimSeats(
+    tx: Prisma.TransactionClient,
+    args: {
+      departureId: string;
+      tourId: string;
+      seats: number;
+      exclusive: boolean;
+      intoSticky?: boolean;
+    },
+  ): Promise<boolean> {
+    const { departureId, tourId, seats, exclusive, intoSticky } = args;
+    let claimed: number;
+    if (exclusive) {
+      // Exclusive charter (D5): only a still-empty departure can be taken;
+      // claim the WHOLE unit so no one else can book it. A capacity-0
+      // departure flips straight to sold_out with 0 - same as the old
+      // recompute semantics.
+      claimed = intoSticky
+        ? await tx.$executeRaw`
+            UPDATE "departures"
+            SET "bookedCount" = "capacity",
+                "status" = CASE WHEN "status" = 'closed'::"departure_status"
+                                THEN "status"
+                                ELSE 'sold_out'::"departure_status" END,
+                "soldOutAt" = CASE WHEN "status" = 'closed'::"departure_status"
+                                   THEN "soldOutAt"
+                                   ELSE COALESCE("soldOutAt", now()) END,
+                "updatedAt" = now()
+            WHERE "id" = ${departureId} AND "tourId" = ${tourId}
+              AND "status" <> 'cancelled'::"departure_status"
+              AND "bookedCount" = 0`
+        : await tx.$executeRaw`
+            UPDATE "departures"
+            SET "bookedCount" = "capacity",
+                "status"      = 'sold_out'::"departure_status",
+                "soldOutAt"   = COALESCE("soldOutAt", now()),
+                "updatedAt"   = now()
+            WHERE "id" = ${departureId} AND "tourId" = ${tourId}
+              AND "status" = 'open'::"departure_status"
+              AND "bookedCount" = 0`;
+    } else {
+      // Shared / per-person: guarded count-up; claims only if seats remain.
+      // `>=` in the CASE is deliberate belt-and-braces: with the guard in the
+      // same WHERE, equality is the only reachable branch.
+      claimed = intoSticky
+        ? await tx.$executeRaw`
+            UPDATE "departures"
+            SET "bookedCount" = "bookedCount" + ${seats},
+                "status" = CASE
+                  WHEN "status" = 'closed'::"departure_status" THEN "status"
+                  WHEN "bookedCount" + ${seats} >= "capacity"
+                    THEN 'sold_out'::"departure_status"
+                  ELSE 'open'::"departure_status" END,
+                "soldOutAt" = CASE
+                  WHEN "status" <> 'closed'::"departure_status"
+                   AND "bookedCount" + ${seats} >= "capacity"
+                    THEN COALESCE("soldOutAt", now())
+                  ELSE "soldOutAt" END,
+                "updatedAt" = now()
+            WHERE "id" = ${departureId} AND "tourId" = ${tourId}
+              AND "status" <> 'cancelled'::"departure_status"
+              AND "bookedCount" + ${seats} <= "capacity"`
+        : await tx.$executeRaw`
+            UPDATE "departures"
+            SET "bookedCount" = "bookedCount" + ${seats},
+                "status" = CASE WHEN "bookedCount" + ${seats} >= "capacity"
+                                THEN 'sold_out'::"departure_status"
+                                ELSE "status" END,
+                "soldOutAt" = CASE WHEN "bookedCount" + ${seats} >= "capacity"
+                                   THEN COALESCE("soldOutAt", now())
+                                   ELSE "soldOutAt" END,
+                "updatedAt" = now()
+            WHERE "id" = ${departureId} AND "tourId" = ${tourId}
+              AND "status" = 'open'::"departure_status"
+              AND "bookedCount" + ${seats} <= "capacity"`;
+    }
+    return claimed === 1;
   }
 
   /** Re-derive OPEN/SOLD_OUT from the fill; leave sticky CLOSED/CANCELLED untouched. */

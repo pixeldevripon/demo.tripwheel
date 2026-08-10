@@ -144,12 +144,24 @@ These are ranked. Each is expanded in its section below.
 
 ## 2. Booking creation (reserve) - validation & atomic claim
 
-- [x] **Single atomic guarded UPDATE on `departures`** (increment with `WHERE status='open' AND booked_count+seats<=capacity`, 0 rows -> fail), inside a transaction; no check-then-increment split. `Ref:` [Guide §8](./BOOKING-FLOW-DESIGN-GUIDE.md#8-atomic-capacity-claim), [Queues §2](../02-architecture/EVENT-DRIVEN-AND-QUEUES.md#2-overbooking-and-race-conditions-no-queue) · `Code:` `bookings.service.ts:reserve`
+- [x] **Single atomic guarded UPDATE on `departures`** (increment with `WHERE status='open' AND booked_count+seats<=capacity`, 0 rows -> fail), inside a transaction; no check-then-increment split. **2026-08-10 (hardening F2/F3): the claim now LITERALLY matches this SQL** - one raw guarded UPDATE in `claimSeats()` (check + increment + `SOLD_OUT` flip + `soldOutAt` stamp fused, capacity compared as a live column, not a pre-read literal), shared by reserve / pay-after-expiry recovery / restore / date-change, and placed LAST in the reserve transaction so the hot-row lock spans ~one statement + commit. `Ref:` [Guide §8](./BOOKING-FLOW-DESIGN-GUIDE.md#8-atomic-capacity-claim), [Queues §2](../02-architecture/EVENT-DRIVEN-AND-QUEUES.md#2-overbooking-and-race-conditions-no-queue), [Hardening F2/F3](./BOOKING-CONCURRENCY-HARDENING.md) · `Code:` `bookings.service.ts:claimSeats` · `Test:` `test/booking-concurrency.e2e-spec.ts` (real Postgres: last-seat race, capacity-shrink race, exclusive, restore-into-sticky)
 - [x] **Booking + unit items + add-on snapshots created in the same transaction.** `Ref:` [Guide §4 step 11](./BOOKING-FLOW-DESIGN-GUIDE.md#4-end-to-end-booking-flow) · `Code:` `bookings.service.ts:reserve`
 - [x] **Validate: tour exists; departure belongs to tour; cutoff not passed; party min/max; add-ons active & belong to tour; pickup belongs to tour.** `Ref:` [Guide §4 step 6](./BOOKING-FLOW-DESIGN-GUIDE.md#4-end-to-end-booking-flow) · `Code:` `bookings.service.ts:loadContext/validateRestrictions/cutoffReached`
 - [x] **Age-restriction validation - CLOSED AS-IS (founder 2026-07-25: "keep it simple as is").** Tour minimum age enforced when `travelerAge` is supplied (ages optional). Band max-age / coverage checks deliberately NOT built - band selection is the age assertion; do not re-add. `Ref:` [Guide §4 step 6](./BOOKING-FLOW-DESIGN-GUIDE.md#4-end-to-end-booking-flow) · `Code:` `bookings.service.ts:validateRestrictions`
 - [x] **All party bands (incl. infants/spectators) count toward capacity** (one unit item each). `Ref:` [Guide §3 BookingUnitItem](./BOOKING-FLOW-DESIGN-GUIDE.md#3-core-entities) · `Code:` `bookings.service.ts:reserve`
 - [x] **Whole-unit/private-charter claims the whole departure** (2026-07-16): a `UNIT` + `PRIVATE` reserve runs an exclusive claim (`booked_count = capacity`, `sold_out`, guarded by `status=open AND booked_count=0`); `Booking.exclusiveDeparture` drives whole-departure release on cancel/expiry. `Ref:` [Guide §9 UNIT capacity](./BOOKING-FLOW-DESIGN-GUIDE.md#9-pricing-and-commission-logic), [§17](./BOOKING-FLOW-DESIGN-GUIDE.md#17-edge-cases) · `Code:` `bookings.service.ts:reserve/releaseSeats`
+
+### Concurrency hardening (plan: [BOOKING-CONCURRENCY-HARDENING.md](./BOOKING-CONCURRENCY-HARDENING.md), audit 2026-08-10)
+
+- [x] **F1 - atomic `releaseSeats`** (SQL `GREATEST` decrement, no read-modify-write). DONE 2026-08-10.
+- [x] **F2 - `claimSeats()` helper, guard in SQL** (one raw guarded UPDATE, fused `SOLD_OUT` flip, 4 call sites; live-column capacity guard closes the concurrent-capacity-edit hole). DONE 2026-08-10.
+- [x] **F3 - claim last in the reserve transaction** (hot-row lock ≈ one statement + commit). DONE 2026-08-10.
+- [ ] **F4 - idempotent replay on reserve** (`dto.id` honoured: pre-check + P2002 catch).
+- [ ] **F5 - DB CHECK constraint** `0 <= bookedCount <= capacity` + capacity-edit 409 guards.
+- [ ] **F6 - explicit pool + timeouts** (pool max, connect/statement/lock timeouts).
+- [ ] **F7 - load test with postconditions** (exact-capacity assertion; the exit gate).
+- [ ] **F8 - replica-safe sweeper** (BullMQ repeatable jobs, no double-run on a second process).
+- [ ] **F9 - shed doomed requests** (sold-out short-circuit, availability read cache, per-route throttle).
 
 ---
 
@@ -211,7 +223,7 @@ These are ranked. Each is expanded in its section below.
 
 - [x] **Expiry logic** (find ON_HOLD past `utcExpiresAt`, release seats, mark unit items + booking EXPIRED, idempotent). `Ref:` [Guide §11](./BOOKING-FLOW-DESIGN-GUIDE.md#11-hold-expiry) · `Code:` `bookings.service.ts:expireStaleHolds`
 - [x] **Scheduled sweeper wiring.** DONE 2026-07-25 (#47): `@Cron(EVERY_MINUTE)` `holdExpirySweep` in `NightlyJobsService` (in-process, not BullMQ - idempotent recompute). `Code:` `workers/nightly-jobs.service.ts`
-- [x] **Seat release recomputes departure status** (SOLD_OUT -> OPEN when seats free). `Ref:` [Guide §7](./BOOKING-FLOW-DESIGN-GUIDE.md#7-departure-state-machine) · `Code:` `bookings.service.ts:releaseSeats/recomputeStoredStatus`
+- [x] **Seat release recomputes departure status** (SOLD_OUT -> OPEN when seats free). **2026-08-10 (hardening F1): the shared-branch release is now an atomic SQL `GREATEST("bookedCount" - seats, 0)`** - the old read-modify-write lost a decrement when two releases raced (sweeper vs. cancel), leaking seats until an admin noticed. `Ref:` [Guide §7](./BOOKING-FLOW-DESIGN-GUIDE.md#7-departure-state-machine), [Hardening F1](./BOOKING-CONCURRENCY-HARDENING.md) · `Code:` `bookings.service.ts:releaseSeats/recomputeStoredStatus` · `Test:` `test/booking-concurrency.e2e-spec.ts` (50-iteration concurrent-release race)
 
 ---
 
