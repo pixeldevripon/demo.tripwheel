@@ -4,7 +4,10 @@
 
 model Booking {
   id   String @id @default(uuid())
-  uuid String @unique @default(uuid()) // OCTO uuid (client-supplied; idempotency key)
+  // OCTO-mirror only. `id` is THE idempotency key (reserve honours it with a
+  // replay pre-check + in-flight P2002 catch, hardening F4); this column is
+  // never consulted for dedup - do not assume it dedupes anything.
+  uuid String @unique @default(uuid())
 
   tourId      String
   departureId String? // null when freesale

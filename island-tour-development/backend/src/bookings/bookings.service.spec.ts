@@ -613,11 +613,19 @@ describe('BookingsService', () => {
     // must keep the old pre-read's clean 422 contract, never a 500.
     it('422s (not 500) when the departure was hard-deleted mid-flight', async () => {
       setupReserveContext(prisma);
+      // Meta uses the REAL pg driver-adapter shape (verified against live
+      // Postgres): the constraint name nests under driverAdapterError, and a
+      // predicate reading only top-level keys never matches in production.
       m.booking.create.mockRejectedValue(
         new Prisma.PrismaClientKnownRequestError('FK violation', {
           code: 'P2003',
           clientVersion: 'test',
-          meta: { constraint: 'bookings_departureId_fkey' },
+          meta: {
+            modelName: 'Booking',
+            driverAdapterError: {
+              cause: { constraint: { index: 'bookings_departureId_fkey' } },
+            },
+          },
         }),
       );
       await expect(svc.reserve(reserveDto)).rejects.toMatchObject({
@@ -631,10 +639,123 @@ describe('BookingsService', () => {
       const fkErr = new Prisma.PrismaClientKnownRequestError('FK violation', {
         code: 'P2003',
         clientVersion: 'test',
-        meta: { constraint: 'booking_unit_items_ageBandId_fkey' },
+        meta: {
+          modelName: 'BookingUnitItem',
+          driverAdapterError: {
+            cause: {
+              constraint: { index: 'booking_unit_items_ageBandId_fkey' },
+            },
+          },
+        },
       });
       m.booking.create.mockRejectedValue(fkErr);
       await expect(svc.reserve(reserveDto)).rejects.toBe(fkErr);
+    });
+
+    // ── Idempotent replay, hardening F4 ─────────────────────────────────────
+    // Layer 1 (pre-check) is covered by the 'is idempotent' test above; these
+    // pin the key-reuse 409 and the in-flight duplicate P2002 catch.
+
+    it('409s a reused id whose payload names a DIFFERENT reservation', async () => {
+      setupReserveContext(prisma);
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({ departureId: 'someone-elses-dep' }),
+      );
+      await expect(
+        svc.reserve({ ...reserveDto, id: 'b1' }),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(m.booking.create).not.toHaveBeenCalled();
+    });
+
+    it('answers an in-flight duplicate (P2002 on the PK) with the winner, firing NO side effects', async () => {
+      setupReserveContext(prisma);
+      // Pre-check sees nothing (both rivals passed it); the loser's insert
+      // then collides on the PK and the winner is read back BY ID. displayRef
+      // probes (allocateDisplayRef shares findUnique) must keep seeing free
+      // candidates.
+      m.booking.findUnique
+        .mockResolvedValueOnce(null)
+        .mockImplementation(({ where }: { where: { id?: string } }) =>
+          Promise.resolve(where.id ? fakeBooking() : null),
+        );
+      m.booking.create.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('unique violation', {
+          code: 'P2002',
+          clientVersion: 'test',
+          // Real pg driver-adapter shape (fields array, nested).
+          meta: {
+            modelName: 'Booking',
+            driverAdapterError: { cause: { constraint: { fields: ['id'] } } },
+          },
+        }),
+      );
+
+      const res = await svc.reserve({ ...reserveDto, id: 'b1' });
+
+      expect(res.id).toBe('b1');
+      // The loser never touched the hot row (claim runs last) and owns no
+      // side effects - the winner's flow emits the events.
+      expect(m.$executeRaw).not.toHaveBeenCalled();
+      expect(notifications.emitBookingUpdate).not.toHaveBeenCalled();
+    });
+
+    it('409s an in-flight duplicate whose winner is a DIFFERENT reservation', async () => {
+      setupReserveContext(prisma);
+      m.booking.findUnique
+        .mockResolvedValueOnce(null)
+        .mockImplementation(({ where }: { where: { id?: string } }) =>
+          Promise.resolve(
+            where.id ? fakeBooking({ departureId: 'someone-elses-dep' }) : null,
+          ),
+        );
+      m.booking.create.mockRejectedValue(
+        // Legacy classic-engine shape (top-level target) - the predicate
+        // accepts both, so an engine/adapter change cannot silently break it.
+        new Prisma.PrismaClientKnownRequestError('unique violation', {
+          code: 'P2002',
+          clientVersion: 'test',
+          meta: { target: ['id'] },
+        }),
+      );
+      await expect(
+        svc.reserve({ ...reserveDto, id: 'b1' }),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('never swallows a P2002 on displayRef/publicRef as a replay', async () => {
+      setupReserveContext(prisma);
+      const refClash = new Prisma.PrismaClientKnownRequestError(
+        'unique violation',
+        {
+          code: 'P2002',
+          clientVersion: 'test',
+          meta: {
+            modelName: 'Booking',
+            driverAdapterError: {
+              cause: { constraint: { fields: ['displayRef'] } },
+            },
+          },
+        },
+      );
+      m.booking.create.mockRejectedValue(refClash);
+      await expect(svc.reserve(reserveDto)).rejects.toBe(refClash);
+    });
+
+    it('rethrows the P2002 when no winner row exists (winner rolled back)', async () => {
+      setupReserveContext(prisma);
+      const pkClash = new Prisma.PrismaClientKnownRequestError(
+        'unique violation',
+        {
+          code: 'P2002',
+          clientVersion: 'test',
+          meta: { target: ['id'] },
+        },
+      );
+      m.booking.findUnique.mockResolvedValue(null); // pre-check AND re-fetch
+      m.booking.create.mockRejectedValue(pkClash);
+      await expect(svc.reserve({ ...reserveDto, id: 'b1' })).rejects.toBe(
+        pkClash,
+      );
     });
 
     it('rejects a party below the minimum size', async () => {
