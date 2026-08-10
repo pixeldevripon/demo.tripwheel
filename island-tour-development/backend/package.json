@@ -31,6 +31,8 @@
     "media:backfill": "ts-node -r tsconfig-paths/register scripts/backfill-media-metadata.ts",
     "booking:island:backfill": "ts-node -r tsconfig-paths/register scripts/backfill-booking-island.ts",
     "loadtest:seed": "ts-node -r tsconfig-paths/register scripts/loadtest/seed-loadtest.ts",
+    "loadtest:run": "ts-node -r tsconfig-paths/register scripts/loadtest/run-loadtest.ts",
+    "loadtest:full": "ts-node -r tsconfig-paths/register scripts/loadtest/run-loadtest.ts full",
     "loadtest:assert": "ts-node -r tsconfig-paths/register scripts/loadtest/assert-postconditions.ts",
     "loadtest:cleanup": "ts-node -r tsconfig-paths/register scripts/loadtest/cleanup-loadtest.ts",
     "home:media:seed": "ts-node -r tsconfig-paths/register scripts/seed-home-page-media.ts",
