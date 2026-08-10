@@ -365,7 +365,11 @@
             "discover": {
                 "titlePattern": "Entdecke {hub}",
                 "subtitle": "Was Sie vorher wissen sollten.",
-                "bookTrip": "Buche deinen Trip"
+                "cta": {
+                    "title": "Dorthin kommt man nur mit dem Boot.",
+                    "fact": "{count} davon legen an den meisten Tagen von {destination} ab.",
+                    "button": "Wähl dein Boot"
+                }
             },
             "frequencyDaily": "Täglich",
             "frequencyWeekly": "{count} Tage pro Woche",

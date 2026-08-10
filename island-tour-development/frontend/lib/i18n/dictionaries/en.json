@@ -365,7 +365,11 @@
             "discover": {
                 "titlePattern": "Discover {hub}",
                 "subtitle": "What to know before you go.",
-                "bookTrip": "Book your trip"
+                "cta": {
+                    "title": "You can only get there by boat.",
+                    "fact": "{count} of them leave from {destination}, most days.",
+                    "button": "Pick your boat"
+                }
             },
             "frequencyDaily": "Daily",
             "frequencyWeekly": "{count} days a week",

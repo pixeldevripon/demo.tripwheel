@@ -365,7 +365,11 @@
             "discover": {
                 "titlePattern": "探索 {hub}",
                 "subtitle": "出发前需要了解的事。",
-                "bookTrip": "预订行程"
+                "cta": {
+                    "title": "只能乘船前往。",
+                    "fact": "大多数日子有 {count} 班船从{destination}出发。",
+                    "button": "选择你的船"
+                }
             },
             "frequencyDaily": "每日",
             "frequencyWeekly": "每周{count}天",

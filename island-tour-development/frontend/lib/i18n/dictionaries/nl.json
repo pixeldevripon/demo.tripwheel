@@ -365,7 +365,11 @@
             "discover": {
                 "titlePattern": "Ontdek {hub}",
                 "subtitle": "Wat je moet weten voordat je gaat.",
-                "bookTrip": "Boek je trip"
+                "cta": {
+                    "title": "Je komt er alleen per boot.",
+                    "fact": "{count} boten vertrekken vanaf {destination}, de meeste dagen.",
+                    "button": "Kies je boot"
+                }
             },
             "frequencyDaily": "Dagelijks",
             "frequencyWeekly": "{count} dagen per week",
