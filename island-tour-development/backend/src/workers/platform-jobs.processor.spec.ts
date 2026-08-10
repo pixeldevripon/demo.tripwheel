@@ -17,7 +17,7 @@ jest.mock('@/auth/auth.instance', () => ({
 
 import type { Job } from 'bullmq';
 import { PlatformJobsProcessor } from './platform-jobs.processor';
-import { PLATFORM_JOBS } from './platform-queue';
+import { PLATFORM_JOBS, PLATFORM_SCHEDULES } from './platform-queue';
 
 /** Thin-switch contract: every named job routes to its idempotent runner. */
 describe('PlatformJobsProcessor', () => {
@@ -28,7 +28,16 @@ describe('PlatformJobsProcessor', () => {
     runPreTourReminderJob: jest.fn(),
     runRefundJob: jest.fn(),
   };
-  const proc = new PlatformJobsProcessor(bookings as never);
+  const nightlyJobs = {
+    holdExpirySweep: jest.fn(),
+    settlementReverseSweep: jest.fn(),
+    reviewRequestsHourly: jest.fn(),
+    run: jest.fn(),
+  };
+  const proc = new PlatformJobsProcessor(
+    bookings as never,
+    nightlyJobs as never,
+  );
 
   const job = (name: string) =>
     ({ name, data: { bookingId: 'b1' } }) as Job<{ bookingId: string }>;
@@ -42,6 +51,31 @@ describe('PlatformJobsProcessor', () => {
   ] as const)('routes %s to %s', async (name, method) => {
     await proc.process(job(name));
     expect(bookings[method]).toHaveBeenCalledWith('b1');
+  });
+
+  // F8: the scheduled sweeps ride the same queue as single-runner repeatable
+  // jobs. They carry no bookingId and route to the NightlyJobsService bodies.
+  it.each([
+    [PLATFORM_SCHEDULES.HOLD_EXPIRY_SWEEP.name, 'holdExpirySweep'],
+    [
+      PLATFORM_SCHEDULES.SETTLEMENT_REVERSE_SWEEP.name,
+      'settlementReverseSweep',
+    ],
+    [PLATFORM_SCHEDULES.REVIEW_REQUEST_SWEEP.name, 'reviewRequestsHourly'],
+    [PLATFORM_SCHEDULES.NIGHTLY_COMMERCIAL.name, 'run'],
+  ] as const)('routes scheduled %s to %s', async (name, method) => {
+    await proc.process({ name, data: {} } as Job<{ bookingId: string }>);
+    expect(nightlyJobs[method]).toHaveBeenCalled();
+  });
+
+  it('lets a scheduled sweep throw (attempts=1: the failed tick must be RETAINED, not swallowed)', async () => {
+    nightlyJobs.holdExpirySweep.mockRejectedValueOnce(new Error('db down'));
+    await expect(
+      proc.process({
+        name: PLATFORM_SCHEDULES.HOLD_EXPIRY_SWEEP.name,
+        data: {},
+      } as Job<{ bookingId: string }>),
+    ).rejects.toThrow('db down');
   });
 
   it('ignores unknown job names instead of throwing (forward compat)', async () => {
