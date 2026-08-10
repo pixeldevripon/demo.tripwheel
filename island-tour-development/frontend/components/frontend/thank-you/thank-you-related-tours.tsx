@@ -1,5 +1,6 @@
 import { MotionLink } from '@/components/frontend/motion-link';
 import { Reveal } from '@/components/frontend/reveal';
+import { ScrollHintRow } from '@/components/frontend/scroll-hint';
 import {
     TourCard,
     type TourCardDict,
@@ -41,7 +42,10 @@ export function ThankYouRelatedTours({
                         {dict.relatedSubtitle}
                     </p>
                 </Reveal>
-                <div className='mt-[22px] flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:snap-none sm:grid-cols-3 sm:gap-4 sm:overflow-visible sm:pb-0'>
+                {/* Mobile swipe row announces itself once via the sitewide
+                    scroll hint (mck-16 §4.8); the sm+ grid has no overflow,
+                    so the hint self-skips there. */}
+                <ScrollHintRow className='mt-[22px] flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:snap-none sm:grid-cols-3 sm:gap-4 sm:overflow-visible sm:pb-0'>
                     {tours.map(tour => (
                         <Reveal
                             key={tour.id}
@@ -51,7 +55,7 @@ export function ThankYouRelatedTours({
                             <TourCard tour={tour} dict={cardDict} />
                         </Reveal>
                     ))}
-                </div>
+                </ScrollHintRow>
                 <Reveal className='mt-6'>
                     <MotionLink
                         href={toursHref}

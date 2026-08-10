@@ -2,6 +2,7 @@ import { localizeHref, type Locale } from '@/lib/constants/locales';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Reveal } from '../reveal';
+import { ScrollHintRow } from '../scroll-hint';
 
 export type HubAlsoWorthItem = { name: string; slug: string; image?: string };
 
@@ -37,9 +38,11 @@ export function HubAlsoWorthSection({
                         {title}
                     </h2>
 
-                    {/* Mobile: horizontal snap-scroll of 274px cards (16px gap).
-                        lg+: static 3-column grid (24px gap). */}
-                    <div className='flex snap-x snap-mandatory gap-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:grid lg:grid-cols-3 lg:gap-4 lg:overflow-visible'>
+                    {/* Mobile: horizontal snap-scroll of 274px cards (16px gap)
+                        with the sitewide first-view nudge (mck-16 §4.8).
+                        lg+: static 3-column grid (24px gap) - no overflow, so
+                        the hint self-skips. */}
+                    <ScrollHintRow className='flex snap-x snap-mandatory gap-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:grid lg:grid-cols-3 lg:gap-4 lg:overflow-visible'>
                         {items.map(item => (
                             <Reveal key={item.slug} delay={0.02} listItem>
                                 <Link
@@ -70,7 +73,7 @@ export function HubAlsoWorthSection({
                                 </Link>
                             </Reveal>
                         ))}
-                    </div>
+                    </ScrollHintRow>
                 </Reveal>
             </div>
         </section>

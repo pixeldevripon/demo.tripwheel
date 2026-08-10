@@ -3,23 +3,31 @@ import Image from 'next/image';
 import { Fragment } from 'react';
 import { MotionLink } from '../motion-link';
 import { Reveal } from '../reveal';
+import { ScrollHintRow } from '../scroll-hint';
 
 /**
  * Activity Hub "Which trip is right for you?" comparison section (Figma node
- * 48024:11654 desktop / 48627:9249 mobile). One or more comparison tables, each
- * grouping a set of boats/trips under a category (e.g. "Comfort trips") and
- * comparing them attribute-by-attribute.
+ * 48024:11654 desktop / 48627:9249 mobile; mobile behaviour re-specified by
+ * mck-16 §4). One or more comparison tables, each grouping a set of
+ * boats/trips under a category (e.g. "Comfort trips") and comparing them
+ * attribute-by-attribute.
  *
- * Desktop renders a flush 4-column grid (label column + 3 boats) with continuous
- * vertical dividers and a per-boat price/Book footer row. Mobile renders each
- * table as a rounded card whose header + rows scroll horizontally (the label
- * column stays pinned, the first boat column is highlighted), with a single
- * full-width price/Book footer for the lead boat.
+ * Desktop renders a flush 4-column grid (label column + 3 boats) with
+ * continuous vertical dividers and a per-boat price/Book footer row. Mobile
+ * (mck-16 §4) shows TWO whole trips at once against the pinned label column -
+ * container-query tracks size the trip columns so the table always comes to
+ * rest on whole trips with a 28px slice of the next one showing - snaps by
+ * whole trips, and announces itself via the shared ScrollHintRow: a position
+ * indicator under every table plus the sitewide one-shot nudge. Price and
+ * Book sit at the foot of each trip's OWN column and travel with it (§4.5:
+ * the button always books the boat directly above it - never a shared bar
+ * that can fall out of step), and no trip is marked as chosen (§4.3: no
+ * highlight on the lead column).
  *
- * Pure + data-driven: the section owns no state. Table content is supplied via
- * `tables` (placeholder content until the per-tour attributes API is wired,
- * mirroring the MOCK convention on the rest of the hub page); UI strings
- * (`title`/`subtitle`/`from`/`book`) come from the dictionary.
+ * Data-driven: the section owns no state of its own. Table content arrives
+ * fully backend-fed via the hub render aggregate (`/hubs/render/:slug` →
+ * `comparisonGroups`); UI strings (`title`/`subtitle`/`from`/`book`) come
+ * from the dictionary.
  */
 
 /** A single comparison value: bullet-joined parts, optional leading green check. */
@@ -69,19 +77,28 @@ export type HubCompareDict = {
 };
 
 const ANCHOR_ICON = '/icons/hub/compare-anchor.svg';
-const ANCHOR_ICON_WHITE = '/icons/hub/compare-anchor-white.svg';
 const CHECK_ICON = '/icons/check-green.svg';
 
 /**
  * Per-boat-count grid templates. Static strings so Tailwind's JIT keeps them.
- * Mobile: fixed-width tracks (pinned label + scrollable boats). Desktop: equal
- * columns that fill the container (no scroll).
+ *
+ * Mobile (mck-16 §4.2 + §4.4 + §4.6): a comparison needs two trips against
+ * the row labels at once, resting with a slice of the next trip showing. The
+ * card is a container (`@container`), so each trip track is
+ * `(100cqw - LABEL - SLICE) / 2`: pinned 100px label + two whole trips + a
+ * constant 28px slice of the third, at every phone width. A 2-boat table has
+ * no third trip to peek, so its tracks split the full remainder and the table
+ * doesn't scroll at all. Desktop: equal columns that fill the container.
  */
 const GRID_COLS: Record<number, string> = {
-    2: 'grid-cols-[150px_repeat(2,200px)] lg:grid-cols-3',
-    3: 'grid-cols-[150px_repeat(3,200px)] lg:grid-cols-4',
-    4: 'grid-cols-[150px_repeat(4,200px)] lg:grid-cols-5',
+    2: 'grid-cols-[100px_repeat(2,calc((100cqw_-_100px)/2))] lg:grid-cols-3',
+    3: 'grid-cols-[100px_repeat(3,calc((100cqw_-_128px)/2))] lg:grid-cols-4',
+    4: 'grid-cols-[100px_repeat(4,calc((100cqw_-_128px)/2))] lg:grid-cols-5',
 };
+
+/** Width of the pinned label track - the snap edge trips come to rest on
+ *  (`scroll-pl` below must match the first track in GRID_COLS). */
+const LABEL_SNAP_PAD = 'scroll-pl-[100px]';
 
 export function HubCompareSection({
     tables,
@@ -123,17 +140,17 @@ function CompareTableCard({
 }) {
     const { title, boats, rows } = table;
     const gridCols = GRID_COLS[boats.length] ?? GRID_COLS[3];
-    const lead = boats[0];
 
-    // Shared cell box: vertical centering + Figma paddings (mobile 8/16,
-    // desktop 15/32). A trailing `border-r` (skipped on the last column) draws
-    // the continuous vertical dividers.
-    // Mockup .cmp metrics: 13.5px cells, 11/16 padding, divider hairlines.
+    // Shared cell box: vertical centering + divider hairlines; a trailing
+    // `border-r` (skipped on the last column) draws the continuous vertical
+    // dividers. Desktop keeps the mockup's 16px side padding; mobile drops to
+    // 12px - with two trips sharing the width (mck-16 §4.2), padding is where
+    // the room comes from.
     const cell =
-        'flex items-center px-4 py-[11px] text-[13.5px] leading-[1.6] border-it-divider';
+        'flex items-center px-3 lg:px-4 py-[11px] text-[13.5px] leading-[1.6] border-it-divider';
 
     return (
-        <div className='overflow-hidden rounded-it-lg border border-it-divider bg-it-white shadow-it-sm'>
+        <div className='@container overflow-hidden rounded-it-lg border border-it-divider bg-it-white shadow-it-sm'>
             {/* Category bar */}
             <div className='border-b border-it-peach-border bg-it-primary-subtle px-4 py-2.5 lg:px-4'>
                 <span className='text-[11.5px] font-bold uppercase tracking-[0.12em] text-it-primary-hover'>
@@ -141,8 +158,11 @@ function CompareTableCard({
                 </span>
             </div>
 
-            {/* Horizontally scrollable comparison grid */}
-            <div className='overflow-x-auto'>
+            {/* Comparison grid - scrolls sideways on mobile, snapping to whole
+                trips, with the position indicator + one-shot nudge from the
+                shared ScrollHintRow (mck-16 §4.4/4.6/4.8). Desktop fits and
+                the indicator self-hides. */}
+            <ScrollHintRow dots className={`it-scroll-x ${LABEL_SNAP_PAD}`}>
                 <div className={`grid w-max lg:w-full ${gridCols}`}>
                     {/* Header row: boat names */}
                     <span
@@ -151,35 +171,27 @@ function CompareTableCard({
                     />
                     {boats.map((boat, b) => {
                         const last = b === boats.length - 1;
-                        const isLead = b === 0;
                         return (
+                            /* `snap-start` + `data-scroll-stop`: each trip
+                               column is a rest position for the swipe and a
+                               dot on the indicator (columns share an x-edge,
+                               so marking the header marks the column). Every
+                               name is set the same way - no lead highlight
+                               (mck-16 §4.3). */
                             <div
                                 key={b}
-                                className={`${cell} gap-2.5 border-b ${
+                                data-scroll-stop
+                                className={`${cell} snap-start gap-2.5 border-b ${
                                     last ? '' : 'border-r'
-                                } ${
-                                    isLead
-                                        ? 'max-lg:bg-it-heading max-lg:text-it-white'
-                                        : ''
                                 }`}>
-                                {/* White anchor only on the highlighted lead column (mobile). */}
-                                {isLead && (
-                                    <Image
-                                        src={ANCHOR_ICON_WHITE}
-                                        alt=''
-                                        width={24}
-                                        height={24}
-                                        className='size-5 shrink-0 lg:hidden'
-                                    />
-                                )}
+                                {/* Icon is desktop-only: a two-up mobile
+                                    column has no room for it (mck-16 §4.2). */}
                                 <Image
                                     src={ANCHOR_ICON}
                                     alt=''
                                     width={24}
                                     height={24}
-                                    className={`size-5 shrink-0 lg:size-6 ${
-                                        isLead ? 'hidden lg:block' : ''
-                                    }`}
+                                    className='hidden size-6 shrink-0 lg:block'
                                 />
                                 <span className='text-[13.5px] font-bold leading-[1.5]'>
                                     {boat.name}
@@ -192,7 +204,7 @@ function CompareTableCard({
                     {rows.map((row, r) => (
                         <Fragment key={r}>
                             <span
-                                className={`${cell} border-r sticky left-0 z-10 min-w-[130px] bg-it-white font-bold text-it-ink`}>
+                                className={`${cell} border-r sticky left-0 z-10 bg-it-white font-bold text-it-ink`}>
                                 {row.label}
                             </span>
                             {row.cells.map((value, b) => {
@@ -210,9 +222,13 @@ function CompareTableCard({
                         </Fragment>
                     ))}
 
-                    {/* Footer row (desktop): per-boat price + Book */}
+                    {/* Footer row: price + Book at the foot of each trip's
+                        OWN column, travelling with it, so the button always
+                        books the boat directly above it (mck-16 §4.5 - never
+                        a shared bar that can fall out of step). Mobile stacks
+                        the pair; desktop keeps them side by side. */}
                     <span
-                        className={`${cell} border-r border-t hidden lg:flex`}
+                        className={`${cell} border-r border-t sticky left-0 z-10 bg-it-white`}
                         aria-hidden
                     />
                     {boats.map((boat, b) => {
@@ -220,7 +236,7 @@ function CompareTableCard({
                         return (
                             <div
                                 key={b}
-                                className={`hidden items-center justify-between gap-3 px-4 py-3.5 border-t border-it-divider lg:flex ${
+                                className={`flex flex-col items-stretch gap-1.5 border-t border-it-divider px-3 py-2.5 lg:flex-row lg:items-center lg:justify-between lg:gap-3 lg:px-4 lg:py-3.5 ${
                                     last ? '' : 'border-r'
                                 }`}>
                                 <PriceLabel boat={boat} from={dict.from} />
@@ -232,15 +248,7 @@ function CompareTableCard({
                         );
                     })}
                 </div>
-            </div>
-
-            {/* Footer (mobile): single full-width price + Book for the lead boat */}
-            {lead && (
-                <div className='flex flex-col items-center gap-1.5 border-t border-it-heading/10 px-4 py-2 lg:hidden'>
-                    <PriceLabel boat={lead} from={dict.from} />
-                    <BookButton label={dict.book} href={lead.href} full />
-                </div>
-            )}
+            </ScrollHintRow>
         </div>
     );
 }
@@ -298,21 +306,13 @@ function PriceLabel({ boat, from }: { boat: CompareBoat; from: string }) {
 }
 
 /**
- * Orange "Book ->" pill. Full-width on mobile, hugged on desktop. Links to the
- * boat's tour detail page when `href` is supplied (plain button otherwise).
+ * Orange "Book ->" pill. Fills its column on mobile (the footer cell
+ * stretches it), hugs its label on desktop. Links to the boat's tour detail
+ * page when `href` is supplied (plain button otherwise).
  */
-function BookButton({
-    label,
-    href,
-    full,
-}: {
-    label: string;
-    href?: string;
-    full?: boolean;
-}) {
-    const className = `inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-it-full bg-it-primary text-[12.5px] font-bold leading-none text-it-white no-underline transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover ${
-        full ? 'h-[42px] w-full px-8' : 'h-[33px] px-[18px]'
-    }`;
+function BookButton({ label, href }: { label: string; href?: string }) {
+    const className =
+        'inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-it-full bg-it-primary text-[12.5px] font-bold leading-none text-it-white no-underline transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover h-[33px] px-2 lg:px-[18px]';
     if (href) {
         return (
             <MotionLink
