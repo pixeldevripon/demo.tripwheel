@@ -5,6 +5,7 @@ import {
     MotionDiv,
 } from '@/components/frontend/motion-primitives';
 import { useDragScroll } from '@/hooks/use-drag-scroll';
+import { useScrollHintNudge } from '@/hooks/use-scroll-hint-nudge';
 import { reviewerLead } from '@/lib/reviews/review-view';
 import { fetchTourReviews, PHOTO_STRIP_LIMIT } from '@/lib/api/reviews';
 import { type Locale } from '@/lib/constants/locales';
@@ -845,6 +846,10 @@ function ReviewCard({
     /** Index of the photo opened full-size, or null. */
     const [lightbox, setLightbox] = useState<number | null>(null);
     const photoRowRef = useDragScroll<HTMLDivElement>();
+    // Sitewide announce-itself nudge (mck-16 §4.8). One `groupId` across every
+    // review card: the first overflowing photo row on screen hints for all of
+    // them - a wiggle per card would be noise, not an announcement.
+    useScrollHintNudge(photoRowRef, { groupId: 'review-photos' });
     const hasPhotos = Boolean(review.photos && review.photos.length > 0);
     const canToggle =
         review.isMachineTranslated && Boolean(review.originalText);
