@@ -475,4 +475,57 @@ describe('booking seat claim/release under concurrency (real Postgres)', () => {
       expect(state.soldOutAt).not.toBeNull();
     }, 60_000);
   });
+
+  describe('F5 - departures_booked_within_capacity CHECK backstop', () => {
+    // After F1/F2 no application writer can violate the invariant; the
+    // constraint exists to stop FUTURE code paths, admin scripts and console
+    // sessions. These write raw SQL on purpose - the point is that even a
+    // writer that bypasses every service guard is refused by the database.
+    it('refuses bookedCount above capacity', async () => {
+      const dep = await makeDeparture({ capacity: 4, bookedCount: 4 });
+      await expect(
+        prisma.$executeRaw`
+          UPDATE "departures" SET "bookedCount" = "capacity" + 1
+          WHERE "id" = ${dep.id}`,
+      ).rejects.toThrow(/departures_booked_within_capacity/);
+      expect((await readDep(dep.id)).bookedCount).toBe(4);
+    });
+
+    it('refuses a negative bookedCount', async () => {
+      const dep = await makeDeparture({ capacity: 4, bookedCount: 0 });
+      await expect(
+        prisma.$executeRaw`
+          UPDATE "departures" SET "bookedCount" = -1
+          WHERE "id" = ${dep.id}`,
+      ).rejects.toThrow(/departures_booked_within_capacity/);
+      expect((await readDep(dep.id)).bookedCount).toBe(0);
+    });
+
+    it('refuses a capacity cut below the seats already sold', async () => {
+      // The service guard (updateDeparture's floor + optimistic lock) answers
+      // this politely at the API; the constraint is the last line for any
+      // writer that skips the service.
+      const dep = await makeDeparture({ capacity: 10, bookedCount: 8 });
+      await expect(
+        prisma.$executeRaw`
+          UPDATE "departures" SET "capacity" = 6
+          WHERE "id" = ${dep.id}`,
+      ).rejects.toThrow(/departures_booked_within_capacity/);
+      expect((await readDep(dep.id)).capacity).toBe(10);
+    });
+
+    it('refuses an out-of-invariant INSERT outright', async () => {
+      await expect(
+        prisma.departure.create({
+          data: {
+            tourId,
+            date: new Date('2031-12-24'),
+            startTime: new Date(Date.UTC(1970, 0, 1, 23, 45)),
+            capacity: 2,
+            bookedCount: 3,
+          },
+        }),
+      ).rejects.toThrow();
+    });
+  });
 });
