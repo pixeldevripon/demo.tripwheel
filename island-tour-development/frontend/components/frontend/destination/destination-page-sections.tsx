@@ -131,9 +131,14 @@ export async function DestinationHeroSection({
     ]);
 
     const exploreTypes: ExploreType[] = [
+        // A hub tile is a PLACE, not a category (MCK-19): the rail drops its
+        // tour count - whose number depends on what you count - and shows the
+        // pinned place tag plus this count-less line instead.
         ...hubs.map(hub => ({
             name: hub.name,
             slug: hub.slug,
+            kind: 'hub' as const,
+            tagline: hub.heroTagline || hub.description || null,
             tours: hub.publishedTourCount,
             image: hub.heroImage ?? undefined,
         })),

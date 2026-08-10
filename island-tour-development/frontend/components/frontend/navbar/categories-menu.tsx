@@ -1,6 +1,7 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
+import { MapPin } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRef, useState } from 'react';
@@ -12,7 +13,7 @@ import {
     dropdownMotion,
     pressSpring,
 } from './lib/navbar.constants';
-import type { Category, Island, NavDict } from './lib/navbar.types';
+import type { Category, Island, NavDict, NavHub } from './lib/navbar.types';
 import { useClickOutside } from './lib/use-click-outside';
 
 /**
@@ -22,17 +23,27 @@ import { useClickOutside } from './lib/use-click-outside';
  * whole item (divider + trigger) enters/leaves via a width collapse, and its
  * leading spacing lives inside the collapsing wrapper so it animates to true
  * zero width.
+ *
+ * The island's qualifying hubs sit ABOVE the categories as tinted place rows
+ * (MCK-19, decided Aug 9 2026): pin + name + a count-less subtitle, then a
+ * rule, then the categories exactly as they are. Above rather than inside the
+ * list because master 2.4 defines the list as drawn from the 19 global
+ * categories and the sets overlap - the same boats sit in Klein Curacao, Day
+ * Trips and Boat Tours at once. No group headings: the trigger already says
+ * Categories.
  */
 export function CategoriesMenu({
     locale,
     dict,
     categories,
+    hubs = [],
     currentIsland,
     show,
 }: {
     locale: Locale;
     dict: NavDict;
     categories: Category[] | null;
+    hubs?: NavHub[];
     currentIsland: Island | null;
     show: boolean;
 }) {
@@ -90,6 +101,63 @@ export function CategoriesMenu({
                                     <motion.div
                                         {...dropdownMotion}
                                         className='absolute top-[calc(100%+10px)] left-0 w-[340px] origin-top-left bg-it-white rounded-it-sm border border-it-border-subtle shadow-it-lg p-2.5 z-50'>
+                                        {hubs.map(hub => (
+                                            <motion.div
+                                                key={hub.slug}
+                                                {...dropdownItemMotion}>
+                                                <Link
+                                                    href={categoryHref(
+                                                        hub.slug
+                                                    )}
+                                                    onClick={() =>
+                                                        setOpen(false)
+                                                    }
+                                                    className='flex items-center gap-3 rounded-it-md bg-linear-to-r from-it-primary-subtle/55 to-transparent px-2.5 py-2 no-underline transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:bg-it-bg'>
+                                                    {hub.image ? (
+                                                        // eslint-disable-next-line @next/next/no-img-element
+                                                        <img
+                                                            src={hub.image}
+                                                            alt=''
+                                                            className='size-11 shrink-0 rounded-it-md object-cover bg-it-bg'
+                                                        />
+                                                    ) : (
+                                                        <span className='size-11 shrink-0 rounded-it-md bg-it-bg' />
+                                                    )}
+                                                    <span className='min-w-0'>
+                                                        <b className='flex items-center gap-1.5 text-sm font-bold text-it-ink'>
+                                                            {/* The same pin the
+                                                                tour card eyebrow
+                                                                uses - a place
+                                                                reads as a place
+                                                                everywhere. */}
+                                                            <MapPin
+                                                                className='size-3 shrink-0 text-it-primary'
+                                                                strokeWidth={2}
+                                                                aria-hidden='true'
+                                                            />
+                                                            <span className='truncate'>
+                                                                {hub.name}
+                                                            </span>
+                                                        </b>
+                                                        {/* No tour count on a
+                                                            place row - what is
+                                                            there, not how many
+                                                            (MCK-19). */}
+                                                        {hub.tagline && (
+                                                            <span className='block truncate text-xs text-it-text-muted'>
+                                                                {hub.tagline}
+                                                            </span>
+                                                        )}
+                                                    </span>
+                                                </Link>
+                                            </motion.div>
+                                        ))}
+                                        {hubs.length > 0 && (
+                                            <div
+                                                aria-hidden='true'
+                                                className='my-2 h-px bg-it-divider'
+                                            />
+                                        )}
                                         {items.map(cat => (
                                             <motion.div
                                                 key={cat.slug}

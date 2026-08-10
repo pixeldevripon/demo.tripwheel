@@ -567,7 +567,7 @@ Pages/CMS module, observability (Sentry/backups/deep health), and founder-gated 
 - [x] `[locale]` layout with `generateStaticParams` over all 7 locales + parallel dictionary/destinations/site-info fetch
 - [x] Sticky navbar with destination-context state (logo, island selector, Categories dropdown, search, language switcher, wishlist, account)
 - [x] Island/destination selector with localStorage persistence
-- [x] Categories dropdown fed by live category data
+- [x] Categories dropdown fed by live category data — plus the island's PLACE row (mck-19, decided Aug 9 2026): qualifying hubs (≥3 bookable tours, the same shape of gate §2.4 applies to categories) sit above the categories as tinted rows carrying the tour-card pin and a count-less tagline (a hub is a place, not a slice of the catalogue — its number depends on what you count), then a rule, then the categories exactly as they were. No group headings — the trigger already says Categories. The tagline is `heroTagline` (locale-resolved, English fallback), newly exposed on `GET /hubs/destination/{slug}`; the dropdown was the one surface in the chrome with no route to a hub at all
 - [x] Locale selector in nav
 - [x] Wishlist link with live count
 - [x] Account menu (cookie-driven traveler surface, no Better Auth on the public site)
@@ -609,7 +609,7 @@ Pages/CMS module, observability (Sentry/backups/deep health), and founder-gated 
 - [x] Destination hero + `HeroSearch` (search scoped to destination, single-month date picker)
 - [x] Locals' favourites listing section, backend-fed by the `is_locals_favourite` editorial flag
 - [x] Collections section fed by `getActiveCollectionsForDestination`
-- [x] "Explore by type" category quick links
+- [x] "Explore by type" category quick links — the hub tile is now dressed as a PLACE, not a category (mck-19): same tile, same first position, no divider and no reorder (§5.2's review-locked order untouched), but its tour count — which printed "10 tours" two tiles from "Day Trips, 9 tours" over the same boats — is replaced by the pinned place tag on the image plus the hub's count-less tagline. The tag label ships in all 7 locales (`destination.exploreTypes.place`); the search recovery band's rail gets the identical treatment for free (shared `ExploreTypesRail`)
 - [x] Destination About section from the destination model's SEO content
 - [x] Streaming shell + `DestinationPageSkeleton`
 - [x] Destination FAQ: destination-owned content via `getDestinationFaqs(island.id, locale)` (overrides the dictionary fallback when authored); About section is CMS-authored per island (`PageContentSection` rows, real copy seeded)
