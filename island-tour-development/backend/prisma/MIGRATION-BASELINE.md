@@ -43,15 +43,36 @@ still carries the old 117 migrations and would try to re-apply them).
 with the NEW commit checked out:
 
 ```bash
-# 1) forget the old history (rows reference deleted migration folders)
-docker compose exec postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
-  -c 'DELETE FROM "_prisma_migrations";'
+# 0) STOP the crash-looping backend FIRST. Battle-tested 2026-08-10: a
+#    restarting old container fires migrate deploy between your steps and
+#    re-inserts a fresh FAILED baseline row - a landmine for the next boot.
+docker compose stop backend
+
+# 0b) PRE-FLIGHT: confirm every OLD migration actually ran here. Rapid
+#     successive merges CANCEL superseded deploys (GitHub Actions), so a
+#     migration can silently never run (prod skipped the iCal drop this
+#     way). Any migration in the old history but missing from this list
+#     must be applied by hand (extract via `git show <old-sha>:<path>`)
+#     BEFORE the re-point.
+docker compose exec postgres sh -c \
+  'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -t -c "SELECT migration_name FROM \"_prisma_migrations\" ORDER BY 1;"'
+
+# 1) forget the old history AND any failed baseline attempt (one delete)
+#    NOTE the sh -c wrapper: $POSTGRES_USER/$POSTGRES_DB exist only INSIDE
+#    the container, not on the VPS host shell.
+docker compose exec postgres sh -c \
+  'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "DELETE FROM \"_prisma_migrations\";"'
 # 2) mark the baseline as already applied (computes the correct checksum)
 docker compose run --rm --no-deps --entrypoint \
   "npx prisma migrate resolve --applied 20260810160000_baseline" backend
-# 3) sanity: must print "No pending migrations to apply."
-docker compose run --rm --no-deps --entrypoint \
-  "npx prisma migrate deploy" backend
+# 3) start; the entrypoint must print "No pending migrations to apply."
+docker compose up -d backend && docker compose logs backend --tail 25
+# 4) prove stability across a restart (a leftover failed row only bites on
+#    the NEXT boot - this catches it now):
+docker compose restart backend && sleep 5 && \
+  docker compose exec postgres sh -c \
+  'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -t -c "SELECT COUNT(*) FILTER (WHERE finished_at IS NULL) FROM \"_prisma_migrations\";"'
+#    ^ must print 0
 ```
 
 On a machine where you CAN reach the DB directly (an old dev clone, or the
