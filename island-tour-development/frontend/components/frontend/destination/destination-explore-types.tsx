@@ -25,6 +25,8 @@ export function DestinationExploreTypes({
     dict: {
         title: string;
         tours: string;
+        /** The place tag on a hub tile's image - e.g. "Place" (MCK-19). */
+        place: string;
         /** "All {destination} tours" - the section head's link label. */
         allTours: string;
     };
@@ -64,6 +66,7 @@ export function DestinationExploreTypes({
                         destinationSlug={destinationSlug}
                         categories={categories}
                         toursLabel={dict.tours}
+                        placeLabel={dict.place}
                     />
                 </Reveal>
             </div>

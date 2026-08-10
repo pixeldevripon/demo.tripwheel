@@ -9,6 +9,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useWishlist } from '@/components/frontend/wishlist-provider';
 import { fetchDestinationCategoriesClient } from '@/lib/api/categories-public';
+import { fetchDestinationHubsClient } from '@/lib/api/hubs-public';
 import { fetchDestinationPopularLinksClient } from '@/lib/api/popular-links-public';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 
@@ -19,7 +20,13 @@ import { LocaleSelector } from './locale-selector';
 import { MobileMenu } from './mobile-menu';
 import { NavSearch } from './nav-search';
 import { iconPress, pressSpring } from './lib/navbar.constants';
-import type { Category, Island, NavDict, SearchDict } from './lib/navbar.types';
+import type {
+    Category,
+    Island,
+    NavDict,
+    NavHub,
+    SearchDict,
+} from './lib/navbar.types';
 import type { DestinationPopularLink } from '@/types/destination';
 import { WishlistLink } from './wishlist-link';
 
@@ -138,6 +145,53 @@ export function Navbar({
     }, [currentIsland?.slug, locale]);
 
     /*
+     * The island's activity hubs - the categories dropdown's PLACE row (MCK-19:
+     * the dropdown was the one surface in the chrome with no route to a hub).
+     * Same client-side resolution, cache and fail-to-empty as the categories
+     * above. Gated at >= 3 bookable tours - the same shape of gate master 2.4
+     * applies to categories - so Klein Curacao qualifies and a two-tour hub
+     * does not.
+     */
+    const [hubs, setHubs] = useState<NavHub[]>([]);
+    const hubCache = useRef<Map<string, NavHub[]>>(new Map());
+    useEffect(() => {
+        const slug = currentIsland?.slug;
+        if (!slug) {
+            setHubs([]);
+            return;
+        }
+        const cacheKey = `${locale}:${slug}`;
+        const cached = hubCache.current.get(cacheKey);
+        if (cached) {
+            setHubs(cached);
+            return;
+        }
+        setHubs([]);
+        let ignore = false;
+        fetchDestinationHubsClient(slug, locale)
+            .then(rows => {
+                if (ignore) return;
+                const mapped = rows
+                    .filter(h => h.publishedTourCount >= 3)
+                    .map(h => ({
+                        name: h.name,
+                        slug: h.slug,
+                        // The count-less subtitle: what is there, not how many.
+                        tagline: h.heroTagline || h.description || null,
+                        image: h.heroImage ?? null,
+                    }));
+                hubCache.current.set(cacheKey, mapped);
+                setHubs(mapped);
+            })
+            .catch(() => {
+                if (!ignore) setHubs([]);
+            });
+        return () => {
+            ignore = true;
+        };
+    }, [currentIsland?.slug, locale]);
+
+    /*
      * The island's CURATED discovery list (SEARCH_PANEL placement) - what the
      * mobile search layer offers before anything is typed.
      *
@@ -211,6 +265,7 @@ export function Navbar({
                             locale={locale}
                             dict={dict}
                             categories={categories}
+                            hubs={hubs}
                             currentIsland={currentIsland}
                             show={!isHome}
                         />

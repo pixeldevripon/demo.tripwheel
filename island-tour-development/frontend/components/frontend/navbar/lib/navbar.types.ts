@@ -10,6 +10,20 @@ export type Category = {
     image?: string | null;
 };
 
+/**
+ * A place row in the categories dropdown (MCK-19). Deliberately count-less: a
+ * hub is a place, not a slice of the catalogue, and its number depends on what
+ * you count - the subtitle says what is there instead.
+ */
+export type NavHub = {
+    name: string;
+    slug: string;
+    /** Short editorial line under the name - heroTagline, else description. */
+    tagline?: string | null;
+    /** Hub thumbnail for the dropdown row; null keeps the fallback surface. */
+    image?: string | null;
+};
+
 /** Strings the navbar chrome needs (labels, aria text). */
 export type NavDict = {
     selectIsland: string;

@@ -31,6 +31,12 @@ export interface HubLocalized extends Hub {
 /** Returned by the destination-scoped, tour-gated public endpoint. */
 export interface HubByDestination extends HubLocalized {
   publishedTourCount: number;
+  /**
+   * Short editorial line (locale-resolved, English fallback) - the place row's
+   * subtitle in the nav dropdown and "Explore by type" (MCK-19), replacing the
+   * tour count a hub must not carry.
+   */
+  heroTagline: string | null;
 }
 
 export interface HubDetail extends HubLocalized {

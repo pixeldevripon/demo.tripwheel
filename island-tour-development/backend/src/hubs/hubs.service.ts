@@ -535,18 +535,29 @@ export class HubService {
       },
       select: {
         ...this.hubSelect,
+        // Both locales: heroTagline needs English to fall back to (the nav
+        // dropdown and "Explore by type" print it as the place row's subtitle).
         translations: {
-          where: { locale },
-          select: { name: true, isMachineTranslated: true },
+          where: { locale: { in: [locale, Locale.en] } },
+          select: {
+            locale: true,
+            name: true,
+            heroTagline: true,
+            isMachineTranslated: true,
+          },
         },
       },
       orderBy: { name: 'asc' },
     });
 
-    return hubs.map(({ translations, ...hub }) => ({
-      ...applyTranslation(hub, translations[0], locale),
-      publishedTourCount: countByHub.get(hub.id) ?? 0,
-    }));
+    return hubs.map(({ translations, ...hub }) => {
+      const t = mergeTranslation(translations, locale);
+      return {
+        ...applyTranslation(hub, t, locale),
+        heroTagline: t?.heroTagline ?? null,
+        publishedTourCount: countByHub.get(hub.id) ?? 0,
+      };
+    });
   }
 
   async getById(id: string, locale: Locale = Locale.en) {

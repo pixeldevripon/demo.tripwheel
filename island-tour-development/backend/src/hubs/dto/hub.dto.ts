@@ -94,6 +94,14 @@ export class HubByDestinationResponseDto extends HubLocalizedResponseDto {
       'Published (LIVE) tours tagged with this hub in the destination.',
   })
   publishedTourCount!: number;
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 'Day trips and private charters',
+    description:
+      'Short editorial line (locale-resolved, English fallback) shown as the ' +
+      'place row subtitle in discovery surfaces (MCK-19).',
+  })
+  heroTagline!: string | null;
 }
 
 export class HubDetailLocalizedResponseDto extends HubLocalizedResponseDto {
