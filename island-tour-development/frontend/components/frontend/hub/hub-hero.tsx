@@ -12,6 +12,7 @@ import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { Fragment, useState } from 'react';
 import { MountReveal } from '../mount-reveal';
+import { SharePill } from '../share-pill';
 import { useOptionalHubDate } from './hub-date-context';
 
 type HubHeroDict = {
@@ -19,6 +20,9 @@ type HubHeroDict = {
     selectDate: string;
     clearDate: string;
     checkAvailability: string;
+    share: string;
+    /** Confirmation shown after the URL is copied (no native share sheet). */
+    linkCopied: string;
 };
 
 /** One representative meta chip - icon (white SVG) + short label. */
@@ -109,6 +113,22 @@ export function HubHero({
                 <div className='absolute inset-0 bg-[image:var(--it-scrim-hub)]' />
             )}
 
+            {/* Share pill - top-right, the same control the collection hero
+                puts in the same corner (mck-16: the hub is the page most
+                likely to be planned with somebody else). Container-aligned so
+                its right edge lands on the content column's gutter (Pastel
+                #48), and z-20 above the z-10 content block below. */}
+            <div className='pointer-events-none absolute inset-x-0 top-[18px] z-20'>
+                <div className='mx-auto flex w-full max-w-(--it-container-max) justify-end px-6'>
+                    <div className='pointer-events-auto'>
+                        <SharePill
+                            label={dict.share}
+                            copiedLabel={dict.linkCopied}
+                        />
+                    </div>
+                </div>
+            </div>
+
             <div className='it-container relative z-10 w-full py-14'>
                 {/* Smooth hero entry: the hub page arrives via the entity
                     route's loading.tsx (streamed, inserted post-paint), so
@@ -129,15 +149,18 @@ export function HubHero({
 
                     {/* Fact line + date row */}
                     <div className='flex w-full flex-col items-start'>
-                        {/* Meta pills - translucent, white 1px border, radius 10.
-                            Mobile wraps to 2×2 (max-width forces the wrap, so the
-                            divider after pill #1 falls to the start of row 2 - exactly
-                            the Figma mobile layout); desktop is a single row. */}
+                        {/* Meta facts. Desktop: one row split by hairline bars
+                            (unchanged). Mobile (mck-16 §1): TWO per row, so the
+                            date field and the button rise by two lines into the
+                            first screen. `basis-[45%]` caps a row at two facts
+                            (three would need 135%), and `min-w-max` means a
+                            fact never breaks across lines - a translation too
+                            long for half a row takes the full row instead. The
+                            8px row gap is the tightest gap in the block, so the
+                            four facts read as ONE group. */}
                         {meta.length > 0 && (
                             <MountReveal delay={0.12} yOffset={14}>
-                                {/* .factline: white facts split by hairline bars
-                                on desktop, stacked plain on mobile. */}
-                                <ul className='m-0 mt-[18px] flex list-none flex-col items-start gap-[7px] p-0 md:flex-row md:flex-wrap md:items-center md:gap-0'>
+                                <ul className='m-0 mt-3.5 flex list-none flex-wrap items-center gap-y-2 p-0 md:mt-[18px] md:gap-y-0'>
                                     {meta.map((item, i) => (
                                         <Fragment key={item.label}>
                                             {i > 0 && (
@@ -146,7 +169,7 @@ export function HubHero({
                                                     className={`hidden h-[15px] w-px shrink-0 md:block ${image ? 'bg-it-white/42' : 'bg-it-border'}`}
                                                 />
                                             )}
-                                            <li className='flex items-center gap-2 py-0.5 md:px-[18px] md:first:pl-0'>
+                                            <li className='flex min-w-max flex-[1_1_45%] items-center gap-2 md:flex-none md:px-[18px] md:py-0.5 md:first:pl-0'>
                                                 <Image
                                                     src={
                                                         image
@@ -177,8 +200,13 @@ export function HubHero({
                             delay={0.24}
                             yOffset={14}
                             className='w-full max-w-[460px]'>
-                            {/* .herodate: white date field + orange Go */}
-                            <div className='mt-[22px] flex w-full items-stretch gap-2.5'>
+                            {/* .herodate: white date field + orange Go. On
+                                mobile the 40px gap above it is the LARGEST in
+                                the hero (mck-16 §1, vs 14px tagline->facts and
+                                8px between fact rows): the only thing a visitor
+                                can act on reads as its own step, not as the
+                                last line of a list. Desktop is unchanged. */}
+                            <div className='mt-10 flex w-full items-stretch gap-2.5 md:mt-[22px]'>
                                 <Popover
                                     open={dateOpen}
                                     onOpenChange={setDateOpen}>

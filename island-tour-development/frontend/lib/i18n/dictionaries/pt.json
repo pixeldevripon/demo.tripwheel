@@ -356,6 +356,8 @@
             "selectDate": "Selecionar data",
             "clearDate": "Limpar data",
             "checkAvailability": "Ver disponibilidade",
+            "share": "Partilhar",
+            "linkCopied": "Link copiado",
             "comparison": {
                 "title": "Qual passeio é ideal para você?",
                 "subtitle": "Eis o que realmente distingue estes passeios, lado a lado.",
@@ -371,7 +373,7 @@
                     "button": "Escolha seu barco"
                 }
             },
-            "frequencyDaily": "Diariamente",
+            "frequencyDaily": "Saídas diárias",
             "frequencyWeekly": "{count} dias por semana",
             "durationFullDay": "Dia inteiro",
             "durationHalfDay": "Meio dia",
@@ -402,10 +404,10 @@
                 "perPackage": "/por pacote"
             },
             "heroInclusion": {
-                "bbq": "Almoço BBQ",
-                "beachHouse": "Casa de praia",
-                "openBar": "Open bar",
-                "breakfast": "Café da manhã"
+                "bbq": "Almoço BBQ incluído",
+                "beachHouse": "Casa de praia incluída",
+                "openBar": "Open bar incluído",
+                "breakfast": "Café da manhã incluído"
             }
         },
         "tour": {

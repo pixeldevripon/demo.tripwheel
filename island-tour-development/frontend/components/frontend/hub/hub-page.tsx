@@ -229,10 +229,13 @@ function isOvernightHit(hit: SearchHit): boolean {
     return (hit.durationMinutesFrom ?? 0) >= OVERNIGHT_MIN_MINUTES;
 }
 
-// The 4 hero meta-pill icons (Figma 48024:11162), in render order.
+// The 4 hero meta-pill icons (Figma 48024:11162), in render order. The price
+// icon follows the currency (mck-16): a euro glyph on euro amounts, the dollar
+// glyph on dollar amounts - a dollar sign on "From €121" reads as a mistake.
 const HERO_ICON = {
     duration: '/icons/hub/meta-duration.svg',
     price: '/icons/hub/meta-price.svg',
+    priceEur: '/icons/hub/meta-price-eur.svg',
     inclusion: '/icons/hub/meta-inclusion.svg',
     frequency: '/icons/hub/meta-frequency.svg',
 } as const;
@@ -277,9 +280,10 @@ const MEAL_KEYWORDS = [
 
 /**
  * The food/inclusion pill is editorial (a meal name isn't derivable from tour
- * data), so pick it from the hub's fast facts: find the meal-related fact, use
- * its body, and strip a trailing "included" so "BBQ lunch included" -> "BBQ
- * lunch". Returns '' when the hub has no meal fact (pill is then dropped).
+ * data), so pick it from the hub's fast facts: find the meal-related fact and
+ * use its body as authored - "BBQ lunch included" stays whole (mck-16 restored
+ * the full wording; this used to strip the trailing "included"). Returns ''
+ * when the hub has no meal fact (pill is then dropped).
  */
 function pickMealLabel(fastFacts: { heading: string; body: string }[]): string {
     const hit = fastFacts.find(f => {
@@ -287,9 +291,7 @@ function pickMealLabel(fastFacts: { heading: string; body: string }[]): string {
         return MEAL_KEYWORDS.some(k => text.includes(k));
     });
     if (!hit) return '';
-    const raw = (hit.body || hit.heading || '').trim();
-    const cleaned = raw.replace(/\s*(is\s+)?incl(uded|\.)?$/i, '').trim();
-    return capitalizeFirst(cleaned);
+    return capitalizeFirst((hit.body || hit.heading || '').trim());
 }
 
 /** ENUM value -> Title Case ("BOAT" -> "Boat"); '' when unset. */
@@ -562,11 +564,18 @@ export async function HubPage({
 
     // 2. Price - capitalized "From <price>" in the shopper's currency. Dropped
     //    entirely when no rate could be derived (see `heroConverted` above).
+    //    A CONVERTED amount rounds UP to a whole figure (mck-16): the cents are
+    //    FX noise, not a price - "From €121", never "From €120.50". Rounding up
+    //    never understates. An unconverted aggregate (rate 1) stays the
+    //    operator's exact price (founder rule: never round money for display).
     if (stats.priceFrom != null && heroConverted)
         heroMeta.push({
-            icon: HERO_ICON.price,
+            icon:
+                heroCurrency === 'EUR' ? HERO_ICON.priceEur : HERO_ICON.price,
             label: `${capitalizeFirst(listingsDict.from)} ${formatPriceFrom(
-                stats.priceFrom * heroRate,
+                heroRate === 1
+                    ? stats.priceFrom
+                    : Math.ceil(stats.priceFrom * heroRate),
                 heroCurrency,
                 locale
             )}`,
@@ -673,6 +682,8 @@ export async function HubPage({
                     selectDate: hubDict.selectDate,
                     clearDate: hubDict.clearDate,
                     checkAvailability: hubDict.checkAvailability,
+                    share: hubDict.share,
+                    linkCopied: hubDict.linkCopied,
                 }}
             />
             {whyParagraphs.length > 0 && (
@@ -680,7 +691,6 @@ export async function HubPage({
                     title={whyTitle}
                     paragraphs={whyParagraphs}
                     learnMoreLabel={dict.destination.about.learnMore}
-                    readLessLabel={dict.destination.about.readLess}
                 />
             )}
 
