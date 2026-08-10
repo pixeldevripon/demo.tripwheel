@@ -4,13 +4,18 @@ import { describe, expect, it } from 'vitest';
 import { TourCard, type TourCardDict, type TourListing } from './tour-card';
 
 /**
- * The hub eyebrow (Pastel #49, master 3.5 "Title and hub context" / LD15).
+ * The hub eyebrow (master 3.5 "Title and hub context" / LD15 / mck-18).
  *
- * The point of these tests is the EQUIVALENCE: the default card and the ranked
- * collection card must treat `hub` identically. They diverged - the collection
- * variant rendered a bare title and no eyebrow, so the same tour looked
- * different on All Tours and on a collection page, hub name repeated into the
- * title on one of them.
+ * The stored title is HUB-FREE (mck-18 §3: the data pass strips each tour's
+ * prefix using its own hub) and the card renders it verbatim - there is no
+ * render-time stripping left to compensate for dirty data. The eyebrow is its
+ * own element above the title, never nested in the rating row: it belongs to
+ * the SURFACE, while the rating row belongs to the review count, and the two
+ * must be able to come and go independently (mck-18 §4).
+ *
+ * The equivalence tests matter too: the default card and the ranked collection
+ * card must treat `hub` identically, so the same tour reads the same way on
+ * All Tours and on a collection page.
  */
 
 const DICT = {
@@ -32,7 +37,7 @@ const base: TourListing = {
     href: '/en/curacao/full-day-catamaran',
     images: [],
     badge: null,
-    title: 'Klein Curaçao Full-Day Catamaran',
+    title: 'Full-Day Catamaran',
     hub: { name: 'Klein Curaçao', slug: 'klein-curacao' },
     duration: '8h',
     pickupAvailable: true,
@@ -52,58 +57,44 @@ describe.each(VARIANTS)('TourCard — %s variant', (_label, extra) => {
     const renderCard = (tour: Partial<TourListing> = {}) =>
         render(<TourCard tour={{ ...base, ...extra, ...tour }} dict={DICT} />);
 
-    it('shows the hub name above the title', () => {
+    it('shows the hub eyebrow above the bare stored title', () => {
         renderCard();
         expect(screen.getByText('Klein Curaçao')).toBeInTheDocument();
-    });
-
-    it('strips the hub prefix, so the name is never said twice', () => {
-        renderCard();
         expect(
             screen.getByRole('heading', { name: 'Full-Day Catamaran' }),
         ).toBeInTheDocument();
+    });
+
+    it('renders the stored title verbatim — no render-time rewriting', () => {
+        // The data pass owns title hygiene (mck-18 §3). A title that legitimately
+        // contains the hub's words is the tour's NAME and must survive.
+        renderCard({ title: 'Klein Curaçao Beach Escape' });
         expect(
-            screen.queryByRole('heading', {
-                name: 'Klein Curaçao Full-Day Catamaran',
-            }),
-        ).not.toBeInTheDocument();
+            screen.getByRole('heading', { name: 'Klein Curaçao Beach Escape' }),
+        ).toBeInTheDocument();
+    });
+
+    it('keeps the eyebrow when the tour has no rating', () => {
+        // mck-18 §4: the eyebrow used to sit inside the rating row, so whether
+        // the hub showed depended on the review count. It must not.
+        renderCard({ rating: undefined, reviewCount: undefined });
+        expect(screen.getByText('Klein Curaçao')).toBeInTheDocument();
     });
 
     it('renders NO eyebrow when the tour has no hub', () => {
         // "No hub means no eyebrow" - and no empty space where it would be.
-        const { container } = renderCard({ hub: null });
+        renderCard({ hub: null });
         expect(screen.queryByText('Klein Curaçao')).not.toBeInTheDocument();
-        expect(container.textContent).toContain('Klein Curaçao Full-Day Catamaran');
     });
 
     it('is suppressed when `hub` is omitted entirely — the hub page case', () => {
-        // The hub page leaves `hub` unset because the context is implicit there.
+        // The hub page leaves `hub` unset because the context is implicit there
+        // (its own cards compose "{Hub} {Title}" instead - founder, Aug 6 2026).
         const { hub: _omitted, ...noHub } = base;
         render(
             <TourCard tour={{ ...noHub, ...extra } as TourListing} dict={DICT} />,
         );
         expect(screen.queryByText('Klein Curaçao')).not.toBeInTheDocument();
-    });
-
-    it('keeps a title that is ONLY the hub name rather than emptying it', () => {
-        renderCard({ title: 'Klein Curaçao' });
-        expect(
-            screen.getByRole('heading', { name: 'Klein Curaçao' }),
-        ).toBeInTheDocument();
-    });
-
-    it('strips the prefix case-insensitively and drops the separator', () => {
-        renderCard({ title: 'klein curaçao - Sunset Sail' });
-        expect(
-            screen.getByRole('heading', { name: 'Sunset Sail' }),
-        ).toBeInTheDocument();
-    });
-
-    it('leaves an unrelated title untouched', () => {
-        renderCard({ title: 'Sunset Sail from Willemstad' });
-        expect(
-            screen.getByRole('heading', { name: 'Sunset Sail from Willemstad' }),
-        ).toBeInTheDocument();
     });
 });
 
@@ -121,7 +112,7 @@ describe('TourCard — the two variants agree', () => {
         return { heading, eyebrow };
     }
 
-    it('produces the same eyebrow and the same stripped title', () => {
+    it('produces the same eyebrow and the same title', () => {
         // This equivalence IS the issue: the same tour must read the same way on
         // All Tours and on a collection page.
         expect(readCard({})).toEqual(readCard({ rank: 1, description: 'Our pick' }));

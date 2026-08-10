@@ -30,6 +30,12 @@
 // It does NOT touch overview/description prose (a sentence about sailing to
 // Klein Curaçao still needs to say so), bookings, availability, or anything else.
 //
+// HUB-AWARE, NOT FIND-AND-REPLACE (mck-18 §3): a title is only stripped of the
+// names of hubs THAT TOUR ACTUALLY SITS UNDER (its TourHub rows). A tour whose
+// real name happens to contain "Klein Curaçao" but which is not attached to the
+// klein-curacao hub keeps its name - for it, the phrase is the product, not a
+// redundant prefix.
+//
 // A RENAME IS NOT FREE, even here: the old URL now costs a redirect hop forever,
 // any link or bookmark to it depends on the `slug_redirects` row surviving, and
 // the platform's own rule puts a 90-day cooldown on reusing a released slug. It
@@ -47,6 +53,7 @@ import { log, prisma, section } from './_shared';
  * The hubs whose name should not be repeated in the titles of the tours that
  * carry it. The hub row is the source of the phrase - we strip whatever the hub
  * is actually called, rather than a hard-coded string that could drift from it.
+ * A hub's phrases are only ever applied to tours ATTACHED to that hub.
  */
 const HUB_SLUGS = ['klein-curacao'];
 
@@ -264,7 +271,8 @@ async function revalidatePublicCache(tourIds: string[]): Promise<void> {
 }
 
 /**
- * Strip the hub names in HUB_SLUGS out of every tour title that carries one.
+ * Strip each HUB_SLUGS hub's name out of the titles of the tours ATTACHED to
+ * that hub. Tours outside those hubs are never touched.
  *
  * @param opts.dryRun print the diff without writing.
  */
@@ -289,25 +297,29 @@ export async function stripHubNamesFromTourTitles(
     return;
   }
 
-  // The hub's own name, plus any localized name, longest first so that a
-  // longer variant is cut before a shorter one that is a prefix of it.
-  const phrases = [
-    ...new Set(
-      hubs
-        .flatMap((h) => [h.name, ...h.translations.map((t) => t.name)])
-        .map((n) => n?.trim())
-        .filter((n): n is string => !!n),
-    ),
-  ].sort((a, b) => b.length - a.length);
-  log(`Stripping: ${phrases.map((p) => `"${p}"`).join(', ')}`);
-
-  // The hub's SLUG form, for the URL half of the job. Distinct from the name
-  // phrases above: 'Klein Curaçao' never appears in a slug, 'klein-curacao' does.
-  const slugPhrases = [...new Set(hubs.map((h) => h.slug))].sort(
-    (a, b) => b.length - a.length,
+  // Each hub's own name plus any localized names, keyed by the hub's slug -
+  // a hub's phrases are only ever applied to tours attached to THAT hub
+  // (mck-18 §3: strip using the tour's own hub, never a blind find-and-replace).
+  const phrasesByHubSlug = new Map<string, string[]>(
+    hubs.map((h) => [
+      h.slug,
+      [
+        ...new Set(
+          [h.name, ...h.translations.map((t) => t.name)]
+            .map((n) => n?.trim())
+            .filter((n): n is string => !!n),
+        ),
+      ],
+    ]),
   );
+  for (const [slug, phrases] of phrasesByHubSlug) {
+    log(`${slug}: stripping ${phrases.map((p) => `"${p}"`).join(', ')}`);
+  }
 
+  // Only tours that actually sit under one of the target hubs are candidates;
+  // any other tour keeps its title even if it contains the same words.
   const tours = await prisma.tour.findMany({
+    where: { hubs: { some: { hub: { slug: { in: HUB_SLUGS } } } } },
     select: {
       id: true,
       slug: true,
@@ -315,6 +327,7 @@ export async function stripHubNamesFromTourTitles(
       h1Override: true,
       breadcrumbLabel: true,
       destination: { select: { slug: true } },
+      hubs: { select: { hub: { select: { slug: true } } } },
       translations: {
         select: { id: true, locale: true, title: true, metaTitle: true },
       },
@@ -322,7 +335,18 @@ export async function stripHubNamesFromTourTitles(
     orderBy: { slug: 'asc' },
   });
 
-  const strip = (value: string): string | null => {
+  /**
+   * The name phrases of the tour's OWN target hubs, longest first so that a
+   * longer variant is cut before a shorter one that is a prefix of it.
+   */
+  const phrasesFor = (tour: { hubs: { hub: { slug: string } }[] }): string[] =>
+    [
+      ...new Set(
+        tour.hubs.flatMap((h) => phrasesByHubSlug.get(h.hub.slug) ?? []),
+      ),
+    ].sort((a, b) => b.length - a.length);
+
+  const strip = (value: string, phrases: string[]): string | null => {
     let out: string | null = value;
     for (const phrase of phrases) {
       if (out === null) return null;
@@ -332,11 +356,20 @@ export async function stripHubNamesFromTourTitles(
   };
 
   /**
-   * The new slug for a tour, or null when it does not carry a hub slug. Built by
-   * cutting the hub slug out and re-normalizing through the SAME `generateSlug`
-   * the tours service uses, so a leading/doubled hyphen cannot survive the cut.
+   * The new slug for a tour, or null when it does not carry one of ITS OWN
+   * hubs' slugs. Built by cutting the hub slug out and re-normalizing through
+   * the SAME `generateSlug` the tours service uses, so a leading/doubled hyphen
+   * cannot survive the cut.
    */
-  const nextSlugFor = (slug: string): string | null => {
+  const nextSlugFor = (
+    slug: string,
+    tour: { hubs: { hub: { slug: string } }[] },
+  ): string | null => {
+    const slugPhrases = [
+      ...new Set(
+        tour.hubs.map((h) => h.hub.slug).filter((s) => phrasesByHubSlug.has(s)),
+      ),
+    ].sort((a, b) => b.length - a.length);
     let out = slug;
     for (const phrase of slugPhrases) out = out.split(phrase).join('-');
     if (out === slug) return null;
@@ -357,6 +390,7 @@ export async function stripHubNamesFromTourTitles(
       id: string;
       data: Prisma.TourTranslationUpdateInput;
     }[] = [];
+    const tourPhrases = phrasesFor(tour);
 
     // The three title columns on the tour row itself. `h1Override` and
     // `breadcrumbLabel` are usually null (the page falls back to the title), but
@@ -364,7 +398,7 @@ export async function stripHubNamesFromTourTitles(
     for (const field of ['name', 'h1Override', 'breadcrumbLabel'] as const) {
       const current = tour[field];
       if (!current) continue;
-      const next = strip(current);
+      const next = strip(current, tourPhrases);
       if (next === null) {
         log(`! ${tour.slug} ${field}: stripping would empty it - left as is.`);
         skipped++;
@@ -380,7 +414,7 @@ export async function stripHubNamesFromTourTitles(
       for (const field of ['title', 'metaTitle'] as const) {
         const current = tr[field];
         if (!current) continue;
-        const next = strip(current);
+        const next = strip(current, tourPhrases);
         if (next === null) {
           log(
             `! ${tour.slug} [${tr.locale}] ${field}: stripping would empty it - left as is.`,
@@ -407,7 +441,7 @@ export async function stripHubNamesFromTourTitles(
     // sees all four, not against the tours table, which sees one.
     const destinationSlug = tour.destination.slug;
     const oldSlug = tour.slug;
-    let nextSlug = nextSlugFor(oldSlug);
+    let nextSlug = nextSlugFor(oldSlug, tour);
     if (nextSlug) {
       const taken = await prisma.slugRegistry.findUnique({
         where: {

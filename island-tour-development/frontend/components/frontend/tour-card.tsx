@@ -135,28 +135,6 @@ function HubEyebrow({ name }: { name: string }) {
     );
 }
 
-/**
- * The card title with its hub prefix removed, so the eyebrow is not saying the
- * same thing twice ("Klein Curacao" + "Klein Curacao Full-Day Catamaran").
- *
- * LD15 composes the tour H1 as `{Destination or Hub}: {Tour name}`, i.e. the
- * stored name is meant to be the BARE tour name with the hub supplied around
- * it. Real catalogue data does not always honour that - operators name their
- * own tours - so this strips a leading hub name at RENDER time rather than
- * touching anybody's data. Once a title is already hub-free it is a no-op.
- *
- * Only an exact leading match is removed, with an optional separator, and only
- * when something is left over: "Klein Curacao" as a whole title keeps its name
- * rather than rendering an empty heading.
- */
-function stripHubPrefix(title: string, hubName?: string | null): string {
-    if (!hubName) return title;
-    const t = title.trim();
-    if (!t.toLowerCase().startsWith(hubName.trim().toLowerCase())) return t;
-    const rest = t.slice(hubName.trim().length).replace(/^[\s:\u2013\u2014-]+/, '');
-    return rest.length > 0 ? rest : t;
-}
-
 // ── BadgeChip ───────────────────────────────────────────────────────────────
 interface BadgeChipProps {
     type: TourBadge;
@@ -278,9 +256,6 @@ function DefaultTourCard({
     const wishlisted = isSaved(tour.id);
     const isRated = tour.rating !== undefined;
     const priceLabel = dict[tour.priceUnit];
-    // One stripped title for the h3 AND the description slide, so the slide
-    // can never disagree with the heading under it.
-    const displayTitle = stripHubPrefix(tour.title, tour.hub?.name);
     // Design v2 .tc.peach: the highlighted (first) / tinted card sits on the
     // warm peach surface with its hairline border; every other card is white
     // and flat, lifting 2px with the card-hover shadow.
@@ -332,7 +307,7 @@ function DefaultTourCard({
                     descSlide={
                         tour.shortDescription
                             ? {
-                                  title: displayTitle,
+                                  title: tour.title,
                                   description: tour.shortDescription,
                                   linkLabel: dict.fullDetails,
                               }
@@ -413,34 +388,35 @@ function DefaultTourCard({
                 className={cn(
                     'flex flex-1 min-w-0 flex-col gap-1 px-3 pt-2.5 pb-3 @[220px]:px-3.5 @[220px]:pt-3 @[220px]:pb-3.5'
                 )}>
-                {/* Rating row - amber star glyph + soft count on the left, the
-                    hub eyebrow pushed to the right. mck-10 `.tc .rate` is
-                    `justify-content: space-between` with the rating (`.rr`) as
-                    its first child and the eyebrow as its second, so the pill
-                    shares this line rather than taking one of its own. The row
-                    still renders when the rating is absent - an unrated tour
-                    with a hub keeps its eyebrow. */}
-                {(isRated || tour.hub) && (
-                    <div className='flex items-center justify-between gap-2 text-[10.5px] @[220px]:text-[12.5px] leading-[1.6]'>
-                        {isRated ? (
-                            <span className='inline-flex items-center gap-1.5'>
-                                <span className='font-bold text-it-star'>
-                                    ★ {tour.rating}
-                                </span>
-                                <span className='text-it-text-muted tabular-nums'>
-                                    ({tour.reviewCount?.toLocaleString()})
-                                </span>
-                            </span>
-                        ) : (
-                            <span />
-                        )}
-                        {tour.hub && <HubEyebrow name={tour.hub.name} />}
+                {/* Rating row - amber star glyph + soft count. Renders only for
+                    a rated tour; nothing else lives on this line, so it can
+                    come and go on its own. */}
+                {isRated && (
+                    <div className='flex items-center gap-1.5 text-[10.5px] @[220px]:text-[12.5px] leading-[1.6]'>
+                        <span className='font-bold text-it-star'>
+                            ★ {tour.rating}
+                        </span>
+                        <span className='text-it-text-muted tabular-nums'>
+                            ({tour.reviewCount?.toLocaleString()})
+                        </span>
                     </div>
                 )}
 
-                {/* Tour title */}
+                {/* Hub eyebrow - its OWN element directly above the title,
+                    never nested in the rating row (mck-18 §4). The eyebrow is a
+                    property of the SURFACE (master 3.5); nesting it in `.rate`
+                    made it a property of the review count, so an unrated tour
+                    lost its hub label along with the hidden row. */}
+                {tour.hub && (
+                    <div className='mb-0.5 flex'>
+                        <HubEyebrow name={tour.hub.name} />
+                    </div>
+                )}
+
+                {/* Tour title - the stored title is hub-free (mck-18 §3); the
+                    hub context around it is the eyebrow's job. */}
                 <h3 className='m-0 font-it-body font-bold text-[13px] @[220px]:text-[15.5px] leading-[1.3] tracking-[-0.005em] text-it-ink line-clamp-2 @[220px]:min-h-[2.6em]'>
-                    {displayTitle}
+{tour.title}
                 </h3>
 
                 {/* Meta column: duration, pickup (design v2 .tc .meta) */}
@@ -589,7 +565,6 @@ function RankedTourCard({
     const wishlisted = isSaved(tour.id);
     const rank = String(tour.rank).padStart(2, '0');
     const isRated = tour.rating !== undefined;
-    const displayTitle = stripHubPrefix(tour.title, tour.hub?.name);
 
     // Design v2 collection card (5.6): the standard v2 chassis + a 34px orange
     // rank circle on the photo, the italic curation rationale under the title,
@@ -622,7 +597,7 @@ function RankedTourCard({
                     descSlide={
                         tour.shortDescription
                             ? {
-                                  title: displayTitle,
+                                  title: tour.title,
                                   description: tour.shortDescription,
                                   linkLabel: dict.fullDetails,
                               }
@@ -670,20 +645,17 @@ function RankedTourCard({
             {/* ── Card info ───────────────────────────────────────────────── */}
             <div className='flex flex-1 min-w-0 flex-col gap-1 px-3 pt-2.5 pb-3 @[220px]:px-3.5 @[220px]:pt-3 @[220px]:pb-3.5'>
                 {/* Hub eyebrow - the SAME treatment as the default card
-                    (Pastel #49). The collection mapper has always supplied
-                    `hub`; this variant simply never rendered it, so a collection
-                    page showed hub-prefixed titles with nothing to explain them
-                    while the identical tour on All Tours showed the eyebrow and
-                    a clean title. Rendered above the title, and the title is
-                    stripped the same way, so the two cards cannot say the hub
-                    name twice. */}
+                    (Pastel #49): its own element above the title. The eyebrow
+                    shows on collection pages even when every card shares one
+                    hub - suppression is bound to a surface, not to what the
+                    other cards are (founder, Aug 6 2026 / mck-18 §2). */}
                 {tour.hub && (
                     <div className='mb-0.5 flex'>
                         <HubEyebrow name={tour.hub.name} />
                     </div>
                 )}
                 <h3 className='m-0 font-it-body font-bold text-[13px] @[220px]:text-[15.5px] leading-[1.3] tracking-[-0.005em] text-it-ink line-clamp-2'>
-                    {displayTitle}
+{tour.title}
                 </h3>
 
                 {/* Curation rationale - the required CMS line, italic. */}
