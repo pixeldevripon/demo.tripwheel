@@ -114,9 +114,10 @@ async function main() {
  * guaranteed occupant, so the section can only be emptied deliberately - by
  * switching it off - and never by an accidental delete.
  *
- * The `20260731120000_recommendations` migration performs the same seeding, which is
- * what covers production (`prisma migrate deploy` does not run seeds). This exists for
- * a database whose row was deleted by hand, and for `migrate reset` flows.
+ * Since the 2026-08-10 baseline squash there is NO migration-time seeding
+ * (the old `20260731120000_recommendations` migration that duplicated this
+ * is squashed away, and the baseline carries no data) - THIS seed plus the
+ * runtime settings upsert are what cover a fresh database.
  *
  * CREATE-ONLY on the recommendation: it never touches an existing row. The category
  * is upserted by slug (idempotent) so the seeded row always has a home to point at.

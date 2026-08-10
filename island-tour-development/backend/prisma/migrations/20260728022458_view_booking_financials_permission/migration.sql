@@ -1,2 +1,0 @@
--- AlterEnum
-ALTER TYPE "Permission" ADD VALUE 'VIEW_BOOKING_FINANCIALS';

@@ -7229,7 +7229,7 @@ Additional permission keys named across the doc set: `MANAGE_STAFF`, `MANAGE_TEA
 
 #### E.2.2 Data layer
 
-- **Where:** `backend/prisma/staff.prisma` + `backend/prisma/enums.prisma`; migration `backend/prisma/migrations/20260719180644_staff_and_designations/migration.sql`.
+- **Where:** `backend/prisma/staff.prisma` + `backend/prisma/enums.prisma`; migration `20260719180644_staff_and_designations` (squashed into `backend/prisma/migrations/20260810160000_baseline` on 2026-08-10).
 - **`enum StaffSeatRole { OWNER MANAGER STAFF }`** — intra-operator seat role. **MANAGER/STAFF is an ORGANIZATIONAL LABEL in v1** with **no permission semantics**; access comes only from designation/overrides, and the UI copy says so. **OWNER is created only by operator create/backfill, never via the API.**
 - **`enum StaffStatus { INVITED ACTIVE SUSPENDED }`**.
 - **Two new `Permission` values:**

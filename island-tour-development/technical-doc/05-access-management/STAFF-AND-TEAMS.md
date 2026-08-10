@@ -40,7 +40,7 @@ invited/active/suspended, invitedBy, lastLoginAt) is preserved inside it.
 ## 2. Data layer
 
 **Where:** `backend/prisma/staff.prisma` + `backend/prisma/enums.prisma`, applied by migration
-`backend/prisma/migrations/20260719180644_staff_and_designations/migration.sql`.
+`20260719180644_staff_and_designations` (squashed into `backend/prisma/migrations/20260810160000_baseline` on 2026-08-10).
 
 ### 2.1 New enums (`enums.prisma`)
 

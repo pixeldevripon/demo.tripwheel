@@ -7,8 +7,13 @@ import tseslint from 'typescript-eslint';
 export default tseslint.config(
   {
     // rush.js is a k6 script: it runs inside the k6 runtime (imports
-    // 'k6/http'), not Node, and is not part of the TS project.
-    ignores: ['eslint.config.mjs', 'scripts/loadtest/rush.js'],
+    // 'k6/http'), not Node, and is not part of the TS project. Same for
+    // prisma.config.ts - a standalone CLI config outside tsconfig.
+    ignores: [
+      'eslint.config.mjs',
+      'scripts/loadtest/rush.js',
+      'prisma.config.ts',
+    ],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,

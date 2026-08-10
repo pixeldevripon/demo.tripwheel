@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MCK-18 · The tour name, surface by surface</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<!--
+  MCK-18 · The tour name across surfaces.
+  Status chips are load-bearing: Locked = master, Decided = founder deviation on the record, Proposed = this reviewer, unanswered.
+  Sources: master v1.19 3.5 tour card context label (v1.11 June 19 2026, worked example v1.12 June 24 2026), LD15, 2.7, 3.4, 3.6, 5.8, 5.9, 5.12,
+  breadcrumb_label in E.8, the booking confirmation email spec and conflict log 83, mck-04, mck-06 v2.
+  Founder decisions carried: hub page keeps the hub in card titles with the eyebrow suppressed (Aug 6 2026);
+  the eyebrow shows on collection pages even when every card shares one hub (Aug 6 2026); the eyebrow does not link to the hub (Aug 6 2026).
+  Related build-review rows: R1-42, R1-80, R1-92, R1-107, R1-108. None of them are closed by this file.
+-->
+<style>
+:root{--white:#FFFFFF;--paper:#F7F7F5;--peach:#FDF6F0;--peach-border:#F2E2D6;--cta-tint:#FDEEE4;
+--ink:#1F2937;--soft:#6B7280;--faint:#9CA3AF;--border:#E5E7EB;--divider:#F3F4F6;
+--cta:#E8611A;--cta-deep:#C7500F;--amber:#E5A230;--green-text:#15803D;--e1:0 1px 2px rgba(31,41,55,.05);
+--r-xs:6px;--r-sm:10px;--r-md:12px;--r-lg:16px;--r-pill:999px;
+--sans:'Source Sans 3',system-ui,sans-serif;--display:'Bricolage Grotesque',system-ui,sans-serif;
+--mono:ui-monospace,SFMono-Regular,Menlo,monospace;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);color:var(--ink);background:#FBFBFA;font-size:15px;line-height:1.6}
+.wrap{max-width:1360px;margin:0 auto;padding:30px 24px 90px}
+.kicker{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:700}
+h1.pt{font-family:var(--display);font-size:25px;font-weight:800;letter-spacing:-.02em;margin:4px 0 6px}
+.lede{color:var(--soft);font-size:14px;max-width:1000px}
+h2{font-family:var(--display);font-size:17px;font-weight:800;margin:42px 0 4px;padding-top:20px;border-top:1px solid var(--border)}
+.h2sub{color:var(--soft);font-size:13.5px;margin-bottom:16px;max-width:1000px}
+h3.lbl{font-size:12px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px}
+.badl{color:#B4341C}.goodl{color:#15803D}
+code{font-family:var(--mono);font-size:12.5px;background:var(--paper);border:1px solid var(--divider);border-radius:5px;padding:1px 5px}
+.chip{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+ border-radius:var(--r-xs);padding:3px 7px;line-height:1.4;white-space:normal;max-width:100%}
+.chip.lock{background:#EEF6EF;color:#15803D;border:1px solid #CFE7D4}
+.chip.dec{background:var(--cta-tint);color:var(--cta-deep);border:1px solid var(--peach-border)}
+.chip.open{background:#FDECEA;color:#B4341C;border:1px solid #F5CFC9}
+.rec{display:flex;flex-wrap:wrap;border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;background:#fff;max-width:1020px}
+.rec .f{padding:14px 20px;border-right:1px solid var(--divider);min-width:230px}
+.rec .f:last-child{border-right:none}
+.rec .k{font-family:var(--mono);font-size:11px;color:var(--faint)}
+.rec .v{font-size:15px;font-weight:700;margin-top:3px}
+.rec .f.muted .v{color:var(--soft);font-weight:600}
+.rr{border:1px solid var(--border);border-radius:var(--r-lg);background:#fff;overflow:hidden;max-width:1240px}
+.rr .row{display:flex;border-bottom:1px solid var(--divider)}
+.rr .row:last-child{border-bottom:none}
+.rr .c1{width:236px;flex:none;padding:15px 16px;border-right:1px solid var(--divider);background:#FCFCFB}
+.rr .c1 b{display:block;font-size:13.5px}
+.rr .c1 span{display:block;font-size:11.5px;color:var(--faint);margin-top:3px;line-height:1.45}
+.rr .c1 .chip{margin-top:8px}
+.rr .c2{width:322px;flex:none;padding:15px 16px;border-right:1px solid var(--divider);display:flex;align-items:center}
+.rr .c3{flex:1;padding:15px 16px;font-size:12.5px;color:var(--soft);line-height:1.6}
+.out{font-family:var(--display);font-size:16px;font-weight:700;letter-spacing:-.01em;line-height:1.35}
+.out .hub{color:var(--cta-deep)}
+.eyerow{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.eyebrow{display:inline-flex;align-items:center;gap:5px;width:max-content;font-size:11.5px;font-weight:700;line-height:1;
+ color:var(--cta-deep);background:#fff;border:1px solid var(--peach-border);border-radius:var(--r-pill);padding:3px 10px 3px 8px;box-shadow:var(--e1)}
+.eyebrow svg{width:12px;height:12px;fill:none;stroke:var(--cta);stroke-width:2;stroke-linejoin:round;flex:none}
+.cards{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start}
+.tc{width:224px;background:#fff;border:1px solid var(--divider);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--e1)}
+.tc .im{height:100px;background:linear-gradient(120deg,#CFC7BD,#EFEAE3);position:relative}
+.tc .heart{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.92)}
+.tc .nb{position:absolute;top:8px;left:8px;font-size:10.5px;font-weight:700;border-radius:var(--r-xs);padding:3px 8px;background:#fff;border:1px solid var(--border)}
+.tc .body{padding:12px 14px 14px;display:flex;flex-direction:column;gap:5px}
+.tc .rate{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--soft)}
+.tc .rate .star{color:var(--amber);font-weight:700}
+.tc h4{font-size:15.5px;font-weight:700;letter-spacing:-.005em;line-height:1.3}
+.tc .meta{font-size:12px;color:var(--soft)}
+.tc .price{font-size:15px;font-weight:800;margin-top:2px}
+.tc.oldway .rate{justify-content:space-between;flex-wrap:nowrap;white-space:nowrap;gap:4px}
+.tc.oldway .rate .eyebrow{font-size:10.5px;padding:3px 7px 3px 6px;white-space:nowrap}
+.tc .inline{font-size:12px;color:var(--soft)}
+.tc .inline b{color:var(--cta-deep);font-weight:700}
+.frame{border:1px solid var(--border);border-radius:18px;background:#fff;padding:10px}
+.cap{font-size:12.5px;color:var(--soft);max-width:246px;margin-bottom:10px;min-height:96px}
+.s4cap{font-size:12.5px;color:var(--soft);max-width:460px;margin-bottom:10px;min-height:64px}
+.tp{border:1px solid var(--border);border-radius:var(--r-lg);background:#fff;padding:18px 20px;width:460px}
+.tp .crumbs{font-size:11.5px;color:var(--soft)}
+.tp h1{font-family:var(--display);font-size:22px;font-weight:700;letter-spacing:-.02em;line-height:1.15;margin-top:9px}
+.tp .metarow{font-size:12.5px;color:var(--soft);margin-top:9px}
+.mail{border:1px solid var(--border);border-radius:var(--r-lg);background:#fff;overflow:hidden;width:460px}
+.mail .sub{padding:13px 16px;border-bottom:1px solid var(--divider);background:#FCFCFB}
+.mail .sub .k{font-size:10.5px;color:var(--faint);font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.mail .sub .v{font-size:13.5px;font-weight:700;margin-top:4px}
+.mail .sub .cut{color:var(--faint);font-weight:600}
+.mail .bd{padding:15px 16px;display:flex;gap:13px;align-items:flex-start}
+.mail .thumb{width:60px;height:60px;border-radius:var(--r-md);background:linear-gradient(120deg,#CFC7BD,#EFEAE3);flex:none}
+.mail .bd h4{font-family:var(--display);font-size:16px;font-weight:700;letter-spacing:-.01em}
+.mail .bd p{font-size:12.5px;color:var(--soft);margin-top:4px}
+.modal{border:1px solid var(--border);border-radius:var(--r-lg);background:#fff;padding:18px 20px;width:340px}
+.modal .t{font-family:var(--display);font-size:16px;font-weight:700}
+.modal .line{margin-top:9px;font-size:13.5px;font-weight:700}
+.modal .sub2{font-size:12.5px;color:var(--soft);margin-top:5px}
+.tbl{border-collapse:collapse;width:100%;max-width:1240px;font-size:13px;background:#fff;border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden}
+.tbl th{text-align:left;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);padding:11px 14px;border-bottom:1px solid var(--border);background:#FCFCFB}
+.tbl td{padding:11px 14px;border-bottom:1px solid var(--divider);color:var(--soft);vertical-align:top;line-height:1.55}
+.tbl tr:last-child td{border-bottom:none}
+.tbl td:first-child{color:var(--ink);font-weight:700}
+.tbl td:nth-child(2){color:var(--ink);font-weight:600;font-family:var(--display)}
+.tbl td:nth-child(3){white-space:nowrap}
+.note{margin-top:20px;border-left:3px solid var(--cta);background:var(--white);border-radius:0 var(--r-md) var(--r-md) 0;padding:14px 18px;font-size:13px;color:var(--soft);max-width:1240px}
+.note b{color:var(--ink)}
+.note ul{margin:6px 0 0 18px}.note li{margin-top:5px}
+.note.flag{border-left-color:#B4341C}
+.note.dec{border-left-color:#15803D}
+.wrongstr{color:#B4341C;font-weight:700}
+.mini{display:flex;gap:16px;flex-wrap:wrap}
+.mini .m{border:1px solid var(--border);border-radius:var(--r-md);background:#fff;padding:13px 16px;width:340px}
+.mini .m .s{font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);margin-bottom:6px}
+.mini .m .v{font-family:var(--display);font-size:15px;font-weight:700;line-height:1.35}
+.mini .m .w{font-size:11.5px;margin-top:7px;font-weight:700;line-height:1.45}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">MCK-18</div>
+  <h1 class="pt">The tour name, surface by surface</h1>
+  <p class="lede">One stored field, three compositions built on top of it, and one set of surfaces where nothing has been decided yet. Every row below carries a status chip so a developer can tell a locked rule from a founder deviation from this reviewer&rsquo;s proposal. That distinction matters here more than usual: the hub page follows a founder decision that master 3.5 still contradicts in writing.</p>
+
+  <h2>1 &middot; What is stored</h2>
+  <p class="h2sub">Master 3.5 adds no CMS field for any of this and requires the stored title to be hub-free. One clean value, three compositions. The example tour is the one the build review has been tracking; mck-04 and mck-06 v2 draw the same tour as &ldquo;Catamaran Day Trip&rdquo;.</p>
+  <div class="rec">
+    <div class="f"><div class="k">title</div><div class="v">Full-Day Catamaran</div></div>
+    <div class="f"><div class="k">primary_hub</div><div class="v">Klein Cura&ccedil;ao</div></div>
+    <div class="f muted"><div class="k">departure_city</div><div class="v">Willemstad</div></div>
+    <div class="f muted"><div class="k">breadcrumb_label</div><div class="v">only above 35 chars</div></div>
+  </div>
+
+  <h2>2 &middot; Three compositions, and one open question</h2>
+  <p class="h2sub">The middle column is the only thing the traveller sees. The hub name is tinted here purely so it is easy to follow; it is not coloured in the build.</p>
+  <div class="rr">
+    <div class="row">
+      <div class="c1"><b>Klein Cura&ccedil;ao hub page, cards</b><span>Trips grid, picks block, comparison tables</span><span class="chip dec">Founder, Aug 6</span></div>
+      <div class="c2"><div class="out"><span class="hub">Klein Cura&ccedil;ao</span> Full-Day Catamaran</div></div>
+      <div class="c3">Hub plus a space plus the title, and <b>no eyebrow</b>. This is a deliberate deviation from 3.5&rsquo;s worked example, which says the card shows the bare title here. The founder settled it on August 6 and it is not to be reopened. Note what it is not: it is not the colon form, and it is not the stored title.</div>
+    </div>
+    <div class="row">
+      <div class="c1"><b>Every other listing surface</b><span>All Tours, search, category, related tours, cross-hub; collection pages added separately</span><span class="chip lock">Locked, 3.5</span></div>
+      <div class="c2"><div class="eyerow"><span class="eyebrow"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.6"/></svg>Klein Cura&ccedil;ao</span><div class="out">Full-Day Catamaran</div></div></div>
+      <div class="c3">Eyebrow label plus the bare title. 3.5 names five surfaces; the collection page was added by a separate founder answer on August 6, closed so it does not reopen: the eyebrow shows there <b>even when every card happens to share one hub</b>, because suppression is bound to a surface and not to what the other cards are. 3.5 also allows the label to <b>render inline with a middot where space is tight</b>, which is a sanctioned alternative, not a violation.</div>
+    </div>
+    <div class="row">
+      <div class="c1"><b>Its own tour page, H1</b><span>Last breadcrumb crumb is the tour name, not this</span><span class="chip lock">LD15</span></div>
+      <div class="c2"><div class="out"><span class="hub">Klein Cura&ccedil;ao:</span> Full-Day Catamaran</div></div>
+      <div class="c3">The colon form. Title Case, 35 to 60 characters, no operator suffix. Two cautions. The breadcrumb takes the tour-name portion, with <code>breadcrumb_label</code> as the editorial short form above 35 characters, so the last crumb is not the composed H1. And this very example is 33 characters, under LD15&rsquo;s own floor, an inconsistency that comes from the master&rsquo;s worked example rather than from here.</div>
+    </div>
+    <div class="row">
+      <div class="c1"><b>Everything after booking</b><span>Checkout summary, thank-you page, confirmation, reminder, cancellation</span><span class="chip open">Not decided</span></div>
+      <div class="c2"><div class="out"><span class="hub">Klein Cura&ccedil;ao:</span> Full-Day Catamaran</div><span style="font-size:11px;color:#B4341C;font-weight:700;margin-left:8px">proposed</span></div>
+      <div class="c3">No spec settles this. 5.8 says the checkout summary carries the tour <b>title</b>; 5.9 locks the thank-you page order without naming a format; the email spec&rsquo;s <code>{tourName}</code> example is a fourth string again. The proposal is the colon form everywhere after booking, because this is the only place with no surface context at all. It is a proposal, and the open items at the bottom say what has to be answered before it can be built.</div>
+    </div>
+  </div>
+
+  <div class="note dec"><b>The founder decision, verbatim, because 3.5 still says the opposite.</b> Recorded August 6, 2026 in the build review: &ldquo;the hub page KEEPS the hub in its card titles, rendering &lsquo;Klein Cura&ccedil;ao Full-Day Catamaran&rsquo; with the eyebrow suppressed. That is a deliberate deviation from the 3.5 worked example (&lsquo;card title alone on the hub page&rsquo;) and must not be raised again as a finding; 3.5 needs the note plus a conflict log entry.&rdquo; That note has not been written yet: master is at v1.19 and 3.5&rsquo;s worked example still reads the old way. <b>Until it is, a developer reading 3.5 on its own will build the wrong hub page.</b> Writing the note is the cheapest item in this whole file.</div>
+
+  <h2>3 &middot; Why the stored field still has to be cleaned</h2>
+  <p class="h2sub">The founder decision changes what the hub page shows. It does not change what the database holds, and that is worth being explicit about, because the two look identical on screen and only one of them survives a CMS edit.</p>
+  <div class="note"><b>Composing and printing look the same. They fail differently.</b>
+  <ul>
+    <li>With a clean field the hub page composes hub plus title in one rule. With the hub baked into the field it prints it raw, and every other surface needs its own stripping rule. Someone forgets one, which has now happened three times.</li>
+    <li>With a dirty field the tour page H1 has to strip &ldquo;Klein Cura&ccedil;ao &rdquo; only to prepend &ldquo;Klein Cura&ccedil;ao: &rdquo;, and the collection page needs a third stripping rule.</li>
+    <li>The fix is a data pass: strip each tour&rsquo;s prefix using <b>that tour&rsquo;s own primary_hub value</b>, never a blind find and replace on the words &ldquo;Klein Cura&ccedil;ao&rdquo;, or a tour whose real name contains them breaks. Then delete the stripping logic from the surfaces that compensate today.</li>
+    <li>At 24 tours this is a small pass. At 300 it is a migration. The v1.11 changelog ties the hub-free title to the operator-neutral register re-slugging, so it is register cleanup, not a display preference.</li>
+  </ul></div>
+
+  <h2>4 &middot; The card, drawn</h2>
+  <p class="h2sub">Same component, same stored title. The first four are correct; the last is what mck-04 draws today and it is a structural problem, not a styling one.</p>
+  <div class="cards">
+    <div><h3 class="lbl goodl">Hub page</h3><div class="cap">Hub in the title, no eyebrow. Per the founder decision above, composed rather than stored.</div><div class="frame"><div class="tc"><div class="im"><div class="heart"></div></div><div class="body"><div class="rate"><span class="star">&#9733; 4.8</span><span>(214)</span></div><h4>Klein Cura&ccedil;ao Full-Day Catamaran</h4><div class="meta">8 to 9 hours &middot; Pickup available</div><div class="price">from $150</div></div></div></div></div>
+    <div><h3 class="lbl goodl">Elsewhere, rated</h3><div class="cap">Eyebrow as its own element above the title. The rating row is separate and can come and go without touching it.</div><div class="frame"><div class="tc"><div class="im"><div class="heart"></div></div><div class="body"><div class="rate"><span class="star">&#9733; 4.8</span><span>(214)</span></div><span class="eyebrow"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.6"/></svg>Klein Cura&ccedil;ao</span><h4>Full-Day Catamaran</h4><div class="meta">8 to 9 hours &middot; Pickup available</div><div class="price">from $150</div></div></div></div></div>
+    <div><h3 class="lbl goodl">Elsewhere, no rating yet</h3><div class="cap">Under 3 reviews the rating row does not render, and a tour under 30 days old with no reviews carries the New badge instead (3.5, 3.6). The eyebrow is untouched by either.</div><div class="frame"><div class="tc"><div class="im"><div class="nb">New</div><div class="heart"></div></div><div class="body"><span class="eyebrow"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.6"/></svg>Klein Cura&ccedil;ao</span><h4>Full-Day Catamaran</h4><div class="meta">8 to 9 hours &middot; Pickup available</div><div class="price">from $150</div></div></div></div></div>
+    <div><h3 class="lbl goodl">Elsewhere, tight space</h3><div class="cap">3.5&rsquo;s sanctioned alternative: the label inline on the meta row with a middot. Costs no vertical space. Legal wherever the pill does not fit.</div><div class="frame"><div class="tc"><div class="im"><div class="heart"></div></div><div class="body"><div class="rate"><span class="star">&#9733; 4.8</span><span>(214)</span></div><h4>Full-Day Catamaran</h4><div class="inline"><b>Klein Cura&ccedil;ao</b> &middot; 8 to 9 hours</div><div class="price">from $150</div></div></div></div></div>
+    <div><h3 class="lbl badl">mck-04 as drawn</h3><div class="cap">The eyebrow is nested inside the rating row. Whether the hub shows then depends on the review count, and the launch state hides the whole row.</div><div class="frame"><div class="tc oldway"><div class="im"><div class="heart"></div></div><div class="body"><div class="rate"><span class="star">&#9733; 4.8</span><span>(214)</span><span class="eyebrow"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.6"/></svg>Klein Cura&ccedil;ao</span></div><h4>Full-Day Catamaran</h4><div class="meta">8 to 9 hours &middot; Pickup available</div><div class="price">from $150</div></div></div></div></div>
+  </div>
+  <div class="note"><b>Why the eyebrow moves out of the rating row.</b> v1.11 makes it a property of the surface. Nesting it inside <code>.rate</code> makes it a property of the review count, which is a different thing: cards render a rating only at <code>review_count &gt;= 3</code>, and mck-04&rsquo;s launch state hides <code>.rate</code> outright, taking the hub with it. Lift it out and the rating row can appear and disappear on its own. mck-04 needs the same correction so the mockup and the build stop disagreeing. Note that the inline middot form above is not the bug: the bug is specifically the nesting.</div>
+
+  <h2>5 &middot; The tour page, and the proposal for after booking</h2>
+  <p class="h2sub">The tour page is locked. Everything to the right of it is a proposal and is drawn that way.</p>
+  <div class="cards">
+    <div><h3 class="lbl goodl">Tour page <span class="chip lock" style="margin-left:6px">LD15</span></h3><div class="s4cap">The colon form as H1. The last crumb is the tour name, not the composed H1, and <code>breadcrumb_label</code> replaces it above 35 characters.</div>
+      <div class="tp"><div class="crumbs">Home &rsaquo; Cura&ccedil;ao &rsaquo; Klein Cura&ccedil;ao &rsaquo; Full-Day Catamaran</div><h1>Klein Cura&ccedil;ao: Full-Day Catamaran</h1><div class="metarow">&#9733; 4.8 (214) &middot; &#9733; Locals&rsquo; favorite &middot; Willemstad, Cura&ccedil;ao</div></div></div>
+    <div><h3 class="lbl badl">Confirmation email <span class="chip open" style="margin-left:6px">Proposed</span></h3><div class="s4cap">The body has room for the composed name. The subject does not, and the middot reshape does not fix that: at a phone&rsquo;s cut the date is gone either way.</div>
+      <div class="mail"><div class="sub"><div class="k">Subject, as proposed, 61 characters</div><div class="v">You&rsquo;re booked &middot; Klein Cura&ccedil;ao: Full<span class="cut">&hellip; cut here on a phone</span></div></div>
+        <div class="bd"><div class="thumb"></div><div><h4>Klein Cura&ccedil;ao: Full-Day Catamaran</h4><p>Wednesday 12 August &middot; 07:30 &middot; 2 travelers</p></div></div></div></div>
+    <div><h3 class="lbl badl">Cancel confirmation <span class="chip open" style="margin-left:6px">Proposed</span></h3><div class="s4cap" style="max-width:340px">The line that tells the traveller which booking they are about to cancel, irreversibly.</div>
+      <div class="modal"><div class="t">Are you sure you want to cancel?</div><div class="line">Klein Cura&ccedil;ao: Full-Day Catamaran &middot; 12 Aug</div><div class="sub2">Full refund, no questions asked. We&rsquo;ll email you to confirm.</div></div></div>
+  </div>
+
+  <h2>6 &middot; As built</h2>
+  <p class="h2sub">The same tour on three surfaces of the live build. Two look wrong. One looks right and is not.</p>
+  <div class="mini">
+    <div class="m"><div class="s goodl">Category page</div><div class="v">Full-Day Catamaran <span style="font-size:11px;color:var(--cta-deep)">+ Klein Cura&ccedil;ao pill</span></div><div class="w goodl">Correct on screen and correct in principle</div></div>
+    <div class="m"><div class="s" style="color:var(--cta-deep)">Klein Cura&ccedil;ao hub page</div><div class="v">Klein Cura&ccedil;ao Full-Day Catamaran</div><div class="w" style="color:var(--cta-deep)">Correct on screen after the founder decision. Wrong underneath: it is printing a stored prefix, not composing one</div></div>
+    <div class="m"><div class="s badl">Tour page H1 and last crumb</div><div class="v wrongstr">Klein Cura&ccedil;ao Full-Day Catamaran</div><div class="w badl">The composed form without the colon that defines it, and the crumb should be the tour name alone</div></div>
+  </div>
+  <div class="note flag"><b>Two of these have one cause.</b> The stored title still reads &ldquo;Klein Cura&ccedil;ao Full-Day Catamaran&rdquo;, founder-confirmed August 6. All Tours, search and category strip that prefix at render, which is why they look right; the hub page and the tour page print the field raw. One listing surface has been seen rendering the full title <b>and</b> the eyebrow, stating the hub twice on one card. The hub page is the trap: it now looks exactly as intended while being the one surface whose correctness depends on nobody ever saving a title in the CMS without the prefix.</div>
+
+  <h2>7 &middot; The rule in one table</h2>
+  <p class="h2sub">Status is part of the rule. Anything marked open is this reviewer&rsquo;s proposal and needs an answer before it is built.</p>
+  <table class="tbl">
+    <tr><th>Surface</th><th>What is shown</th><th>Status</th><th>Source</th></tr>
+    <tr><td>Klein Cura&ccedil;ao hub page cards</td><td>Klein Cura&ccedil;ao Full-Day Catamaran</td><td><span class="chip dec">Decided</span></td><td>Founder, Aug 6 2026. 3.5 still says otherwise and owes a note plus a conflict log entry</td></tr>
+    <tr><td>All Tours, search, category</td><td>eyebrow + Full-Day Catamaran</td><td><span class="chip lock">Locked</span></td><td>Master 3.5, v1.11 with the v1.12 worked example</td></tr>
+    <tr><td>Related tours, cross-hub</td><td>eyebrow + Full-Day Catamaran</td><td><span class="chip lock">Locked</span></td><td>Master 3.5, named in the same list</td></tr>
+    <tr><td>Collection page</td><td>eyebrow + Full-Day Catamaran</td><td><span class="chip dec">Decided</span></td><td>Founder, Aug 6 2026, closed so it does not reopen. 3.5 does not name collection pages</td></tr>
+    <tr><td>Saved tours</td><td>eyebrow + Full-Day Catamaran</td><td><span class="chip open">Proposed</span></td><td>Follows the principle. 5.12 never mentions the eyebrow</td></tr>
+    <tr><td>Tour page H1</td><td>Klein Cura&ccedil;ao: Full-Day Catamaran</td><td><span class="chip lock">Locked</span></td><td>LD15</td></tr>
+    <tr><td>Last breadcrumb crumb</td><td>Full-Day Catamaran</td><td><span class="chip lock">Locked</span></td><td>2.7 path shape; <code>breadcrumb_label</code> above 35 chars</td></tr>
+    <tr><td>Checkout summary</td><td>Klein Cura&ccedil;ao: Full-Day Catamaran</td><td><span class="chip open">Proposed</span></td><td>5.8 says &ldquo;tour image and title&rdquo;, which reads as the stored title</td></tr>
+    <tr><td>Thank-you page</td><td>Klein Cura&ccedil;ao: Full-Day Catamaran</td><td><span class="chip open">Proposed</span></td><td>5.9 locks the section order, not the naming</td></tr>
+    <tr><td>Confirmation, reminder, cancellation</td><td>Klein Cura&ccedil;ao: Full-Day Catamaran</td><td><span class="chip open">Proposed</span></td><td>The email spec&rsquo;s <code>{tourName}</code> example is a fourth string</td></tr>
+    <tr><td>Anything not listed here</td><td>the composed colon form</td><td><span class="chip open">Proposed</span></td><td>A default clause, so an unlisted surface cannot invent a fifth form</td></tr>
+    <tr><td>A tour with no hub</td><td>title alone on cards; <b>Cura&ccedil;ao: Tour name</b> as H1</td><td><span class="chip lock">Locked</span></td><td>LD15 templates &ldquo;Destination or Hub&rdquo;, so the H1 always has a prefix</td></tr>
+  </table>
+
+  <div class="note flag"><b>Open, and needing an answer before any of the proposed rows are built.</b>
+  <ul>
+    <li><b>The subject line does not fit, in any shape.</b> The locked subject is <code>You&rsquo;re booked: {tourName} on {dateShort}</code>, and there are two more variants: <code>Reservation sent:</code> for operator_full, and a sub-24-hour &ldquo;You&rsquo;re booked for tomorrow&rdquo; form. With the composed name, the middot reshape runs to 61 characters and a phone cuts it at roughly 35, so it reads &ldquo;You&rsquo;re booked &middot; Klein Cura&ccedil;ao: Full&rdquo; and the date never survives. Putting the date first, &ldquo;12 Aug, 07:30 &middot; Klein Cura&ccedil;ao: Full-Day Catamaran&rdquo;, is 49 characters and keeps the part that distinguishes one booking from another. Also worth checking: 3.4 governs separators <b>between inline items in a row</b>, not subject lines, so nothing here is settled by it.</li>
+    <li><b>The booked name should be frozen at purchase.</b> If <code>{tourName}</code> is composed at send time, correcting a title or a hub after a booking silently renames a product the traveller has already paid for, so the reminder and the cancellation disagree with the confirmation already in their inbox. Snapshot the composed name onto the booking record at checkout and compose only as a fallback.</li>
+    <li><b>Suppression is bound to a page, but a hub page carries cross-hub modules.</b> &ldquo;Also worth your time on Cura&ccedil;ao&rdquo; and related hubs sit on the Klein Cura&ccedil;ao page. As written those tours would lose their label on a page whose H1 names a different place. Bind suppression to the <b>module</b>, not the page: any module whose set is guaranteed single-hub and is introduced by a heading naming that hub.</li>
+    <li><b>The colon form is an English concatenation.</b> Seven locales. French needs a narrow space before a colon, Chinese uses the full-width colon, and Dutch and German name this product with a preposition rather than a colon. &ldquo;Title Case, 35 to 60 characters&rdquo; is an English rule: German capitalises by grammar, Chinese has neither case nor a comparable count. This needs a per-locale format, not one hardcoded string, and <code>primary_hub</code> needs to be a reference to a localised hub record rather than one English string.</li>
+    <li><b>Analytics.</b> GA4 <code>item_name</code> is never specified. If it follows the surface, one product splits across several rows in revenue reporting. It should be one value platform-wide, and the composed name is the sensible one.</li>
+    <li><b>The eyebrow wears badge clothing.</b> It is a bordered, shadowed pill in the CTA colour with a map pin, on cards that already carry Sponsored, Popular, New and Selling fast in the same shape. Worth deciding whether a place label should look like a commercial badge, and whether the pin, which conventionally means &ldquo;where you are&rdquo;, is right when the card also has a departure city. Its 1px border is 1.26:1 against white, so the border carries no meaning for anyone who cannot see it; the text at 4.58:1 does the work.</li>
+  </ul></div>
+
+  <div class="note"><b>What to do, in order.</b>
+  <ul>
+    <li>Write the 3.5 note and the conflict log entry for the hub-page deviation. Nothing else is safe until the spec and the decision agree.</li>
+    <li>Clean the stored titles with a hub-aware data pass, then delete the stripping logic from the surfaces that compensate for it today.</li>
+    <li>Let the hub page compose hub plus title, the listing surfaces add the eyebrow, and the tour page compose the colon form. The last breadcrumb crumb takes the tour name only.</li>
+    <li>Move the eyebrow out of the rating row into its own element above the title, in the build and in mck-04. Keep 3.5&rsquo;s inline middot form available where space is tight.</li>
+    <li>Answer the open items before building anything after checkout, starting with the subject line and the frozen booked name.</li>
+  </ul></div>
+
+</div>
+</body>
+</html>
