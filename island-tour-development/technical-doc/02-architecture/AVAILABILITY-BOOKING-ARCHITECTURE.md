@@ -376,13 +376,17 @@ neither uses the cached `isBookable` flag (that flag is for the catalog grid).
 File: `backend/src/bookings/bookings.service.ts`. Bookings are the only writer of
 `departure.bookedCount`, and they do it safely.
 
-### 7.1 Pre-claim checks
+### 7.1 Pre-claim checks (`loadContext` / `reserve`)
 
 Before claiming, the service validates the departure belongs to the tour
-(`:807-812`) and that the **booking cutoff has not passed** (`:111-119`) - the
-same live cutoff the read side applies, enforced here as a hard guard.
+(`loadContext`) and that the **booking cutoff has not passed** (`cutoffReached`) -
+the same live cutoff the read side applies, enforced here as a hard guard.
+Since hardening F9, reserve also SHEDS certain doom (departure not open, or
+zero seats free) before pricing/FX - advisory only; the claim below stays the
+authority. Anchors in this section are SYMBOLS, not line numbers - the doc's
+own rule: line anchors drift, symbols survive.
 
-### 7.2 The atomic guarded claim (the overbooking backstop, `:164-180`)
+### 7.2 The atomic guarded claim (the overbooking backstop, `claimSeats`)
 
 Inside a transaction, a single conditional `UPDATE` claims the seats:
 
@@ -402,15 +406,23 @@ UPDATE departures
 
 If this affects **0 rows** (someone else took the last seats, the departure
 closed, or the cutoff logic changed the state) the service throws
-`Not enough availability for this departure` and the transaction rolls back
-(`:176-180`). Because the guard (`booked_count + seats <= capacity`) and the
+`Not enough availability for this departure` and the transaction rolls back. Because the guard (`booked_count + seats <= capacity`) and the
 increment happen in the same statement, **two concurrent bookings can never both
 succeed past capacity** - the database serializes them.
 
 When the claim fills the departure, the same statement flips it to `SOLD_OUT` and
 stamps `soldOutAt`.
 
-### 7.3 Hold vs immediate confirm (`:159`, `:182-184`)
+As built (hardening F1-F3, 2026-08-10) this SQL is LITERAL - one raw guarded
+UPDATE in `claimSeats()`, shared by reserve, pay-after-expiry recovery,
+restore (an `intoSticky` mode accepts SOLD_OUT/CLOSED for returning seats;
+only CANCELLED refuses) and date-change. In the reserve transaction the claim
+runs LAST, after the booking insert, so the hot row's lock spans ~one
+statement + commit (F3). A DB CHECK constraint
+(`departures_booked_within_capacity`, F5) backstops the invariant against any
+future writer.
+
+### 7.3 Hold vs immediate confirm (`reserve`)
 
 The new booking's status depends on the tour's `paymentModel`:
 
@@ -421,22 +433,25 @@ The new booking's status depends on the tour's `paymentModel`:
 
 ### 7.4 Release paths (cancel / expiry)
 
-Seats are returned via `releaseSeats` (`:909-922`):
+Seats are returned via `releaseSeats` (atomic since hardening F1 - the
+previous read-modify-write lost decrements when the sweeper raced a cancel):
 
 ```sql
 UPDATE departures SET booked_count = GREATEST(booked_count - :seats, 0) WHERE id = :id;
 ```
 
-then `recomputeStoredStatus` (`:925-935`) re-derives `OPEN`/`SOLD_OUT` from the
+then `recomputeStoredStatus` re-derives `OPEN`/`SOLD_OUT` from the
 new fill via `storedStatusForFill`, **leaving sticky `CLOSED`/`CANCELLED`
 untouched**. So a `SOLD_OUT` departure that gets a cancellation reopens to `OPEN`.
 
 Two triggers:
 
-- **Cancellation** (`:518-528`) - releases the seats and marks the booking /
+- **Cancellation** (`cancel`) - releases the seats and marks the booking /
   its unit items `CANCELLED`.
-- **Hold expiry** (`:612-642`) - a sweep finds `ON_HOLD` bookings past
-  `utcExpiresAt`, releases their seats, and marks them `EXPIRED`.
+- **Hold expiry** (`expireStaleHolds`, a BullMQ scheduler tick every minute
+  since F8 - single-runner across replicas) - finds `ON_HOLD` bookings past
+  `utcExpiresAt`, flips each through a GUARDED `ON_HOLD -> EXPIRED` updateMany
+  FIRST (overlapping ticks must not double-release), then releases seats.
 
 ### 7.5 A subtlety: bookings do not refresh `isBookable`
 

@@ -6,7 +6,7 @@ Purpose: defines how a booking is created, paid, confirmed, and cancelled on Isl
 
 Sibling docs: [COMMERCIAL-MODEL.md](./COMMERCIAL-MODEL.md) · [DATA-MODEL.md](./DATA-MODEL.md) · [AVAILABILITY-AND-DEPARTURES.md](./AVAILABILITY-AND-DEPARTURES.md) · [TRACKING-AND-ANALYTICS.md](./TRACKING-AND-ANALYTICS.md) · [../MASTER-CHECKLIST.md](../MASTER-CHECKLIST.md)
 
-> Status: **canonical/target**. The bookings service, payments/Stripe processing, webhooks, and emails are **not built**. The current `Booking` model is thin, has **no `payment_model` field**, and `cancellationHours` defaults to **24** (must become the enum default **48**). Mismatches are tracked in [../MASTER-CHECKLIST.md](../MASTER-CHECKLIST.md).
+> Status: **built** (truth-up 2026-08-10, hardening F11). The bookings service, payments/Stripe processing, webhooks and emails are all live; `payment_model` is snapshotted onto every booking and `cancellationHours` is the enum default 48. The seat-claim path was concurrency-hardened 2026-08-10 - atomic claim/release, DB CHECK backstop, idempotent replay, pool timeouts, load-tested (see [../03-implementation/BOOKING-CONCURRENCY-HARDENING.md](../03-implementation/BOOKING-CONCURRENCY-HARDENING.md)). Build status per task: [../03-implementation/BOOKING-CHECKLIST.md](../03-implementation/BOOKING-CHECKLIST.md).
 
 ---
 
@@ -103,16 +103,30 @@ There is no automatic forfeit and no automated balance nudge.
 
 ## 4. Booking states & the cancellation flow
 
-### States
+### States (as built - `BookingStatus`, truth-up 2026-08-10)
 
 ```
-pending_payment → confirmed → cancelled → ...
+ON_HOLD ──confirm/webhook──▶ CONFIRMED ──admin──▶ CANCELLED
+   │                             │
+   └──sweeper (TTL lapsed)──▶ EXPIRED ──pay-after-expiry recovery──▶ CONFIRMED
+                                 │
+                                 └─(seats gone: stays EXPIRED, refund owed)
 ```
 
-- `pending_payment` — created, awaiting the Stripe charge to settle (deposit / paid_in_full models).
-- `confirmed` — instant on every model; `operator_full` is **created `confirmed` at commit** (no `pending_payment` step, no charge/webhook).
-- `cancelled` — set by admin after a cancellation request (or operator-forced cancellation).
-- Further states (e.g. forfeited / operator-cancelled) follow the same admin-confirmed pattern.
+- `ON_HOLD` — reserve claims seats immediately and holds them under a TTL
+  (default 30 min, DTO-clamped 5-60) while payment completes.
+- `CONFIRMED` — payment settled (webhook or settle-on-return); `operator_full`
+  is born CONFIRMED at commit (modeled but **disabled in v1** - see §7).
+- `EXPIRED` — the every-minute sweeper released a lapsed hold; a payment that
+  lands after expiry triggers the atomic recovery (re-claim seats or refund).
+- `CANCELLED` — admin-confirmed cancellation (traveller-requested or
+  operator-forced); restore is guarded and re-claims seats.
+- `REDEEMED` / `PENDING` / `REJECTED` exist in the enum for OCTO/check-in
+  semantics; no write path assigns them yet.
+
+Full transition detail: `AVAILABILITY-BOOKING-ARCHITECTURE.md` §11.2. (The
+`pending_payment → confirmed` machine this section previously described was
+the pre-build design and never shipped.)
 
 ### Cancellation flow (C1) — no raw-click cancel
 
@@ -205,6 +219,14 @@ Canonical: master §6.5 (`island-tours-booking-confirmation-email-spec.md` + wir
 ---
 
 ## 7. `operator_full` summary
+
+> **As built: modeled, DISABLED in v1** (founder decision 2026-07-15, truth-up
+> 2026-08-10): a model that takes no payment would create confirmed, unpaid
+> bookings an operator could use to bypass payment entirely, so `loadContext`
+> rejects it at reserve AND quote ("This tour is not bookable online").
+> The `operatorFull` branches in `reserve` stay in code deliberately - they
+> are the wiring for the day the model is re-enabled, not dead code to
+> delete. Everything below describes that designed behaviour.
 
 `operator_full` is the one model that touches no payment rail:
 
