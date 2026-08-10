@@ -38,6 +38,11 @@ const ITERATIONS = Number(__ENV.ITERATIONS || VUS);
 const API = __ENV.API || 'http://localhost:5050';
 
 const serverErrors = new Counter('server_errors_5xx');
+// The verdict split IS the baseline data: how a rush was answered.
+const claimed201 = new Counter('reserve_201_claimed');
+const soldOut422 = new Counter('reserve_422_sold_out');
+const limiter429 = new Counter('reserve_429_limiter');
+const shed503 = new Counter('reserve_503_shed');
 
 export const options = {
   scenarios: {
@@ -82,7 +87,11 @@ function reserve(departureId) {
     }),
     { headers },
   );
-  if (res.status >= 500 && res.status !== 503) serverErrors.add(1);
+  if (res.status === 201) claimed201.add(1);
+  else if (res.status === 422) soldOut422.add(1);
+  else if (res.status === 429) limiter429.add(1);
+  else if (res.status === 503) shed503.add(1);
+  else if (res.status >= 500) serverErrors.add(1);
   check(res, {
     'claimed or cleanly rejected': (r) =>
       r.status === 201 ||

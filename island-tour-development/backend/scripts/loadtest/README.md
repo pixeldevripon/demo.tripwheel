@@ -84,6 +84,17 @@ not Postgres).
 
 ## Baseline (fill in per run; keep history)
 
-| Date | Commit | Scenario | p95 | p99 | 201/422/429/503 | Notes |
+| Date | Commit | Scenario | p95 | max | 201/422/429/503 | Notes |
 |---|---|---|---|---|---|---|
-| _pending first staging run_ | | | | | | |
+| 2026-08-10 | prod@`4936a5c`+F6 | hot-100 (fresh, cap 20) | 277ms | 279ms | 20 claimed, exact capacity (pre-counter run) | zero 5xx; ledger exact |
+| 2026-08-10 | same | hot-500 (fresh, cap 20) | 227ms | 243ms | 20/40/440/0 | limiter's 60/min = 20 claims + 40 clean 422s, rest shed |
+| 2026-08-10 | same | hot-1000 (sold out) | 285ms | 310ms | 0/0/1000/0 | pure shedding, flat latency |
+| 2026-08-10 | same | spread-500 (100 rows) | 970ms | 1.01s | 500/0/0/0 | all claimed; pool-25 queueing is the p95, no shed |
+| 2026-08-10 | same | mixed 80/20 (hot sold out) | 351ms | 860ms | 0/0/247/0 + 753 reads OK | reads never starved |
+
+Machine: local dev (Apple Silicon), Postgres 17.4 same host, pool 25, k6 same
+host. Staging numbers on the real VPS should be re-recorded before launch -
+these prove CORRECTNESS and give a relative baseline, not production capacity.
+All five runs: zero unexpected 5xx across ~3,100 requests; `loadtest:assert`
+passed after every scenario (hot fill == ledger == capacity exactly, invariant
+sweep 0 rows, no half-written bookings).
