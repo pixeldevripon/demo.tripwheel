@@ -515,17 +515,14 @@ describe('booking seat claim/release under concurrency (real Postgres)', () => {
     });
 
     it('refuses an out-of-invariant INSERT outright', async () => {
+      const before = await prisma.departure.count({ where: { tourId } });
+      // The named matcher matters: a bare toThrow() would also pass on a
+      // unique collision or FK failure and assert nothing about the
+      // constraint. makeDeparture keeps the collision-free date scheme.
       await expect(
-        prisma.departure.create({
-          data: {
-            tourId,
-            date: new Date('2031-12-24'),
-            startTime: new Date(Date.UTC(1970, 0, 1, 23, 45)),
-            capacity: 2,
-            bookedCount: 3,
-          },
-        }),
-      ).rejects.toThrow();
+        makeDeparture({ capacity: 2, bookedCount: 3 }),
+      ).rejects.toThrow(/departures_booked_within_capacity/);
+      expect(await prisma.departure.count({ where: { tourId } })).toBe(before);
     });
   });
 });

@@ -3,6 +3,13 @@
 -- After F1/F2 no live writer can violate it; this stops any FUTURE code path,
 -- admin script, or console session from producing an oversold or negative row.
 
+-- Bound how long the ALTER below may QUEUE behind a long-lived transaction on
+-- "departures" - while queued, its ACCESS EXCLUSIVE request blocks every new
+-- seat claim behind it. Better to fail the deploy and rerun at a quieter
+-- moment than to stall live bookings. LOCAL: scoped to this migration's
+-- transaction only.
+SET LOCAL lock_timeout = '5s';
+
 -- 1) Repair before validate. The 2026-08-10 dev audit found 3 past-dated rows
 --    with bookedCount > capacity and ZERO active bookings behind them - fossils
 --    of the pre-F1/F2 write paths fixed in PR #164. The repair is generic
@@ -19,7 +26,17 @@ SET "bookedCount" = sub.new_count,
         THEN d."status"
       WHEN sub.new_count >= d."capacity" THEN 'sold_out'::"departure_status"
       ELSE 'open'::"departure_status"
-    END
+    END,
+    -- Stamp-once on a repaired row that derives sold_out, as the runtime does.
+    "soldOutAt" = CASE
+      WHEN d."status" NOT IN ('closed'::"departure_status", 'cancelled'::"departure_status")
+       AND sub.new_count >= d."capacity"
+        THEN COALESCE(d."soldOutAt", now())
+      ELSE d."soldOutAt"
+    END,
+    -- @updatedAt is Prisma-client-side; raw SQL must stamp it by hand (the
+    -- iCal feed derives SEQUENCE/LAST-MODIFIED from this column).
+    "updatedAt" = now()
 FROM (
   SELECT d2."id",
          LEAST(GREATEST(
