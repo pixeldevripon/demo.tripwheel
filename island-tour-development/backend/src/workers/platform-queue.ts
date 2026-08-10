@@ -29,8 +29,17 @@ export type PlatformJobName =
  * these idempotent recomputes only AFTER F1 made releases atomic; before it,
  * a double-run sweep was exactly the concurrent-release corruption.
  *
- * Renaming an entry ORPHANS the old schedule in Redis - remove it with
- * `queue.removeJobScheduler(oldName)` in the same change.
+ * Renaming an entry cannot orphan the old schedule: registration prunes any
+ * scheduler on this queue that is not listed here (which also cleaned up the
+ * reverted iCal layer's legacy `calendar.ical-poll-tick` repeatable).
+ *
+ * TRADE, made deliberately: the sweeps now share Redis's fate. The old
+ * in-process crons ran DB-only; if Redis dies at runtime these ticks stop
+ * (holds keep their seats, phantom sold-out) until it returns - then every
+ * sweep catches up automatically (all predicates are one-sided time/status
+ * checks and the scheduler realigns missed iterations). Redis was already
+ * load-bearing for confirmation emails, so this adds no new hard dependency,
+ * but a Redis outage now has one more visible symptom.
  *
  * The doc's designed names (EVENT-DRIVEN-AND-QUEUES.md §4) list the nightly
  * work as separate repeatable jobs (quality-score / eligibility /
@@ -45,7 +54,15 @@ export const PLATFORM_SCHEDULES = {
     name: 'settlement.reverse-sweep',
     every: 3_600_000,
   },
-  /** Post-tour review requests, hourly (per-booking local-time decision). */
+  /**
+   * Post-tour review requests, hourly (per-booking local-time decision).
+   * `every` schedules are REGISTRATION-anchored rolling hours, not :00-
+   * anchored like the old @Cron - the "around 10:00 local" first touch can
+   * now land up to :59 past. Within the service's own "roughly 10:00"
+   * contract, and every window check is one-sided so nothing is ever
+   * skipped. Do not "fix" this to a cron pattern without re-reading
+   * review-requests.service.ts.
+   */
   REVIEW_REQUEST_SWEEP: { name: 'reviews.request-sweep', every: 3_600_000 },
   /** Spotlight/demand/materialize/bookable/quality/eligibility composite. */
   NIGHTLY_COMMERCIAL: {

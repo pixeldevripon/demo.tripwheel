@@ -51,32 +51,60 @@ export class NightlyJobsService implements OnModuleInit {
   ) {}
 
   /**
-   * Upsert every schedule under its fixed id. Safe to run from N replicas
-   * concurrently (`upsertJobScheduler` is an override-in-place). Best-effort:
-   * a Redis outage at boot must not stop the app from serving - the next
-   * boot (or replica) re-registers.
+   * Kick off schedule registration WITHOUT awaiting it. This must not block
+   * bootstrap: the queue's ioredis connection has enableOfflineQueue on, so
+   * with Redis down a command never rejects - it queues and the promise
+   * PENDS until Redis returns. An awaited registration would therefore hang
+   * `onModuleInit` and the app would never serve (review finding on this
+   * branch; the old @Cron code booted fine with Redis down). Fire-and-forget
+   * keeps the boot contract, and the queued upserts flush themselves the
+   * moment Redis reconnects - which is also why there is no retry loop here.
    */
-  async onModuleInit(): Promise<void> {
-    try {
-      for (const schedule of Object.values(PLATFORM_SCHEDULES)) {
-        await this.queue.upsertJobScheduler(
-          schedule.name,
-          'every' in schedule
-            ? { every: schedule.every }
-            : { pattern: schedule.pattern, tz: 'UTC' },
-          { name: schedule.name, opts: PLATFORM_SCHEDULE_OPTS },
-        );
-      }
-      this.logger.log(
-        `Registered ${Object.values(PLATFORM_SCHEDULES).length} job schedulers`,
-      );
-    } catch (err) {
+  onModuleInit(): void {
+    void this.registerSchedulers().catch((err: unknown) => {
       this.logger.error(
-        `Failed to register job schedulers (Redis down?): ${
+        `Failed to register job schedulers: ${
           err instanceof Error ? err.message : 'unknown'
         }`,
       );
+    });
+  }
+
+  /**
+   * Upsert every schedule under its fixed id - safe from N replicas
+   * concurrently (`upsertJobScheduler` is an override-in-place) - then prune
+   * any scheduler on the queue that is NOT in PLATFORM_SCHEDULES, so a
+   * renamed entry (or a legacy `repeat` job from reverted code - a
+   * `calendar.ical-poll-tick` from commit 9cf46d4/515a0e7 still ticks every
+   * 15 min on long-lived Redis instances) cannot orphan-tick forever.
+   */
+  private async registerSchedulers(): Promise<void> {
+    const known = new Set<string>(
+      Object.values(PLATFORM_SCHEDULES).map((s) => s.name),
+    );
+    for (const schedule of Object.values(PLATFORM_SCHEDULES)) {
+      await this.queue.upsertJobScheduler(
+        schedule.name,
+        'every' in schedule
+          ? { every: schedule.every }
+          : { pattern: schedule.pattern, tz: 'UTC' },
+        { name: schedule.name, opts: PLATFORM_SCHEDULE_OPTS },
+      );
     }
+    let pruned = 0;
+    for (const stale of await this.queue.getJobSchedulers()) {
+      const id = stale.key ?? stale.name;
+      const name = stale.name ?? stale.key;
+      if ((name && known.has(name)) || (id && known.has(id))) continue;
+      if (!id) continue;
+      await this.queue.removeJobScheduler(id);
+      pruned++;
+      this.logger.warn(`Pruned stale job scheduler '${name ?? id}'`);
+    }
+    this.logger.log(
+      `Registered ${known.size} job schedulers` +
+        (pruned ? `, pruned ${pruned} stale` : ''),
+    );
   }
 
   /**
@@ -94,10 +122,11 @@ export class NightlyJobsService implements OnModuleInit {
   /**
    * Hold-expiry sweeper (master §5 / booking checklist flaw 4). Releases seats from
    * ON_HOLD bookings past their `utcExpiresAt` so an abandoned checkout never causes
-   * a phantom sold-out. Idempotent recompute over an indexed working set, so a
-   * frequent in-process `@Cron` is the right tool (no BullMQ). Every minute keeps
-   * inventory tight; a no-op in the minutes nothing is stale. A payment that lands
-   * AFTER expiry is handled by `confirmFromPayment`'s pay-after-expiry recovery.
+   * a phantom sold-out. Runs as the `booking.hold-expiry-sweep` scheduler tick
+   * (every 60s, single-runner across replicas - F8). Idempotent recompute over an
+   * indexed working set; a no-op in the minutes nothing is stale. A payment that
+   * lands AFTER expiry is handled by `confirmFromPayment`'s pay-after-expiry
+   * recovery.
    */
   async holdExpirySweep(): Promise<void> {
     await this.bookings.expireStaleHolds();

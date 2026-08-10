@@ -36,7 +36,11 @@ export class PlatformJobsProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: Job<PlatformJobData>): Promise<void> {
+  // Scheduled ticks carry `{}` - the type is honest about both shapes, and
+  // the scheduled branch returns before the bookingId destructure.
+  async process(
+    job: Job<PlatformJobData | Record<string, never>>,
+  ): Promise<void> {
     switch (job.name) {
       case PLATFORM_SCHEDULES.HOLD_EXPIRY_SWEEP.name:
         return this.nightlyJobs.holdExpirySweep();
