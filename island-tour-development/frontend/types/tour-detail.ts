@@ -153,6 +153,13 @@ export interface PublicTourDetail {
   categoryIds: string[];
   primaryCategoryId: string | null;
   hubIds: string[];
+  /**
+   * The tour's hubs with their display names (base proper nouns), from the
+   * same `flattenTour` shape every listing carries. `hubs[0]` stands in for
+   * the primary hub (the schema has no `TourHub.isPrimary` yet) - the tour
+   * page H1 composes `{Hub}: {Title}` from it (LD15 / mck-18).
+   */
+  hubs: { id: string; name: string; slug: string }[];
 
   // Pricing
   pricingModel: PricingModel;

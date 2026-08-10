@@ -24,6 +24,7 @@ import {
     priceUnitLabel,
     type PriceUnitLabels,
 } from '@/lib/tours/pricing-label';
+import { hubCardTitle } from '@/lib/tours/tour-name';
 import type {
     HubRender,
     HubRenderComparisonGroup,
@@ -318,7 +319,8 @@ function hitToHubTour(
     hit: SearchHit,
     locale: Locale,
     destinationSlug: string,
-    labels: CardLabels
+    labels: CardLabels,
+    hubName: string
 ): HubTour {
     const { priceDisplay, priceUnit, priceNote } = cardPrice(hit, labels, locale);
     return {
@@ -335,7 +337,10 @@ function hitToHubTour(
                 : undefined,
         reviewCount:
             hit.aggregateReviewCount > 0 ? hit.aggregateReviewCount : undefined,
-        title: hit.title,
+        // COMPOSED "{Hub} {Title}", eyebrow suppressed (founder, Aug 6 2026 /
+        // mck-18 §2): the stored title is hub-free, and the hub page is the one
+        // surface that puts the hub back INTO the card title.
+        title: hubCardTitle(hubName, hit.title),
         shortDescription: hit.shortDescription ?? null,
         attributes: buildCardChips(hit, labels),
         priceDisplay,
@@ -352,7 +357,8 @@ function pickToHubPick(
     priceUnitLabels: PriceUnitLabels,
     tourHref: (slug: string) => string,
     locale: Locale,
-    currency: Currency
+    currency: Currency,
+    hubName: string
 ): HubPick {
     const label = PICK_LABEL_BY_TYPE[pick.pickType] ?? 'best';
     return {
@@ -360,7 +366,8 @@ function pickToHubPick(
         href: tourHref(pick.tour.slug),
         label,
         labelText: labelText[label],
-        title: pick.tour.title,
+        // Same composed form as the trips grid (founder, Aug 6 2026).
+        title: hubCardTitle(hubName, pick.tour.title),
         rating:
             (pick.tour.reviewCount ?? 0) > 0
                 ? (pick.tour.rating ?? undefined)
@@ -394,7 +401,8 @@ function groupToCompareTable(
     priceUnitLabels: PriceUnitLabels,
     tourHref: (slug: string) => string,
     locale: Locale,
-    currency: Currency
+    currency: Currency,
+    hubName: string
 ): CompareTable {
     // Editorial lead row: each column's standout note, split on commas into
     // bullet-joined fragments (e.g. "Dive school, massage with a view").
@@ -413,7 +421,8 @@ function groupToCompareTable(
     return {
         title: group.groupName,
         boats: group.tours.map(ct => ({
-            name: ct.tour.title,
+            // Composed "{Hub} {Title}" like every hub-page card (mck-18 §2).
+            name: hubCardTitle(hubName, ct.tour.title),
             priceDisplay: resolveDisplayPrice(ct.tour, locale, currency)
                 .priceDisplay,
             priceUnit: priceUnitLabel(
@@ -795,7 +804,7 @@ async function HubTripsData({
     };
 
     const linkTour = (hit: SearchHit): HubTour =>
-        hitToHubTour(hit, locale, destinationSlug, cardLabels);
+        hitToHubTour(hit, locale, destinationSlug, cardLabels, render.name);
     const tourHref = (slug: string) =>
         localizeHref(locale, `/${destinationSlug}/${slug}`);
 
@@ -826,7 +835,8 @@ async function HubTripsData({
             priceUnitLabels,
             tourHref,
             locale,
-            currency
+            currency,
+            render.name
         )
     );
 
@@ -837,7 +847,8 @@ async function HubTripsData({
             priceUnitLabels,
             tourHref,
             locale,
-            currency
+            currency,
+            render.name
         )
     );
     const discoverItems = render.discover.map(sectionToDiscoverItem);

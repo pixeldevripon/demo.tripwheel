@@ -23,6 +23,7 @@ import {
 import { getSiteUrl } from '@/lib/seo/site-url';
 import { buildTourBookingData } from '@/lib/tours/booking';
 import { formatDuration } from '@/lib/tours/listing';
+import { tourPageH1 } from '@/lib/tours/tour-name';
 import type { PublicTourExclusion } from '@/types/tour-detail';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
@@ -142,6 +143,15 @@ export async function TourDetailContent({
     // name; `breadcrumbLabel` is the shorter English crumb, falling back to title.
     const title = detail.translation?.title ?? detail.name;
     const breadcrumbLabel = detail.breadcrumbLabel ?? title;
+    // H1: the composed colon form "{Hub or Destination}: {Tour name}" (LD15 /
+    // mck-18 §2). The stored title is hub-free; the H1 ALWAYS carries a prefix,
+    // falling back to the destination for a tour with no hub. Only the H1
+    // composes - the breadcrumb crumb, gallery alts, share text and JSON-LD all
+    // keep the bare tour name. `hubs[0]` stands in for the primary hub until
+    // the schema expresses one (`TourHub` has no `isPrimary`).
+    // `?.` on the array: a detail payload cached before `hubs` shipped has no
+    // key at all, and a 500 over a missing prefix is the wrong trade.
+    const pageH1 = tourPageH1(detail.hubs?.[0]?.name ?? destinationName, title);
     // The DISPLAYED rating and its count - the tour's own, or the operator's when
     // LD11 borrows it, or null when neither qualifies.
     const rating = reviewSummary.rating;
@@ -467,7 +477,7 @@ export async function TourDetailContent({
             />
             <MountReveal>
                 <TourHeader
-                    title={title}
+                    title={pageH1}
                     rating={rating}
                     reviewCount={reviewCount}
                     isLocalsFavourite={isLocalsFavourite}
