@@ -48,6 +48,26 @@ interface HeroSectionProps {
 /** Hero "Popular" quick links (master 5.2 locks the top 3). */
 const POPULAR_LINKS_MAX = 3;
 
+/** Diacritic- and case-insensitive fold, so "Curacao" matches "Curaçao". */
+const fold = (value: string) =>
+    value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase();
+
+/**
+ * "Best Things to Do in Curaçao" → "Best Things to Do". The Popular row sits
+ * under an H1 that already names the island, so a target name ending
+ * "in {island}" repeats it. Display only - the href still opens the
+ * full-named page.
+ */
+function stripIslandSuffix(name: string, destinationName: string): string {
+    const suffix = ` in ${destinationName}`;
+    return fold(name).endsWith(fold(suffix))
+        ? name.slice(0, name.length - suffix.length).trimEnd()
+        : name;
+}
+
 export async function DestinationHeroSection({
     destination,
     locale,
@@ -148,7 +168,9 @@ export async function DestinationHeroSection({
      *
      * Every label is the TARGET PAGE'S OWN NAME - "these links resolve to real
      * pages, so each label has to match the page it opens". Nothing is
-     * hand-typed on either path.
+     * hand-typed on either path. The ONE display transform is
+     * `stripIslandSuffix`: a name ending "in {island}" drops that suffix here,
+     * because the H1 directly above already says the island.
      *
      * Hubs, collections and categories all live in the same flat
      * `/{destination}/{slug}` namespace (the slug registry), so one href shape
@@ -178,7 +200,7 @@ export async function DestinationHeroSection({
     )
         .slice(0, POPULAR_LINKS_MAX)
         .map(item => ({
-            label: item.name,
+            label: stripIslandSuffix(item.name, destinationName),
             href: localizeHref(locale, `/${destination}/${item.slug}`),
         }));
 
