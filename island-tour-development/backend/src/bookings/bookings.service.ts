@@ -589,59 +589,16 @@ export class BookingsService {
     const displayRef = await this.allocateDisplayRef(localStart);
 
     const created = await this.prisma.$transaction(async (tx) => {
-      // Fresh capacity read inside the txn - the guard threshold below is a literal,
-      // so re-reading here keeps it correct against a concurrent capacity edit.
-      const dep = await tx.departure.findUnique({
-        where: { id: dto.departureId },
-        select: { capacity: true },
-      });
-      if (!dep) {
-        throw new UnprocessableEntityException('Departure not found');
-      }
-      const capacity = dep.capacity;
-
-      // Atomic guarded seat claim - the overbooking backstop (master §5). A single
-      // conditional updateMany (type-safe columns): its WHERE re-evaluates against the
-      // current bookedCount under concurrency, so two bookings can't both claim the
-      // last seats (the loser matches 0 rows). The OPEN->SOLD_OUT flip + soldOutAt
-      // stamp follow via recomputeStoredStatus, which derives status from the new fill.
-      const claim = exclusive
-        ? // Exclusive charter (D5): only an OPEN, still-empty departure can be taken;
-          // claim the WHOLE unit so no one else can book it.
-          await tx.departure.updateMany({
-            where: {
-              id: dto.departureId,
-              tourId: dto.tourId,
-              status: DepartureStatus.OPEN,
-              bookedCount: 0,
-            },
-            data: { bookedCount: capacity },
-          })
-        : // Shared / per-person: guarded count-up; claims only if seats remain.
-          await tx.departure.updateMany({
-            where: {
-              id: dto.departureId,
-              tourId: dto.tourId,
-              status: DepartureStatus.OPEN,
-              bookedCount: { lte: capacity - seats },
-            },
-            data: { bookedCount: { increment: seats } },
-          });
-      if (claim.count === 0) {
-        throw new UnprocessableEntityException(
-          exclusive
-            ? 'This departure is no longer available for a private charter'
-            : 'Not enough availability for this departure',
-        );
-      }
-      // Re-derive OPEN/SOLD_OUT + stamp soldOutAt from the new fill (sticky
-      // CLOSED/CANCELLED states are left untouched).
-      await this.recomputeStoredStatus(tx, dto.departureId);
-
       const status = operatorFull
         ? BookingStatus.CONFIRMED
         : BookingStatus.ON_HOLD;
-      return tx.booking.create({
+      // Insert FIRST, claim LAST. The booking rows don't depend on the claim
+      // result, and their FK to `departures` takes FOR KEY SHARE, which does
+      // NOT conflict with the claim's row lock - so the multi-row insert runs
+      // off the contended row's lock window. Rivals on a hot departure then
+      // wait only for the claim UPDATE + commit, not for this insert. A losing
+      // claim below rolls the booking rows back with the transaction.
+      const booking = await tx.booking.create({
         data: {
           id,
           tourId: dto.tourId,
@@ -745,6 +702,25 @@ export class BookingsService {
         },
         include: { unitItems: true },
       });
+
+      // Atomic guarded seat claim - the overbooking backstop (master §5), as
+      // the FINAL statement so the hot-row lock is held for ~one statement +
+      // commit. The guard compares live columns in SQL, so a concurrent
+      // capacity edit is honoured too (no frozen pre-read).
+      const claimed = await this.claimSeats(tx, {
+        departureId: dto.departureId,
+        tourId: dto.tourId,
+        seats,
+        exclusive,
+      });
+      if (!claimed) {
+        throw new UnprocessableEntityException(
+          exclusive
+            ? 'This departure is no longer available for a private charter'
+            : 'Not enough availability for this departure',
+        );
+      }
+      return booking;
     });
 
     this.logger.log(
@@ -1145,34 +1121,24 @@ export class BookingsService {
         if (flip.count === 0) throw new HoldRecoveryAbort('already handled');
 
         if (booking.departureId) {
+          // Existence check only (the claim's guard reads live capacity in
+          // SQL) - kept so a deleted departure logs 'departure gone', not
+          // 'sold out'.
           const dep = await tx.departure.findUnique({
             where: { id: booking.departureId },
-            select: { capacity: true },
+            select: { id: true },
           });
           if (!dep) throw new HoldRecoveryAbort('departure gone');
-          // Same guarded seat-claim as reserve (master §5): exclusive charter takes
-          // the whole still-empty departure; else a conditional count-up.
-          const claim = booking.exclusiveDeparture
-            ? await tx.departure.updateMany({
-                where: {
-                  id: booking.departureId,
-                  tourId: booking.tourId,
-                  status: DepartureStatus.OPEN,
-                  bookedCount: 0,
-                },
-                data: { bookedCount: dep.capacity },
-              })
-            : await tx.departure.updateMany({
-                where: {
-                  id: booking.departureId,
-                  tourId: booking.tourId,
-                  status: DepartureStatus.OPEN,
-                  bookedCount: { lte: dep.capacity - seats },
-                },
-                data: { bookedCount: { increment: seats } },
-              });
-          if (claim.count === 0) throw new HoldRecoveryAbort('sold out');
-          await this.recomputeStoredStatus(tx, booking.departureId);
+          // Same guarded seat-claim as reserve (master §5): exclusive charter
+          // takes the whole still-empty departure; else a conditional
+          // count-up. Status flip + soldOutAt stamp are fused into the claim.
+          const claimed = await this.claimSeats(tx, {
+            departureId: booking.departureId,
+            tourId: booking.tourId,
+            seats,
+            exclusive: booking.exclusiveDeparture,
+          });
+          if (!claimed) throw new HoldRecoveryAbort('sold out');
         }
 
         await tx.bookingUnitItem.updateMany({
@@ -2948,46 +2914,37 @@ export class BookingsService {
         throw new ConflictException('This booking was already restored');
       }
       if (booking.departureId) {
+        // Pre-check kept for its DISTINCT error: a cancelled/deleted departure
+        // is a dead end ("cannot be restored into it"), not a seat shortage.
         const dep = await tx.departure.findUnique({
           where: { id: booking.departureId },
-          select: { capacity: true, status: true },
+          select: { status: true },
         });
         if (!dep || dep.status === DepartureStatus.CANCELLED) {
           throw new ConflictException(
             'This departure was cancelled - the booking cannot be restored into it',
           );
         }
-        // Guarded seat re-claim, mirroring the reserve-time claim: the WHERE
-        // re-evaluates fill under concurrency, so a restore can never overbook
-        // seats that were resold after the cancellation. Unlike reserve it
-        // accepts a SOLD_OUT/CLOSED departure (sticky states stop NEW sales,
-        // not the return of a seat that was wrongly released) - only a
-        // CANCELLED departure is a dead end, checked above.
-        const claim = booking.exclusiveDeparture
-          ? await tx.departure.updateMany({
-              where: {
-                id: booking.departureId,
-                status: { not: DepartureStatus.CANCELLED },
-                bookedCount: 0,
-              },
-              data: { bookedCount: dep.capacity },
-            })
-          : await tx.departure.updateMany({
-              where: {
-                id: booking.departureId,
-                status: { not: DepartureStatus.CANCELLED },
-                bookedCount: { lte: dep.capacity - seats },
-              },
-              data: { bookedCount: { increment: seats } },
-            });
-        if (claim.count === 0) {
+        // Guarded seat re-claim, mirroring the reserve-time claim: the guard
+        // re-evaluates fill (and capacity) under concurrency, so a restore can
+        // never overbook seats that were resold after the cancellation.
+        // `intoSticky`: unlike reserve it accepts a SOLD_OUT/CLOSED departure
+        // (sticky states stop NEW sales, not the return of a seat that was
+        // wrongly released) - only a CANCELLED departure is a dead end.
+        const claimed = await this.claimSeats(tx, {
+          departureId: booking.departureId,
+          tourId: booking.tourId,
+          seats,
+          exclusive: booking.exclusiveDeparture,
+          intoSticky: true,
+        });
+        if (!claimed) {
           throw new ConflictException(
             booking.exclusiveDeparture
               ? 'The departure was rebooked after the cancellation - the private charter cannot be restored'
               : 'Not enough seats left on this departure to restore the booking',
           );
         }
-        await this.recomputeStoredStatus(tx, booking.departureId);
       }
       await tx.bookingUnitItem.updateMany({
         where: { bookingId: booking.id },
@@ -4681,8 +4638,8 @@ export class BookingsService {
     const oldDepartureId = booking.departureId;
 
     const moved = await this.prisma.$transaction(async (tx) => {
-      // Fresh read INSIDE the txn, same reason as reserve: the capacity
-      // threshold below re-evaluates against current state under concurrency.
+      // Read kept for the wrong-tour 404 and the date/startTime the booking
+      // update below snapshots; the claim's guard reads live capacity in SQL.
       const dep = await tx.departure.findUnique({
         where: { id: departureId },
         select: {
@@ -4690,37 +4647,23 @@ export class BookingsService {
           tourId: true,
           date: true,
           startTime: true,
-          capacity: true,
-          status: true,
         },
       });
       if (!dep || dep.tourId !== booking.tourId) {
         throw new NotFoundException('Departure not found for this tour');
       }
 
-      const claim = booking.exclusiveDeparture
-        ? await tx.departure.updateMany({
-            where: {
-              id: departureId,
-              status: DepartureStatus.OPEN,
-              bookedCount: 0,
-            },
-            data: { bookedCount: dep.capacity },
-          })
-        : await tx.departure.updateMany({
-            where: {
-              id: departureId,
-              status: DepartureStatus.OPEN,
-              bookedCount: { lte: dep.capacity - seats },
-            },
-            data: { bookedCount: { increment: seats } },
-          });
-      if (claim.count === 0) {
+      const claimed = await this.claimSeats(tx, {
+        departureId,
+        tourId: booking.tourId,
+        seats,
+        exclusive: booking.exclusiveDeparture,
+      });
+      if (!claimed) {
         throw new UnprocessableEntityException(
           'That departure is no longer available',
         );
       }
-      await this.recomputeStoredStatus(tx, departureId);
       if (oldDepartureId) {
         await this.releaseSeats(
           tx,
@@ -5866,23 +5809,122 @@ export class BookingsService {
   ): Promise<void> {
     if (exclusive) {
       // Exclusive charter release: the whole unit was claimed, so reset to empty.
+      // An absolute write is already idempotent under concurrency.
       await tx.departure.update({
         where: { id: departureId },
         data: { bookedCount: 0 },
       });
     } else {
-      // GREATEST(0, bookedCount - seats): read-modify-write inside the txn so a
-      // release can never drive bookedCount negative.
-      const dep = await tx.departure.findUnique({
-        where: { id: departureId },
-        select: { bookedCount: true },
-      });
-      await tx.departure.update({
-        where: { id: departureId },
-        data: { bookedCount: Math.max(0, (dep?.bookedCount ?? 0) - seats) },
-      });
+      // Atomic clamped decrement IN SQL. The previous read-modify-write lost
+      // decrements when two releases raced (sweeper vs. cancel): both read the
+      // same bookedCount, both wrote from that snapshot, and the later commit
+      // erased the earlier release - seats leaked until an admin noticed.
+      // GREATEST re-evaluates against the current row under the row lock, so
+      // concurrent releases compose and the count can never go negative.
+      await tx.$executeRaw`
+        UPDATE "departures"
+        SET "bookedCount" = GREATEST("bookedCount" - ${seats}, 0)
+        WHERE "id" = ${departureId}`;
     }
     await this.recomputeStoredStatus(tx, departureId);
+  }
+
+  /**
+   * Atomic seat claim - THE overbooking backstop (master §5, invariant 6).
+   * Capacity check + increment + SOLD_OUT flip + `soldOutAt` stamp in ONE
+   * guarded UPDATE, so the contended departure row is held for a single
+   * statement.
+   *
+   * Raw SQL because the guard compares two columns
+   * (`bookedCount + seats <= capacity`), which Prisma's `where` cannot
+   * express - the old shape computed `capacity - seats` in JS from a pre-read,
+   * and under READ COMMITTED that frozen capacity snapshot missed a concurrent
+   * capacity reduction. In-SQL comparison always evaluates the newest row.
+   *
+   * Postgres enum literals are the MAPPED (lowercase) values of
+   * `departure_status`; booking statuses are a different type (UPPERCASE) -
+   * do not mix them up.
+   *
+   * @param intoSticky Restore-only: accept a SOLD_OUT/CLOSED departure (sticky
+   *   states stop NEW sales, not the return of a seat that was wrongly
+   *   released - only CANCELLED is a dead end). Status is then re-derived from
+   *   the new fill with CLOSED kept sticky, exactly as `recomputeStoredStatus`
+   *   used to do after the claim.
+   * @returns false when the claim lost (sold out, closed, or wrong tour/id).
+   */
+  private async claimSeats(
+    tx: Prisma.TransactionClient,
+    args: {
+      departureId: string;
+      tourId: string;
+      seats: number;
+      exclusive: boolean;
+      intoSticky?: boolean;
+    },
+  ): Promise<boolean> {
+    const { departureId, tourId, seats, exclusive, intoSticky } = args;
+    let claimed: number;
+    if (exclusive) {
+      // Exclusive charter (D5): only a still-empty departure can be taken;
+      // claim the WHOLE unit so no one else can book it. A capacity-0
+      // departure flips straight to sold_out with 0 - same as the old
+      // recompute semantics.
+      claimed = intoSticky
+        ? await tx.$executeRaw`
+            UPDATE "departures"
+            SET "bookedCount" = "capacity",
+                "status" = CASE WHEN "status" = 'closed'::"departure_status"
+                                THEN "status"
+                                ELSE 'sold_out'::"departure_status" END,
+                "soldOutAt" = CASE WHEN "status" = 'closed'::"departure_status"
+                                   THEN "soldOutAt"
+                                   ELSE COALESCE("soldOutAt", now()) END
+            WHERE "id" = ${departureId} AND "tourId" = ${tourId}
+              AND "status" <> 'cancelled'::"departure_status"
+              AND "bookedCount" = 0`
+        : await tx.$executeRaw`
+            UPDATE "departures"
+            SET "bookedCount" = "capacity",
+                "status"      = 'sold_out'::"departure_status",
+                "soldOutAt"   = COALESCE("soldOutAt", now())
+            WHERE "id" = ${departureId} AND "tourId" = ${tourId}
+              AND "status" = 'open'::"departure_status"
+              AND "bookedCount" = 0`;
+    } else {
+      // Shared / per-person: guarded count-up; claims only if seats remain.
+      // `>=` in the CASE is deliberate belt-and-braces: with the guard in the
+      // same WHERE, equality is the only reachable branch.
+      claimed = intoSticky
+        ? await tx.$executeRaw`
+            UPDATE "departures"
+            SET "bookedCount" = "bookedCount" + ${seats},
+                "status" = CASE
+                  WHEN "status" = 'closed'::"departure_status" THEN "status"
+                  WHEN "bookedCount" + ${seats} >= "capacity"
+                    THEN 'sold_out'::"departure_status"
+                  ELSE 'open'::"departure_status" END,
+                "soldOutAt" = CASE
+                  WHEN "status" <> 'closed'::"departure_status"
+                   AND "bookedCount" + ${seats} >= "capacity"
+                    THEN COALESCE("soldOutAt", now())
+                  ELSE "soldOutAt" END
+            WHERE "id" = ${departureId} AND "tourId" = ${tourId}
+              AND "status" <> 'cancelled'::"departure_status"
+              AND "bookedCount" + ${seats} <= "capacity"`
+        : await tx.$executeRaw`
+            UPDATE "departures"
+            SET "bookedCount" = "bookedCount" + ${seats},
+                "status" = CASE WHEN "bookedCount" + ${seats} >= "capacity"
+                                THEN 'sold_out'::"departure_status"
+                                ELSE "status" END,
+                "soldOutAt" = CASE WHEN "bookedCount" + ${seats} >= "capacity"
+                                   THEN COALESCE("soldOutAt", now())
+                                   ELSE "soldOutAt" END
+            WHERE "id" = ${departureId} AND "tourId" = ${tourId}
+              AND "status" = 'open'::"departure_status"
+              AND "bookedCount" + ${seats} <= "capacity"`;
+    }
+    return claimed === 1;
   }
 
   /** Re-derive OPEN/SOLD_OUT from the fill; leave sticky CLOSED/CANCELLED untouched. */

@@ -1,6 +1,6 @@
 # Booking Concurrency Hardening — Fix Plan
 
-> **Status: proposed — none of the fixes below are built yet.** Scope: the seat-claim/release
+> **Status: in progress — F1/F2/F3 landed 2026-08-10 (PR-1); F4–F11 not built yet.** Scope: the seat-claim/release
 > transaction path under `backend/` and the operational settings around it (pool, sweeper,
 > load verification). This plan is the outcome of an as-built audit (2026-08-10) of
 > `bookings.service.ts` against `AVAILABILITY-BOOKING-ARCHITECTURE.md`,
@@ -20,9 +20,9 @@ independent and can land in parallel; F7 is the exit gate for the whole batch.
 
 | # | P | Fix | One-liner | Files | Effort |
 |---|---|---|---|---|---|
-| [ ] F1 | 🔴 P0 | Atomic `releaseSeats` | Replace read-modify-write with SQL `GREATEST` decrement | `bookings.service.ts:5861-5885` | S |
-| [ ] F2 | 🔴 P0 | `claimSeats()` helper, guard in SQL | One raw guarded UPDATE (check + increment + `SOLD_OUT` flip fused), replacing 4 duplicated sites | `bookings.service.ts:591-639, 1134-1182, 2927-2990, 4683-4725` | M |
-| [ ] F3 | 🔴 P0* | Claim last in the transaction | Move the guarded UPDATE to be the final statement so the hot-row lock is held for ~1 statement + commit | `bookings.service.ts` `reserve` txn | S (with F2) |
+| [x] F1 | 🔴 P0 | Atomic `releaseSeats` | **DONE 2026-08-10** - SQL `GREATEST` decrement; race-tested on real PG (`test/booking-concurrency.e2e-spec.ts`) | `bookings.service.ts:releaseSeats` | S |
+| [x] F2 | 🔴 P0 | `claimSeats()` helper, guard in SQL | **DONE 2026-08-10** - one raw guarded UPDATE (check + increment + `SOLD_OUT` flip fused), 4 call sites; `intoSticky` mode preserves restore's accept-SOLD_OUT/CLOSED semantics | `bookings.service.ts:claimSeats` | M |
+| [x] F3 | 🔴 P0* | Claim last in the transaction | **DONE 2026-08-10** - `booking.create` first, `claimSeats` is the final statement of the reserve txn | `bookings.service.ts` `reserve` txn | S (with F2) |
 | [ ] F4 | 🟠 P1 | Idempotent replay on reserve | Honour the client-supplied `dto.id` as a real idempotency key: pre-check + P2002 catch → return the existing booking | `bookings.service.ts` `reserve` entry | M |
 | [ ] F5 | 🟠 P1 | DB CHECK constraint | `0 <= "bookedCount" <= "capacity"` as a database backstop | new migration + capacity-edit paths | S/M |
 | [ ] F6 | 🟠 P1 | Explicit pool + timeouts | Pool max, connect/statement/lock timeouts — today everything is node-postgres defaults (max **10**, no timeouts) | `prisma.service.ts:10-19`, `env.validate.ts`, `.env.example` | S |
@@ -556,8 +556,8 @@ baseline. PR-6/7 are pre-scale-out work. F10 is a product decision with no code 
 
 ## 4. Definition of done (whole plan)
 
-- [ ] No read-modify-write on `bookedCount` anywhere (`grep -n "bookedCount" bookings.service.ts` shows only the raw guarded statements and absolute exclusive writes).
-- [ ] Exactly one `claimSeats` implementation; four call sites.
+- [x] No read-modify-write on `bookedCount` anywhere (`grep -n "bookedCount" bookings.service.ts` shows only the raw guarded statements and absolute exclusive writes). DONE 2026-08-10.
+- [x] Exactly one `claimSeats` implementation; four call sites. DONE 2026-08-10.
 - [ ] Reserve replay with a reused `id` returns the existing booking; parallel duplicates produce one row.
 - [ ] `departures_booked_within_capacity` constraint live in prod; capacity writers return 409, never 500.
 - [ ] Pool size + timeouts explicit in config and `.env.example`; lock/statement timeouts observable in logs.
