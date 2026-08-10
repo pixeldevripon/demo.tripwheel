@@ -108,6 +108,8 @@ There is no automatic forfeit and no automated balance nudge.
 ```
 ON_HOLD ──confirm/webhook──▶ CONFIRMED ──admin──▶ CANCELLED
    │                             │
+   ├──public cancel (checkout abandon)──▶ CANCELLED
+   │
    └──sweeper (TTL lapsed)──▶ EXPIRED ──pay-after-expiry recovery──▶ CONFIRMED
                                  │
                                  └─(seats gone: stays EXPIRED, refund owed)
@@ -119,14 +121,18 @@ ON_HOLD ──confirm/webhook──▶ CONFIRMED ──admin──▶ CANCELLED
   is born CONFIRMED at commit (modeled but **disabled in v1** - see §7).
 - `EXPIRED` — the every-minute sweeper released a lapsed hold; a payment that
   lands after expiry triggers the atomic recovery (re-claim seats or refund).
-- `CANCELLED` — admin-confirmed cancellation (traveller-requested or
-  operator-forced); restore is guarded and re-claims seats.
+- `CANCELLED` — for a CONFIRMED booking, admin-confirmed only
+  (traveller-requested or operator-forced); an ON_HOLD booking may also be
+  cancelled by the PUBLIC checkout-abandon release (deliberately
+  unauthenticated, idempotent - nothing was paid). Restore is guarded and
+  re-claims seats.
 - `REDEEMED` / `PENDING` / `REJECTED` exist in the enum for OCTO/check-in
   semantics; no write path assigns them yet.
 
-Full transition detail: `AVAILABILITY-BOOKING-ARCHITECTURE.md` §11.2. (The
-`pending_payment → confirmed` machine this section previously described was
-the pre-build design and never shipped.)
+`AVAILABILITY-BOOKING-ARCHITECTURE.md` §11.2 shows the core hold/confirm
+path; the diagram above is the full as-built set including recovery and
+restore. (The `pending_payment → confirmed` machine this section previously
+described was the pre-build design and never shipped.)
 
 ### Cancellation flow (C1) — no raw-click cancel
 

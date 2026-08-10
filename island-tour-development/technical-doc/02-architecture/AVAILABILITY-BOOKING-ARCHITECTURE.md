@@ -413,8 +413,10 @@ succeed past capacity** - the database serializes them.
 When the claim fills the departure, the same statement flips it to `SOLD_OUT` and
 stamps `soldOutAt`.
 
-As built (hardening F1-F3, 2026-08-10) this SQL is LITERAL - one raw guarded
-UPDATE in `claimSeats()`, shared by reserve, pay-after-expiry recovery,
+As built (hardening F1-F3, 2026-08-10) this SQL is the shared-claim variant
+of `claimSeats()` - semantically identical (code quotes camelCase columns and
+uses COALESCE for the stamp; four guarded variants exist: exclusive-charter x
+restore mode), shared by reserve, pay-after-expiry recovery,
 restore (an `intoSticky` mode accepts SOLD_OUT/CLOSED for returning seats;
 only CANCELLED refuses) and date-change. In the reserve transaction the claim
 runs LAST, after the booking insert, so the hot row's lock spans ~one
