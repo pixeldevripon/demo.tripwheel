@@ -1124,5 +1124,25 @@
         "saving": "保存中……",
         "error": "提交失败，请重试。",
         "verifiedNote": "无论评分高低，您的评价都会完整发布。Island Tours 上的每条评价均来自已确认的预订。"
+    },
+    "unsubscribe": {
+        "invalidTitle": "此链接已失效。",
+        "invalidBody": "链接可能不完整，或来自很久以前的邮件。如果您仍收到不想要的邮件，请联系我们，我们会为您处理。",
+        "invalidBrowse": "浏览行程",
+        "titleLifecycle": "退订设置邮件？",
+        "titleMarketing": "退订旅行灵感和优惠邮件？",
+        "bodyLifecycle": "您将不再收到关于在 Island Tours 上设置行程的提示和提醒。",
+        "bodyMarketing": "您将不再收到 Island Tours 偶尔发送的旅行灵感和优惠。",
+        "emailLine": "适用于 {email}。",
+        "confirm": "退订",
+        "working": "正在退订...",
+        "alreadyTitle": "您已退订。",
+        "alreadyBody": "我们不会再向该地址发送这类邮件。",
+        "successTitle": "退订成功。",
+        "successBody": "您将不再收到这类邮件。",
+        "transactionalNote": "关于您预订的邮件 - 确认、变更和取消通知 - 始终会送达。",
+        "error": "操作未成功。",
+        "retry": "请重试。",
+        "browse": "浏览行程"
     }
 }

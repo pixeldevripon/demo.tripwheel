@@ -132,6 +132,33 @@ describe('proxy', () => {
             const res = await proxy(req('/curacao/thank-you/BK-1/extra'));
             expect(rewriteTarget(res)).toBeNull();
         });
+
+        it('serves the unsubscribe page from the default-locale branch', async () => {
+            const token = '0b6a3f0e-4c7e-4b4e-9f5e-1a2b3c4d5e6f';
+            const res = await proxy(req(`/unsubscribe/${token}`));
+            expect(rewriteTarget(res)).toBe(`${ORIGIN}/en/unsubscribe/${token}`);
+        });
+
+        it('REWRITES the unsubscribe URL rather than redirecting it', async () => {
+            // One-click-unsubscribe scanners refuse to follow redirects; a 302
+            // here silently breaks every mailbox provider's unsubscribe button.
+            const res = await proxy(req('/unsubscribe/some-token'));
+            expect(res.status).not.toBe(307);
+            expect(res.headers.get('location')).toBeNull();
+        });
+
+        it('rewrites the unsubscribe URL even when a locale cookie disagrees', async () => {
+            // The URL was printed in an email footer - it must not change.
+            const res = await proxy(
+                req('/unsubscribe/tok-1', { cookies: { [LOCALE_COOKIE]: 'de' } }),
+            );
+            expect(rewriteTarget(res)).toBe(`${ORIGIN}/en/unsubscribe/tok-1`);
+        });
+
+        it('does not rewrite a deeper path under /unsubscribe', async () => {
+            const res = await proxy(req('/unsubscribe/tok-1/extra'));
+            expect(rewriteTarget(res)).toBeNull();
+        });
     });
 
     describe('locale resolution on the redirect', () => {
@@ -263,6 +290,9 @@ describe('proxy', () => {
             expect(matcher.test('/')).toBe(true);
             expect(matcher.test('/curacao/thank-you/BK-1')).toBe(true);
             expect(matcher.test('/cancel/BK-1')).toBe(true);
+            expect(
+                matcher.test('/unsubscribe/0b6a3f0e-4c7e-4b4e-9f5e-1a2b3c4d5e6f'),
+            ).toBe(true);
             expect(matcher.test('/login')).toBe(true);
         });
     });

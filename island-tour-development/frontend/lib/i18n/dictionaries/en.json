@@ -1124,5 +1124,25 @@
         "saving": "Saving...",
         "error": "That didn't go through. Please try again.",
         "verifiedNote": "Your review is published in full, whatever the score. Every review on Island Tours comes from a confirmed booking."
+    },
+    "unsubscribe": {
+        "invalidTitle": "This link is no longer valid.",
+        "invalidBody": "The unsubscribe link may be incomplete or from a very old email. If you keep getting emails you don't want, get in touch and we'll sort it out.",
+        "invalidBrowse": "Browse tours",
+        "titleLifecycle": "Unsubscribe from setup emails?",
+        "titleMarketing": "Unsubscribe from travel ideas and offers?",
+        "bodyLifecycle": "You'll stop getting our tips and reminders about setting up your tours on Island Tours.",
+        "bodyMarketing": "You'll stop getting occasional travel ideas and offers from Island Tours.",
+        "emailLine": "This applies to {email}.",
+        "confirm": "Unsubscribe",
+        "working": "Unsubscribing...",
+        "alreadyTitle": "You're already unsubscribed.",
+        "alreadyBody": "We won't send these emails to this address.",
+        "successTitle": "You're unsubscribed.",
+        "successBody": "You won't get these emails anymore.",
+        "transactionalNote": "Emails about your bookings - confirmations, changes and cancellations - always arrive.",
+        "error": "That didn't go through.",
+        "retry": "Please try again.",
+        "browse": "Browse tours"
     }
 }

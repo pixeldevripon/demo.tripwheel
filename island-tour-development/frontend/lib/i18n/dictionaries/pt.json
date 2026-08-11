@@ -1124,5 +1124,25 @@
         "saving": "A guardar...",
         "error": "Não foi possível enviar. Tente novamente.",
         "verifiedNote": "A sua avaliação é publicada na íntegra, seja qual for a nota. Todas as avaliações na Island Tours vêm de uma reserva confirmada."
+    },
+    "unsubscribe": {
+        "invalidTitle": "Este link já não é válido.",
+        "invalidBody": "O link pode estar incompleto ou vir de um e-mail muito antigo. Se continuar a receber e-mails que não quer, fale connosco e resolvemos.",
+        "invalidBrowse": "Ver tours",
+        "titleLifecycle": "Cancelar a subscrição dos e-mails de configuração?",
+        "titleMarketing": "Cancelar a subscrição de ideias de viagem e ofertas?",
+        "bodyLifecycle": "Vai deixar de receber as nossas dicas e lembretes sobre a configuração dos seus tours no Island Tours.",
+        "bodyMarketing": "Vai deixar de receber ideias de viagem e ofertas ocasionais do Island Tours.",
+        "emailLine": "Isto aplica-se a {email}.",
+        "confirm": "Cancelar subscrição",
+        "working": "A cancelar...",
+        "alreadyTitle": "A subscrição já foi cancelada.",
+        "alreadyBody": "Não enviaremos estes e-mails para este endereço.",
+        "successTitle": "Subscrição cancelada.",
+        "successBody": "Já não vai receber estes e-mails.",
+        "transactionalNote": "Os e-mails sobre as suas reservas - confirmações, alterações e cancelamentos - chegam sempre.",
+        "error": "Não foi possível concluir.",
+        "retry": "Tente novamente.",
+        "browse": "Ver tours"
     }
 }
