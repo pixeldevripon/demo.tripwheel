@@ -18,7 +18,7 @@
 | 2 | WP-D onboarding sequence | backend | `feat/email-onboarding-sequence` | **merged** | #185 |
 | 2 | WP-E dashboard surfaces | dashboard | `feat/operator-onboarding-dashboard` | **merged** | #56 |
 | 2 | WP-F unsubscribe page | frontend | `feat/unsubscribe-page` | **merged** | #183 |
-| 3 | WP-G consent + MK-1 | backend | `feat/email-mk1-marketing` | not started | — |
+| 3 | WP-G consent + MK-1 | backend | `feat/email-mk1-marketing` | **in review** | — |
 
 Gates: WP-B/D/F start after WP-A merges · WP-D/E also need WP-C · WP-E's edit-form change merges
 AFTER WP-C (DTO strips `verificationStatus`) · **WP-G may not merge until WP-F is live in prod.**
@@ -359,48 +359,48 @@ AFTER WP-C (DTO strips `verificationStatus`) · **WP-G may not merge until WP-F 
 
 ### Consent record
 
-- [ ] G-01 On booking create where `newsletterOptIn: true` is persisted
+- [x] G-01 On booking create where `newsletterOptIn: true` is persisted
       (`bookings.service.ts:683` region): upsert `EmailConsent`
       (`source: 'checkout-newsletter-opt-in'`, bookingId, lowercased contact email)
-- [ ] G-02 Backfill migration: `INSERT … SELECT` from historical `newsletterOptIn=true` bookings
+- [x] G-02 Backfill migration: `INSERT … SELECT` from historical `newsletterOptIn=true` bookings
       with `ON CONFLICT DO NOTHING` (idempotent, re-runnable)
-- [ ] G-03 Spec asserting the upsert fires only on `true` and never blocks booking creation
+- [x] G-03 Spec asserting the upsert fires only on `true` and never blocks booking creation
 
 ### MK-1 template & selection
 
-- [ ] G-04 `templates/next-adventure-email.template.html` — locked from the funnel wireframe:
+- [x] G-04 `templates/next-adventure-email.template.html` — locked from the funnel wireframe:
       "Still have days left on the island?", 3 tour cards (image, name, rating, duration, from
       price, open-days line, one-liner, "See times ›"), "See all {n} tours" link,
       free-reschedule line, personal sign-off, unsubscribe footer
-- [ ] G-05 Enforce: no discount, no countdown, no scarcity lines anywhere in the template
-- [ ] G-06 Card selection service: candidates = published tours in the booking's destination with
+- [x] G-05 Enforce: no discount, no countdown, no scarcity lines anywhere in the template
+- [x] G-06 Card selection service: candidates = published tours in the booking's destination with
       an OPEN departure inside 7 days (live availability at send time), excluding the booked
       tour; pick contrast (different category) / adjacent (same category) / flagship (top
       quality_score); dedupe; <3 qualifying → no send
-- [ ] G-07 <3 qualifying → `recordSuppressed(MK1, bookingId, 'insufficient-open-tours')`
-- [ ] G-08 7-locale copy module; subject A ships (subject B field kept in the module, unused)
-- [ ] G-09 Render spec: token coverage, wireframe diff, forbidden-content assertions (G-05)
+- [x] G-07 <3 qualifying → `recordSuppressed(MK1, bookingId, 'insufficient-open-tours')`
+- [x] G-08 7-locale copy module; subject A ships (subject B field kept in the module, unused)
+- [x] G-09 Render spec: token coverage, wireframe diff, forbidden-content assertions (G-05)
 
 ### Trigger, gate, suppressions
 
-- [ ] G-10 MK-1 candidates evaluated in the lifecycle sweep: `tour_end + 72h` reached, MARKETING
+- [x] G-10 MK-1 candidates evaluated in the lifecycle sweep: `tour_end + 72h` reached, MARKETING
       stream, Curaçao-morning window
-- [ ] G-11 Consent gate: send ONLY when `EmailConsent` exists for the contact email AND no
+- [x] G-11 Consent gate: send ONLY when `EmailConsent` exists for the contact email AND no
       MARKETING `EmailOptOut` — empty consent table ⇒ zero sends (asserted in spec, the launch
       switch is the data)
-- [ ] G-12 Suppressions at send time, each with its reason row: booked again (another booking,
+- [x] G-12 Suppressions at send time, each with its reason row: booked again (another booking,
       same email, created after this one) · booking cancelled/forfeited/operator-cancelled ·
       no-show · 1–2★ review left · opted out · complained (no signal exists today — documented
       skip in code comment)
-- [ ] G-13 `claimAndSend(MK1, bookingId)`
-- [ ] G-14 Footer: unsubscribe token link + `List-Unsubscribe` + `List-Unsubscribe-Post:
+- [x] G-13 `claimAndSend(MK1, bookingId)`
+- [x] G-14 Footer: unsubscribe token link + `List-Unsubscribe` + `List-Unsubscribe-Post:
       List-Unsubscribe=One-Click` headers
 
 ### Tests & ship
 
-- [ ] G-15 Selection spec: category contrast/adjacent/flagship, 7-day availability edge, <3 drop
-- [ ] G-16 Suppression matrix spec (each of the six + consent-missing + opt-out)
-- [ ] G-17 Backfill assertion (run twice → same count)
+- [x] G-15 Selection spec: category contrast/adjacent/flagship, 7-day availability edge, <3 drop
+- [x] G-16 Suppression matrix spec (each of the six + consent-missing + opt-out)
+- [x] G-17 Backfill assertion (run twice → same count)
 - [ ] G-18 Suite green · reviewer agent pass · docs same-commit · PR merged · verify WP-F
       unsubscribe URL resolves in prod BEFORE enabling the sweep path
 
