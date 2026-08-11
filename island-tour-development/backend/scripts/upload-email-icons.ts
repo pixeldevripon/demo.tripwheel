@@ -4,7 +4,7 @@
  * Run:  pnpm email:icons:upload   (from backend/)
  *
  * Why this exists:
- *   The locked wireframe (technical-doc/island-tours-booking-confirmation-email-wireframe.html)
+ *   The locked wireframe (technical-doc/emails/island-tours-booking-confirmation-email-wireframe.html)
  *   draws its 14 icon sites with inline <svg>. Gmail strips <svg> outright and
  *   Outlook's Word rendering engine never supported it, so inline SVG would ship
  *   blank gutters to most travelers. The icons are therefore rasterized by

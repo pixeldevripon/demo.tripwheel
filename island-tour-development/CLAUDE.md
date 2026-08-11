@@ -410,7 +410,7 @@ PrismaModule inside individual modules.
     tier-linked, target ~30% coverage. Only admins with `MANAGE_EDITORIAL` toggle it, via
     `PATCH /tours/:id/locals-favourite` (curated on the `/dashboard/locals-favourites` page).
     It is NOT in `CreateTourDto`/`UpdateTourDto` and must never be re-added to the operator
-    tour form. See `technical-doc/LOCALS-FAVOURITE-EDITORIAL-CHECKLIST.md`.
+    tour form. See `technical-doc/03-implementation/LOCALS-FAVOURITE-EDITORIAL-CHECKLIST.md`.
 
 ---
 

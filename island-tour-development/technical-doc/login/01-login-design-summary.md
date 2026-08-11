@@ -1,7 +1,7 @@
 # Island Tours Login Design - Detailed Summary
 
-> Summarized from `technical-doc/island-tours-login-design-spec.md` (proposal v0.1) and
-> `technical-doc/island-tours-login-research-and-rationale.md`. The third companion file,
+> Summarized from `technical-doc/login/island-tours-login-design-spec.md` (proposal v0.1) and
+> `technical-doc/login/island-tours-login-research-and-rationale.md`. The third companion file,
 > `island-tours-login-pages.html`, is the interactive mockup that visualizes every screen
 > described below with sample data.
 >

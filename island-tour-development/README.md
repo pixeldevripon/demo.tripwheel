@@ -84,7 +84,7 @@ All technical documentation lives in [`technical-doc/`](./technical-doc/). The c
 
 - [Documentation index](./technical-doc/README.md) — start here
 - [Master checklist](./technical-doc/MASTER-CHECKLIST.md) — build status (single source of truth for progress)
-- [Application features](./technical-doc/APPLICATION-FEATURES.md) — feature inventory (built / partial / missing)
+- [Application features](./technical-doc/01-project-scope/APPLICATION-FEATURES-AND-TASKS.md) — feature inventory (built / partial / missing)
 - [Commercial model](./technical-doc/02-architecture/COMMERCIAL-MODEL.md) — commission tiers, ranking, eligibility
 
 ---

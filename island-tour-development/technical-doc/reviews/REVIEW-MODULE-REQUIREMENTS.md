@@ -2,9 +2,9 @@
 
 > Derived from four source docs, read in full on 2026-07-22:
 > - `technical-doc/island-tours-platform-master.html` (v1.9) - **canonical, wins every conflict**
-> - `technical-doc/island-tours-review-strategy.html` (advisory v0.2)
-> - `technical-doc/island-tours-review-strategy-verification.html` (adversarial fact-check of v0.1)
-> - `technical-doc/island-tours-review-system-build-vs-buy.html` (build vs buy)
+> - `technical-doc/reviews/island-tours-review-strategy.html` (advisory v0.2)
+> - `technical-doc/reviews/island-tours-review-strategy-verification.html` (adversarial fact-check of v0.1)
+> - `technical-doc/reviews/island-tours-review-system-build-vs-buy.html` (build vs buy)
 >
 > Companion docs: `REVIEW-MODULE-PLAN.md` (how we build it) and
 > `REVIEW-MODULE-CHECKLIST.md` (trackable task list).
