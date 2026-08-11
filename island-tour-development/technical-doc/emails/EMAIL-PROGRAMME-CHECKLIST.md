@@ -14,10 +14,10 @@
 | --- | --- | --- | --- | --- | --- |
 | 1 | WP-A send spine | backend | `feat/email-send-spine` | **merged** | #181 |
 | 1 | WP-C operator state machine | backend | `feat/operator-onboarding-state` | **merged** | #180 |
-| 2 | WP-B customer funnel | backend | `feat/email-customer-funnel` | **in review** | #186 |
-| 2 | WP-D onboarding sequence | backend | `feat/email-onboarding-sequence` | **in review** | #185 |
-| 2 | WP-E dashboard surfaces | dashboard | `feat/operator-onboarding-dashboard` | not started | — |
-| 2 | WP-F unsubscribe page | frontend | `feat/unsubscribe-page` | **in review** | #183 |
+| 2 | WP-B customer funnel | backend | `feat/email-customer-funnel` | **merged** | #186 |
+| 2 | WP-D onboarding sequence | backend | `feat/email-onboarding-sequence` | **merged** | #185 |
+| 2 | WP-E dashboard surfaces | dashboard | `feat/operator-onboarding-dashboard` | **merged** | #56 |
+| 2 | WP-F unsubscribe page | frontend | `feat/unsubscribe-page` | **merged** | #183 |
 | 3 | WP-G consent + MK-1 | backend | `feat/email-mk1-marketing` | not started | — |
 
 Gates: WP-B/D/F start after WP-A merges · WP-D/E also need WP-C · WP-E's edit-form change merges
@@ -267,7 +267,7 @@ AFTER WP-C (DTO strips `verificationStatus`) · **WP-G may not merge until WP-F 
 
 ### Ship
 
-- [ ] B-28 Full suite green (incl. adapter-shape e2e specs) · reviewer agent pass · docs
+- [x] B-28 Full suite green (incl. adapter-shape e2e specs) · reviewer agent pass · docs
       same-commit · PR merged
 
 ## WP-D — Onboarding sequence — `feat/email-onboarding-sequence` (after WP-A + WP-C)
@@ -353,7 +353,7 @@ AFTER WP-C (DTO strips `verificationStatus`) · **WP-G may not merge until WP-F 
 - [x] D-22 Sweeper spec: window closed → zero sends; each anchor/offset; each suppression reason
       row; volume-cap priority; opt-out honoured; suspension kills all; INT1R business days
 - [x] D-23 Template token-coverage specs (one per template, `findUnresolvedTokens` empty)
-- [ ] D-24 Suite green · reviewer agent pass · docs same-commit · PR merged
+- [x] D-24 Suite green · reviewer agent pass · docs same-commit · PR merged
 
 ## WP-G — Consent + MK-1 — `feat/email-mk1-marketing` (LAST; gated on WP-F live in prod)
 
@@ -415,68 +415,68 @@ change, no `lib/cache-tags.ts` change.**
 
 ### API layer
 
-- [ ] E-01 `types/email.ts` — `EmailSendRow` mirroring plan §2.2 (templateKey, stream, status,
+- [x] E-01 `types/email.ts` — `EmailSendRow` mirroring plan §2.2 (templateKey, stream, status,
       toEmail, locale, suppressedReason, error, createdAt)
-- [ ] E-02 `lib/api/emails.ts` — `emailsApi.listForOperator(id)`, `listForBooking(id)`,
+- [x] E-02 `lib/api/emails.ts` — `emailsApi.listForOperator(id)`, `listForBooking(id)`,
       `resend(operatorId, templateKey)` over `apiFetch`
-- [ ] E-03 `lib/api/operators.ts` — `operatorsApi.decideVerification(id, decision)` →
+- [x] E-03 `lib/api/operators.ts` — `operatorsApi.decideVerification(id, decision)` →
       `POST /operators/:id/verification`
-- [ ] E-04 `hooks/emails/use-operator-emails.ts` (+ booking variant) with `emailKeys` factory
-- [ ] E-05 `hooks/operators/use-operators.ts` — `useDecideVerification` mutation invalidating
+- [x] E-04 `hooks/emails/use-operator-emails.ts` (+ booking variant) with `emailKeys` factory
+- [x] E-05 `hooks/operators/use-operators.ts` — `useDecideVerification` mutation invalidating
       `operatorKeys` on success, `sonner` toasts
-- [ ] E-06 `types/operator.ts` — add `toursSubmitted`, `firstTourLiveAt`, `verificationDecidedAt`
+- [x] E-06 `types/operator.ts` — add `toursSubmitted`, `firstTourLiveAt`, `verificationDecidedAt`
       from WP-C's list API
 
 ### Verification queue
 
-- [ ] E-07 Route `app/(app)/tour-operators/verification/page.tsx` + `loading.tsx` (thin header +
+- [x] E-07 Route `app/(app)/tour-operators/verification/page.tsx` + `loading.tsx` (thin header +
       list view, Spotlight-queue pattern)
-- [ ] E-08 Nav entry under `Configure` in `navigations/navigations.ts`
+- [x] E-08 Nav entry under `Configure` in `navigations/navigations.ts`
       (`permissions: [Permission.MANAGE_OPERATORS]`)
-- [ ] E-09 `components/operators/verification-queue-view.tsx` — `useTableState` +
+- [x] E-09 `components/operators/verification-queue-view.tsx` — `useTableState` +
       `useOperators({ verificationStatus: 'PENDING' })`, `DataTable`
-- [ ] E-10 Queue columns: company, signatory, email, phone/WhatsApp, KvK, accepted-at,
+- [x] E-10 Queue columns: company, signatory, email, phone/WhatsApp, KvK, accepted-at,
       days-pending (highlight ≥2 business days — the INT1R threshold)
-- [ ] E-11 Approve dialog (confirm copy: triggers OB-2A "You're approved" email) →
+- [x] E-11 Approve dialog (confirm copy: triggers OB-2A "You're approved" email) →
       `useDecideVerification('VERIFIED')`
-- [ ] E-12 Reject dialog (consequence copy: operator cannot add tours; no email is sent) →
+- [x] E-12 Reject dialog (consequence copy: operator cannot add tours; no email is sent) →
       `useDecideVerification('REJECTED')`
-- [ ] E-13 Row click opens an operator detail sheet (detail-sheet idiom) with the email timeline
+- [x] E-13 Row click opens an operator detail sheet (detail-sheet idiom) with the email timeline
       (E-17) inside
-- [ ] E-14 Empty state ("No operators waiting for review") via `data-table-empty`
+- [x] E-14 Empty state ("No operators waiting for review") via `data-table-empty`
 
 ### Edit form & pipeline facets
 
-- [ ] E-15 `operator-details-form.tsx:174-198` — replace the raw `verificationStatus` `<Select>`
+- [x] E-15 `operator-details-form.tsx:174-198` — replace the raw `verificationStatus` `<Select>`
       with the read-only `OPERATOR_VERIFICATION` badge + (when PENDING) Approve/Reject buttons
       calling E-05 (**merge after WP-C's DTO strips the field**)
-- [ ] E-16 Operators list (`operators-list-view.tsx`): status filter chips (All / Pending /
+- [x] E-16 Operators list (`operators-list-view.tsx`): status filter chips (All / Pending /
       Verified / Rejected) + facet chips "0 tours" and "first tour live" from E-06 fields — the
       zero-tour non-responder view for human CRM follow-up
 
 ### Email timeline
 
-- [ ] E-17 `components/operators/operator-email-timeline.tsx` on `Section`/`Row` from
+- [x] E-17 `components/operators/operator-email-timeline.tsx` on `Section`/`Row` from
       `components/common/detail-sheet.tsx`: template label, status badge, sent-at, suppression
       reason / error line
-- [ ] E-18 `EMAIL_SEND` badge map in `components/common/status-maps.ts`
+- [x] E-18 `EMAIL_SEND` badge map in `components/common/status-maps.ts`
       (SENT/FAILED/SUPPRESSED with hints)
-- [ ] E-19 Human labels for `EmailTemplateKey` (e.g. `OB3_FIRST_TOUR_HOWTO` → "First tour,
+- [x] E-19 Human labels for `EmailTemplateKey` (e.g. `OB3_FIRST_TOUR_HOWTO` → "First tour,
       step by step") in a `lib/` map — single source for queue + timeline
-- [ ] E-20 Per-row Resend action (OB set + OB-2A only) → `emailsApi.resend`, confirm dialog,
+- [x] E-20 Per-row Resend action (OB set + OB-2A only) → `emailsApi.resend`, confirm dialog,
       toast, invalidate `emailKeys`
-- [ ] E-21 Timeline surfaced in: verification queue row sheet (E-13) AND the operator edit page
-- [ ] E-22 Booking email rows (BK/CX keys) appended to the existing Timeline section in
+- [x] E-21 Timeline surfaced in: verification queue row sheet (E-13) AND the operator edit page
+- [x] E-22 Booking email rows (BK/CX keys) appended to the existing Timeline section in
       `components/bookings/booking-details-sheet.tsx` via `listForBooking`
 
 ### Verify & ship
 
-- [ ] E-23 RBAC negative check: STAFF login without `MANAGE_OPERATORS` sees no nav entry, no
+- [x] E-23 RBAC negative check: STAFF login without `MANAGE_OPERATORS` sees no nav entry, no
       queue, no Approve buttons
-- [ ] E-24 Type-check + lint clean; NO diffs in `lib/config/rbac.ts` / `lib/cache-tags.ts`
-- [ ] E-25 Manual click-through checklist in the PR body (queue approve → OB-2A visible in
+- [x] E-24 Type-check + lint clean; NO diffs in `lib/config/rbac.ts` / `lib/cache-tags.ts`
+- [x] E-25 Manual click-through checklist in the PR body (queue approve → OB-2A visible in
       timeline; reject; facets; resend; booking timeline) — this repo has no CI
-- [ ] E-26 Reviewer agent pass · PR merged
+- [x] E-26 Reviewer agent pass · PR merged
 
 ---
 
@@ -522,7 +522,7 @@ Needs WP-A's two public endpoints. Must be **live in production before WP-G merg
 - [x] F-13 Vitest: loader null-on-404 / shape-on-200; confirm component success + error states
 - [x] F-14 Playwright e2e: happy path (resolve → confirm → success), invalid token state,
       bare-URL rewrite lands on the page (not a redirect)
-- [ ] F-15 `pnpm test` + `pnpm test:e2e` green · reviewer agents (frontend-code-reviewer +
+- [x] F-15 `pnpm test` + `pnpm test:e2e` green · reviewer agents (frontend-code-reviewer +
       frontend-security-reviewer in parallel, verify findings against source) · docs same-commit
       · PR merged
 
