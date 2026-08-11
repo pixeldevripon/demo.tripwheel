@@ -19,7 +19,7 @@
 | 2 | WP-E dashboard surfaces | dashboard | `feat/operator-onboarding-dashboard` | **merged** | #56 |
 | 2 | WP-F unsubscribe page | frontend | `feat/unsubscribe-page` | **merged** | #183 |
 | 3 | WP-G consent + MK-1 | backend | `feat/email-mk1-marketing` | **merged** | #188 |
-| 4 | WP-H email centre (API) | backend | `feat/email-settings-api` | **PR open** | — |
+| 4 | WP-H email centre (API) | backend | `feat/email-settings-api` | **PR open** | #192 |
 | 4 | WP-H email centre (UI) | dashboard | `feat/email-centre-dashboard` | not started | — |
 
 Gates: WP-B/D/F start after WP-A merges · WP-D/E also need WP-C · WP-E's edit-form change merges
