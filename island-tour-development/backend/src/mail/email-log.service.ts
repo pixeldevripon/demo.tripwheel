@@ -11,10 +11,12 @@ import {
   EmailTemplateKey,
   Prisma,
   Role,
+  Permission,
 } from '@prisma/client';
 import { assertBookingReadAccess } from '@/common/utils/operator.util';
 import { PrismaService } from '@/prisma/prisma.service';
 import { redactEmail } from '@/common/utils/redact-email.util';
+import { StaffPermissionsService } from '@/staff/staff-permissions.service';
 
 /** Truncation cap for the `error` column — a log line, not a stack dump. */
 const ERROR_MAX_CHARS = 500;
@@ -84,7 +86,10 @@ export const TIMELINE_SELECT = {
 export class EmailLogService {
   private readonly logger = new Logger(EmailLogService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly staffPermissions: StaffPermissionsService,
+  ) {}
 
   /**
    * Claim the `(templateKey, scopeId)` slot, then send. See class JSDoc for
@@ -261,7 +266,24 @@ export class EmailLogService {
     if (!booking) throw new NotFoundException('Booking not found');
     // Shared with BookingsService.assertCanView - one scope rule, no drift.
     await assertBookingReadAccess(this.prisma, booking, actor);
-    return this.listForScope(bookingId);
+    const rows = await this.listForScope(bookingId);
+    // Conflict #7 parity: a seat may hold VIEW_BOOKINGS without
+    // VIEW_BOOKING_FINANCIALS (guide/manifest projection), and the booking
+    // payload deliberately nulls the traveller's contact for it - so the
+    // email timeline must not hand the same seat `toEmail` through a side
+    // door. Owners always see their own address; everyone else needs the
+    // EFFECTIVE financials permission (designations can withhold it).
+    const ownRow = booking.userId !== null && booking.userId === actor.id;
+    if (!ownRow) {
+      const effective = await this.staffPermissions.getEffectivePermissions({
+        id: actor.id,
+        role: actor.role,
+      });
+      if (!effective.includes(Permission.VIEW_BOOKING_FINANCIALS)) {
+        return rows.map((r) => ({ ...r, toEmail: redactEmail(r.toEmail) }));
+      }
+    }
+    return rows;
   }
 
   /** Admin-resend scope id: `${scopeId}#resend-${n}`. */

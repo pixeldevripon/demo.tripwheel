@@ -68,10 +68,18 @@ const baseInput = () => ({
 describe('EmailLogService', () => {
   let prisma: ReturnType<typeof mockPrisma>;
   let svc: EmailLogService;
+  /** Effective-permission stub: defaults to a full-financials platform seat. */
+  let effectivePermissions: string[];
 
   beforeEach(() => {
     prisma = mockPrisma();
-    svc = new EmailLogService(prisma as never);
+    effectivePermissions = ['VIEW_BOOKINGS', 'VIEW_BOOKING_FINANCIALS'];
+    const staffPermissions = {
+      getEffectivePermissions: jest
+        .fn()
+        .mockImplementation(() => Promise.resolve(effectivePermissions)),
+    };
+    svc = new EmailLogService(prisma as never, staffPermissions as never);
   });
 
   describe('claimAndSend', () => {
@@ -334,6 +342,44 @@ describe('EmailLogService', () => {
       await expect(
         svc.listForBooking('b1', { id: 'owner', role: Role.USER }),
       ).resolves.toEqual([]);
+    });
+
+    it('masks toEmail for a seat without effective VIEW_BOOKING_FINANCIALS', async () => {
+      // Conflict #7 parity: the manifest projection nulls the traveller's
+      // contact for guide-level seats; the email timeline must not hand the
+      // same seat the address through a side door.
+      effectivePermissions = ['VIEW_BOOKINGS'];
+      prisma.booking.findUnique.mockResolvedValue({
+        id: 'b1',
+        operatorId: 'op-1',
+        userId: 'someone-else',
+      });
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+      prisma.emailSend.findMany.mockResolvedValue([
+        { toEmail: 'traveller@example.com', templateKey: 'BK1_CONFIRMATION' },
+      ]);
+      const rows = await svc.listForBooking('b1', {
+        id: 'guide-seat',
+        role: Role.TOUR_OPERATOR,
+      });
+      expect(rows[0].toEmail).toBe('t***@example.com');
+    });
+
+    it('never masks the owner reading their own booking, whatever the permission set', async () => {
+      effectivePermissions = [];
+      prisma.booking.findUnique.mockResolvedValue({
+        id: 'b1',
+        operatorId: 'op-1',
+        userId: 'owner',
+      });
+      prisma.emailSend.findMany.mockResolvedValue([
+        { toEmail: 'owner@example.com', templateKey: 'BK1_CONFIRMATION' },
+      ]);
+      const rows = await svc.listForBooking('b1', {
+        id: 'owner',
+        role: Role.USER,
+      });
+      expect(rows[0].toEmail).toBe('owner@example.com');
     });
   });
 });
