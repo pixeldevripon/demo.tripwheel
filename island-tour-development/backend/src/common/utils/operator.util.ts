@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { Role, StaffStatus } from '@prisma/client';
 import type { PrismaService } from '@/prisma/prisma.service';
 
@@ -74,4 +74,26 @@ export async function resolveOperatorId(
   throw new BadRequestException(
     'No operator profile found. Please complete your operator registration first.',
   );
+}
+
+/**
+ * Booking read scope, extracted so `BookingsService.assertCanView` and
+ * `EmailLogService.listForBooking` cannot drift: the permission guard decides
+ * WHO may call a booking read route, this decides WHOSE booking they get.
+ * Platform-wide roles pass; a TOUR_OPERATOR passes only for their own tours'
+ * bookings (via `resolveOperatorId`, which 400s an unfinished registration);
+ * otherwise only the booking owner passes.
+ */
+export async function assertBookingReadAccess(
+  prisma: PrismaService,
+  booking: { operatorId: string | null; userId: string | null },
+  actor: { id: string; role: Role },
+): Promise<void> {
+  if (isPlatformWideBookingRole(actor.role)) return;
+  if (actor.role === Role.TOUR_OPERATOR) {
+    const operatorId = await resolveOperatorId(prisma, actor.id, actor.role);
+    if (booking.operatorId === operatorId) return;
+  }
+  if (booking.userId && booking.userId === actor.id) return;
+  throw new ForbiddenException('You do not have access to this booking');
 }

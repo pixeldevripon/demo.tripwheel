@@ -1,3 +1,4 @@
+import { redactEmail } from '@/common/utils/redact-email.util';
 import { authPrismaClient } from '@/auth/auth-prisma.client';
 import { Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs';
@@ -93,7 +94,13 @@ export interface SendMailOptions {
    * (OB-6 uses the founder's own, `OB6_REPLY_TO`).
    */
   replyTo?: string;
-  /** Custom SMTP headers (`List-Unsubscribe`, `List-Unsubscribe-Post`, …). */
+  /**
+   * Custom SMTP headers (`List-Unsubscribe`, `List-Unsubscribe-Post`, …).
+   * CONTRACT: values must never contain caller/user-supplied strings and
+   * never CR/LF - build them from server-minted tokens and env-derived URLs
+   * only. (Resend serializes JSON, but the rule keeps a transport swap from
+   * becoming an injection surface.)
+   */
   headers?: Record<string, string>;
   /** Attachments (operator agreement PDF, …). Resend caps at 40 MB total. */
   attachments?: { filename: string; content: Buffer }[];
@@ -118,9 +125,7 @@ export class MailService {
 
   /** Redacts a recipient for logs: keeps first char + domain (e.g. j***@host.com). */
   private redact(email: string): string {
-    const [local, domain] = email.split('@');
-    if (!domain) return '***';
-    return `${local.slice(0, 1)}***@${domain}`;
+    return redactEmail(email);
   }
 
   // ── Core send method ──────────────────────────────────────────────────────────

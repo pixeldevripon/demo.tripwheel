@@ -12,11 +12,9 @@ import {
   Prisma,
   Role,
 } from '@prisma/client';
-import {
-  isPlatformWideBookingRole,
-  resolveOperatorId,
-} from '@/common/utils/operator.util';
+import { assertBookingReadAccess } from '@/common/utils/operator.util';
 import { PrismaService } from '@/prisma/prisma.service';
+import { redactEmail } from '@/common/utils/redact-email.util';
 
 /** Truncation cap for the `error` column — a log line, not a stack dump. */
 const ERROR_MAX_CHARS = 500;
@@ -92,6 +90,14 @@ export class EmailLogService {
    * Claim the `(templateKey, scopeId)` slot, then send. See class JSDoc for
    * the ordering rationale. Returns instead of throwing — the callers are
    * sweep loops and best-effort hooks that must survive one bad recipient.
+   *
+   * SWEEPS MUST NOT USE THE CLAIM AS THEIR DEDUPE. A P2002-rejected INSERT
+   * still writes a dead heap tuple + WAL before aborting on the index -
+   * harmless as a race-closer, pathological as the primary filter (a 15-min
+   * sweep re-claiming every candidate is ~100k dead tuples/day of autovacuum
+   * churn). Pre-filter candidates with an anti-join / NOT EXISTS on
+   * (templateKey, scopeId) - the unique index supports it perfectly - and let
+   * the claim close only the residual race.
    */
   async claimAndSend(input: ClaimAndSendInput): Promise<ClaimAndSendResult> {
     let claimId: string;
@@ -116,7 +122,7 @@ export class EmailLogService {
       // so nothing was sent and nothing needs repair. Report, don't throw.
       const msg = err instanceof Error ? err.message : 'unknown claim error';
       this.logger.error(
-        `Claim failed for ${input.templateKey}/${input.scopeId}: ${msg}`,
+        `Claim failed for ${input.templateKey}/${EmailLogService.redactScope(input.scopeId)}: ${msg}`,
       );
       return { outcome: 'failed', error: msg.slice(0, ERROR_MAX_CHARS) };
     }
@@ -139,7 +145,7 @@ export class EmailLogService {
       const msg = err instanceof Error ? err.message : 'unknown send error';
       const truncated = msg.slice(0, ERROR_MAX_CHARS);
       this.logger.error(
-        `Send failed for ${input.templateKey}/${input.scopeId}: ${truncated}`,
+        `Send failed for ${input.templateKey}/${EmailLogService.redactScope(input.scopeId)}: ${truncated}`,
       );
       // The row keeps its slot (no automated retry) but tells the truth.
       await this.prisma.emailSend
@@ -150,7 +156,7 @@ export class EmailLogService {
         })
         .catch((updateErr: unknown) =>
           this.logger.error(
-            `Could not mark ${input.templateKey}/${input.scopeId} FAILED: ` +
+            `Could not mark ${input.templateKey}/${EmailLogService.redactScope(input.scopeId)} FAILED: ` +
               `${updateErr instanceof Error ? updateErr.message : 'unknown'}`,
           ),
         );
@@ -188,7 +194,7 @@ export class EmailLogService {
     } catch (err) {
       if (EmailLogService.isSendSlotTaken(err)) return { recorded: false };
       this.logger.error(
-        `Suppression record failed for ${input.templateKey}/${input.scopeId}: ` +
+        `Suppression record failed for ${input.templateKey}/${EmailLogService.redactScope(input.scopeId)}: ` +
           `${err instanceof Error ? err.message : 'unknown'}`,
       );
       return { recorded: false };
@@ -221,9 +227,12 @@ export class EmailLogService {
   async listForScope(scopeId: string) {
     return this.prisma.emailSend.findMany({
       where: {
-        OR: [{ scopeId }, { scopeId: { startsWith: `${scopeId}#resend-` } }],
+        OR: [{ scopeId }, { scopeId: EmailLogService.resendRange(scopeId) }],
       },
       orderBy: { createdAt: 'desc' },
+      // Domain-bounded (a handful of templates per scope + manual resends);
+      // the cap makes the bound structural rather than behavioural.
+      take: 200,
       select: TIMELINE_SELECT,
     });
   }
@@ -250,20 +259,8 @@ export class EmailLogService {
       select: { id: true, operatorId: true, userId: true },
     });
     if (!booking) throw new NotFoundException('Booking not found');
-    if (!isPlatformWideBookingRole(actor.role)) {
-      let allowed = booking.userId === actor.id;
-      if (!allowed && actor.role === Role.TOUR_OPERATOR) {
-        const operatorId = await resolveOperatorId(
-          this.prisma,
-          actor.id,
-          actor.role,
-        );
-        allowed = booking.operatorId === operatorId;
-      }
-      if (!allowed) {
-        throw new ForbiddenException('You do not have access to this booking');
-      }
-    }
+    // Shared with BookingsService.assertCanView - one scope rule, no drift.
+    await assertBookingReadAccess(this.prisma, booking, actor);
     return this.listForScope(bookingId);
   }
 
@@ -273,9 +270,30 @@ export class EmailLogService {
   }
 
   /**
+   * All `#resend-*` rows for a base scope as an explicit btree range instead
+   * of `startsWith`: a LIKE prefix only uses the index under `C` collation,
+   * and nothing pins the database to it - a restore onto a glibc/ICU cluster
+   * would silently turn every timeline read into a full table scan. \uffff
+   * sorts above every character that can follow the prefix in a scope id.
+   */
+  private static resendRange(scopeId: string) {
+    const prefix = `${scopeId}#resend-`;
+    return { gte: prefix, lt: `${prefix}\uffff` };
+  }
+
+  /** Redacts email-shaped scope ids (MK-1 scopes are lowercased addresses). */
+  private static redactScope(scopeId: string): string {
+    return scopeId.includes('@') ? redactEmail(scopeId) : scopeId;
+  }
+
+  /**
    * The next free resend scope id for `(templateKey, scopeId)`: n = count of
    * existing rows for the base scope (base row = 1 → first resend is
    * `#resend-1`). WP-D's resend endpoint is the only caller.
+   *
+   * Two CONCURRENT resends compute the same n; the loser's claim P2002s and
+   * claimAndSend reports 'skipped/already-sent' - misleading for an admin who
+   * clicked Resend. The endpoint must retry once with n+1 on that outcome.
    */
   async nextResendScopeId(
     templateKey: EmailTemplateKey,
@@ -284,7 +302,7 @@ export class EmailLogService {
     const n = await this.prisma.emailSend.count({
       where: {
         templateKey,
-        OR: [{ scopeId }, { scopeId: { startsWith: `${scopeId}#resend-` } }],
+        OR: [{ scopeId }, { scopeId: EmailLogService.resendRange(scopeId) }],
       },
     });
     return EmailLogService.resendScopeId(scopeId, n);

@@ -151,7 +151,9 @@ model EmailUnsubscribeToken {
   audience  EmailAudience
   stream    EmailStream
   createdAt DateTime      @default(now())
-  @@index([email])
+  // One reusable token per triple, DB-enforced: concurrent issuance must
+  // converge on one row (upsert), never mint parallel forever-valid tokens.
+  @@unique([email, audience, stream])
   @@map("email_unsubscribe_tokens")
 }
 ```

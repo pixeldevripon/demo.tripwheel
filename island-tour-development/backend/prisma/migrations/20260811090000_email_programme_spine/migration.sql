@@ -87,4 +87,4 @@ CREATE UNIQUE INDEX "email_opt_outs_email_audience_stream_key" ON "public"."emai
 CREATE UNIQUE INDEX "email_consents_email_key" ON "public"."email_consents"("email" ASC);
 
 -- CreateIndex
-CREATE INDEX "email_unsubscribe_tokens_email_idx" ON "public"."email_unsubscribe_tokens"("email" ASC);
+CREATE UNIQUE INDEX "email_unsubscribe_tokens_email_audience_stream_key" ON "public"."email_unsubscribe_tokens"("email" ASC, "audience" ASC, "stream" ASC);

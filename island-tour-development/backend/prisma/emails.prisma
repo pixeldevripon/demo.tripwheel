@@ -74,6 +74,6 @@ model EmailUnsubscribeToken {
   stream    EmailStream
   createdAt DateTime      @default(now())
 
-  @@index([email])
+  @@unique([email, audience, stream])
   @@map("email_unsubscribe_tokens")
 }

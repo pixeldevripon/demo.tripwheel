@@ -290,7 +290,9 @@ describe('EmailLogService', () => {
           where: {
             OR: [
               { scopeId: 'op-1' },
-              { scopeId: { startsWith: 'op-1#resend-' } },
+              // Collation-proof btree range, not startsWith (a LIKE prefix
+              // only uses the index under C collation).
+              { scopeId: { gte: 'op-1#resend-', lt: 'op-1#resend-\uffff' } },
             ],
           },
           orderBy: { createdAt: 'desc' },

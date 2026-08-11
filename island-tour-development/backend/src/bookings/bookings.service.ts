@@ -74,6 +74,7 @@ import { ACTIVE_BOOKING_STATUSES } from '@/common/constants/booking-status';
 import {
   isPlatformWideBookingRole,
   resolveOperatorId,
+  assertBookingReadAccess,
 } from '@/common/utils/operator.util';
 import {
   combineDateTime,
@@ -5594,18 +5595,11 @@ export class BookingsService {
   ): Promise<void> {
     // Platform staff/editors reach the read routes only through the
     // VIEW_BOOKINGS permission gate (see bookings.controller) - platform-wide
-    // read, same as the list scope.
-    if (isPlatformWideBookingRole(actor.role)) return;
-    if (actor.role === Role.TOUR_OPERATOR) {
-      const operatorId = await resolveOperatorId(
-        this.prisma,
-        actor.id,
-        actor.role,
-      );
-      if (booking.operatorId === operatorId) return;
-    }
-    if (booking.userId && booking.userId === actor.id) return;
-    throw new ForbiddenException('You do not have access to this booking');
+    // read, same as the list scope. The actual scope rule is shared with
+    // EmailLogService.listForBooking via assertBookingReadAccess - one
+    // implementation, so booking visibility cannot drift between the booking
+    // payload and its email timeline.
+    await assertBookingReadAccess(this.prisma, booking, actor);
   }
 
   private async loadContext(dto: PricingInput) {

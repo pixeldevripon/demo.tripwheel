@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { EmailAudience, EmailStream } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
+import { redactEmail } from '@/common/utils/redact-email.util';
 import { EmailLogService } from './email-log.service';
 
 /**
@@ -35,16 +36,18 @@ export class EmailPreferencesService {
     stream: EmailStream,
   ): Promise<string> {
     const canonical = email.toLowerCase();
-    const existing = await this.prisma.emailUnsubscribeToken.findFirst({
-      where: { email: canonical, audience, stream },
+    // Upsert on the (email, audience, stream) unique: concurrent senders for
+    // the same triple converge on ONE token row instead of minting parallel
+    // forever-valid credentials.
+    const row = await this.prisma.emailUnsubscribeToken.upsert({
+      where: {
+        email_audience_stream: { email: canonical, audience, stream },
+      },
+      create: { email: canonical, audience, stream },
+      update: {},
       select: { token: true },
     });
-    if (existing) return existing.token;
-    const created = await this.prisma.emailUnsubscribeToken.create({
-      data: { email: canonical, audience, stream },
-      select: { token: true },
-    });
-    return created.token;
+    return row.token;
   }
 
   /** GET resolve: what would this token opt out of, and is it already done? */
@@ -118,10 +121,8 @@ export class EmailPreferencesService {
     return row;
   }
 
-  /** `jane@host.com` → `j***@host.com` (the MailService.redact pattern). */
+  /** `jane@host.com` → `j***@host.com` (shared redaction, single owner). */
   static maskEmail(email: string): string {
-    const [local, domain] = email.split('@');
-    if (!domain) return '***';
-    return `${local.slice(0, 1)}***@${domain}`;
+    return redactEmail(email);
   }
 }

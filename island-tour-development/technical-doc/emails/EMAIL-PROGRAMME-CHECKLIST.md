@@ -297,6 +297,27 @@ AFTER WP-C (DTO strips `verificationStatus`) · **WP-G may not merge until WP-F 
 - [ ] D-10 All new templates exported from `templates/index.ts`; every lifecycle footer carries
       the WP-A unsubscribe token link ("Prefer no setup emails? Opt out here")
 
+### Wave-1 review carry-overs (bind on this package)
+
+- [ ] D-25 Sweeps pre-filter candidates with an anti-join / `NOT EXISTS` on
+      `(templateKey, scopeId)` and use `claimAndSend` only to close the residual
+      race — a P2002-rejected INSERT still writes a dead tuple, and re-claiming
+      every candidate each 15-min tick is permanent autovacuum churn
+      (perf review M1; JSDoc on `claimAndSend` states the rule)
+- [ ] D-26 Suppression evaluator excludes ADMIN shadow operators: an admin
+      publishing their own tour gets `firstTourLiveAt` stamped like anyone else
+      (`operator.util.ts` auto-provisions the row) — gate every OB nudge on
+      `verificationStatus = VERIFIED` so shadow operators never enter the drip
+      (security review of #180, LOW-4)
+- [ ] D-27 Resend endpoint retries once with n+1 when `claimAndSend` reports
+      `skipped/already-sent` after `nextResendScopeId` — two concurrent admin
+      resends compute the same n (JSDoc on `nextResendScopeId`)
+- [ ] D-28 `List-Unsubscribe`/`List-Unsubscribe-Post` header values built ONLY
+      from server-minted tokens + env URLs — the `SendMailOptions.headers`
+      contract forbids user-supplied strings and CR/LF
+- [ ] D-29 If WP-D adds any FAILED-send monitoring query, add the
+      `[status, createdAt]` composite index in the same PR (perf review L2)
+
 ### Sweeper (`src/mail/onboarding-emails.service.ts` or `EmailProgrammeModule`)
 
 - [ ] D-11 Fill `emailLifecycleSweep()`: query due candidates per anchor —

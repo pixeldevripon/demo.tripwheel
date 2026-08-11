@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Post } from '@nestjs/common';
+import { Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Public } from '@/auth/decorators/public.decorator';
@@ -27,7 +27,7 @@ export class EmailPreferencesController {
   @Public()
   @Throttle({ medium: { limit: 10, ttl: 60000 } })
   @ApiResolveUnsubscribeTokenDocs()
-  resolve(@Param('token') token: string) {
+  resolve(@Param('token', new ParseUUIDPipe({ version: '4' })) token: string) {
     return this.preferences.resolveToken(token);
   }
 
@@ -35,7 +35,7 @@ export class EmailPreferencesController {
   @Public()
   @Throttle({ medium: { limit: 10, ttl: 60000 } })
   @ApiActOnUnsubscribeTokenDocs()
-  optOut(@Param('token') token: string) {
+  optOut(@Param('token', new ParseUUIDPipe({ version: '4' })) token: string) {
     return this.preferences.optOut(token);
   }
 }
