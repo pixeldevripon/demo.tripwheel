@@ -1,164 +1,218 @@
 # Email programme — the runbook (plain language)
 
-> How the whole email system works, how to test it, how to configure it, and how to launch it.
-> Written for operating the system, not building it. Technical companions:
-> [`EMAIL-IMPLEMENTATION-PLAN.md`](./EMAIL-IMPLEMENTATION-PLAN.md) (architecture + contracts),
-> [`EMAIL-PROGRAMME-CHECKLIST.md`](./EMAIL-PROGRAMME-CHECKLIST.md) (task-level status).
+> The operator's manual for the whole email system: what exists, how it decides to send, how you
+> control it from the dashboard, how to test it, and what to do when something looks wrong.
+> Technical companions: [`EMAIL-IMPLEMENTATION-PLAN.md`](./EMAIL-IMPLEMENTATION-PLAN.md)
+> (architecture + contracts), [`EMAIL-PROGRAMME-CHECKLIST.md`](./EMAIL-PROGRAMME-CHECKLIST.md)
+> (task-level build status).
+>
+> The dashboard **Email** section described throughout ships in dashboard PR #57
+> (`feat/email-centre-dashboard`); the API behind it is live in production.
 
 ## 1. The big picture — three parts, one ledger
 
-- **Backend (the engine).** Decides who gets which email and when, renders it, sends it through
-  Resend, and writes every decision into one ledger table (`email_sends`). One row per email per
-  booking/operator: **Sent**, **Failed**, or **Suppressed (with the reason)**. The database
-  refuses a duplicate row, so the same email can physically never send twice — even if servers
-  crash mid-way and retry.
-- **Public site (what travellers see).** One page: `https://<site>/unsubscribe/<token>`. Every
-  nudge/marketing email carries a personal link there; one click records the opt-out. Booking
-  emails are never affected by opting out.
-- **Dashboard (what admins see).** The Operator Verification queue (Approve/Reject — approving IS
-  what fires the "You're approved" email and starts the onboarding sequence), an **email timeline
-  on every operator** (with per-email Resend), and email rows on every **booking's detail sheet**.
+**The backend is the engine.** It decides who gets which email and when, renders it in the right
+language, sends it through the email provider (Resend), and writes **every decision** into one
+ledger. One row per email per booking/operator, with exactly three possible outcomes:
 
-Behind the scenes a **scheduler wakes every 15 minutes**, asks "who is due right now?", checks
-every rule (right day and hour, not opted out, still eligible, not already decided), and sends —
-capped at 200 per cycle, paced at ~2 per second, with a 15-second timeout per send, so a bad
-email-provider day degrades gracefully instead of exploding.
+| Outcome | Meaning |
+| --- | --- |
+| **Sent** | Handed to the email provider successfully |
+| **Failed** | The provider refused or was unreachable — the row keeps the error text |
+| **Suppressed** | The system *deliberately decided not to send* — the row keeps the reason (e.g. `opted-out`, `tours-submitted`, `no-consent`) |
+
+The database physically refuses a second row for the same email + same person, so a duplicate
+send is impossible — even if servers crash mid-way and retry.
+
+**The public site owns one page:** `https://<site>/unsubscribe/<token>`. Every nudge and
+marketing email carries a personal link there; one click records the opt-out. Booking emails are
+never affected by opting out — they're part of the purchase.
+
+**The dashboard is your control room.** Two places matter:
+- **Configure → Operator Verification** — your Approve click is itself an email trigger (it sends
+  "You're approved" and starts the onboarding sequence).
+- **Email** (the new section) — everything else: the global log, every switch and timing, the
+  opt-out/consent lists, and a test-send button. Section 3 walks through it.
+
+**The heartbeat:** a scheduler wakes **every 15 minutes**, asks "who is due right now?", checks
+every rule (right day and hour, switch on, not opted out, still eligible, not already decided),
+and sends — capped at 200 per cycle, paced at ~2 per second, 15-second timeout per send. A bad
+email-provider day degrades gracefully; it can never snowball.
 
 ## 2. Every email and its trigger
 
-**Traveller emails** (7-language copy, resolved from the traveller's booking locale):
+**Traveller emails** — 7 languages, chosen from the traveller's booking:
 
 | Email | Fires | Won't fire when |
 | --- | --- | --- |
-| **BK-1 Confirmation** | Instantly on booking confirmed | — (subject switches to "today/tomorrow" for last-minute bookings) |
-| **BK-2 Pre-tour reminder** | 24h before tour start (tour-local) | Booking cancelled/expired, cancellation request pending, booked <24h before start (BK-1 covers it), no contact email |
-| **BK-3 Review request** | The morning after the tour (~10:00 tour-local) | **Master switch is OFF** (`ReviewRequestSettings.enabled`); cancelled/no-longer-completed bookings |
-| **BK-3R Review reminder** | 5 days after BK-3, once only | Review already submitted; same master switch |
-| **CX-1 Cancellation confirmed** | When the admin confirms a cancellation | — (wording adapts to how the booking was paid) |
-| **MK-1 Next adventure** (marketing) | 72h after tour end, mornings 09:00–11:00 Curaçao | **Master switch `MK1_ENABLED` is OFF (ships dark)**; no consent recorded, opted out, booked again, cancelled, 1–2★ review, or fewer than 3 bookable tours to recommend |
+| **Booking confirmation** (BK-1) | Instantly when a booking is confirmed | — (subject switches to "today/tomorrow" for last-minute bookings) |
+| **Pre-tour reminder** (BK-2) | 24h before tour start, tour-local time | Cancelled/expired; a cancellation request is pending; booked <24h before start (BK-1 covers it); no contact email |
+| **Review request** (BK-3) | The morning after the tour (~10:00 tour-local) | **Reviews switch is OFF**; booking no longer completed |
+| **Review reminder** (BK-3R) | 5 days after the request, once only | Review already submitted; same switch |
+| **Cancellation confirmed** (CX-1) | When the admin confirms a cancellation | — (wording adapts to how the booking was paid) |
+| **Next adventure** (MK-1, marketing) | 72h* after tour end, mornings 09:00–11:00* Curaçao | **Marketing switch OFF (ships dark)**; no consent; opted out; booked again; cancelled; 1–2★ review; fewer than 3 bookable tours to recommend |
 
-**Operator emails** (English):
+**Operator emails** — English:
 
 | Email | Fires | Won't fire when |
 | --- | --- | --- |
-| **OB-1 Verify email** | On signup | — |
-| **OB-2 Welcome + agreement** | Operator account created | — |
-| **INT-1 → sales inbox** | Operator account created | No `SALES_EMAIL`/`ADMIN_EMAIL` configured (logged, skipped) |
-| **OB-2A You're approved** | **Admin clicks Approve** in the dashboard queue | — (this moment anchors the whole sequence) |
-| **OB-3 First tour, step by step** | 2 days after approval, Tue–Thu 09:00–11:00 | They already submitted a tour; opted out; suspended |
-| **OB-4 We'll build it with you** | 7 days after approval, same window | Same as OB-3 |
-| **OB-5 Your tour is live** | Instantly on first tour published | Operator suspended or not approved |
-| **OB-6 How's it going?** (from the founder) | 14 days after approval, same window — ends the sequence | Suspended; opted out |
-| **OB-7 Connect your calendar** | 3 days after first tour live | **Calendar flag is OFF** (waits, never burned); calendar already connected; opted out |
-| **OB-8 Better photos** | 7 days after first tour live | Opted out; suspended |
-| **INT1R → sales inbox** | Operator still awaiting approval after 2 business days | No sales/admin address configured |
-| **INT-2 → sales inbox** | Any tour submitted for review | Only sends the sales copy when `SALES_EMAIL` differs from `ADMIN_EMAIL` |
+| **Verify email** (OB-1) | On signup | — |
+| **Welcome + agreement** (OB-2) | Operator account created | — |
+| **New operator → sales inbox** (INT-1) | Operator account created | No sales/admin address configured (logged, skipped) |
+| **You're approved** (OB-2A) | **Your Approve click** in the verification queue | — (this moment anchors the whole sequence) |
+| **First tour, step by step** (OB-3) | 2 days* after approval, Tue–Thu 09–11* | Already submitted a tour; opted out; suspended; onboarding switch off |
+| **We'll build it with you** (OB-4) | 7 days* after approval, same window | Same as OB-3 |
+| **Your tour is live** (OB-5) | Instantly on first tour published | Suspended or not approved |
+| **How's it going?** (OB-6, from the founder) | 14 days* after approval — ends the sequence | Suspended; opted out; onboarding switch off |
+| **Connect your calendar** (OB-7) | 3 days* after first tour live | **Calendar switch OFF** (waits — nobody is skipped permanently); calendar already connected; opted out |
+| **Better photos** (OB-8) | 7 days* after first tour live | Opted out; suspended; onboarding switch off |
+| **Still pending → sales inbox** (INT1R) | Operator awaiting approval > 2 business days* | No sales/admin address |
+| **New tour → sales inbox** (INT-2) | Any tour submitted for review | Sales copy only when the sales address differs from the admin address |
 
-Extra rule for the nudges: **max one lifecycle email per operator per 3 days**, priority OB-6 >
-OB-7 > OB-8, and everything stops instantly on suspension or opt-out.
+Every value marked __*__ is editable in **Email → Settings**; the shown number is the built-in
+default that applies while the field is empty. Extra guardrails on the nudges: **max one
+lifecycle email per operator per 3 days** (priority: check-in > calendar > photos), and
+everything stops instantly on suspension or opt-out.
 
-## 3. How to test it, step by step
+**Booking emails (confirmation, reminder, cancellation) have NO off switch anywhere — on
+purpose.** They're contractual; the API rejects any attempt to invent such a switch.
 
-1. **Operator flow:** dashboard → Tour Operators → Add. Sales inbox gets INT-1; the operator
-   address gets OB-2. Open the operator → the **email timeline** shows both rows.
-2. **Approval:** Configure → Operator Verification → Approve. The operator gets OB-2A; the row
-   leaves the queue; the timeline grows.
-3. **Booking flow:** make a test booking on the site → BK-1 arrives; the booking's detail sheet
-   in the dashboard shows the row. The T-24h reminder appears on the timeline when its moment
-   comes (or as *Suppressed* with the reason if it shouldn't send).
-4. **Unsubscribe:** click the opt-out link in any nudge → the public page confirms → future
-   nudges show as `Suppressed: opted-out` in the timeline instead of sending.
-5. **Resend:** in an operator timeline, Resend on any onboarding email → confirm → a new
-   "Resend" row appears. (The dialog warns you if the recipient has opted out.)
-6. **If emails don't physically arrive** on a dev machine: check `RESEND_API_KEY` is set —
-   without it, rows appear as *Failed* ("service not configured") but every decision is still
-   logged, which is what you're testing.
+## 3. The dashboard Email section — your control room
 
-## 4. Configuration — where every switch lives TODAY
+### Email → Activity (the global log)
 
-Since WP-H's backend, the switchboard is the API: `GET/PATCH /email/settings`
-(admin-only). Every dashboard setting starts EMPTY and the old env/built-in
-value keeps applying until an admin explicitly stores an override — nothing
-changed on deploy. "Dashboard setting (env fallback)" below means exactly
-that: stored value first, env var second, built-in default last.
+Every email decision across the whole platform, newest first. Filter by email type (all 18),
+outcome (Sent / Failed / Suppressed), stream (booking / onboarding / marketing / internal),
+recipient address, and date range. Click any row for the full story: exact timestamps, the
+suppression reason or error text, the provider's message id, and — for onboarding emails — a
+**Resend** button.
 
-| What | Where it lives today | Dashboard-editable? |
+How to read a row:
+- **Sent** — it went out. Done.
+- **Suppressed** — the system chose not to send and the reason says why. This is usually the
+  system *working*: `opted-out` (they unsubscribed), `tours-submitted` (the nudge became
+  irrelevant), `no-consent` (marketing gate), `suspended`, `insufficient-open-tours` (MK-1
+  couldn't find 3 bookable tours), `cancellation-pending`, and so on.
+- **Failed** — transport problem. The error text is on the row; check the Resend dashboard if it
+  persists.
+- A scope starting `test:` is a test-send (yours); a scope ending `#resend-N` was a manual resend.
+
+**Test-send button** (toolbar): pick any of the 18 emails → it sends a sample-data render **to
+your own signed-in address** (it cannot be pointed anywhere else) → the row appears in the list.
+The fastest way to see any email in a real inbox.
+
+### Email → Settings (the switchboard)
+
+One form, everything configurable. Every field starts as **"Using default (X)"** — the built-in
+value keeps applying until you type something. Set a value and it takes effect within about a
+minute (and within 15 minutes for schedule timing, the sweep cadence). Every field has a **"Use
+default"** action to clear back. Only the fields you changed are saved.
+
+| Group | Fields | Defaults |
 | --- | --- | --- |
-| Review request + reminder ON/OFF + timings | `ReviewRequestSettings` row in the database (`enabled`, default **false**) | **Yes** — rides the same `/email/settings` payload (WP-H); UI in the email-centre dashboard PR |
-| Onboarding nudges OB-3…OB-8 ON/OFF | Dashboard setting (built-in fallback: **on**). Off = "not yet": nothing is written, nobody is skipped permanently | **Yes** (WP-H API) |
-| Calendar email (OB-7) ON/OFF | Dashboard setting (`CALENDAR_SYNC_AVAILABLE` env fallback, default off; waits, never skips anyone permanently) | **Yes** (WP-H API) |
-| Photo-partner block in OB-8 | Dashboard setting (built-in fallback: ON, founder decision D6) | **Yes** (WP-H API) |
-| Sales inbox address | Dashboard setting (`SALES_EMAIL` env fallback, then `ADMIN_EMAIL`) | **Yes** (WP-H API) |
-| Reply-to addresses | Dashboard settings (`MAIL_REPLY_TO`, `OB6_REPLY_TO` env fallback) | **Yes** (WP-H API) |
-| Every schedule timing (OB-3/4/6 delays, OB-7/8 after-live, INT1R business days, MK-1 delay, send-window weekdays + hours) | Dashboard settings (built-in fallbacks: 48h / 7d / 14d / 3d / 7d / 2 bd / 72h / Tue–Thu 09:00–11:00) | **Yes** (WP-H API) |
-| From-address + provider key | `MAIL_FROM`, `RESEND_API_KEY` env | No (deliberately) |
-| MK-1 marketing ON/OFF | Dashboard setting (`MK1_ENABLED` env fallback, **default OFF**) — AND the consent data beneath it (empty consent list = zero sends even when on) | **Yes** (WP-H API) |
-| Opt-outs | Written automatically by the unsubscribe page | Viewer → `GET /email/opt-outs` (WP-H API; UI in the dashboard PR) |
+| **Switches** | Marketing (MK-1) · Onboarding nudges · Calendar email · Photo-partner block in OB-8 | off · on · off · on |
+| **Review emails** | On/off + send hour + first-send delay + reminder delay + give-up window | off · 10:00 · 1 day · 5 days · 30 days |
+| **Addresses** | Sales inbox · Reply-to (all mail) · Reply-to for the founder check-in | env values, then admin address |
+| **Onboarding timings** | How-to delay · Rescue delay · Check-in delay · Calendar after-live · Photos after-live · Sales pending-reminder | 48h · 7d · 14d · 3d · 7d · 2 business days |
+| **Send window** | Weekday chips + start/end hours (Curaçao time) | Tue–Thu, 09:00–11:00 |
+| **Marketing timing** | Delay after tour end | 72h |
 
-**Booking emails (BK-1/BK-2/CX-1) have NO switch anywhere — deliberately.**
-They are contractual and always-on (founder decision 2026-08-11); the API
-rejects any attempt to invent such a field.
+Safety built in: addresses must be a single plain email (nothing can be smuggled in), timings
+have sane bounds, the window can't be made empty, and every change is logged with **which admin
+made it**.
 
-**The WP-H dashboard UI** (Activity log, Settings switchboard, People, and a
-test-send button — `POST /email/test-send` sends any template with sample
-data to your own inbox) ships in the `feat/email-centre-dashboard` PR; the
-API above is live for it.
+### Email → People
 
-## 5. Consent and the marketing email, precisely
+- **Opt-outs** — everyone who clicked unsubscribe, with which stream they left (onboarding
+  nudges vs marketing). Searchable by email.
+- **Consents** — everyone eligible for marketing: they ticked "send me travel inspiration"
+  **during a completed purchase**. Shows where the consent came from. Searchable.
 
-- Consent is recorded when a traveller ticks "send me travel inspiration" at checkout **and the
-  booking actually completes** — an abandoned or unpaid checkout records nothing (that tick is
-  only legal consent "in the context of a sale"). One row per email address, keeping the first
-  booking as provenance. Historical completed bookings with the tick were backfilled on deploy.
-- MK-1 sends **only** to an address with a consent row AND no marketing opt-out, checked at the
-  moment of sending, and only recommends tours the site itself currently lists as bookable, with
-  open departures in the next 7 days — checked live, starting from the island's *tomorrow* so it
-  never advertises a boat that already left.
+### The two older surfaces (still there)
 
-## 6. Founder decisions still open (these are sign-offs, not configs)
+- **Per operator**: open any operator → Email timeline (their personal history + resend).
+- **Per booking**: open any booking → the Timeline section shows its email rows.
 
-| # | Decision | Where it sits |
+## 4. How to test everything, step by step
+
+1. **Fastest check of any email's look:** Email → Activity → **Test send** → pick a template →
+   check your inbox. The row appears in the log.
+2. **Operator flow end-to-end:** Tour Operators → Add → sales inbox gets "New operator", the
+   operator gets the welcome → open the operator: both rows on the timeline → Configure →
+   Operator Verification → **Approve** → "You're approved" lands and the sequence is armed.
+   Days 2/7/14 nudges then appear on schedule (or as Suppressed-with-reason).
+3. **Booking flow:** make a test booking → confirmation arrives, row on the booking sheet →
+   the reminder fires T-24h (watch Activity).
+4. **Unsubscribe:** click the opt-out link in any nudge → public page confirms → the person
+   appears in Email → People → Opt-outs → their next nudge shows in Activity as
+   `Suppressed: opted-out`.
+5. **Settings behave:** change a timing (e.g. how-to delay 48h → 1h) on a fresh approved test
+   operator → the nudge shows up within the next 15-minute sweep inside the window. Set it back
+   with "Use default".
+6. **On a dev machine with no `RESEND_API_KEY`:** everything still *decides* and logs — rows
+   show as Failed ("service not configured"), which is exactly what you're verifying.
+
+## 5. Consent and marketing, precisely
+
+- A consent row is created when a traveller ticks the inspiration box **and completes the
+  purchase**. Abandoned/unpaid checkouts record nothing — legally, the tick only counts "in the
+  context of a sale". One row per address, first booking kept as provenance. Historical
+  completed bookings were backfilled (visible in People → Consents).
+- MK-1 sends **only** when: the marketing switch is on **and** the address has a consent row
+  **and** no marketing opt-out — all checked at the moment of sending. It only recommends tours
+  the site itself currently lists as bookable, with open departures in the next 7 days, counted
+  from the island's *tomorrow* — it can never advertise a boat that already left.
+- Two dark layers by design: the switch (yours) and the consent data (the traveller's). Both
+  must say yes.
+
+## 6. Founder items still open (sign-offs, not settings)
+
+| # | What | Where |
 | --- | --- | --- |
-| D1 | BK-3R reminder wording + one CX-1 refund-wording deviation | Drafts in PR #186's description — read and approve/amend |
-| D2/D3 | Sales inbox + founder reply-to addresses | Set the env vars (or wait for WP-H) |
-| D4 | Operator agreement PDF | Supply the file; one code spot activates the attachment |
-| D6 | Dronebaas photo-partner block | Currently ON; say the word and it's one flag |
-| D7 | Marketing subdomain for MK-1 | Infrastructure (Resend domain), deferred; revisit before real MK-1 volume |
+| D1 | Approve the review-reminder wording + one cancellation-refund sentence | Drafts in PR #186's description |
+| D4 | Supply the operator agreement PDF | Email works link-less until then; one code spot activates the attachment |
+| D6 | Keep or drop the photo-partner block | It's a dashboard switch now (Settings) — currently ON |
+| D7 | Separate marketing sending domain for MK-1 | Resend infrastructure; revisit before real MK-1 volume |
 
-## 7. Where the logs are
+(The old D2/D3 — sales and reply-to addresses — are now just Settings fields.)
 
-- **Per operator:** dashboard → operator → Email timeline (sent/failed/suppressed + reason + resend).
-- **Per booking:** dashboard → booking detail sheet → Timeline section.
-- **Everything at once:** `GET /email/sends` (admin) — global, filterable by
-  template/status/stream/recipient/date (the WP-H Activity page renders this).
-- **Transport errors:** backend server logs (addresses always redacted to `j***@host`).
+## 7. Go-live sequence
 
-## 8. Go-live sequence (when you're ready)
-
-1. Sign off D1 (BK-3R + CX-1 wording) — the only copy still awaiting your word.
-2. Set the sales + reply-to addresses — dashboard Email settings (or the
-   `SALES_EMAIL`/`MAIL_REPLY_TO`/`OB6_REPLY_TO` env vars as the fallback layer).
-3. Verify Resend domain settings for the from-address (and decide D7 before big MK-1 volume).
-4. Flip `ReviewRequestSettings.enabled` to true → BK-3/BK-3R go live (the sweeper deliberately
+1. Sign off D1 (the only copy still awaiting your word).
+2. Email → Settings: set the **sales inbox** and **reply-to** addresses.
+3. Verify the Resend domain for the from-address (and decide D7 before real marketing volume).
+4. Flip **Review emails ON** → review requests + reminders go live (the sweeper deliberately
    never blasts a backlog on enable).
-5. When calendar sync ships: flip the calendar-email setting in the dashboard (or set
-   `CALENDAR_SYNC_AVAILABLE=true`) → OB-7 starts, including for every operator who passed
-   the 3-day mark while it was off (deliberately not skipped).
-6. MK-1: flip the marketing setting in the dashboard (or set `MK1_ENABLED=true`) when you're
-   ready for marketing sends (it ships dark). Even when on, it only reaches consented,
-   not-opted-out travellers. Watch the first morning's rows.
-7. After any deploy that adds email icons: `pnpm email:icons:upload` (already run for the current set).
+5. When calendar sync ships: flip **Calendar email ON** → OB-7 starts, including for every
+   operator who passed the 3-day mark while it was off (deliberately not skipped).
+6. Flip **Marketing ON** when ready → MK-1 reaches consented, not-opted-out travellers only.
+   Watch the first morning in Activity.
+7. After any deploy that adds email icons: `pnpm email:icons:upload` (current set already done).
 
-## 9. If something looks wrong
+## 8. If something looks wrong
 
-- **"An email didn't send"** → find the operator/booking timeline row: *Suppressed* tells you the
-  exact rule that stopped it (that's usually the system working); *Failed* means transport — check
-  server logs and the Resend dashboard; **no row at all** means the trigger never fired (wrong
-  status, outside the window, or not due yet).
-- **"An email sent twice"** → it can't, from the automated paths; a second row will always be a
-  `#resend-N` row — someone clicked Resend, and the timeline shows it.
-- **"Stop everything to one person"** → today: insert an opt-out row / use their unsubscribe link
-  (transactional booking emails will still send — they're contractual). WP-H gives this a button.
-- **"Stop ALL nudges platform-wide"** → today: unset `SALES_EMAIL`+`ADMIN_EMAIL` only stops
-  internal alerts; the true kill switch for lifecycle+marketing is pausing the sweep — ask before
-  doing this; it's one scheduler entry.
+- **"An email didn't send"** → Email → Activity, filter to the person/template:
+  **Suppressed** = the reason on the row explains it (usually correct behaviour) ·
+  **Failed** = transport; check the error text and the Resend dashboard ·
+  **no row at all** = the trigger never fired (wrong status, outside the window, switch off, or
+  simply not due yet).
+- **"An email sent twice"** → automated paths can't; a second row is always `#resend-N` —
+  someone clicked Resend, and Activity shows it.
+- **"Stop everything to one person"** → have them click their unsubscribe link (or ask us to add
+  an opt-out row). Booking emails still send — contractual.
+- **"Stop a whole category platform-wide"** → Email → Settings: flip the group switch off.
+  It's "pause", not "cancel": nobody is skipped permanently; turning it back on resumes where
+  things left off.
+- **"A setting seems to have no effect"** → check the field actually shows "Set here" (not
+  "Using default"); remember schedule changes surface at the next 15-minute sweep, inside the
+  send window.
+
+## 9. For developers (one paragraph)
+
+Ledger: `email_sends` (unique `[templateKey, scopeId]` = send-once). Settings: `email_settings`
+singleton resolved `stored ?? env ?? built-in` (`EmailSettingsService`, ~60s cache) + the
+review pair in `ReviewRequestSettings`. Sweep: `email.lifecycle-sweep` every 15 min
+(`OnboardingEmailsService` + `NextAdventureEmailsService`), anti-join pre-filter, cap 200/tick,
+2/s pacing, 15s transport timeout. API: `GET/PATCH /email/settings`, `GET /email/sends|opt-outs|consents`,
+`POST /email/test-send` — all `MANAGE_SYSTEM`. Copy: locked in code, 7-locale `*.copy.ts`
+modules for traveller emails. Full contracts: the plan §2 and §4.
