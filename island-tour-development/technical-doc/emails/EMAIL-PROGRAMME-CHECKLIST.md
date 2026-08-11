@@ -15,7 +15,7 @@
 | 1 | WP-A send spine | backend | `feat/email-send-spine` | **merged** | #181 |
 | 1 | WP-C operator state machine | backend | `feat/operator-onboarding-state` | **merged** | #180 |
 | 2 | WP-B customer funnel | backend | `feat/email-customer-funnel` | not started | — |
-| 2 | WP-D onboarding sequence | backend | `feat/email-onboarding-sequence` | **in review** | — |
+| 2 | WP-D onboarding sequence | backend | `feat/email-onboarding-sequence` | **in review** | #185 |
 | 2 | WP-E dashboard surfaces | dashboard | `feat/operator-onboarding-dashboard` | not started | — |
 | 2 | WP-F unsubscribe page | frontend | `feat/unsubscribe-page` | not started | — |
 | 3 | WP-G consent + MK-1 | backend | `feat/email-mk1-marketing` | not started | — |
