@@ -248,6 +248,8 @@ WP-C  operator state machine (backend) ───┤
 - **Wave 2 (parallel, after WP-A merges; WP-D/E also need WP-C):** WP-B, WP-D, WP-E, WP-F.
 - **Wave 3:** WP-G (needs WP-A's consent table and WP-F's live unsubscribe page — a marketing email
   may not ship before its unsubscribe link works).
+- **Wave 4:** WP-H (dashboard email centre) — backend settings/list API first, dashboard second;
+  depends on everything above being merged.
 
 Each package = one branch = one PR. Backend/frontend repo PRs base `prod`; dashboard PRs base
 `main`. Migrations: WP-A and WP-C each add exactly one migration; they must not touch the same
@@ -485,19 +487,63 @@ Tests: selection-logic spec (card picking, drop-when-<3), suppression matrix spe
 migration assertion, render spec. An empty consent table = zero sends (safe default, no launch
 switch needed) — assert that in the spec.
 
+
+### WP-H — Dashboard email centre (backend + dashboard) — branches `feat/email-settings-api` / `feat/email-centre-dashboard`
+
+Requested by the founder after Wave 3: one dashboard section where everything email-related is
+visible and configurable — activity, switches, people, test-sends. Two PRs (backend first).
+
+**Backend (`feat/email-settings-api`):**
+
+1. **`EmailSettings` singleton** (in `prisma/settings.prisma`, the `ReviewRequestSettings`
+   precedent — `id @default("default")`): `salesEmail String?`, `mailReplyTo String?`,
+   `ob6ReplyTo String?`, `calendarSyncEnabled Boolean?`, `ob8PartnerOffer Boolean?`. Resolution
+   rule: **a non-null settings value wins; null falls back to the env var** — zero-risk rollout,
+   env keeps working until an admin touches a field.
+2. Consumers switch to a small `EmailSettingsService.resolve()` (cached ~60s):
+   `salesRecipient()`, `MAIL_REPLY_TO` default in `sendMail`, `OB6_REPLY_TO` in the OB-6 render,
+   the OB-7 flag check (replaces `CALENDAR_SYNC_AVAILABLE` read), the OB-8 partner-offer flag.
+3. **Endpoints** (all `MANAGE_SYSTEM`): `GET/PATCH /email/settings` (PATCH validates email
+   shapes); `GET /email/sends` (global paginated list: filters templateKey/status/stream/toEmail
+   (exact, lowercased)/date-range; select = TIMELINE_SELECT + scopeId);
+   `GET /email/opt-outs` and `GET /email/consents` (paginated, searchable by email);
+   `POST /email/test-send { templateKey }` → renders the template with FIXED sample data and
+   sends to the calling admin's own address, logged as `scopeId = test:<userId>#<n>` (never
+   counted by any sweep — document the prefix in `emails.prisma`).
+4. Surface `ReviewRequestSettings.enabled` (and its timing fields) read/write on the same
+   settings endpoint payload — one switchboard, no second screen.
+
+**Dashboard (`feat/email-centre-dashboard`):**
+
+5. New nav group **Email** (gate `MANAGE_SYSTEM`): **Activity** (global sends table + detail
+   sheet + Resend where the backend allows), **Settings** (the switchboard: review-request
+   toggle, calendar flag, partner-offer flag, sales/reply-to addresses, with "env fallback"
+   hints showing the effective value), **People** (Opt-outs / Consents tabs, searchable).
+6. Reuse: data-table primitives, detail-sheet Section/Row, `EMAIL_SEND` badge map,
+   `EMAIL_TEMPLATE_LABELS`; `emailKeys` query factory extended.
+7. No `rbac.ts` changes (`MANAGE_SYSTEM` exists); no `cache-tags.ts` changes; email settings
+   writes must NOT trigger public-site revalidation (extend the `/emails/` early-return).
+
+Same gate as every wave: reviewers per repo, findings verified, fixes on-branch, suites green.
+
 ---
 
-## 5. Decisions needed from the founder (none block Wave 1)
+## 5. Decisions needed from the founder (status as of 2026-08-11, all waves built)
 
-1. **BK-3R copy** — does not exist; WP-B ships a draft in the PR for sign-off before merge.
-2. **`SALES_EMAIL` value** — which mailbox; falls back to `ADMIN_EMAIL` until set.
-3. **OB-6 reply-to** — the founder's monitored inbox address (`OB6_REPLY_TO`).
-4. **Operator agreement PDF** — WP-D needs the version-pinned v1.0 file (or ships hosted-link-only
-   and adds the attachment when supplied).
-5. **Traveller-email locales** — plan assumes 7-locale machine-first copy for BK-*/CX-1/MK-1 and
-   English-only operator emails; confirm.
-6. **Dronebaas offer (OB-8)** — wireframe notes counsel review (Q5); OB-8 can ship without the
-   partner block if that's pending.
+1. **BK-3R copy** — draft shipped in PR #186's body; **sign-off pending**. The same PR carries one
+   deliberate deviation from master 6.4's locked CX-1 copy (`on_arrival × FULL` renders the
+   deposit-back sentence only) — sign off together.
+2. **`SALES_EMAIL` value** — still falls back to `ADMIN_EMAIL`; set the env var (or the WP-H
+   dashboard setting once built).
+3. **OB-6 reply-to** — `OB6_REPLY_TO` unset; falls back to `MAIL_REPLY_TO`.
+4. **Operator agreement PDF** — not supplied; OB-2 ships hosted-link-less (acceptance line only);
+   the attachment pathway is built and activates in ONE place (`renderForKey`) when the asset lands.
+5. **Traveller-email locales** — implemented as assumed (7-locale machine-first traveller copy,
+   English operator copy); confirm or request human review of the six machine translations.
+6. **Dronebaas offer (OB-8)** — shipped ON; one flag param turns it off if counsel objects.
+7. **Marketing subdomain** — the wireframe's rail-split note asks for MK-1 on a separate marketing
+   subdomain; all mail currently sends from the one `MAIL_FROM`. Deferred as infrastructure (Resend
+   domain setup), not code; revisit before heavy MK-1 volume.
 
 ## 6. Package status
 

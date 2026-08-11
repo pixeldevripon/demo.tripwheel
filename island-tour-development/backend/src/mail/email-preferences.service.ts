@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { EmailAudience, EmailStream } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
+import { islandToursBase, publicApiBase } from '@/common/utils/app-urls.util';
 import { redactEmail } from '@/common/utils/redact-email.util';
 import { EmailLogService } from './email-log.service';
 
@@ -48,6 +49,27 @@ export class EmailPreferencesService {
       select: { token: true },
     });
     return row.token;
+  }
+
+  /**
+   * The one-click unsubscribe recipe: footer URL + RFC 8058 headers, built
+   * ONLY from env-derived bases and the server-minted token (the
+   * SendMailOptions.headers contract). One owner so the OB lifecycle set and
+   * MK-1 can never drift (review of #188, minor 7).
+   */
+  async unsubscribeWiring(
+    email: string,
+    audience: EmailAudience,
+    stream: EmailStream,
+  ): Promise<{ optOutUrl: string; headers: Record<string, string> }> {
+    const token = await this.issueUnsubscribeToken(email, audience, stream);
+    return {
+      optOutUrl: `${islandToursBase()}/unsubscribe/${token}`,
+      headers: {
+        'List-Unsubscribe': `<${publicApiBase()}/api/v1/email/unsubscribe/${token}>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
+    };
   }
 
   /** GET resolve: what would this token opt out of, and is it already done? */

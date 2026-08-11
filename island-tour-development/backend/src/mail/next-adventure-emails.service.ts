@@ -129,13 +129,15 @@ const CARD_TOUR_SELECT = (locale: Locale, windowStart: Date, windowEnd: Date) =>
     departures: {
       where: {
         status: DepartureStatus.OPEN,
-        date: { gte: windowStart, lte: windowEnd },
+        date: { gte: windowStart, lt: windowEnd },
       },
       select: { date: true },
       orderBy: { date: 'asc' },
-      // 7-day window × a handful of start times — enough to name every
-      // weekday, bounded so a many-slots tour cannot bloat the read.
-      take: 28,
+      // One row per DATE: the "Open:" line names days, and a four-slots-a-day
+      // tour must not push the window's last weekday past the cap (review
+      // Minor 5). Seven island dates max.
+      distinct: ['date'],
+      take: 7,
     },
   }) satisfies Prisma.TourSelect;
 
@@ -173,6 +175,16 @@ const CARD_TOUR_SELECT = (locale: Locale, windowStart: Date, windowEnd: Date) =>
  */
 @Injectable()
 export class NextAdventureEmailsService {
+  /**
+   * Card working-set cache, valid for ONE sweep tick (~2 min worst case) -
+   * cleared at every sweep entry, so "availability at send time" stays
+   * honest while 100 same-destination candidates share one query.
+   */
+  private readonly cardRowsCache = new Map<
+    string,
+    Awaited<ReturnType<NextAdventureEmailsService['queryCardRows']>>
+  >();
+
   private readonly logger = new Logger(NextAdventureEmailsService.name);
 
   constructor(
@@ -187,6 +199,7 @@ export class NextAdventureEmailsService {
     // Closed window = "not yet", never a decision: nothing is written and
     // the anti-join re-finds every candidate when the morning opens.
     if (!isMarketingMorningWindowOpen(now)) return;
+    this.cardRowsCache.clear();
 
     const ids = await this.fetchCandidateIds(now);
     if (ids.length === 0) return;
@@ -260,6 +273,7 @@ export class NextAdventureEmailsService {
           WHERE es."templateKey" = ${EmailTemplateKey.MK1_NEXT_ADVENTURE}::"EmailTemplateKey"
             AND es."scopeId" = b."id"
         )
+      ORDER BY b."tourEndDateTime" ASC
       LIMIT ${SWEEP_BATCH}
     `;
     return rows.map((r) => r.id);
@@ -278,12 +292,11 @@ export class NextAdventureEmailsService {
   ): Promise<'sent' | 'skipped'> {
     if (!this.isDue(booking, now)) return 'skipped';
 
-    // SQL guarantees contactEmail; the guard mirrors BK-2's decided non-send.
+    // The candidate SQL requires contactEmail IS NOT NULL; a blank-after-trim
+    // address is "not yet" (nothing written) rather than a decided reason
+    // outside the documented G-12 set (review Nit 10).
     const email = booking.contactEmail?.trim().toLowerCase();
-    if (!email) {
-      await this.suppress(booking, '', 'no-contact-email');
-      return 'skipped';
-    }
+    if (!email) return 'skipped';
 
     // Cancelled / forfeited / operator-cancelled all LEAVE the completed
     // statuses (the BK-2 rule), so one status check covers the wireframe's
@@ -321,15 +334,19 @@ export class NextAdventureEmailsService {
     }
 
     // Booked again: a committed booking by the same address, created after
-    // this one — they already chose their next adventure.
-    const rebooked = await this.prisma.booking.count({
-      where: {
-        id: { not: booking.id },
-        contactEmail: { equals: email, mode: 'insensitive' },
-        createdAt: { gt: booking.createdAt },
-        status: { in: BOOKED_AGAIN_STATUSES },
-      },
-    });
+    // this one — they already chose their next adventure. Raw SQL on
+    // lower("contactEmail") so the expression index serves it (Prisma's
+    // insensitive mode compiles to a form no btree can use - perf review of
+    // #188, High: this was a full scan of bookings per candidate).
+    const rebookedRows = await this.prisma.$queryRaw<{ n: bigint }[]>`
+      SELECT count(*) AS n
+      FROM "bookings" b
+      WHERE lower(b."contactEmail") = ${email}
+        AND b."id" <> ${booking.id}
+        AND b."createdAt" > ${booking.createdAt}
+        AND b."status" = ANY(${BOOKED_AGAIN_STATUSES}::"BookingStatus"[])
+    `;
+    const rebooked = Number(rebookedRows[0]?.n ?? 0);
     if (rebooked > 0) {
       await this.suppress(booking, email, 'booked-again');
       return 'skipped';
@@ -369,23 +386,28 @@ export class NextAdventureEmailsService {
     let destinationTourCount = tourCounts.get(destinationId);
     if (destinationTourCount === undefined) {
       destinationTourCount = await this.prisma.tour.count({
-        where: { destinationId, status: TourStatus.LIVE },
+        // Listing parity: the count backs the "See all {n} tours" claim, so
+        // it must count what the site actually lists (review of #188).
+        where: {
+          destinationId,
+          status: TourStatus.LIVE,
+          isActive: true,
+          isBookable: true,
+        },
       });
       tourCounts.set(destinationId, destinationTourCount);
     }
 
     // G-14: both header values are env-derived bases + the server-minted
     // token — never caller-supplied, never CR/LF (SendMailOptions contract).
-    const token = await this.emailPreferences.issueUnsubscribeToken(
-      email,
-      EmailAudience.TRAVELLER,
-      EmailStream.MARKETING,
-    );
-    const unsubscribeUrl = `${islandToursBase()}/unsubscribe/${token}`;
-    const headers: Record<string, string> = {
-      'List-Unsubscribe': `<${publicApiBase()}/api/v1/email/unsubscribe/${token}>`,
-      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-    };
+    // One owner for the one-click recipe (review minor 7); MK-1 is the
+    // MARKETING stream for the TRAVELLER audience.
+    const { optOutUrl, headers } =
+      await this.emailPreferences.unsubscribeWiring(
+        email,
+        EmailAudience.TRAVELLER,
+        EmailStream.MARKETING,
+      );
 
     const context = buildNextAdventureEmailContext({
       booking: { customerLocale: booking.customerLocale, contactEmail: email },
@@ -394,7 +416,7 @@ export class NextAdventureEmailsService {
       destinationTourCount,
       cards,
       site: { logoUrl: siteLogoUrl },
-      unsubscribeUrl,
+      unsubscribeUrl: optOutUrl,
       config: {
         frontendUrl: islandToursBase(),
         emailIconBase: emailIconBase(),
@@ -418,7 +440,7 @@ export class NextAdventureEmailsService {
     });
     if (result.outcome === 'failed') {
       // Reported, not thrown — the sweep must survive one bad recipient; the
-      // FAILED row keeps the slot and recovery is an explicit admin resend.
+      // FAILED row keeps the slot and recovery would be an explicit admin resend - WHICH, unlike the OB set, MUST re-run the consent + opt-out gate at send time: MK-1 is MARKETING, and 'admin action is its own authorization' does not extend to mailing someone who unsubscribed (CAN-SPAM/ePrivacy).
       this.logger.error(
         `MK-1 failed for booking ${booking.displayRef}: ${result.error}`,
       );
@@ -442,6 +464,42 @@ export class NextAdventureEmailsService {
     );
   }
 
+  /** The shared per-tick card query - see cardRowsCache for why. */
+  private queryCardRows(
+    destinationId: string,
+    locale: Locale,
+    windowStart: Date,
+    windowEnd: Date,
+  ) {
+    return this.prisma.tour.findMany({
+      where: {
+        destinationId,
+        status: TourStatus.LIVE,
+        // Listing parity (review of #188): the site's canonical ranked
+        // queries filter isActive AND isBookable - the email must never
+        // feature a tour the site itself has delisted.
+        isActive: true,
+        isBookable: true,
+        departures: {
+          some: {
+            status: DepartureStatus.OPEN,
+            date: { gte: windowStart, lt: windowEnd },
+          },
+        },
+      },
+      // The canonical listing order (tours_ranking_idx): sponsorship first,
+      // then tier/quality/id - the email must never contradict the site.
+      orderBy: [
+        { isSponsored: 'desc' },
+        { tierRank: 'asc' },
+        { qualityScore: 'desc' },
+        { id: 'asc' },
+      ],
+      take: 26,
+      select: CARD_TOUR_SELECT(locale, windowStart, windowEnd),
+    });
+  }
+
   /**
    * The three cards (G-06): LIVE tours in the booking's destination with an
    * OPEN departure inside the next 7 days — availability read AT SEND TIME,
@@ -460,33 +518,40 @@ export class NextAdventureEmailsService {
     // Departure.date is @db.Date (UTC-midnight instants); "today" must be the
     // ISLAND's today, so the window starts from the zone's local date.
     const local = localNow(zone, now);
+    // The window starts at the island's TOMORROW: sends run 09:00-11:00, so
+    // "today's" stored-OPEN departures are mostly already at sea or inside
+    // the tour's booking cutoff (cutoffs are computed live, never stored) -
+    // a card must never advertise a boat the traveller cannot book (review
+    // of #188, Major 2). End-exclusive = exactly seven island dates
+    // (Minor 4: gte+lte on @db.Date endpoints was silently eight).
     const windowStart = new Date(
-      Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()),
+      Date.UTC(
+        local.getUTCFullYear(),
+        local.getUTCMonth(),
+        local.getUTCDate() + 1,
+      ),
     );
     const windowEnd = new Date(
       windowStart.getTime() + AVAILABILITY_WINDOW_DAYS * DAY_MS,
     );
 
-    const rows = await this.prisma.tour.findMany({
-      where: {
-        destinationId: booking.tour.destinationId,
-        id: { not: booking.tourId },
-        status: TourStatus.LIVE,
-        departures: {
-          some: {
-            status: DepartureStatus.OPEN,
-            date: { gte: windowStart, lte: windowEnd },
-          },
-        },
-      },
-      // The canonical listing order (master §7.2) — the email must never
-      // contradict the site, and the pure selector's fallback fills assume it.
-      orderBy: [{ tierRank: 'asc' }, { qualityScore: 'desc' }, { id: 'asc' }],
-      // Bounded working set: 25 canonical-best candidates is plenty to fill
-      // three roles on any real destination.
-      take: 25,
-      select: CARD_TOUR_SELECT(locale, windowStart, windowEnd),
-    });
+    // Per-tick cache: on a one-destination launch, every due booking in a
+    // morning tick asks the same question - same destination, same window,
+    // same locale bucket. The booked tour is excluded IN MEMORY so the cache
+    // is shareable (perf review of #188, Medium 3); take one extra row so
+    // the exclusion cannot starve the selector.
+    const cacheKey = `${booking.tour.destinationId}:${windowStart.toISOString()}:${locale}`;
+    let cached = this.cardRowsCache.get(cacheKey);
+    if (!cached) {
+      cached = await this.queryCardRows(
+        booking.tour.destinationId,
+        locale,
+        windowStart,
+        windowEnd,
+      );
+      this.cardRowsCache.set(cacheKey, cached);
+    }
+    const rows = cached.filter((row) => row.id !== booking.tourId);
 
     const picked = selectNextAdventureTours(
       booking.tour.categories[0]?.categoryId ?? null,

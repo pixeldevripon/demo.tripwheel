@@ -1,5 +1,16 @@
 # The email programme, measured against the two wireframes
 
+> **AS-BUILT UPDATE (2026-08-11): this audit is now historical.** All 17 emails plus the
+> machinery neither wireframe showed are BUILT and merged (Waves 1–3, PRs #180–#188 + dashboard
+> #56): the send-once ledger (`email_sends`), unsubscribe/opt-out/consent, send windows, the
+> operator state machine, the dashboard approval queue + email timelines, the public unsubscribe
+> page, and MK-1 behind its consent gate. What remains is operational, not construction: founder
+> sign-offs (plan §5), switch flips, and the WP-H dashboard email centre (plan §4). **For how the
+> system actually behaves and how to run it, read
+> [`EMAIL-PROGRAMME-RUNBOOK.md`](./EMAIL-PROGRAMME-RUNBOOK.md); for task-level status,
+> [`EMAIL-PROGRAMME-CHECKLIST.md`](./EMAIL-PROGRAMME-CHECKLIST.md).** The scorecard below
+> ("2 built / 6 partly / 9 not started") describes 9 August, before the build.
+
 > Markdown companion to `island-tours-email-programme-status.html` (same content, engineer-facing
 > form). Status verified against the codebase on **9 August 2026**, not against the status columns
 > in the wireframes.

@@ -4168,7 +4168,10 @@ describe('BookingsService', () => {
     /** Flush the fire-and-forget microtask chain. */
     const settle = () => new Promise((r) => setImmediate(r));
 
-    it('update(): a contact landing on an opted-in booking upserts the consent row (lowercased, keep-first)', async () => {
+    it('update(): an ON_HOLD booking records NO consent - a sale has not happened (H1)', async () => {
+      // reserve is unauthenticated and PATCH needs only the booking id: an
+      // abandoned checkout must never mint a durable consent row, least of
+      // all for an address the caller merely typed (security review of #188).
       m.booking.findUnique.mockResolvedValue(
         fakeBooking({ status: BookingStatus.ON_HOLD, newsletterOptIn: true }),
       );
@@ -4182,6 +4185,33 @@ describe('BookingsService', () => {
         ),
       );
       await svc.update('b1', { contact: CONTACT });
+      await settle();
+
+      expect(m.emailConsent.upsert).not.toHaveBeenCalled();
+    });
+
+    it('update(): a contact landing on a CONFIRMED opted-in booking upserts the consent row (lowercased, keep-first)', async () => {
+      // CONFIRMED contact changes require a session that owns the booking
+      // (the credential-hygiene guard) - mint one like the real checkout
+      // lane holds. Contact email null = the OPERATOR_FULL born-confirmed
+      // shape where checkout's write is the FIRST address on the row.
+      const confirmed = fakeBooking({
+        status: BookingStatus.CONFIRMED,
+        newsletterOptIn: true,
+        contactEmail: null,
+      });
+      m.booking.findUnique.mockResolvedValue(confirmed);
+      m.booking.update.mockImplementation(({ data }: any) =>
+        Promise.resolve(
+          fakeBooking({
+            ...data,
+            status: BookingStatus.CONFIRMED,
+            newsletterOptIn: true,
+          }),
+        ),
+      );
+      const session = issueBookingSession(confirmed.id);
+      await svc.update('b1', { contact: CONTACT }, session);
       await settle();
 
       expect(m.emailConsent.upsert).toHaveBeenCalledTimes(1);

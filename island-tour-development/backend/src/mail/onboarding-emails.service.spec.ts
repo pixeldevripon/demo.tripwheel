@@ -63,7 +63,7 @@ describe('OnboardingEmailsService', () => {
     isOptedOut: jest.Mock;
     nextResendScopeId: jest.Mock;
   };
-  let prefs: { issueUnsubscribeToken: jest.Mock };
+  let prefs: { issueUnsubscribeToken: jest.Mock; unsubscribeWiring: jest.Mock };
   let svc: OnboardingEmailsService;
 
   const envBefore: Record<string, string | undefined> = {};
@@ -115,7 +115,17 @@ describe('OnboardingEmailsService', () => {
       isOptedOut: jest.fn().mockResolvedValue(false),
       nextResendScopeId: jest.fn().mockResolvedValue('op1#resend-1'),
     };
-    prefs = { issueUnsubscribeToken: jest.fn().mockResolvedValue('tok-1') };
+    prefs = {
+      issueUnsubscribeToken: jest.fn().mockResolvedValue('tok-1'),
+      unsubscribeWiring: jest.fn().mockResolvedValue({
+        optOutUrl: 'http://localhost:3000/unsubscribe/tok-1',
+        headers: {
+          'List-Unsubscribe':
+            '<http://localhost:5050/api/v1/email/unsubscribe/tok-1>',
+          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        },
+      }),
+    };
 
     svc = new OnboardingEmailsService(
       prisma as never,
@@ -188,7 +198,7 @@ describe('OnboardingEmailsService', () => {
 
     await svc.sweep(WINDOW_OPEN);
 
-    expect(prefs.issueUnsubscribeToken).toHaveBeenCalledWith(
+    expect(prefs.unsubscribeWiring).toHaveBeenCalledWith(
       'mayra@irietours.com',
       'OPERATOR',
       'LIFECYCLE',

@@ -1060,7 +1060,6 @@ export class BookingsService {
     });
     this.logger.log(`Booking ${updated.displayRef} confirmed`);
     // The OCTO lane's contact just landed; post-commit, never blocking (G-01).
-    this.captureNewsletterConsent(updated);
     const finalized = await this.finalizeConfirmation(updated);
     // Status changed; seats unchanged (already held at reserve).
     this.emitBookingEvents(finalized, { availability: false });
@@ -1283,6 +1282,11 @@ export class BookingsService {
   ): Promise<BookingWithItems> {
     if (booking.conversionFiredAt) return booking; // fast path - already fired
 
+    // Newsletter consent records HERE - the one point every confirm lane
+    // (OCTO confirm, payment webhook, operator_full commit) passes exactly
+    // once, always post-CONFIRMED. Fire-and-forget, idempotent upsert.
+    this.captureNewsletterConsent(booking);
+
     // Charge-rate reconciliation (task #28 / 5C): when the PSP reported its own
     // bookingCurrency -> EUR conversion for this charge, the money actually
     // moved at THAT rate - so the EUR normalization below (and the settlement
@@ -1434,9 +1438,17 @@ export class BookingsService {
    */
   private captureNewsletterConsent(booking: {
     id: string;
+    status: BookingStatus;
     newsletterOptIn: boolean;
     contactEmail: string | null;
   }): void {
+    // CONSENT REQUIRES A COMPLETED PURCHASE (security review of #188, H1):
+    // reserve is unauthenticated and a PATCH on an ON_HOLD booking needs only
+    // the booking id, so recording consent before CONFIRMED would let an
+    // anonymous, unpaid, abandoned booking mint a durable consent row - for
+    // ANY address the caller types. The soft-opt-in legal basis (ePrivacy
+    // 13(2)) exists only "in the context of a sale" - status is the sale.
+    if (booking.status !== BookingStatus.CONFIRMED) return;
     if (!booking.newsletterOptIn) return;
     const email = booking.contactEmail?.trim().toLowerCase();
     if (!email) return;
@@ -3921,6 +3933,9 @@ export class BookingsService {
     }
     // Checkout's contact write is where reserve's `newsletterOptIn: true`
     // finally meets an address — record the consent row post-commit (G-01).
+    // The capture itself refuses non-CONFIRMED bookings, so this only takes
+    // effect on the born-confirmed OPERATOR_FULL lane; the pay-then-confirm
+    // lanes record it in finalizeConfirmation once the sale is real.
     if (dto.contact?.email) {
       this.captureNewsletterConsent(updated);
     }

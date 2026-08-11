@@ -84,12 +84,20 @@ describe('NextAdventureEmailsService', () => {
     recordSuppressed: jest.Mock;
     isOptedOut: jest.Mock;
   };
-  let prefs: { issueUnsubscribeToken: jest.Mock };
+  let prefs: { issueUnsubscribeToken: jest.Mock; unsubscribeWiring: jest.Mock };
   let svc: NextAdventureEmailsService;
 
   beforeEach(() => {
     prisma = {
-      $queryRaw: jest.fn().mockResolvedValue([{ id: 'bk1' }]),
+      // Tagged-template mock: the candidate query (NOT EXISTS anti-join)
+      // returns ids; the booked-again probe (count(*)) returns n=0.
+      $queryRaw: jest
+        .fn()
+        .mockImplementation((strings: TemplateStringsArray) =>
+          strings.join('?').includes('count(*)')
+            ? Promise.resolve([{ n: 0n }])
+            : Promise.resolve([{ id: 'bk1' }]),
+        ),
       booking: {
         findMany: jest.fn().mockResolvedValue([bookingRow()]),
         count: jest.fn().mockResolvedValue(0), // no later booking by default
@@ -117,7 +125,17 @@ describe('NextAdventureEmailsService', () => {
       recordSuppressed: jest.fn().mockResolvedValue({ recorded: true }),
       isOptedOut: jest.fn().mockResolvedValue(false),
     };
-    prefs = { issueUnsubscribeToken: jest.fn().mockResolvedValue('tok-mk1') };
+    prefs = {
+      issueUnsubscribeToken: jest.fn().mockResolvedValue('tok-mk1'),
+      unsubscribeWiring: jest.fn().mockResolvedValue({
+        optOutUrl: 'http://localhost:3000/unsubscribe/tok-mk1',
+        headers: {
+          'List-Unsubscribe':
+            '<http://localhost:5050/api/v1/email/unsubscribe/tok-mk1>',
+          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        },
+      }),
+    };
 
     svc = new NextAdventureEmailsService(
       prisma as never,
@@ -143,7 +161,9 @@ describe('NextAdventureEmailsService', () => {
 
   it('a MONDAY morning is open — the marketing window is any-day, not Tue–Thu', async () => {
     await svc.sweep(MONDAY_MORNING_OPEN);
-    expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+    // Two raw queries per sendable candidate tick: the candidate anti-join
+    // and the indexed booked-again probe.
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(2);
     expect(emailLog.claimAndSend).toHaveBeenCalledTimes(1);
   });
 
@@ -225,21 +245,31 @@ describe('NextAdventureEmailsService', () => {
   });
 
   it('a committed later booking by the same address → SUPPRESSED "booked-again"', async () => {
-    prisma.booking.count.mockResolvedValue(1);
+    prisma.$queryRaw.mockImplementation((strings: TemplateStringsArray) =>
+      strings.join('?').includes('count(*)')
+        ? Promise.resolve([{ n: 1n }])
+        : Promise.resolve([{ id: 'bk1' }]),
+    );
     await svc.sweep(MONDAY_MORNING_OPEN);
     expect(suppressionReasons()).toEqual(['booked-again']);
     expect(emailLog.claimAndSend).not.toHaveBeenCalled();
-    // The rebook probe is scoped: same address (insensitive), created AFTER
-    // this booking, committed statuses only, never counting itself.
-    const where = (
-      prisma.booking.count.mock.calls[0] as [{ where: Record<string, unknown> }]
-    )[0].where;
-    expect(where).toMatchObject({
-      id: { not: 'bk1' },
-      contactEmail: { equals: 'traveller@example.com', mode: 'insensitive' },
-      createdAt: { gt: new Date('2026-07-01T12:00:00.000Z') },
-      status: { in: ['CONFIRMED', 'REDEEMED'] },
-    });
+    // The rebook probe is scoped raw SQL on lower("contactEmail") so the
+    // expression index serves it (perf review High): same address, created
+    // AFTER this booking, committed statuses only, never counting itself.
+    const probeCall = prisma.$queryRaw.mock.calls.find((c: unknown[]) =>
+      (c[0] as TemplateStringsArray).join('?').includes('count(*)'),
+    );
+    expect(probeCall).toBeDefined();
+    const sql = (probeCall![0] as TemplateStringsArray).join('?');
+    expect(sql).toContain('lower(b."contactEmail")');
+    const params = probeCall!.slice(1) as unknown[];
+    expect(params).toEqual(
+      expect.arrayContaining([
+        'traveller@example.com',
+        'bk1',
+        new Date('2026-07-01T12:00:00.000Z'),
+      ]),
+    );
   });
 
   it('MARKETING opt-out → SUPPRESSED "opted-out"', async () => {
@@ -302,7 +332,7 @@ describe('NextAdventureEmailsService', () => {
       locale: 'en',
     });
 
-    expect(prefs.issueUnsubscribeToken).toHaveBeenCalledWith(
+    expect(prefs.unsubscribeWiring).toHaveBeenCalledWith(
       'traveller@example.com',
       EmailAudience.TRAVELLER,
       EmailStream.MARKETING,
@@ -341,27 +371,37 @@ describe('NextAdventureEmailsService', () => {
       prisma.tour.findMany.mock.calls[0] as [
         {
           where: {
-            id: { not: string };
+            id?: unknown;
             status: string;
+            isActive: boolean;
+            isBookable: boolean;
             departures: {
-              some: { status: string; date: { gte: Date; lte: Date } };
+              some: { status: string; date: { gte: Date; lt: Date } };
             };
           };
           orderBy: unknown;
         },
       ]
     )[0];
-    expect(arg.where.id).toEqual({ not: 'tour-booked' });
+    // The booked tour is excluded IN MEMORY (the per-tick cache is shared
+    // across same-destination candidates), never in the query.
+    expect(arg.where.id).toBeUndefined();
     expect(arg.where.status).toBe('LIVE');
+    // Listing parity: never feature what the site delists.
+    expect(arg.where.isActive).toBe(true);
+    expect(arg.where.isBookable).toBe(true);
     expect(arg.where.departures.some.status).toBe('OPEN');
-    // Island-local "today" (Mon 2026-08-10 in Curaçao) through +7 days.
+    // Island TOMORROW (send morning's stored-OPEN boats may already be at
+    // sea / inside cutoff) through exactly seven island dates, end-exclusive.
     expect(arg.where.departures.some.date.gte).toEqual(
-      new Date('2026-08-10T00:00:00.000Z'),
+      new Date('2026-08-11T00:00:00.000Z'),
     );
-    expect(arg.where.departures.some.date.lte).toEqual(
-      new Date('2026-08-17T00:00:00.000Z'),
+    expect(arg.where.departures.some.date.lt).toEqual(
+      new Date('2026-08-18T00:00:00.000Z'),
     );
+    // Canonical listing order: sponsorship first (tours_ranking_idx).
     expect(arg.orderBy).toEqual([
+      { isSponsored: 'desc' },
       { tierRank: 'asc' },
       { qualityScore: 'desc' },
       { id: 'asc' },

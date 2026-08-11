@@ -16,7 +16,7 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, BookingStatus } from '@prisma/client';
 import {
   Currency,
   PaymentModel,
@@ -45,6 +45,7 @@ const SHARED_RAW = `Backfill+${suffix}@Example-E2E.com`; // mixed case on purpos
 const SHARED = SHARED_RAW.toLowerCase();
 const SOLO = `solo+${suffix}@example-e2e.com`;
 const OPTED_OUT_EMAIL = `nofill+${suffix}@example-e2e.com`;
+const ABANDONED_EMAIL = `abandoned+${suffix}@example-e2e.com`;
 
 describe('MK-1 consent backfill migration - real Postgres', () => {
   let prisma: PrismaClient;
@@ -61,6 +62,7 @@ describe('MK-1 consent backfill migration - real Postgres', () => {
     createdAt: Date;
     contactEmail: string | null;
     newsletterOptIn: boolean;
+    status?: BookingStatus;
   }) =>
     prisma.booking.create({
       data: {
@@ -73,6 +75,10 @@ describe('MK-1 consent backfill migration - real Postgres', () => {
         totalRetail: 100,
         depositAmount: 20,
         balanceAmount: 80,
+        // Consent requires a completed purchase (review H2): the backfill
+        // only lifts CONFIRMED/REDEEMED/CANCELLED rows, so fixtures default
+        // to a real sale and the incomplete case is tested explicitly.
+        status: BookingStatus.CONFIRMED,
         ...over,
       },
       select: { id: true },
@@ -158,6 +164,15 @@ describe('MK-1 consent backfill migration - real Postgres', () => {
         contactEmail: OPTED_OUT_EMAIL,
         newsletterOptIn: false,
       }),
+      // (d) H2: an opted-in booking that never completed checkout - its
+      // tick is NOT consent ("in the context of a sale" requires the sale).
+      booking({
+        displayRef: `E2E-BF-${suffix}-7`,
+        createdAt: new Date('2026-06-05T10:00:00.000Z'),
+        contactEmail: ABANDONED_EMAIL,
+        newsletterOptIn: true,
+        status: BookingStatus.ON_HOLD,
+      }),
       booking({
         displayRef: `E2E-BF-${suffix}-5`,
         createdAt: new Date('2026-06-04T10:00:00.000Z'),
@@ -176,7 +191,9 @@ describe('MK-1 consent backfill migration - real Postgres', () => {
 
   afterAll(async () => {
     await prisma.emailConsent.deleteMany({
-      where: { email: { in: [SHARED, SOLO, OPTED_OUT_EMAIL] } },
+      where: {
+        email: { in: [SHARED, SOLO, OPTED_OUT_EMAIL, ABANDONED_EMAIL] },
+      },
     });
     await prisma.booking.deleteMany({ where: { id: { in: bookingIds } } });
     await prisma.tour.deleteMany({ where: { id: tourId } });
@@ -188,7 +205,9 @@ describe('MK-1 consent backfill migration - real Postgres', () => {
 
   const ourConsents = () =>
     prisma.emailConsent.findMany({
-      where: { email: { in: [SHARED, SOLO, OPTED_OUT_EMAIL] } },
+      where: {
+        email: { in: [SHARED, SOLO, OPTED_OUT_EMAIL, ABANDONED_EMAIL] },
+      },
       orderBy: { email: 'asc' },
       select: {
         id: true,
@@ -216,6 +235,8 @@ describe('MK-1 consent backfill migration - real Postgres', () => {
 
     // The no-tick address never entered the table.
     expect(consents.some((c) => c.email === OPTED_OUT_EMAIL)).toBe(false);
+    // H2: the abandoned (never-confirmed) opted-in booking is excluded.
+    expect(consents.some((c) => c.email === ABANDONED_EMAIL)).toBe(false);
   });
 
   it('is idempotent: a second run changes nothing (G-17)', async () => {

@@ -28,5 +28,9 @@ FROM "bookings" b
 WHERE b."newsletterOptIn" = true
   AND b."contactEmail" IS NOT NULL
   AND trim(b."contactEmail") <> ''
+  -- Consent requires a completed purchase (review H2): CONFIRMED/REDEEMED
+  -- are live sales, CANCELLED completed checkout before cancelling. ON_HOLD/
+  -- PENDING/EXPIRED/REJECTED never finished - their tick is not consent.
+  AND b."status" IN ('CONFIRMED', 'REDEEMED', 'CANCELLED')
 ORDER BY b."createdAt" ASC
 ON CONFLICT ("email") DO NOTHING;

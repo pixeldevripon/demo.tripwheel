@@ -19,6 +19,8 @@
 | 2 | WP-E dashboard surfaces | dashboard | `feat/operator-onboarding-dashboard` | **merged** | #56 |
 | 2 | WP-F unsubscribe page | frontend | `feat/unsubscribe-page` | **merged** | #183 |
 | 3 | WP-G consent + MK-1 | backend | `feat/email-mk1-marketing` | **in review** | #188 |
+| 4 | WP-H email centre (API) | backend | `feat/email-settings-api` | not started | — |
+| 4 | WP-H email centre (UI) | dashboard | `feat/email-centre-dashboard` | not started | — |
 
 Gates: WP-B/D/F start after WP-A merges · WP-D/E also need WP-C · WP-E's edit-form change merges
 AFTER WP-C (DTO strips `verificationStatus`) · **WP-G may not merge until WP-F is live in prod.**
@@ -525,6 +527,48 @@ Needs WP-A's two public endpoints. Must be **live in production before WP-G merg
 - [x] F-15 `pnpm test` + `pnpm test:e2e` green · reviewer agents (frontend-code-reviewer +
       frontend-security-reviewer in parallel, verify findings against source) · docs same-commit
       · PR merged
+
+
+---
+
+# WAVE 4 — WP-H dashboard email centre (plan §4 WP-H)
+
+## Backend — `feat/email-settings-api`
+
+- [ ] H-01 `EmailSettings` singleton in `prisma/settings.prisma` (salesEmail, mailReplyTo,
+      ob6ReplyTo, calendarSyncEnabled, ob8PartnerOffer — all nullable; null = env fallback)
+- [ ] H-02 Migration (new table only) + `EmailSettingsService.resolve()` with ~60s cache and
+      settings-win-over-env resolution
+- [ ] H-03 Consumers switched: salesRecipient(), sendMail reply-to default, OB-6 reply-to,
+      OB-7 flag check, OB-8 partner-offer flag
+- [ ] H-04 `GET/PATCH /email/settings` (MANAGE_SYSTEM; PATCH validates email shapes; payload also
+      carries the ReviewRequestSettings toggle + timing read/write)
+- [ ] H-05 `GET /email/sends` — global paginated list (filters: templateKey, status, stream,
+      toEmail exact-lowercased, date range; TIMELINE_SELECT + scopeId)
+- [ ] H-06 `GET /email/opt-outs` + `GET /email/consents` (paginated, email search)
+- [ ] H-07 `POST /email/test-send {templateKey}` → fixed sample-data render to the calling
+      admin's address; logged `scopeId = test:<userId>#<n>`; prefix documented in emails.prisma
+      and excluded by every sweep anti-join (verify: sweeps scope by operator/booking ids only)
+- [ ] H-08 If any new email_sends query filters by status: add the [status, createdAt] index
+      (D-29 rule)
+- [ ] H-09 Specs: resolution matrix (settings vs env), settings PATCH validation, list filters,
+      test-send logging; e2e: settings roundtrip + 403 non-admin
+- [ ] H-10 Reviewer pass · docs same-commit · PR merged
+
+## Dashboard — `feat/email-centre-dashboard`
+
+- [ ] H-11 Nav group "Email" (MANAGE_SYSTEM): Activity / Settings / People
+- [ ] H-12 Activity: global sends table (server filters mirroring H-05) + detail sheet + Resend
+      where backend allows (OB set) + suppression-reason/error display
+- [ ] H-13 Settings: switchboard with effective-value hints ("using env fallback" vs "set here");
+      review-request master toggle included
+- [ ] H-14 People: Opt-outs and Consents tabs, searchable, with stream/audience badges
+- [ ] H-15 Test-send button on Activity (template picker → sends to self → row appears)
+- [ ] H-16 lib/api/email-centre.ts + hooks with key factories; types mirror backend DTOs
+- [ ] H-17 No rbac.ts / cache-tags.ts changes; email settings writes excluded from public-site
+      revalidation
+- [ ] H-18 Typecheck/build/lint clean + manual click-through list in PR body
+- [ ] H-19 Reviewer pass · PR merged
 
 ---
 

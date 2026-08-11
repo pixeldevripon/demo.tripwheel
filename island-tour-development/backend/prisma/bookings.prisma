@@ -188,6 +188,9 @@ model Booking {
   @@index([operatorId])
   @@index([userId])
   @@index([status])
+  // MK-1 dueness band (tourEndDateTime BETWEEN horizon AND cutoff) - the
+  // selective predicate of the marketing candidate query.
+  @@index([tourEndDateTime])
   @@index([departureId])
   @@index([localDate])
   @@map("bookings")
