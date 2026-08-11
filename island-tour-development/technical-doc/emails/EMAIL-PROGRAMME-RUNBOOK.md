@@ -76,20 +76,33 @@ OB-7 > OB-8, and everything stops instantly on suspension or opt-out.
 
 ## 4. Configuration — where every switch lives TODAY
 
+Since WP-H's backend, the switchboard is the API: `GET/PATCH /email/settings`
+(admin-only). Every dashboard setting starts EMPTY and the old env/built-in
+value keeps applying until an admin explicitly stores an override — nothing
+changed on deploy. "Dashboard setting (env fallback)" below means exactly
+that: stored value first, env var second, built-in default last.
+
 | What | Where it lives today | Dashboard-editable? |
 | --- | --- | --- |
-| Review request + reminder ON/OFF | `ReviewRequestSettings` row in the database (`enabled`, default **false**) | Not yet → WP-H switchboard |
-| Calendar email (OB-7) ON/OFF | `CALENDAR_SYNC_AVAILABLE` env var (default off; waits, never skips anyone permanently) | Not yet → WP-H |
-| Photo-partner block in OB-8 | Code flag, currently ON (founder decision D6) | Not yet → WP-H |
-| Sales inbox address | `SALES_EMAIL` env (falls back to `ADMIN_EMAIL`) | Not yet → WP-H |
-| Reply-to addresses | `MAIL_REPLY_TO`, `OB6_REPLY_TO` env | Not yet → WP-H |
+| Review request + reminder ON/OFF + timings | `ReviewRequestSettings` row in the database (`enabled`, default **false**) | **Yes** — rides the same `/email/settings` payload (WP-H); UI in the email-centre dashboard PR |
+| Onboarding nudges OB-3…OB-8 ON/OFF | Dashboard setting (built-in fallback: **on**). Off = "not yet": nothing is written, nobody is skipped permanently | **Yes** (WP-H API) |
+| Calendar email (OB-7) ON/OFF | Dashboard setting (`CALENDAR_SYNC_AVAILABLE` env fallback, default off; waits, never skips anyone permanently) | **Yes** (WP-H API) |
+| Photo-partner block in OB-8 | Dashboard setting (built-in fallback: ON, founder decision D6) | **Yes** (WP-H API) |
+| Sales inbox address | Dashboard setting (`SALES_EMAIL` env fallback, then `ADMIN_EMAIL`) | **Yes** (WP-H API) |
+| Reply-to addresses | Dashboard settings (`MAIL_REPLY_TO`, `OB6_REPLY_TO` env fallback) | **Yes** (WP-H API) |
+| Every schedule timing (OB-3/4/6 delays, OB-7/8 after-live, INT1R business days, MK-1 delay, send-window weekdays + hours) | Dashboard settings (built-in fallbacks: 48h / 7d / 14d / 3d / 7d / 2 bd / 72h / Tue–Thu 09:00–11:00) | **Yes** (WP-H API) |
 | From-address + provider key | `MAIL_FROM`, `RESEND_API_KEY` env | No (deliberately) |
-| MK-1 marketing ON/OFF | `MK1_ENABLED` env var, **default OFF** (like the review switch) — AND the consent data beneath it (empty consent list = zero sends even when on) | Switchboard → WP-H |
-| Opt-outs | Written automatically by the unsubscribe page | Viewer → WP-H |
+| MK-1 marketing ON/OFF | Dashboard setting (`MK1_ENABLED` env fallback, **default OFF**) — AND the consent data beneath it (empty consent list = zero sends even when on) | **Yes** (WP-H API) |
+| Opt-outs | Written automatically by the unsubscribe page | Viewer → `GET /email/opt-outs` (WP-H API; UI in the dashboard PR) |
 
-**WP-H (planned, plan §4) moves the first five into a dashboard "Email" section** — Activity log,
-Settings switchboard, People (opt-outs + consents), and a test-send button — with env values as
-fallback so nothing breaks during the transition.
+**Booking emails (BK-1/BK-2/CX-1) have NO switch anywhere — deliberately.**
+They are contractual and always-on (founder decision 2026-08-11); the API
+rejects any attempt to invent such a field.
+
+**The WP-H dashboard UI** (Activity log, Settings switchboard, People, and a
+test-send button — `POST /email/test-send` sends any template with sample
+data to your own inbox) ships in the `feat/email-centre-dashboard` PR; the
+API above is live for it.
 
 ## 5. Consent and the marketing email, precisely
 
@@ -116,21 +129,24 @@ fallback so nothing breaks during the transition.
 
 - **Per operator:** dashboard → operator → Email timeline (sent/failed/suppressed + reason + resend).
 - **Per booking:** dashboard → booking detail sheet → Timeline section.
-- **Everything at once:** only the `email_sends` database table today — **the WP-H Activity page
-  is the fix** (global, filterable, with detail + resend).
+- **Everything at once:** `GET /email/sends` (admin) — global, filterable by
+  template/status/stream/recipient/date (the WP-H Activity page renders this).
 - **Transport errors:** backend server logs (addresses always redacted to `j***@host`).
 
 ## 8. Go-live sequence (when you're ready)
 
 1. Sign off D1 (BK-3R + CX-1 wording) — the only copy still awaiting your word.
-2. Set `SALES_EMAIL`, `MAIL_REPLY_TO`, `OB6_REPLY_TO` on the VPS (or via WP-H later).
+2. Set the sales + reply-to addresses — dashboard Email settings (or the
+   `SALES_EMAIL`/`MAIL_REPLY_TO`/`OB6_REPLY_TO` env vars as the fallback layer).
 3. Verify Resend domain settings for the from-address (and decide D7 before big MK-1 volume).
 4. Flip `ReviewRequestSettings.enabled` to true → BK-3/BK-3R go live (the sweeper deliberately
    never blasts a backlog on enable).
-5. When calendar sync ships: set `CALENDAR_SYNC_AVAILABLE=true` → OB-7 starts, including for
-   every operator who passed the 3-day mark while it was off (deliberately not skipped).
-6. MK-1: set `MK1_ENABLED=true` when you're ready for marketing sends (it ships dark). Even
-   when on, it only reaches consented, not-opted-out travellers. Watch the first morning's rows.
+5. When calendar sync ships: flip the calendar-email setting in the dashboard (or set
+   `CALENDAR_SYNC_AVAILABLE=true`) → OB-7 starts, including for every operator who passed
+   the 3-day mark while it was off (deliberately not skipped).
+6. MK-1: flip the marketing setting in the dashboard (or set `MK1_ENABLED=true`) when you're
+   ready for marketing sends (it ships dark). Even when on, it only reaches consented,
+   not-opted-out travellers. Watch the first morning's rows.
 7. After any deploy that adds email icons: `pnpm email:icons:upload` (already run for the current set).
 
 ## 9. If something looks wrong

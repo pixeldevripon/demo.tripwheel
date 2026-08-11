@@ -286,6 +286,59 @@ model PlatformReviewsConfig {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Email programme switchboard (singleton) — WP-H, plan §4 (pinned contract,
+// PR #190)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// The dashboard email centre's settings row (EMAIL-IMPLEMENTATION-PLAN.md §4
+/// WP-H). Every field is NULLABLE on purpose: null = "use the built-in
+/// default / env fallback" — a zero-risk rollout where nothing changes until
+/// an admin deliberately edits a value. `EmailSettingsService.resolve()` is
+/// the single reader and owns the `stored ?? env ?? built-in` resolution.
+///
+/// Founder decisions (2026-08-11) baked into the shape:
+///   - GROUP switches only. Booking emails (BK-1/BK-2/CX-1) are contractual
+///     and always-on — NO switch exists for them, here or in any DTO.
+///   - Copy stays locked in code; only timings/switches/addresses live here.
+///   - Every schedule timing is dashboard-editable with the built-in value
+///     as fallback (shown in parens below).
+model EmailSettings {
+  id String @id @default("default")
+
+  // Group switches (null → default / env)
+  marketingEnabled     Boolean? // MK1_ENABLED env, default false
+  onboardingEnabled    Boolean? // default true — false kills the OB-3…OB-8 candidate queries ("not yet", no rows burned)
+  calendarEmailEnabled Boolean? // CALENDAR_SYNC_AVAILABLE env, default false
+  ob8PartnerOffer      Boolean? // default true (founder decision D6)
+
+  // Addresses (null → env)
+  salesEmail  String? // SALES_EMAIL ?? ADMIN_EMAIL
+  mailReplyTo String? // MAIL_REPLY_TO
+  ob6ReplyTo  String? // OB6_REPLY_TO ?? mailReplyTo
+
+  // Onboarding timings (null → built-in)
+  ob3DelayHours               Int? // 48
+  ob4DelayDays                Int? // 7
+  ob6DelayDays                Int? // 14
+  ob7AfterLiveDays            Int? // 3
+  ob8AfterLiveDays            Int? // 7
+  pendingReminderBusinessDays Int? // 2
+
+  // Send window for lifecycle nudges (null → built-in). MK-1 shares the
+  // HOURS (any weekday); the weekday list applies to operator nudges only.
+  windowWeekdays  String? // csv of lowercase day names; default "tue,wed,thu"
+  windowStartHour Int? // 9  (America/Curacao)
+  windowEndHour   Int? // 11
+
+  // Marketing timing (null → built-in)
+  mk1DelayHours Int? // 72
+
+  updatedAt DateTime @updatedAt
+
+  @@map("email_settings")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Post-tour review request schedule (singleton)
 // ─────────────────────────────────────────────────────────────────────────────
 

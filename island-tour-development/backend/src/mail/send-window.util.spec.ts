@@ -7,10 +7,12 @@
  */
 import { timeZoneOffsetMs } from '@/common/utils/timezone.util';
 import {
+  DEFAULT_LIFECYCLE_WINDOW,
   LIFECYCLE_WINDOW_TZ,
   isLifecycleWindowOpen,
   isMarketingMorningWindowOpen,
   nextLifecycleWindow,
+  parseWindowWeekdays,
 } from './send-window.util';
 
 /** 2026-08-11 is a Tuesday. */
@@ -140,6 +142,75 @@ describe('send-window.util', () => {
     it('Monday -> Tuesday 09:00', () => {
       expect(nextLifecycleWindow(curacao(MON, '12:00'))).toEqual(
         curacao(TUE, '09:00'),
+      );
+    });
+  });
+
+  // ── WP-H: dashboard-configured windows (H-03) ───────────────────────────────
+
+  describe('config parameter (WP-H)', () => {
+    it('parseWindowWeekdays maps csv day names to JS day numbers', () => {
+      expect([...parseWindowWeekdays('tue,wed,thu')].sort()).toEqual([2, 3, 4]);
+      expect([...parseWindowWeekdays(' MON , fri ')].sort()).toEqual([1, 5]);
+      expect([...parseWindowWeekdays('sun')]).toEqual([0]);
+    });
+
+    it('parseWindowWeekdays never yields an empty set (falls back to built-in)', () => {
+      // An empty window would silently stop every nudge forever — the DTO
+      // rejects it upstream; this is the belt to that suspender.
+      expect([...parseWindowWeekdays('')].sort()).toEqual([2, 3, 4]);
+      expect([...parseWindowWeekdays('nonsense,junk')].sort()).toEqual([
+        2, 3, 4,
+      ]);
+    });
+
+    it('a configured weekday set opens days the default closes', () => {
+      const cfg = {
+        weekdays: parseWindowWeekdays('mon,fri'),
+        startHour: 9,
+        endHour: 11,
+      };
+      expect(isLifecycleWindowOpen(curacao(MON, '10:00'), cfg)).toBe(true);
+      expect(isLifecycleWindowOpen(curacao(FRI, '10:00'), cfg)).toBe(true);
+      expect(isLifecycleWindowOpen(curacao(TUE, '10:00'), cfg)).toBe(false);
+    });
+
+    it('configured hours move both boundaries (start inclusive, end exclusive)', () => {
+      const cfg = {
+        weekdays: parseWindowWeekdays('tue'),
+        startHour: 14,
+        endHour: 16,
+      };
+      expect(isLifecycleWindowOpen(curacao(TUE, '13:59'), cfg)).toBe(false);
+      expect(isLifecycleWindowOpen(curacao(TUE, '14:00'), cfg)).toBe(true);
+      expect(isLifecycleWindowOpen(curacao(TUE, '15:59'), cfg)).toBe(true);
+      expect(isLifecycleWindowOpen(curacao(TUE, '16:00'), cfg)).toBe(false);
+    });
+
+    it('marketing window takes the hour pair only — any weekday', () => {
+      const hours = { startHour: 14, endHour: 16 };
+      expect(isMarketingMorningWindowOpen(curacao(MON, '15:00'), hours)).toBe(
+        true,
+      );
+      expect(isMarketingMorningWindowOpen(curacao(MON, '10:00'), hours)).toBe(
+        false,
+      );
+    });
+
+    it('omitting the config is byte-identical to pre-WP-H behaviour', () => {
+      expect(
+        isLifecycleWindowOpen(curacao(TUE, '10:00'), DEFAULT_LIFECYCLE_WINDOW),
+      ).toBe(isLifecycleWindowOpen(curacao(TUE, '10:00')));
+    });
+
+    it('nextLifecycleWindow honours a configured window', () => {
+      const cfg = {
+        weekdays: parseWindowWeekdays('fri'),
+        startHour: 14,
+        endHour: 16,
+      };
+      expect(nextLifecycleWindow(curacao(TUE, '10:00'), cfg)).toEqual(
+        curacao(FRI, '14:00'),
       );
     });
   });

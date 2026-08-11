@@ -55,7 +55,7 @@ import { localNow } from '@/common/utils/timezone.util';
  * the dashboard. They are business decisions, not engineering ones: the advisory
  * is explicit that the morning-after send is a launch default to A/B test.
  */
-const DEFAULTS = {
+export const DEFAULTS = {
   enabled: false,
   firstSendLocalHour: 10,
   firstSendDelayDays: 1,

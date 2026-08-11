@@ -19,7 +19,7 @@
 | 2 | WP-E dashboard surfaces | dashboard | `feat/operator-onboarding-dashboard` | **merged** | #56 |
 | 2 | WP-F unsubscribe page | frontend | `feat/unsubscribe-page` | **merged** | #183 |
 | 3 | WP-G consent + MK-1 | backend | `feat/email-mk1-marketing` | **merged** | #188 |
-| 4 | WP-H email centre (API) | backend | `feat/email-settings-api` | not started | — |
+| 4 | WP-H email centre (API) | backend | `feat/email-settings-api` | **merged** | #192 |
 | 4 | WP-H email centre (UI) | dashboard | `feat/email-centre-dashboard` | not started | — |
 
 Gates: WP-B/D/F start after WP-A merges · WP-D/E also need WP-C · WP-E's edit-form change merges
@@ -535,37 +535,39 @@ Needs WP-A's two public endpoints. Must be **live in production before WP-G merg
 
 ## Backend — `feat/email-settings-api`
 
-- [ ] H-01 `EmailSettings` singleton in `prisma/settings.prisma` — the FULL plan-§4 field set:
+- [x] H-01 `EmailSettings` singleton in `prisma/settings.prisma` — the FULL plan-§4 field set:
       4 group switches, 3 addresses, 6 onboarding timings, window (weekdays/start/end),
       mk1DelayHours — all nullable; null = built-in/env fallback (founder decision 2026-08-11:
       group switches only, booking emails always-on, copy stays locked)
-- [ ] H-02 Migration (new table only) + `EmailSettingsService.resolve()` with ~60s cache and
+- [x] H-02 Migration (new table only) + `EmailSettingsService.resolve()` with ~60s cache and
       settings-win-over-env resolution
-- [ ] H-03 Consumers switched: salesRecipient(), sendMail reply-to default, OB-6 reply-to,
+- [x] H-03 Consumers switched: salesRecipient(), sendMail reply-to default, OB-6 reply-to,
       OB-7 flag, OB-8 offer flag, onboarding anchor offsets + window + INT1R business days
       (resolved per tick), MK-1 enabled + delay; onboardingEnabled=false skips the candidate
       queries entirely (not-yet semantics, no rows burned)
-- [ ] H-04 `GET/PATCH /email/settings` (MANAGE_SYSTEM; PATCH validates email shapes; payload also
+- [x] H-04 `GET/PATCH /email/settings` (MANAGE_SYSTEM; PATCH validates email shapes; payload also
       carries the ReviewRequestSettings toggle + timing read/write)
-- [ ] H-05 `GET /email/sends` — global paginated list (filters: templateKey, status, stream,
+- [x] H-05 `GET /email/sends` — global paginated list (filters: templateKey, status, stream,
       toEmail exact-lowercased, date range; TIMELINE_SELECT + scopeId)
-- [ ] H-06 `GET /email/opt-outs` + `GET /email/consents` (paginated, email search)
-- [ ] H-07 `POST /email/test-send {templateKey}` → fixed sample-data render to the calling
+- [x] H-06 `GET /email/opt-outs` + `GET /email/consents` (paginated, email search)
+- [x] H-07 `POST /email/test-send {templateKey}` → fixed sample-data render to the calling
       admin's address; logged `scopeId = test:<userId>#<n>`; prefix documented in emails.prisma
       and excluded by every sweep anti-join (verify: sweeps scope by operator/booking ids only)
-- [ ] H-08 If any new email_sends query filters by status: add the [status, createdAt] index
+- [x] H-08 If any new email_sends query filters by status: add the [status, createdAt] index
       (D-29 rule)
-- [ ] H-09 Specs: resolution matrix (settings vs env), settings PATCH validation, list filters,
+- [x] H-09 Specs: resolution matrix (settings vs env), settings PATCH validation, list filters,
       test-send logging; e2e: settings roundtrip + 403 non-admin
-- [ ] H-10 Reviewer pass · docs same-commit · PR merged
+- [x] H-10 Reviewer pass (security + solid-dry on #192: zero critical/high; verified findings fixed on-branch) · docs same-commit · PR merged
 
 ## Dashboard — `feat/email-centre-dashboard`
 
 - [ ] H-11 Nav group "Email" (MANAGE_SYSTEM): Activity / Settings / People
 - [ ] H-12 Activity: global sends table (server filters mirroring H-05) + detail sheet + Resend
       where backend allows (OB set) + suppression-reason/error display
-- [ ] H-13 Settings: switchboard with effective-value hints ("using env fallback" vs "set here");
-      review-request master toggle included
+- [ ] H-13 Settings: switchboard for the FULL payload (4 group switches, addresses, all six
+      onboarding timings, window weekdays/hours, MK-1 delay, review-request slice) with
+      effective-value hints ("using default (…)" when stored is null vs "set here") and a
+      clear-to-default action (PATCH null); no booking-email switch exists to render
 - [ ] H-14 People: Opt-outs and Consents tabs, searchable, with stream/audience badges
 - [ ] H-15 Test-send button on Activity (template picker → sends to self → row appears)
 - [ ] H-16 lib/api/email-centre.ts + hooks with key factories; types mirror backend DTOs

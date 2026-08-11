@@ -36,6 +36,7 @@ import {
 import { Test, TestingModule } from '@nestjs/testing';
 import { PaymentProvider, Role } from '@prisma/client';
 import { EmailLogService } from '@/mail/email-log.service';
+import { EmailSettingsService } from '@/mail/email-settings.service';
 import { MailService } from '@/mail/mail.service';
 import { OnboardingEmailsService } from '@/mail/onboarding-emails.service';
 import { OperatorsService } from './operators.service';
@@ -87,6 +88,14 @@ const mockEmailLogService = {
   ),
 };
 
+// WP-H: env-faithful settings mock - resolve() re-reads process.env per
+// call (defaults() folds env under the absent stored row), so the suite's
+// SALES_EMAIL/ADMIN_EMAIL choreography still steers the INT-1 recipient.
+const mockEmailSettingsService = {
+  resolve: jest.fn(() => Promise.resolve(EmailSettingsService.defaults())),
+  invalidate: jest.fn(),
+};
+
 const mockOnboardingEmailsService = {
   sendWelcome: jest.fn(),
   resend: jest.fn(),
@@ -108,6 +117,7 @@ describe('OperatorsService', () => {
           useValue: mockMailService,
         },
         { provide: EmailLogService, useValue: mockEmailLogService },
+        { provide: EmailSettingsService, useValue: mockEmailSettingsService },
         {
           provide: OnboardingEmailsService,
           useValue: mockOnboardingEmailsService,

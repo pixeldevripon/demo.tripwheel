@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { EmailStream, EmailTemplateKey } from '@prisma/client';
+import { EmailSettingsService } from './email-settings.service';
 import { OnboardingEmailsService } from './onboarding-emails.service';
 
 /**
@@ -64,6 +65,10 @@ describe('OnboardingEmailsService', () => {
     nextResendScopeId: jest.Mock;
   };
   let prefs: { issueUnsubscribeToken: jest.Mock; unsubscribeWiring: jest.Mock };
+  // WP-H: env-faithful settings mock - defaults() re-reads process.env per
+  // call, so the suite's existing env mutations keep steering behaviour;
+  // WP-H tests override the implementation with explicit configs.
+  let settings: { resolve: jest.Mock; invalidate: jest.Mock };
   let svc: OnboardingEmailsService;
 
   const envBefore: Record<string, string | undefined> = {};
@@ -127,11 +132,17 @@ describe('OnboardingEmailsService', () => {
       }),
     };
 
+    settings = {
+      resolve: jest.fn(() => Promise.resolve(EmailSettingsService.defaults())),
+      invalidate: jest.fn(),
+    };
+
     svc = new OnboardingEmailsService(
       prisma as never,
       mail as never,
       emailLog as never,
       prefs as never,
+      settings as never,
     );
   });
 
@@ -589,5 +600,94 @@ describe('OnboardingEmailsService', () => {
       BadRequestException,
     );
     expect(emailLog.claimAndSend).not.toHaveBeenCalled();
+  });
+
+  // ── WP-H (H-03): resolved settings steer the sweep ─────────────────────────
+
+  describe('WP-H settings resolution', () => {
+    it('onboardingEnabled=false skips the nudge candidate queries ENTIRELY - "not yet", nothing written; INT1R keeps running', async () => {
+      process.env.CALENDAR_SYNC_AVAILABLE = 'true'; // would otherwise add OB-7
+      settings.resolve.mockResolvedValue({
+        ...EmailSettingsService.defaults(),
+        onboardingEnabled: false,
+      });
+      await svc.sweep(WINDOW_OPEN);
+      // Exactly ONE candidate query: the window-exempt INT1R. No nudge rows,
+      // no suppressions, no unique slots burned - flipping the switch back
+      // on lets the anti-join pick everyone up (the OB-7 flag-off precedent).
+      expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+      expect(emailLog.claimAndSend).not.toHaveBeenCalled();
+      expect(emailLog.recordSuppressed).not.toHaveBeenCalled();
+    });
+
+    it('stored calendarEmailEnabled=true beats the env flag being unset: OB-7 query runs', async () => {
+      delete process.env.CALENDAR_SYNC_AVAILABLE;
+      settings.resolve.mockResolvedValue({
+        ...EmailSettingsService.defaults(),
+        calendarEmailEnabled: true,
+      });
+      await svc.sweep(WINDOW_OPEN);
+      // INT1R + all five nudges (OB-7 included via the stored switch).
+      expect(prisma.$queryRaw).toHaveBeenCalledTimes(6);
+    });
+
+    it('offsets are resolved PER TICK: changed delays move every cutoff', async () => {
+      settings.resolve.mockResolvedValue({
+        ...EmailSettingsService.defaults(),
+        calendarEmailEnabled: true,
+        ob3DelayHours: 6,
+        ob4DelayDays: 3,
+        ob6DelayDays: 21,
+        ob7AfterLiveDays: 1,
+        ob8AfterLiveDays: 10,
+      });
+      await svc.sweep(WINDOW_OPEN);
+      const HOUR = 3_600_000;
+      const DAY = 24 * HOUR;
+      const expected: Record<string, number> = {
+        [EmailTemplateKey.OB3_FIRST_TOUR_HOWTO]: 6 * HOUR,
+        [EmailTemplateKey.OB4_BUILD_IT_WITH_YOU]: 3 * DAY,
+        [EmailTemplateKey.OB6_CHECK_IN]: 21 * DAY,
+        [EmailTemplateKey.OB7_CONNECT_CALENDAR]: 1 * DAY,
+        [EmailTemplateKey.OB8_PAGE_STRONGER]: 10 * DAY,
+      };
+      const seen: Record<string, number> = {};
+      for (const call of prisma.$queryRaw.mock.calls) {
+        const values = call.slice(1) as unknown[];
+        const key = values.find(
+          (v): v is string => typeof v === 'string' && v in expected,
+        );
+        const cutoff = values.find((v): v is Date => v instanceof Date);
+        if (key && cutoff) {
+          seen[key] = WINDOW_OPEN.getTime() - cutoff.getTime();
+        }
+      }
+      expect(seen).toEqual(expected);
+    });
+
+    it('the configured window overrides Tue-Thu: a "mon" window opens Monday', async () => {
+      settings.resolve.mockResolvedValue({
+        ...EmailSettingsService.defaults(),
+        windowWeekdays: 'mon',
+      });
+      await svc.sweep(WINDOW_CLOSED); // Monday 10:30 local
+      // INT1R + the four nudge queries (calendar flag off) - the nudges ran
+      // on a Monday because the settings said so.
+      expect(prisma.$queryRaw).toHaveBeenCalledTimes(5);
+    });
+
+    it('INT1R business days come from the settings', async () => {
+      settings.resolve.mockResolvedValue({
+        ...EmailSettingsService.defaults(),
+        onboardingEnabled: false, // isolate the INT1R query
+        pendingReminderBusinessDays: 5,
+      });
+      await svc.sweep(WINDOW_CLOSED);
+      const values = prisma.$queryRaw.mock.calls[0].slice(1) as unknown[];
+      const cutoff = values.find((v): v is Date => v instanceof Date);
+      // WINDOW_CLOSED is Monday 2026-08-10; 5 business days back skips the
+      // weekend: Mon 3 Aug (Mon->Fri,Thu,Wed,Tue,Mon).
+      expect(cutoff?.toISOString()).toBe('2026-08-03T14:30:00.000Z');
+    });
   });
 });
