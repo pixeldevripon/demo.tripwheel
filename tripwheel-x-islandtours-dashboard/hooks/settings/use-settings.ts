@@ -1,5 +1,6 @@
 'use client';
 
+import { emailCentreKeys } from '@/lib/email-centre/query-keys';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { settingsApi } from '@/lib/api/settings';
@@ -289,6 +290,9 @@ export function useUpdateReviewRequests() {
       } else {
         toast.success('Review requests are OFF - no emails will be sent');
       }
+      // Symmetric coherence with the email centre's settings cache - both
+      // surfaces edit the same review_request_settings row (#57 Medium 2).
+      void qc.invalidateQueries({ queryKey: emailCentreKeys.settings() });
     },
     onError,
   });

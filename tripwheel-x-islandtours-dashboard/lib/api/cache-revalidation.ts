@@ -283,6 +283,15 @@ function tagsForMutation(path: string, method: string): CacheTag[] {
       tags.push('custom-scripts');
       break;
 
+    // The admin email centre (WP-H): `/email/settings` PATCHes, test-sends
+    // and the send-log/opt-out/consent reads back no cached public page -
+    // they configure OUTBOUND mail, not site content. The `default` below
+    // would already skip them; this case pins that as a decision (H-17) so a
+    // future `case 'email'` addition cannot accidentally start purging the
+    // public cache on every switchboard save.
+    case 'email':
+      break;
+
     default:
       break; // operator-settings, wishlist, read-only lookups, ...
   }
