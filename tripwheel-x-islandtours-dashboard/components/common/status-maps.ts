@@ -7,7 +7,8 @@ import type {
     SettlementMethod,
     SettlementStatus,
 } from '@/types/booking';
-import type { EmailSendStatus } from '@/types/email';
+import type { EmailSendStatus, EmailStream } from '@/types/email';
+import type { EmailAudience } from '@/types/email-centre';
 import type { OperatorVerificationStatus } from '@/types/operator';
 import type {
     AvailabilityScheduleStatus,
@@ -370,6 +371,70 @@ export const EMAIL_SEND: Record<EmailSendStatus, StatusMeta> = {
         hint: 'Deliberately not sent - see the recorded reason',
     },
 };
+
+/**
+ * Email streams (types/email.ts EmailStream) - the WP-H activity log and
+ * opt-out list. Categorisation, not health: each stream gets a distinct
+ * variant so the mixed global list scans at a glance.
+ */
+export const EMAIL_STREAM: Record<EmailStream, StatusMeta> = {
+    TRANSACTIONAL: {
+        label: 'Transactional',
+        variant: 'info',
+        hint: 'Contractual booking emails - always on, no opt-out',
+    },
+    LIFECYCLE: {
+        label: 'Lifecycle',
+        variant: 'success',
+        hint: 'Operator onboarding nudges and review requests',
+    },
+    MARKETING: {
+        label: 'Marketing',
+        variant: 'warning',
+        hint: 'Consent-based promotions (MK-1) - opt-out honoured',
+    },
+    INTERNAL: {
+        label: 'Internal',
+        variant: 'neutral',
+        hint: 'Sales-pipeline alerts to our own team',
+    },
+};
+
+/** Crash-proof EMAIL_STREAM lookup - same contract as emailSendMeta below. */
+export function emailStreamMeta(stream: string): StatusMeta {
+    return (
+        EMAIL_STREAM[stream as EmailStream] ?? {
+            label: stream,
+            variant: 'neutral' as const,
+            hint: 'Unrecognized stream (newer backend?)',
+        }
+    );
+}
+
+/** Opt-out audiences (types/email-centre.ts EmailAudience). */
+export const EMAIL_AUDIENCE: Record<EmailAudience, StatusMeta> = {
+    TRAVELLER: {
+        label: 'Traveller',
+        variant: 'info',
+        hint: 'A customer email address',
+    },
+    OPERATOR: {
+        label: 'Operator',
+        variant: 'neutral',
+        hint: 'A tour-operator email address',
+    },
+};
+
+/** Crash-proof EMAIL_AUDIENCE lookup. */
+export function emailAudienceMeta(audience: string): StatusMeta {
+    return (
+        EMAIL_AUDIENCE[audience as EmailAudience] ?? {
+            label: audience,
+            variant: 'neutral' as const,
+            hint: 'Unrecognized audience (newer backend?)',
+        }
+    );
+}
 
 /**
  * Crash-proof EMAIL_SEND lookup. `templateKey` is already widened to string
