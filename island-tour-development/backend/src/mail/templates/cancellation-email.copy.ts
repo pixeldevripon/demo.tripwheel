@@ -27,8 +27,6 @@ export interface CancellationEmailCopy {
    * an already-paid balance ({depositPct}).
    */
   refundDepositSplit: string;
-  /** FULL refund, `on_arrival`: deposit back only - no balance was payable pre-arrival. */
-  refundDeposit: string;
   /** FULL refund, `paid_in_full` ({totalAmount}). */
   refundPaidInFull: string;
   /** `operator_full`, any verdict: no money ever reached Island Tours ({operatorName}). */
@@ -47,14 +45,12 @@ export interface CancellationEmailCopy {
 
 export const CANCELLATION_EMAIL_COPY: Record<Locale, CancellationEmailCopy> = {
   [Locale.en]: {
-    subject: 'Your booking is cancelled - {bookingRef}',
+    subject: 'Your booking is cancelled',
     title: 'Your booking is cancelled.',
     processed:
       'We have processed your request and cancelled {bookingRef} for {tourName}. Your seats have been released.',
     refundDepositSplit:
       "Your {depositPct}% deposit is on its way back from us, within 3 to 5 business days, to your original payment method. If you've already paid the balance, the tour operator refunds that part. Don't see your balance refund within 10 days? Message us and we'll chase it.",
-    refundDeposit:
-      'Your {depositPct}% deposit is on its way back from us, within 3 to 5 business days, to your original payment method.',
     refundPaidInFull:
       'Your payment of {totalAmount} is on its way back from us, within 3 to 5 business days, to your original payment method.',
     operatorFullLine:
@@ -69,14 +65,12 @@ export const CANCELLATION_EMAIL_COPY: Record<Locale, CancellationEmailCopy> = {
     operatorFallback: 'the operator',
   },
   [Locale.nl]: {
-    subject: 'Je boeking is geannuleerd - {bookingRef}',
+    subject: 'Je boeking is geannuleerd',
     title: 'Je boeking is geannuleerd.',
     processed:
       'We hebben je verzoek verwerkt en {bookingRef} voor {tourName} geannuleerd. Je plaatsen zijn vrijgegeven.',
     refundDepositSplit:
       'Je aanbetaling van {depositPct}% is onderweg terug van ons, binnen 3 tot 5 werkdagen, naar je oorspronkelijke betaalmethode. Heb je het restbedrag al betaald? Dan betaalt de touroperator dat deel terug. Zie je die terugbetaling niet binnen 10 dagen? Stuur ons een bericht, dan gaan we erachteraan.',
-    refundDeposit:
-      'Je aanbetaling van {depositPct}% is onderweg terug van ons, binnen 3 tot 5 werkdagen, naar je oorspronkelijke betaalmethode.',
     refundPaidInFull:
       'Je betaling van {totalAmount} is onderweg terug van ons, binnen 3 tot 5 werkdagen, naar je oorspronkelijke betaalmethode.',
     operatorFullLine:
@@ -91,14 +85,12 @@ export const CANCELLATION_EMAIL_COPY: Record<Locale, CancellationEmailCopy> = {
     operatorFallback: 'de operator',
   },
   [Locale.de]: {
-    subject: 'Deine Buchung ist storniert - {bookingRef}',
+    subject: 'Deine Buchung ist storniert',
     title: 'Deine Buchung ist storniert.',
     processed:
       'Wir haben deine Anfrage bearbeitet und {bookingRef} für {tourName} storniert. Deine Plätze wurden freigegeben.',
     refundDepositSplit:
       'Deine Anzahlung von {depositPct}% ist von uns aus auf dem Rückweg, innerhalb von 3 bis 5 Werktagen, auf deine ursprüngliche Zahlungsmethode. Hast du den Restbetrag schon bezahlt? Den erstattet dir der Veranstalter. Siehst du diese Erstattung nicht innerhalb von 10 Tagen? Schreib uns, wir haken nach.',
-    refundDeposit:
-      'Deine Anzahlung von {depositPct}% ist von uns aus auf dem Rückweg, innerhalb von 3 bis 5 Werktagen, auf deine ursprüngliche Zahlungsmethode.',
     refundPaidInFull:
       'Deine Zahlung von {totalAmount} ist von uns aus auf dem Rückweg, innerhalb von 3 bis 5 Werktagen, auf deine ursprüngliche Zahlungsmethode.',
     operatorFullLine:
@@ -113,14 +105,12 @@ export const CANCELLATION_EMAIL_COPY: Record<Locale, CancellationEmailCopy> = {
     operatorFallback: 'der Veranstalter',
   },
   [Locale.fr]: {
-    subject: 'Votre réservation est annulée - {bookingRef}',
+    subject: 'Votre réservation est annulée',
     title: 'Votre réservation est annulée.',
     processed:
       'Nous avons traité votre demande et annulé {bookingRef} pour {tourName}. Vos places ont été libérées.',
     refundDepositSplit:
       "Votre acompte de {depositPct}% est en route depuis chez nous, sous 3 à 5 jours ouvrés, vers votre moyen de paiement d'origine. Vous avez déjà réglé le solde ? L'opérateur vous rembourse cette partie directement. Pas de remboursement du solde sous 10 jours ? Écrivez-nous et nous le réclamerons.",
-    refundDeposit:
-      "Votre acompte de {depositPct}% est en route depuis chez nous, sous 3 à 5 jours ouvrés, vers votre moyen de paiement d'origine.",
     refundPaidInFull:
       "Votre paiement de {totalAmount} est en route depuis chez nous, sous 3 à 5 jours ouvrés, vers votre moyen de paiement d'origine.",
     operatorFullLine:
@@ -135,14 +125,12 @@ export const CANCELLATION_EMAIL_COPY: Record<Locale, CancellationEmailCopy> = {
     operatorFallback: "l'opérateur",
   },
   [Locale.es]: {
-    subject: 'Tu reserva está cancelada - {bookingRef}',
+    subject: 'Tu reserva está cancelada',
     title: 'Tu reserva está cancelada.',
     processed:
       'Hemos procesado tu solicitud y cancelado {bookingRef} para {tourName}. Tus plazas han quedado liberadas.',
     refundDepositSplit:
       'Tu depósito del {depositPct}% está en camino de vuelta desde nosotros, en 3 a 5 días laborables, a tu método de pago original. ¿Ya pagaste el resto? Esa parte te la reembolsa el operador del tour. ¿No ves ese reembolso en 10 días? Escríbenos y lo reclamamos.',
-    refundDeposit:
-      'Tu depósito del {depositPct}% está en camino de vuelta desde nosotros, en 3 a 5 días laborables, a tu método de pago original.',
     refundPaidInFull:
       'Tu pago de {totalAmount} está en camino de vuelta desde nosotros, en 3 a 5 días laborables, a tu método de pago original.',
     operatorFullLine:
@@ -157,14 +145,12 @@ export const CANCELLATION_EMAIL_COPY: Record<Locale, CancellationEmailCopy> = {
     operatorFallback: 'el operador',
   },
   [Locale.pt]: {
-    subject: 'A sua reserva foi cancelada - {bookingRef}',
+    subject: 'A sua reserva foi cancelada',
     title: 'A sua reserva foi cancelada.',
     processed:
       'Processámos o seu pedido e cancelámos {bookingRef} para {tourName}. Os seus lugares foram libertados.',
     refundDepositSplit:
       'O seu depósito de {depositPct}% está a caminho de volta, enviado por nós em 3 a 5 dias úteis para o seu método de pagamento original. Já pagou o restante? Essa parte é reembolsada pelo operador do tour. Não vê esse reembolso em 10 dias? Escreva-nos e nós tratamos disso.',
-    refundDeposit:
-      'O seu depósito de {depositPct}% está a caminho de volta, enviado por nós em 3 a 5 dias úteis para o seu método de pagamento original.',
     refundPaidInFull:
       'O seu pagamento de {totalAmount} está a caminho de volta, enviado por nós em 3 a 5 dias úteis para o seu método de pagamento original.',
     operatorFullLine:
@@ -179,14 +165,12 @@ export const CANCELLATION_EMAIL_COPY: Record<Locale, CancellationEmailCopy> = {
     operatorFallback: 'o operador',
   },
   [Locale.zh]: {
-    subject: '您的预订已取消 - {bookingRef}',
+    subject: '您的预订已取消',
     title: '您的预订已取消。',
     processed:
       '我们已处理您的请求并取消了 {tourName} 的预订 {bookingRef}。您的名额已释放。',
     refundDepositSplit:
       '您 {depositPct}% 的订金正由我们退回,3 至 5 个工作日内原路退回到您的付款方式。已经支付了余款?那部分由旅行社直接退还给您。10 天内没有收到余款退款?请联系我们,我们来跟进。',
-    refundDeposit:
-      '您 {depositPct}% 的订金正由我们退回,3 至 5 个工作日内原路退回到您的付款方式。',
     refundPaidInFull:
       '您支付的 {totalAmount} 正由我们退回,3 至 5 个工作日内原路退回到您的付款方式。',
     operatorFullLine:

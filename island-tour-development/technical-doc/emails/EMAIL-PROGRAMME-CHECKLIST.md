@@ -20,7 +20,7 @@
 | 2 | WP-F unsubscribe page | frontend | `feat/unsubscribe-page` | **merged** | #183 |
 | 3 | WP-G consent + MK-1 | backend | `feat/email-mk1-marketing` | **merged** | #188 |
 | 4 | WP-H email centre (API) | backend | `feat/email-settings-api` | **merged** | #192 |
-| 4 | WP-H email centre (UI) | dashboard | `feat/email-centre-dashboard` | **PR open** | #57 |
+| 4 | WP-H email centre (UI) | dashboard | `feat/email-centre-dashboard` | **merged** | #57 |
 
 Gates: WP-B/D/F start after WP-A merges · WP-D/E also need WP-C · WP-E's edit-form change merges
 AFTER WP-C (DTO strips `verificationStatus`) · **WP-G may not merge until WP-F is live in prod.**
@@ -574,15 +574,20 @@ Needs WP-A's two public endpoints. Must be **live in production before WP-G merg
 - [x] H-17 No rbac.ts / cache-tags.ts changes; email settings writes excluded from public-site
       revalidation
 - [x] H-18 Typecheck/build/lint clean + manual click-through list in PR body
-- [ ] H-19 Reviewer pass · PR merged
+- [x] H-19 Reviewer pass · PR merged
 
 ---
 
 ## Founder decisions (plan §5)
 
-- [ ] D1 BK-3R copy approved (draft ships in WP-B's PR)
-- [ ] D2 `SALES_EMAIL` mailbox chosen (falls back to `ADMIN_EMAIL` until set)
-- [ ] D3 `OB6_REPLY_TO` address supplied
+- [x] D1 **Decided 2026-08-11**: BK-3R draft approved as written; CX-1 restored to the
+      wireframe's LOCKED wording (conditional balance sentence for both deposit models, bare
+      subject without the booking reference) — shipped with the Wave-4 close PR
+- [ ] D2 Sales mailbox — now a dashboard field (Email → Settings); falls back to
+      `SALES_EMAIL`/`ADMIN_EMAIL` env until set
+- [ ] D3 Founder reply-to — now a dashboard field; falls back to `OB6_REPLY_TO` env
 - [ ] D4 Operator agreement v1.0 PDF supplied (else OB-2 ships hosted-link-only)
-- [ ] D5 Locale policy confirmed (7-locale traveller emails, English operator emails)
-- [ ] D6 Dronebaas block in OB-8 cleared by counsel (else OB-8 ships without it)
+- [x] D5 **Decided 2026-08-11**: machine-first translations ship; human edits welcome anytime
+      (copy lives in versioned files, changes flow through normal review)
+- [x] D6 **Decided 2026-08-11**: Dronebaas block stays ON per the wireframe; the dashboard
+      switch (Email → Settings) is the instant off-button if counsel later objects

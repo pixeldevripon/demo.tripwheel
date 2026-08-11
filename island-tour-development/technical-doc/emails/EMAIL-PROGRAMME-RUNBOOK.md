@@ -50,7 +50,7 @@ email-provider day degrades gracefully; it can never snowball.
 | **Review request** (BK-3) | The morning after the tour (~10:00 tour-local) | **Reviews switch is OFF**; booking no longer completed |
 | **Review reminder** (BK-3R) | 5 days after the request, once only | Review already submitted; same switch |
 | **Cancellation confirmed** (CX-1) | When the admin confirms a cancellation | — (wording adapts to how the booking was paid) |
-| **Next adventure** (MK-1, marketing) | 72h* after tour end, mornings 09:00–11:00* Curaçao | **Marketing switch OFF (ships dark)**; no consent; opted out; booked again; cancelled; 1–2★ review; fewer than 3 bookable tours to recommend |
+| **Next adventure** (MK-1, marketing) | 72h`*` after tour end, mornings 09:00–11:00`*` Curaçao | **Marketing switch OFF (ships dark)**; no consent; opted out; booked again; cancelled; 1–2★ review; fewer than 3 bookable tours to recommend |
 
 **Operator emails** — English:
 
@@ -60,18 +60,18 @@ email-provider day degrades gracefully; it can never snowball.
 | **Welcome + agreement** (OB-2) | Operator account created | — |
 | **New operator → sales inbox** (INT-1) | Operator account created | No sales/admin address configured (logged, skipped) |
 | **You're approved** (OB-2A) | **Your Approve click** in the verification queue | — (this moment anchors the whole sequence) |
-| **First tour, step by step** (OB-3) | 2 days* after approval, Tue–Thu 09–11* | Already submitted a tour; opted out; suspended; onboarding switch off |
-| **We'll build it with you** (OB-4) | 7 days* after approval, same window | Same as OB-3 |
+| **First tour, step by step** (OB-3) | 2 days`*` after approval, Tue–Thu 09–11`*` | Already submitted a tour; opted out; suspended; onboarding switch off |
+| **We'll build it with you** (OB-4) | 7 days`*` after approval, same window | Same as OB-3 |
 | **Your tour is live** (OB-5) | Instantly on first tour published | Suspended or not approved |
-| **How's it going?** (OB-6, from the founder) | 14 days* after approval — ends the sequence | Suspended; opted out; onboarding switch off |
-| **Connect your calendar** (OB-7) | 3 days* after first tour live | **Calendar switch OFF** (waits — nobody is skipped permanently); calendar already connected; opted out |
-| **Better photos** (OB-8) | 7 days* after first tour live | Opted out; suspended; onboarding switch off |
-| **Still pending → sales inbox** (INT1R) | Operator awaiting approval > 2 business days* | No sales/admin address |
+| **How's it going?** (OB-6, from the founder) | 14 days`*` after approval — ends the sequence | Suspended; opted out; onboarding switch off |
+| **Connect your calendar** (OB-7) | 3 days`*` after first tour live | **Calendar switch OFF** (waits — nobody is skipped permanently); calendar already connected; opted out |
+| **Better photos** (OB-8) | 7 days`*` after first tour live | Opted out; suspended; onboarding switch off |
+| **Still pending → sales inbox** (INT1R) | Operator awaiting approval > 2 business days`*` | No sales/admin address |
 | **New tour → sales inbox** (INT-2) | Any tour submitted for review | Sales copy only when the sales address differs from the admin address |
 
-Every value marked __*__ is editable in **Email → Settings**; the shown number is the built-in
+Every value marked with `*` is editable in **Email → Settings**; the shown number is the built-in
 default that applies while the field is empty. Extra guardrails on the nudges: **max one
-lifecycle email per operator per 3 days** (priority: check-in > calendar > photos), and
+lifecycle email per operator per 3 days`*`* (priority: check-in > calendar > photos), and
 everything stops instantly on suspension or opt-out.
 
 **Booking emails (confirmation, reminder, cancellation) have NO off switch anywhere — on
@@ -169,12 +169,13 @@ made it**.
 
 | # | What | Where |
 | --- | --- | --- |
-| D1 | Approve the review-reminder wording + one cancellation-refund sentence | Drafts in PR #186's description |
 | D4 | Supply the operator agreement PDF | Email works link-less until then; one code spot activates the attachment |
-| D6 | Keep or drop the photo-partner block | It's a dashboard switch now (Settings) — currently ON |
 | D7 | Separate marketing sending domain for MK-1 | Resend infrastructure; revisit before real MK-1 volume |
 
-(The old D2/D3 — sales and reply-to addresses — are now just Settings fields.)
+Everything else is decided (2026-08-11): the review-reminder wording is approved, the
+cancellation email uses the wireframe's exact text, machine-first translations ship (human
+edits welcome anytime), the photo-partner block stays ON per the wireframe, and the sales +
+reply-to addresses are ordinary Settings fields.
 
 ## 7. Go-live sequence
 

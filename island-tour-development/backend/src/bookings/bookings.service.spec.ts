@@ -1970,12 +1970,14 @@ describe('BookingsService', () => {
       expect(refundLine).toContain('the tour operator refunds that part');
     });
 
-    it('on_arrival × FULL: deposit back only - no balance was payable before arrival', async () => {
+    it('on_arrival × FULL renders the wireframe LOCKED deposit text (founder D1b)', async () => {
+      // The wireframe's balance sentence is CONDITIONAL ("If you've already
+      // paid the balance...") - never false pre-arrival, so both deposit
+      // models share the locked wording verbatim.
       await send(cxBooking({ paymentModel: PaymentModel.ON_ARRIVAL }), 'FULL');
-
       const [, refundLine] = travellerParagraphs();
       expect(refundLine).toContain('deposit is on its way back');
-      expect(refundLine).not.toContain('refunds that part');
+      expect(refundLine).toContain("If you've already paid the balance");
     });
 
     it('paid_in_full × FULL: "your payment is on its way back from us" with the full amount', async () => {

@@ -2893,17 +2893,16 @@ export class BookingsService {
                     locale,
                   ),
                 })
-              : fillCopy(
-                  booking.paymentModel === PaymentModel.OPERATOR_LINK
-                    ? copy.refundDepositSplit
-                    : copy.refundDeposit,
-                  {
-                    depositPct: depositPctOf(
-                      booking.depositAmount.toString(),
-                      booking.totalRetail.toString(),
-                    ),
-                  },
-                )
+              : // Both deposit models render the wireframe's LOCKED text
+                // (founder decision 2026-08-11, D1b): its balance sentence is
+                // CONDITIONAL ("If you've already paid the balance...") so it
+                // is never false for pay-on-arrival travellers either.
+                fillCopy(copy.refundDepositSplit, {
+                  depositPct: depositPctOf(
+                    booking.depositAmount.toString(),
+                    booking.totalRetail.toString(),
+                  ),
+                })
             : refund === CancellationRefund.PARTIAL
               ? copy.partial
               : copy.noRefund;
