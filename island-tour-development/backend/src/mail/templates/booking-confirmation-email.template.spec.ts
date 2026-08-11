@@ -8,7 +8,7 @@ import {
 
 /**
  * Guards the LOCKED confirmation-email template against the wireframe
- * (technical-doc/island-tours-booking-confirmation-email-wireframe.html).
+ * (technical-doc/emails/island-tours-booking-confirmation-email-wireframe.html).
  *
  * The renderer spec proves the mini-language works; this proves the real
  * template file uses it correctly. Two classes of bug are only visible here:
@@ -31,6 +31,7 @@ const WIREFRAME_EMAIL = (() => {
       '..',
       '..',
       'technical-doc',
+      'emails',
       'island-tours-booking-confirmation-email-wireframe.html',
     ),
     'utf8',

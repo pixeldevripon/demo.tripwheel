@@ -119,7 +119,7 @@ Checkboxes here mirror the two checklists. Tick both when a task lands.
 - [ ] C3 Pre-tour reminder (24h before; no payment links)
 - [x] C4 Switch provider SMTP -> Resend - EXECUTED 2026-07-19 (env-only config: `RESEND_API_KEY` + `MAIL_FROM`; SMTP settings API + table removed; Postmark fallback still open)
 - [ ] C5 Verify template never names/spotlights operator before payment
-- [x] **C6 Confirmation email follows the locked wireframe** (`technical-doc/island-tours-booking-confirmation-email-wireframe.html`
+- [x] **C6 Confirmation email follows the locked wireframe** (`technical-doc/emails/island-tours-booking-confirmation-email-wireframe.html`
   -> `backend/src/mail/templates/booking-confirmation-email.template.html`). **WIRED 2026-07-16** -
   `mail.service.ts` now renders the locked template; the lean `booking-confirmation.template.ts` is
   retired. See "C6 - wiring complete" below.

@@ -329,7 +329,7 @@ The enabling fact, and it is architectural rather than lucky-in-detail:
 > The wishlist is a per-user, dynamic resource, so it is always fetched in the browser - **never in the
 > cached server shell**."*
 
-The public site is built on a `'use cache'` static shell (see `RENDERING-REVALIDATION-REVIEW.md`). A
+The public site is built on a `'use cache'` static shell (see `02-architecture/RENDERING-REVALIDATION-REVIEW.md`). A
 cached shell **cannot** be per-user, so per-user data was already pushed to the browser by design.
 Consequently **nothing on the public server ever wants the session cookie** - verified: `getSessionCookie`
 appears only at `proxy.ts:87` inside `guardDashboard`.
