@@ -12,8 +12,8 @@
 
 | Wave | Package | Scope | Branch | Status | PR |
 | --- | --- | --- | --- | --- | --- |
-| 1 | WP-A send spine | backend | `feat/email-send-spine` | in review | #181 |
-| 1 | WP-C operator state machine | backend | `feat/operator-onboarding-state` | in review | #180 |
+| 1 | WP-A send spine | backend | `feat/email-send-spine` | **merged** | #181 |
+| 1 | WP-C operator state machine | backend | `feat/operator-onboarding-state` | **merged** | #180 |
 | 2 | WP-B customer funnel | backend | `feat/email-customer-funnel` | not started | — |
 | 2 | WP-D onboarding sequence | backend | `feat/email-onboarding-sequence` | not started | — |
 | 2 | WP-E dashboard surfaces | dashboard | `feat/operator-onboarding-dashboard` | not started | — |
@@ -121,9 +121,9 @@ AFTER WP-C (DTO strips `verificationStatus`) · **WP-G may not merge until WP-F 
 - [x] A-39 `test/email-preferences.e2e-spec.ts`: GET resolve, POST act, POST repeat (idempotent),
       unknown token 404 on both verbs
 - [x] A-40 Full backend suite green (`pnpm test`, `pnpm test:e2e`); lint clean
-- [ ] A-41 Reviewer agent pass; findings verified against source before acting
+- [x] A-41 Reviewer agent pass; findings verified against source before acting
 - [x] A-42 Docs: `MASTER-CHECKLIST.md` + this file + plan §6 flipped, same commit
-- [ ] A-43 PR merged; post-deploy smoke: boot log shows 5 schedulers, unsubscribe GET 404s on a
+- [x] A-43 PR merged; post-deploy smoke: boot log shows 5 schedulers, unsubscribe GET 404s on a
       junk token in prod
 
 ## WP-C — Operator state machine + internal alerts — `feat/operator-onboarding-state`
@@ -195,7 +195,7 @@ AFTER WP-C (DTO strips `verificationStatus`) · **WP-G may not merge until WP-F 
 - [x] C-25 Spec: INT-1/INT-2 recipient resolution matrix (SALES set / unset / equal to ADMIN)
 - [x] C-26 e2e: endpoint 403 for non-admin, 409 double-decide, DTO rejects unknown decision;
       PATCH /operators/:id with `verificationStatus` in body → 400 (`forbidNonWhitelisted`)
-- [ ] C-27 Suite green · reviewer agent pass · docs same-commit · PR merged
+- [x] C-27 Suite green · reviewer agent pass · docs same-commit · PR merged
 
 ## WP-B — Customer funnel — `feat/email-customer-funnel` (after WP-A)
 
