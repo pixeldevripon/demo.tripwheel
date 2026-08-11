@@ -847,3 +847,56 @@ enum InboxEvent {
   // Team
   TEAM_SEAT_INVITED
 }
+
+// ── Email programme (technical-doc/emails/EMAIL-IMPLEMENTATION-PLAN.md §2) ────
+
+/// Every automated email the platform sends, one key per template. The key is
+/// half of the send-once identity on `EmailSend` (`[templateKey, scopeId]`),
+/// so renaming a value orphans its history — add, never rename. Pinned in the
+/// implementation plan §2.1; all seven work packages build against this list.
+enum EmailTemplateKey {
+  BK1_CONFIRMATION
+  BK2_PRE_TOUR_REMINDER
+  BK3_REVIEW_REQUEST
+  BK3R_REVIEW_REMINDER
+  MK1_NEXT_ADVENTURE
+  CX1_CANCELLATION
+  OB1_VERIFY_EMAIL
+  OB2_WELCOME_AGREEMENT
+  OB2A_APPROVED
+  OB3_FIRST_TOUR_HOWTO
+  OB4_BUILD_IT_WITH_YOU
+  OB5_TOUR_LIVE
+  OB6_CHECK_IN
+  OB7_CONNECT_CALENDAR
+  OB8_PAGE_STRONGER
+  INT1_NEW_OPERATOR
+  INT1R_PENDING_REMINDER
+  INT2_NEW_TOUR
+}
+
+/// Compliance stream an email belongs to. Opt-outs are PER STREAM: LIFECYCLE
+/// covers the operator nudges (OB-3/4/6/7/8), MARKETING covers traveller
+/// marketing (MK-1). TRANSACTIONAL and INTERNAL never check opt-outs.
+enum EmailStream {
+  TRANSACTIONAL
+  LIFECYCLE
+  MARKETING
+  INTERNAL
+}
+
+/// Outcome recorded on an `EmailSend` row. SUPPRESSED means the platform
+/// DECIDED not to send (and why) — a decided row occupies the same unique
+/// slot as a sent one, mirroring `ReviewInvitation.suppressedReason`.
+enum EmailSendStatus {
+  SENT
+  FAILED
+  SUPPRESSED
+}
+
+/// Who an opt-out belongs to. The same address can be a traveller AND an
+/// operator; opting out of operator nudges must not silence traveller mail.
+enum EmailAudience {
+  TRAVELLER
+  OPERATOR
+}

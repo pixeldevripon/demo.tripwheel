@@ -1,3 +1,4 @@
+import { redactEmail } from '@/common/utils/redact-email.util';
 import { authPrismaClient } from '@/auth/auth-prisma.client';
 import { Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs';
@@ -87,6 +88,22 @@ export interface SendMailOptions {
   subject: string;
   html: string;
   text?: string;
+  /**
+   * Overrides the default reply-to (`MAIL_REPLY_TO` env). The email programme
+   * forbids noreply@ replies — lifecycle emails carry a monitored inbox here
+   * (OB-6 uses the founder's own, `OB6_REPLY_TO`).
+   */
+  replyTo?: string;
+  /**
+   * Custom SMTP headers (`List-Unsubscribe`, `List-Unsubscribe-Post`, …).
+   * CONTRACT: values must never contain caller/user-supplied strings and
+   * never CR/LF - build them from server-minted tokens and env-derived URLs
+   * only. (Resend serializes JSON, but the rule keeps a transport swap from
+   * becoming an injection surface.)
+   */
+  headers?: Record<string, string>;
+  /** Attachments (operator agreement PDF, …). Resend caps at 40 MB total. */
+  attachments?: { filename: string; content: Buffer }[];
 }
 
 @Injectable()
@@ -108,13 +125,18 @@ export class MailService {
 
   /** Redacts a recipient for logs: keeps first char + domain (e.g. j***@host.com). */
   private redact(email: string): string {
-    const [local, domain] = email.split('@');
-    if (!domain) return '***';
-    return `${local.slice(0, 1)}***@${domain}`;
+    return redactEmail(email);
   }
 
   // ── Core send method ──────────────────────────────────────────────────────────
-  async sendMail(opts: SendMailOptions): Promise<void> {
+  /**
+   * The single egress point. Returns the provider message id so the send log
+   * (EmailLogService) can record it; existing callers ignore the return value
+   * and compile untouched.
+   */
+  async sendMail(
+    opts: SendMailOptions,
+  ): Promise<{ providerMessageId: string | null }> {
     if (!this.resend) {
       this.logger.error(
         `Email to ${this.redact(opts.to)} dropped - RESEND_API_KEY is not configured.`,
@@ -122,12 +144,20 @@ export class MailService {
       throw new Error('Email service is not configured');
     }
 
+    // Default reply-to from MAIL_REPLY_TO (a monitored inbox) — read per send,
+    // not in the constructor, because this service also runs as a DI-free
+    // singleton created before env validation (mail.singleton.ts).
+    const replyTo = opts.replyTo ?? process.env.MAIL_REPLY_TO;
+
     const { data, error } = await this.resend.emails.send({
       from: this.from,
       to: opts.to,
       subject: opts.subject,
       html: opts.html,
       text: opts.text ?? opts.html.replace(/<[^>]*>/g, ''),
+      ...(replyTo ? { replyTo } : {}),
+      ...(opts.headers ? { headers: opts.headers } : {}),
+      ...(opts.attachments ? { attachments: opts.attachments } : {}),
     });
 
     if (error) {
@@ -142,6 +172,7 @@ export class MailService {
     this.logger.log(
       `Email sent to ${this.redact(opts.to)} | resend id: ${data?.id ?? 'n/a'}`,
     );
+    return { providerMessageId: data?.id ?? null };
   }
 
   // ── Dashboard-managed logo (auth-email brand bars) ─────────────────────────

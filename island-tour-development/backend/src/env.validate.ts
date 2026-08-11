@@ -117,6 +117,33 @@ const OPTIONAL: Record<string, (v: string) => string | null> = {
   RESEND_API_KEY: (v) =>
     v.startsWith('re_') ? null : 'must be a Resend API key (starts with re_)',
   MAIL_FROM: () => null,
+  // Recipient of internal admin alerts (tour submitted, INT-1/INT-2 fallback).
+  // Load-bearing since the tour-review emails; validated here late (WP-A) -
+  // unset means those alerts log-and-skip, never throw.
+  ADMIN_EMAIL: (v) =>
+    /^\S+@\S+\.\S+$/.test(v.trim()) ? null : 'must be an email address',
+  // Sales-pipeline recipient for INT-1/INT1R/INT-2 (EMAIL-IMPLEMENTATION-PLAN
+  // §2.7). Falls back to ADMIN_EMAIL; with neither set the senders
+  // log-and-skip (the tour-submitted precedent).
+  SALES_EMAIL: (v) =>
+    /^\S+@\S+\.\S+$/.test(v.trim()) ? null : 'must be an email address',
+  // Default Reply-To on every send - a MONITORED inbox (the email programme
+  // forbids noreply@ replies). Same free-form contract as MAIL_FROM: bare
+  // address or `Name <addr>`.
+  MAIL_REPLY_TO: () => null,
+  // The founder's monitored inbox, Reply-To on the OB-6 check-in email only.
+  // Falls back to MAIL_REPLY_TO (WP-D reads it).
+  OB6_REPLY_TO: () => null,
+  // Feature flag gating OB-7 "connect your calendar" (WP-D): only 'true'
+  // enables the send - the email must not point at a feature that is off.
+  CALENDAR_SYNC_AVAILABLE: (v) =>
+    ['true', 'false'].includes(v.trim().toLowerCase())
+      ? null
+      : "must be 'true' or 'false'",
+  // Optional walkthrough video (Loom) for OB-3; absent -> the email ships its
+  // guide-link-only variant (WP-D reads it).
+  WALKTHROUGH_VIDEO_URL: (v) =>
+    /^https?:\/\/\S+$/.test(v.trim()) ? null : 'must be an http(s) URL',
   // AI translation (content entities + LD32 review comments). Provider-
   // agnostic: the key/model belong to whichever provider is selected (default
   // gemini). OPTIONAL: with no key the feature is inert - content and reviews

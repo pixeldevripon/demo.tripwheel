@@ -6,6 +6,8 @@
  * inside their own transactions; the OutboxRelayService publishes those rows
  * here and the PlatformJobsProcessor consumes them.
  */
+import type { EmailTemplateKey } from '@prisma/client';
+
 export const PLATFORM_QUEUE = 'platform-jobs';
 
 /** Named jobs on the platform queue. */
@@ -15,6 +17,12 @@ export const PLATFORM_JOBS = {
   CAPI_CONVERSION: 'tracking.capi-conversion',
   PRE_TOUR_REMINDER: 'booking.pre-tour-reminder',
   REFUND_EXECUTE: 'booking.refund-execute',
+  /**
+   * One operator onboarding email (EMAIL-IMPLEMENTATION-PLAN.md §2.6).
+   * Payload is `OnboardingEmailJobData` — the lifecycle sweep enqueues these
+   * once WP-D registers senders; until then the processor logs and completes.
+   */
+  ONBOARDING_EMAIL: 'email.onboarding-send',
 } as const;
 
 export type PlatformJobName =
@@ -69,6 +77,16 @@ export const PLATFORM_SCHEDULES = {
     name: 'platform.nightly-commercial',
     pattern: '0 3 * * *', // 03:00 UTC daily, as the @Cron was
   },
+  /**
+   * Scheduled-email sweep (EMAIL-IMPLEMENTATION-PLAN.md §2.6): every 15 min,
+   * evaluates due onboarding nudges + INT1R + MK-1 candidates against the
+   * Tue–Thu Curaçao-morning window and send-time suppression, then sends
+   * through the send log. ONE sweeper for all scheduled email — BK-3 keeps
+   * its own hourly sweeper (REVIEW_REQUEST_SWEEP) untouched. A no-op stub
+   * until WP-D registers senders; scheduling it here means WP-D ships no
+   * scheduler-registration change.
+   */
+  EMAIL_LIFECYCLE_SWEEP: { name: 'email.lifecycle-sweep', every: 900_000 },
 } as const;
 
 export type PlatformScheduleName =
@@ -86,9 +104,25 @@ export const PLATFORM_SCHEDULE_OPTS = {
   removeOnFail: 1_000,
 } as const;
 
-export interface PlatformJobData {
+/** Payload of every booking-scoped job (the original queue contract). */
+export interface BookingJobData {
   bookingId: string;
 }
+
+/** Payload of `PLATFORM_JOBS.ONBOARDING_EMAIL` (plan §2.6). */
+export interface OnboardingEmailJobData {
+  operatorId: string;
+  templateKey: EmailTemplateKey;
+}
+
+/**
+ * Discriminated by JOB NAME, not by a payload field: the processor already
+ * switches on `job.name`, and every name maps to exactly one payload shape.
+ * Booking jobs carry `BookingJobData` (unchanged — existing producers and
+ * consumers compile untouched); the onboarding email job carries
+ * `OnboardingEmailJobData`.
+ */
+export type PlatformJobData = BookingJobData | OnboardingEmailJobData;
 
 /**
  * Default job options (doc §5.3): 5 attempts, exponential backoff from 1s

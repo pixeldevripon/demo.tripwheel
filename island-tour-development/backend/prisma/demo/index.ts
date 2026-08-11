@@ -27,6 +27,7 @@ import { seedEngagement } from './engagement';
 import { seedEntityContent } from './entity-content';
 import { seedSettings } from './settings';
 import { seedCustomers, seedReviewDemoLinks } from './customers';
+import { cleanEmailSends, seedEmailSends } from './emails';
 
 async function assertBaseSeed(): Promise<void> {
   const [dest, cat] = await Promise.all([
@@ -67,6 +68,9 @@ export async function runDemoSeed(): Promise<void> {
   // EVERY booking-creating module above (bookings-payments + the review depth
   // top-up) and self-heals their commission snapshots first.
   await seedSettlements();
+  // Email send-log rows for the dashboard timeline (WP-A/WP-E) - after every
+  // booking/operator-creating module so it has scopes to attach to.
+  await seedEmailSends();
 
   console.log('\n════════════ DEMO SEED COMPLETE ════════════');
   console.log(
@@ -97,6 +101,10 @@ export async function cleanDemo(): Promise<void> {
     where: DEMO_TOUR_WHERE,
     select: { slug: true, destination: { select: { slug: true } } },
   });
+
+  // 0) Email send-log rows (no FKs - keyed on demo inbox domain). Before the
+  //    bookings/operators they reference are removed.
+  await cleanEmailSends();
 
   // 1) Reviews + settlements + bookings on demo tours (booking delete cascades
   //    translations, payments, items, add-ons — but Settlement has NO cascade,

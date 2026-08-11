@@ -12,7 +12,7 @@
 
 | Wave | Package | Scope | Branch | Status | PR |
 | --- | --- | --- | --- | --- | --- |
-| 1 | WP-A send spine | backend | `feat/email-send-spine` | not started | — |
+| 1 | WP-A send spine | backend | `feat/email-send-spine` | in review | #181 |
 | 1 | WP-C operator state machine | backend | `feat/operator-onboarding-state` | in review | #180 |
 | 2 | WP-B customer funnel | backend | `feat/email-customer-funnel` | not started | — |
 | 2 | WP-D onboarding sequence | backend | `feat/email-onboarding-sequence` | not started | — |
@@ -31,98 +31,98 @@ AFTER WP-C (DTO strips `verificationStatus`) · **WP-G may not merge until WP-F 
 
 ### Schema & migration
 
-- [ ] A-01 Add `EmailTemplateKey` enum (18 keys, plan §2.1) to `prisma/enums.prisma`
-- [ ] A-02 Add `EmailStream`, `EmailSendStatus`, `EmailAudience` enums to `prisma/enums.prisma`
-- [ ] A-03 Create `prisma/emails.prisma` with `model EmailSend` (fields per plan §2.2, unique
+- [x] A-01 Add `EmailTemplateKey` enum (18 keys, plan §2.1) to `prisma/enums.prisma`
+- [x] A-02 Add `EmailStream`, `EmailSendStatus`, `EmailAudience` enums to `prisma/enums.prisma`
+- [x] A-03 Create `prisma/emails.prisma` with `model EmailSend` (fields per plan §2.2, unique
       `[templateKey, scopeId]`, indexes on `[toEmail, createdAt]` and `[scopeId, createdAt]`,
       `@@map("email_sends")`)
-- [ ] A-04 Add `model EmailOptOut` (unique `[email, audience, stream]`, `@@map("email_opt_outs")`)
-- [ ] A-05 Add `model EmailConsent` (unique `[email]`, `@@map("email_consents")`)
-- [ ] A-06 Add `model EmailUnsubscribeToken` (`@id token`, index `[email]`,
+- [x] A-04 Add `model EmailOptOut` (unique `[email, audience, stream]`, `@@map("email_opt_outs")`)
+- [x] A-05 Add `model EmailConsent` (unique `[email]`, `@@map("email_consents")`)
+- [x] A-06 Add `model EmailUnsubscribeToken` (`@id token`, index `[email]`,
       `@@map("email_unsubscribe_tokens")`)
-- [ ] A-07 Generate migration `email_programme_spine`; verify it creates NEW tables only (no
+- [x] A-07 Generate migration `email_programme_spine`; verify it creates NEW tables only (no
       `operators` change — WP-C owns that table)
-- [ ] A-08 `pnpm prisma:migrate:deploy` clean on dev DB and the e2e/test DB
-- [ ] A-09 Demo seeder in `prisma/demo/` inserting a handful of `EmailSend` rows (SENT + FAILED +
+- [x] A-08 `pnpm prisma:migrate:deploy` clean on dev DB and the e2e/test DB
+- [x] A-09 Demo seeder in `prisma/demo/` inserting a handful of `EmailSend` rows (SENT + FAILED +
       SUPPRESSED) for dashboard dev; wire into the demo seed entrypoint
 
 ### EmailLogService (`src/mail/email-log.service.ts`)
 
-- [ ] A-10 `claimAndSend({templateKey, scopeId, toEmail, stream, locale, send})`: create the
+- [x] A-10 `claimAndSend({templateKey, scopeId, toEmail, stream, locale, send})`: create the
       `EmailSend` row FIRST (the claim), then run `send()`
-- [ ] A-11 P2002 on the claim → return `{skipped: 'already-sent'}` (use `constraintIdsOf`-style
+- [x] A-11 P2002 on the claim → return `{skipped: 'already-sent'}` (use `constraintIdsOf`-style
       nested adapter meta reading — see `bookings.service.ts` predicates)
-- [ ] A-12 Transport failure after claim → update row to `FAILED` with truncated `error`; never
+- [x] A-12 Transport failure after claim → update row to `FAILED` with truncated `error`; never
       throw out of the sweep loop
-- [ ] A-13 `recordSuppressed({templateKey, scopeId, toEmail, stream, reason})` writes a
+- [x] A-13 `recordSuppressed({templateKey, scopeId, toEmail, stream, reason})` writes a
       SUPPRESSED row (same unique slot — a suppressed email is decided, not pending)
-- [ ] A-14 `isOptedOut(email, audience, stream)` (lowercases the email)
-- [ ] A-15 `listForScope(scopeId)` newest-first, selects only timeline fields
-- [ ] A-16 Provide + export from the global `MailModule`; logger per service conventions
-- [ ] A-17 Admin-resend rule: helper `resendScopeId(scopeId, n)` → `` `${scopeId}#resend-${n}` ``
+- [x] A-14 `isOptedOut(email, audience, stream)` (lowercases the email)
+- [x] A-15 `listForScope(scopeId)` newest-first, selects only timeline fields
+- [x] A-16 Provide + export from the global `MailModule`; logger per service conventions
+- [x] A-17 Admin-resend rule: helper `resendScopeId(scopeId, n)` → `` `${scopeId}#resend-${n}` ``
       (next n = count of existing rows for the base scope)
 
 ### MailService widening (`src/mail/mail.service.ts`)
 
-- [ ] A-18 `SendMailOptions` gains `replyTo?: string`, `headers?: Record<string,string>`,
+- [x] A-18 `SendMailOptions` gains `replyTo?: string`, `headers?: Record<string,string>`,
       `attachments?: { filename: string; content: Buffer }[]`
-- [ ] A-19 `sendMail()` passes all three to Resend; default `replyTo` from `MAIL_FROM`-style env
+- [x] A-19 `sendMail()` passes all three to Resend; default `replyTo` from `MAIL_FROM`-style env
       `MAIL_REPLY_TO` when set
-- [ ] A-20 No behaviour change to any existing call site (grep: all current callers compile
+- [x] A-20 No behaviour change to any existing call site (grep: all current callers compile
       untouched)
 
 ### Send-window utility (`src/mail/send-window.util.ts`)
 
-- [ ] A-21 `isLifecycleWindowOpen(now?)` — Tue–Thu 09:00–11:00 America/Curacao, built on
+- [x] A-21 `isLifecycleWindowOpen(now?)` — Tue–Thu 09:00–11:00 America/Curacao, built on
       `localNow()` from `@/common/utils/timezone.util`
-- [ ] A-22 `nextLifecycleWindow(now?)` — next window open instant (for logging/UI, not scheduling)
-- [ ] A-23 Unit spec: boundary minutes (08:59/09:00/10:59/11:00), Friday→Tuesday rollover, UTC
+- [x] A-22 `nextLifecycleWindow(now?)` — next window open instant (for logging/UI, not scheduling)
+- [x] A-23 Unit spec: boundary minutes (08:59/09:00/10:59/11:00), Friday→Tuesday rollover, UTC
       offsets (Curaçao is fixed UTC-4, no DST — assert that assumption in the spec)
 
 ### Unsubscribe tokens + public API
 
-- [ ] A-24 `issueUnsubscribeToken(email, audience, stream)` — reuse the row for the same triple if
+- [x] A-24 `issueUnsubscribeToken(email, audience, stream)` — reuse the row for the same triple if
       one exists (links in old emails stay valid)
-- [ ] A-25 `src/mail/email-preferences.controller.ts` — `GET /email/unsubscribe/:token`:
+- [x] A-25 `src/mail/email-preferences.controller.ts` — `GET /email/unsubscribe/:token`:
       `@Public()`, throttled, returns `{ email: masked, audience, stream, optedOut }`; unknown
       token → 404 (same shape as review tokens, no oracle)
-- [ ] A-26 `POST /email/unsubscribe/:token` — idempotent upsert of `EmailOptOut`
+- [x] A-26 `POST /email/unsubscribe/:token` — idempotent upsert of `EmailOptOut`
       (`source: 'unsubscribe-link'`); 404 unknown token
-- [ ] A-27 Email masking helper (`j***@host.com` — reuse `redact()` pattern from `MailService`)
-- [ ] A-28 DTOs (`dto/email-preferences.dto.ts`) + swagger file per module conventions
-- [ ] A-29 Static-before-dynamic route order respected in the controller
+- [x] A-27 Email masking helper (`j***@host.com` — reuse `redact()` pattern from `MailService`)
+- [x] A-28 DTOs (`dto/email-preferences.dto.ts`) + swagger file per module conventions
+- [x] A-29 Static-before-dynamic route order respected in the controller
 
 ### Timeline read endpoints
 
-- [ ] A-30 `GET /operators/:id/emails` — `@RequirePermissions(MANAGE_OPERATORS)`, returns
+- [x] A-30 `GET /operators/:id/emails` — `@RequirePermissions(MANAGE_OPERATORS)`, returns
       `EmailSend` rows for `scopeId = operatorId` (base + `#resend-*`), newest first
-- [ ] A-31 `GET /bookings/:id/emails` — booking-scoped guard consistent with existing booking admin
+- [x] A-31 `GET /bookings/:id/emails` — booking-scoped guard consistent with existing booking admin
       reads
-- [ ] A-32 Response DTOs with `@ApiProperty` examples; paginated wrapper if > 50 rows possible
+- [x] A-32 Response DTOs with `@ApiProperty` examples; paginated wrapper if > 50 rows possible
 
 ### Queue & env plumbing
 
-- [ ] A-33 `PlatformJobData` → discriminated union (`{ bookingId }` | `{ operatorId, templateKey }`);
+- [x] A-33 `PlatformJobData` → discriminated union (`{ bookingId }` | `{ operatorId, templateKey }`);
       processor destructures per job name; existing booking jobs compile unchanged
-- [ ] A-34 Add `PLATFORM_JOBS.ONBOARDING_EMAIL`
-- [ ] A-35 Add `PLATFORM_SCHEDULES.EMAIL_LIFECYCLE_SWEEP = { name: 'email.lifecycle-sweep',
+- [x] A-34 Add `PLATFORM_JOBS.ONBOARDING_EMAIL`
+- [x] A-35 Add `PLATFORM_SCHEDULES.EMAIL_LIFECYCLE_SWEEP = { name: 'email.lifecycle-sweep',
       every: 900_000 }` + processor case → `NightlyJobsService.emailLifecycleSweep()` (no-op stub
       logging "no senders registered" until WP-D)
-- [ ] A-36 Verify scheduler registration/pruning picks the new entry up (boot log
+- [x] A-36 Verify scheduler registration/pruning picks the new entry up (boot log
       "Registered 5 job schedulers")
-- [ ] A-37 `env.validate.ts`: add `SALES_EMAIL`, `MAIL_REPLY_TO`, `OB6_REPLY_TO`,
+- [x] A-37 `env.validate.ts`: add `SALES_EMAIL`, `MAIL_REPLY_TO`, `OB6_REPLY_TO`,
       `CALENDAR_SYNC_AVAILABLE`, `WALKTHROUGH_VIDEO_URL` (all optional) + the missing
       `ADMIN_EMAIL` entry; update `.env.example`
 
 ### Tests & ship
 
-- [ ] A-38 `email-log.service.spec.ts`: claim-first ordering, P2002 race → exactly one send,
+- [x] A-38 `email-log.service.spec.ts`: claim-first ordering, P2002 race → exactly one send,
       FAILED update path, suppressed rows, opt-out check, resend scope ids
-- [ ] A-39 `test/email-preferences.e2e-spec.ts`: GET resolve, POST act, POST repeat (idempotent),
+- [x] A-39 `test/email-preferences.e2e-spec.ts`: GET resolve, POST act, POST repeat (idempotent),
       unknown token 404 on both verbs
-- [ ] A-40 Full backend suite green (`pnpm test`, `pnpm test:e2e`); lint clean
+- [x] A-40 Full backend suite green (`pnpm test`, `pnpm test:e2e`); lint clean
 - [ ] A-41 Reviewer agent pass; findings verified against source before acting
-- [ ] A-42 Docs: `MASTER-CHECKLIST.md` + this file + plan §6 flipped, same commit
+- [x] A-42 Docs: `MASTER-CHECKLIST.md` + this file + plan §6 flipped, same commit
 - [ ] A-43 PR merged; post-deploy smoke: boot log shows 5 schedulers, unsubscribe GET 404s on a
       junk token in prod
 
@@ -296,6 +296,27 @@ AFTER WP-C (DTO strips `verificationStatus`) · **WP-G may not merge until WP-F 
       pre-operator) from the Better Auth verification hook — no template change
 - [ ] D-10 All new templates exported from `templates/index.ts`; every lifecycle footer carries
       the WP-A unsubscribe token link ("Prefer no setup emails? Opt out here")
+
+### Wave-1 review carry-overs (bind on this package)
+
+- [ ] D-25 Sweeps pre-filter candidates with an anti-join / `NOT EXISTS` on
+      `(templateKey, scopeId)` and use `claimAndSend` only to close the residual
+      race — a P2002-rejected INSERT still writes a dead tuple, and re-claiming
+      every candidate each 15-min tick is permanent autovacuum churn
+      (perf review M1; JSDoc on `claimAndSend` states the rule)
+- [ ] D-26 Suppression evaluator excludes ADMIN shadow operators: an admin
+      publishing their own tour gets `firstTourLiveAt` stamped like anyone else
+      (`operator.util.ts` auto-provisions the row) — gate every OB nudge on
+      `verificationStatus = VERIFIED` so shadow operators never enter the drip
+      (security review of #180, LOW-4)
+- [ ] D-27 Resend endpoint retries once with n+1 when `claimAndSend` reports
+      `skipped/already-sent` after `nextResendScopeId` — two concurrent admin
+      resends compute the same n (JSDoc on `nextResendScopeId`)
+- [ ] D-28 `List-Unsubscribe`/`List-Unsubscribe-Post` header values built ONLY
+      from server-minted tokens + env URLs — the `SendMailOptions.headers`
+      contract forbids user-supplied strings and CR/LF
+- [ ] D-29 If WP-D adds any FAILED-send monitoring query, add the
+      `[status, createdAt]` composite index in the same PR (perf review L2)
 
 ### Sweeper (`src/mail/onboarding-emails.service.ts` or `EmailProgrammeModule`)
 

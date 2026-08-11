@@ -68,7 +68,9 @@ import {
   ApiTravellerSummaryDocs,
   ApiUpdateBookingDocs,
   ApiVerifyTravellerCodeDocs,
+  ApiListBookingEmailsDocs,
 } from './bookings.swagger';
+import { EmailLogService } from '@/mail/email-log.service';
 
 /**
  * BookingsController - OCTO reserve → confirm lifecycle (native source of truth).
@@ -85,7 +87,10 @@ import {
 @ApiTags('Bookings')
 @Controller('bookings')
 export class BookingsController {
-  constructor(private readonly bookings: BookingsService) {}
+  constructor(
+    private readonly bookings: BookingsService,
+    private readonly emailLog: EmailLogService,
+  ) {}
 
   // Static routes BEFORE dynamic (:id) routes - NestJS matches top-to-bottom.
   @Post('quote')
@@ -589,5 +594,18 @@ export class BookingsController {
   @ApiGetBookingDocs()
   get(@Param('id') id: string, @AuthenticatedUser() user: TypedAuthUser) {
     return this.bookings.getById(id, { id: user.id, role: user.role });
+  }
+
+  // Email timeline (send-log rows, WP-A). Same gate and the same WHOSE-rows
+  // scope as GET :id; the rows come from the global send log (MailModule),
+  // not from BookingsService.
+  @Get(':id/emails')
+  @RequirePermissions(Permission.VIEW_BOOKINGS)
+  @ApiListBookingEmailsDocs()
+  listEmails(
+    @Param('id') id: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.emailLog.listForBooking(id, { id: user.id, role: user.role });
   }
 }

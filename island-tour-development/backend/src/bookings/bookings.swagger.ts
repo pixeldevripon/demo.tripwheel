@@ -19,6 +19,7 @@ import {
   TooManyRequestsErrorDto,
   UnauthorizedErrorDto,
 } from '@/common/dto/error-responses.dto';
+import { EmailSendDto } from '@/mail/dto/email-preferences.dto';
 import {
   BookingLookupResponseDto,
   BookingQuoteResponseDto,
@@ -552,4 +553,15 @@ export const ApiListBookingsDocs = () =>
         'List bookings (admin: all · operator: their tours · user: their own)',
     }),
     ApiOkResponse({ type: ListBookingsResponseDto }),
+  );
+
+export const ApiListBookingEmailsDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: "Send-log timeline for a booking's emails (auth-scoped)",
+      description:
+        'EmailSend rows (sent / failed / suppressed, incl. admin resends) for this booking, newest first. Scoped like GET /bookings/:id.',
+    }),
+    ApiOkResponse({ type: [EmailSendDto] }),
+    ApiNotFoundResponse({ type: NotFoundErrorDto }),
   );

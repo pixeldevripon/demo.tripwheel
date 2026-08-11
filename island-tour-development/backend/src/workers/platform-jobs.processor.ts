@@ -7,6 +7,8 @@ import {
   PLATFORM_JOBS,
   PLATFORM_QUEUE,
   PLATFORM_SCHEDULES,
+  type BookingJobData,
+  type OnboardingEmailJobData,
   type PlatformJobData,
 } from './platform-queue';
 
@@ -52,10 +54,24 @@ export class PlatformJobsProcessor extends WorkerHost {
         await this.nightlyJobs.run();
         return;
       }
+      case PLATFORM_SCHEDULES.EMAIL_LIFECYCLE_SWEEP.name:
+        return this.nightlyJobs.emailLifecycleSweep();
       default:
         break;
     }
-    const { bookingId } = job.data;
+    // The one non-booking payload; each job name maps to exactly one shape,
+    // so narrowing by name is honest (see PlatformJobData in platform-queue).
+    if (job.name === PLATFORM_JOBS.ONBOARDING_EMAIL) {
+      const { operatorId, templateKey } = job.data as OnboardingEmailJobData;
+      // WP-D registers the actual sender. Completing (not throwing) is
+      // deliberate: a retry loop cannot conjure the missing handler.
+      this.logger.warn(
+        `Onboarding email job for operator ${operatorId} (${templateKey}) - ` +
+          'no sender registered until WP-D; completing as a no-op',
+      );
+      return;
+    }
+    const { bookingId } = job.data as BookingJobData;
     switch (job.name) {
       case PLATFORM_JOBS.CONFIRMATION_EMAIL:
         return this.bookings.runConfirmationEmailJob(bookingId);
