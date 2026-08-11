@@ -1,4 +1,10 @@
 import { authEmailShell, EMAIL_EMPHASIS, escapeHtml } from './auth-email-shell';
+import {
+  INTERNAL_CTA_BACKGROUND,
+  factRow,
+  formatInternalTimestamp,
+  internalFactsTable,
+} from './internal-email.util';
 
 /**
  * The two halves of the tour approval workflow (access-roles conflict #1:
@@ -46,6 +52,62 @@ export function tourSubmittedForReviewTemplate({
     ctaUrl: reviewUrl,
     footnote:
       'The tour stays a draft and is invisible to travellers until Island Tours publishes it.',
+  });
+}
+
+export interface TourSubmittedSalesTemplateProps {
+  tourName: string;
+  /** Operator company name, else the owner's name. */
+  operatorName: string;
+  /** When the operator submitted (Tour.submittedAt). */
+  submittedAt: Date;
+  /** Dashboard link straight to the tour's review screen. */
+  reviewUrl: string;
+  siteLogoUrl?: string | null;
+}
+
+/**
+ * INT-2, the sales-pipeline variant of the submission alert. Sent to
+ * SALES_EMAIL only when it differs from ADMIN_EMAIL (the same mailbox gets
+ * ONE email - the reviewer variant above). Content is LOCKED by the
+ * onboarding wireframe (stage mint, second card): operator + submitted-at
+ * facts and a single dark "Review in admin" button - internal mail never
+ * wears the brand orange, and never carries an approve action (link
+ * scanners click).
+ *
+ * The trailing space in each label cell and the newline between rows feed
+ * the shell's plain-text part (tags are stripped without spacing); both are
+ * invisible in the rendered HTML.
+ */
+/** INT-2 subject - single owner for the string the service sends with. */
+export function tourSubmittedSalesSubject(tourName: string): string {
+  return `New tour to review: ${tourName}`;
+}
+
+export function tourSubmittedSalesTemplate({
+  tourName,
+  operatorName,
+  submittedAt,
+  reviewUrl,
+  siteLogoUrl,
+}: TourSubmittedSalesTemplateProps) {
+  const rows = [
+    factRow('Operator', escapeHtml(operatorName)),
+    factRow('Submitted', formatInternalTimestamp(submittedAt)),
+    factRow(
+      'Submission',
+      `<a href="${reviewUrl}" style="color:${INTERNAL_CTA_BACKGROUND}">Open the submission</a>`,
+    ),
+  ];
+  return authEmailShell({
+    siteLogoUrl,
+    title: `New tour to review: ${escapeHtml(tourName)}`,
+    paragraphs: [internalFactsTable(rows)],
+    ctaLabel: 'Review in admin',
+    ctaUrl: reviewUrl,
+    ctaBackground: INTERNAL_CTA_BACKGROUND,
+    footnote:
+      'Internal alert · the review queue in the dashboard is the system of record.',
   });
 }
 

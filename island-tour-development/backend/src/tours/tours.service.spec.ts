@@ -40,7 +40,15 @@ import { ToursService } from './tours.service';
 
 function createMockPrismaService() {
   const mock = {
-    operator: { findUnique: jest.fn(), findMany: jest.fn(), create: jest.fn() },
+    operator: {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      create: jest.fn(),
+      // publish() stamps firstTourLiveAt one-shot; default "already stamped"
+      // so pre-existing publish tests exercise publishing, not onboarding.
+      updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+    },
+    outboxEvent: { create: jest.fn() },
     // Seat-aware operator resolution (common/utils/operator.util.ts) checks
     // team seats when no direct Operator.userId row matches.
     staffMember: { findUnique: jest.fn() },
@@ -171,6 +179,7 @@ describe('ToursService', () => {
 
   let mail: {
     sendTourSubmittedForReviewEmail: jest.Mock;
+    sendTourSubmittedSalesEmail: jest.Mock;
     sendTourChangesRequestedEmail: jest.Mock;
     sendTourApprovedEmail: jest.Mock;
   };
@@ -186,6 +195,7 @@ describe('ToursService', () => {
     };
     mail = {
       sendTourSubmittedForReviewEmail: jest.fn().mockResolvedValue(undefined),
+      sendTourSubmittedSalesEmail: jest.fn().mockResolvedValue(undefined),
       sendTourChangesRequestedEmail: jest.fn().mockResolvedValue(undefined),
       sendTourApprovedEmail: jest.fn().mockResolvedValue(undefined),
     };
@@ -2774,6 +2784,158 @@ describe('ToursService', () => {
       expect(only.qualityScore).toBeNull();
       // The badge is derived BEFORE neutralization, so it survives.
       expect(only.badge).toBe('sponsored');
+    });
+  });
+
+  // ── WP-C: operator onboarding hooks (first-tour-live + INT-2) ───────────────
+
+  describe('WP-C first-tour-live stamp (publish)', () => {
+    const ready = (overrides: Record<string, unknown> = {}) =>
+      makeTour({
+        images: [
+          { id: 'i1', isHero: true },
+          { id: 'i2' },
+          { id: 'i3' },
+          { id: 'i4' },
+          { id: 'i5' },
+        ],
+        highlights: [{ id: 'h1' }, { id: 'h2' }, { id: 'h3' }],
+        translations: [{ overview: 'A lovely cruise overview.' }],
+        ...overrides,
+      });
+
+    beforeEach(() => {
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+      prisma.tour.findUnique.mockResolvedValue(ready());
+      prisma.tour.update.mockResolvedValue(
+        makeTour({ status: TourStatus.LIVE }),
+      );
+    });
+
+    it('stamps firstTourLiveAt one-shot and commits the outbox event with the tour update', async () => {
+      prisma.operator.updateMany.mockResolvedValueOnce({ count: 1 });
+
+      await service.publish('tour-1', 'user-1', Role.TOUR_OPERATOR);
+
+      expect(prisma.operator.updateMany).toHaveBeenCalledWith({
+        where: { id: 'op-1', firstTourLiveAt: null },
+        data: { firstTourLiveAt: expect.any(Date) },
+      });
+      // The winner writes the domain event in the SAME transaction (B6).
+      expect(prisma.outboxEvent.create).toHaveBeenCalledWith({
+        data: {
+          aggregate: 'operator',
+          aggregateId: 'op-1',
+          type: 'operator.first-tour-live',
+          payload: { operatorId: 'op-1', tourId: 'tour-1' },
+        },
+      });
+      expect(prisma.$transaction).toHaveBeenCalled();
+    });
+
+    it('publishes without an event when the operator already has a live tour (guard lost)', async () => {
+      prisma.operator.updateMany.mockResolvedValueOnce({ count: 0 });
+
+      await service.publish('tour-1', 'user-1', Role.TOUR_OPERATOR);
+
+      expect(prisma.outboxEvent.create).not.toHaveBeenCalled();
+      expect(prisma.tour.update).toHaveBeenCalled(); // the publish itself still lands
+    });
+  });
+
+  describe('WP-C INT-2 sales alert (notifyReviewSubmitted)', () => {
+    type WithNotify = { notifyReviewSubmitted(tourId: string): void };
+    const flush = () => new Promise((resolve) => setImmediate(resolve));
+    const envBefore: Record<string, string | undefined> = {};
+
+    beforeEach(() => {
+      envBefore.ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+      envBefore.SALES_EMAIL = process.env.SALES_EMAIL;
+      prisma.tour.findUnique.mockResolvedValue({
+        name: 'Sunset Cruise along Spanish Water',
+        submittedAt: new Date('2026-07-12T13:14:00.000Z'),
+        destination: { name: 'Curaçao' },
+        operator: {
+          companyInfo: { companyName: 'Irie Tours B.V.' },
+          user: { name: 'Mayra Martina' },
+        },
+      });
+    });
+
+    afterEach(() => {
+      for (const key of ['ADMIN_EMAIL', 'SALES_EMAIL'] as const) {
+        if (envBefore[key] === undefined) delete process.env[key];
+        else process.env[key] = envBefore[key];
+      }
+    });
+
+    it('sends BOTH the reviewer email and the sales variant when SALES_EMAIL differs', async () => {
+      process.env.ADMIN_EMAIL = 'reviewer@island.tours';
+      process.env.SALES_EMAIL = 'sales@island.tours';
+
+      (service as unknown as WithNotify).notifyReviewSubmitted('tour-1');
+      await flush();
+
+      expect(mail.sendTourSubmittedForReviewEmail).toHaveBeenCalledWith(
+        'reviewer@island.tours',
+        expect.objectContaining({
+          tourName: 'Sunset Cruise along Spanish Water',
+        }),
+      );
+      expect(mail.sendTourSubmittedSalesEmail).toHaveBeenCalledWith(
+        'sales@island.tours',
+        expect.objectContaining({
+          operatorName: 'Irie Tours B.V.',
+          submittedAt: expect.any(Date),
+        }),
+      );
+    });
+
+    it('sends ONE email when SALES_EMAIL equals ADMIN_EMAIL', async () => {
+      process.env.ADMIN_EMAIL = 'reviewer@island.tours';
+      process.env.SALES_EMAIL = 'reviewer@island.tours';
+
+      (service as unknown as WithNotify).notifyReviewSubmitted('tour-1');
+      await flush();
+
+      expect(mail.sendTourSubmittedForReviewEmail).toHaveBeenCalledTimes(1);
+      expect(mail.sendTourSubmittedSalesEmail).not.toHaveBeenCalled();
+    });
+
+    it('sends ONE email when SALES_EMAIL is unset (fallback = same mailbox)', async () => {
+      process.env.ADMIN_EMAIL = 'reviewer@island.tours';
+      delete process.env.SALES_EMAIL;
+
+      (service as unknown as WithNotify).notifyReviewSubmitted('tour-1');
+      await flush();
+
+      expect(mail.sendTourSubmittedForReviewEmail).toHaveBeenCalledTimes(1);
+      expect(mail.sendTourSubmittedSalesEmail).not.toHaveBeenCalled();
+    });
+
+    it('still reaches sales when ADMIN_EMAIL is missing but SALES_EMAIL is set', async () => {
+      delete process.env.ADMIN_EMAIL;
+      process.env.SALES_EMAIL = 'sales@island.tours';
+
+      (service as unknown as WithNotify).notifyReviewSubmitted('tour-1');
+      await flush();
+
+      expect(mail.sendTourSubmittedForReviewEmail).not.toHaveBeenCalled();
+      expect(mail.sendTourSubmittedSalesEmail).toHaveBeenCalledWith(
+        'sales@island.tours',
+        expect.anything(),
+      );
+    });
+
+    it('skips quietly (no throw) when neither mailbox is configured', async () => {
+      delete process.env.ADMIN_EMAIL;
+      delete process.env.SALES_EMAIL;
+
+      (service as unknown as WithNotify).notifyReviewSubmitted('tour-1');
+      await flush();
+
+      expect(mail.sendTourSubmittedForReviewEmail).not.toHaveBeenCalled();
+      expect(mail.sendTourSubmittedSalesEmail).not.toHaveBeenCalled();
     });
   });
 });

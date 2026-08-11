@@ -24,6 +24,15 @@ import {
   type TourChangesRequestedTemplateProps,
   tourSubmittedForReviewTemplate,
   type TourSubmittedForReviewTemplateProps,
+  tourSubmittedSalesTemplate,
+  type TourSubmittedSalesTemplateProps,
+  OPERATOR_APPROVED_SUBJECT,
+  operatorApprovedTemplate,
+  type OperatorApprovedTemplateProps,
+  operatorSignupInternalSubject,
+  operatorSignupInternalTemplate,
+  type OperatorSignupInternalTemplateProps,
+  tourSubmittedSalesSubject,
 } from './templates';
 import {
   escapeHtml,
@@ -403,6 +412,71 @@ export class MailService {
     await this.sendMail({
       to,
       subject: `Changes requested: ${params.tourName}`,
+      html,
+      text,
+    });
+  }
+
+  /**
+   * INT-2 (sales-pipeline variant of the submission alert). Sent to
+   * SALES_EMAIL only when it differs from ADMIN_EMAIL - the caller decides;
+   * this facade only renders and sends.
+   */
+  async sendTourSubmittedSalesEmail(
+    to: string,
+    params: Omit<TourSubmittedSalesTemplateProps, 'siteLogoUrl'>,
+  ): Promise<void> {
+    const siteLogoUrl = await this.getSiteLogo();
+    const { html, text } = tourSubmittedSalesTemplate({
+      ...params,
+      siteLogoUrl,
+    });
+    await this.sendMail({
+      to,
+      subject: tourSubmittedSalesSubject(params.tourName),
+      html,
+      text,
+    });
+  }
+
+  // ── Operator onboarding (WP-C: OB-2A approval + INT-1 sign-up alert) ─────────
+
+  /**
+   * OB-2A "You're approved" - to the operator, the moment an admin approves
+   * verification. Fired once by the guarded PENDING->VERIFIED transition in
+   * OperatorsService.decideVerification; wireframe copy is locked.
+   */
+  async sendOperatorApprovedEmail(
+    to: string,
+    params: Omit<OperatorApprovedTemplateProps, 'siteLogoUrl'>,
+  ): Promise<void> {
+    const siteLogoUrl = await this.getSiteLogo();
+    const { html, text } = operatorApprovedTemplate({ ...params, siteLogoUrl });
+    await this.sendMail({
+      to,
+      subject: OPERATOR_APPROVED_SUBJECT,
+      html,
+      text,
+    });
+  }
+
+  /**
+   * INT-1 "New operator" - to the sales pipeline (SALES_EMAIL, ADMIN_EMAIL
+   * fallback), fired on operator-row creation. Facts table + a dashboard
+   * review link; deliberately no approve action inside the email.
+   */
+  async sendOperatorSignupInternalEmail(
+    to: string,
+    params: Omit<OperatorSignupInternalTemplateProps, 'siteLogoUrl'>,
+  ): Promise<void> {
+    const siteLogoUrl = await this.getSiteLogo();
+    const { html, text } = operatorSignupInternalTemplate({
+      ...params,
+      siteLogoUrl,
+    });
+    await this.sendMail({
+      to,
+      subject: operatorSignupInternalSubject(params.operatorName),
       html,
       text,
     });

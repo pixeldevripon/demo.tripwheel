@@ -13,7 +13,7 @@
 | Wave | Package | Scope | Branch | Status | PR |
 | --- | --- | --- | --- | --- | --- |
 | 1 | WP-A send spine | backend | `feat/email-send-spine` | not started | — |
-| 1 | WP-C operator state machine | backend | `feat/operator-onboarding-state` | not started | — |
+| 1 | WP-C operator state machine | backend | `feat/operator-onboarding-state` | in review | #180 |
 | 2 | WP-B customer funnel | backend | `feat/email-customer-funnel` | not started | — |
 | 2 | WP-D onboarding sequence | backend | `feat/email-onboarding-sequence` | not started | — |
 | 2 | WP-E dashboard surfaces | dashboard | `feat/operator-onboarding-dashboard` | not started | — |
@@ -130,70 +130,70 @@ AFTER WP-C (DTO strips `verificationStatus`) · **WP-G may not merge until WP-F 
 
 ### Schema & migration
 
-- [ ] C-01 `prisma/operators.prisma`: add `verificationDecidedAt DateTime?`,
+- [x] C-01 `prisma/operators.prisma`: add `verificationDecidedAt DateTime?`,
       `firstTourLiveAt DateTime?`, `salesPendingReminderAt DateTime?`
-- [ ] C-02 Generate migration `operator_onboarding_state` (columns only, no new tables)
-- [ ] C-03 Deploy clean on dev + test DBs
+- [x] C-02 Generate migration `operator_onboarding_state` (columns only, no new tables)
+- [x] C-03 Deploy clean on dev + test DBs
 
 ### Verification endpoint
 
-- [ ] C-04 `dto`: `DecideVerificationDto { decision: 'VERIFIED' | 'REJECTED' }` (enum-validated)
-- [ ] C-05 `POST /operators/:id/verification` — controller route (static-before-dynamic order),
+- [x] C-04 `dto`: `DecideVerificationDto { decision: 'VERIFIED' | 'REJECTED' }` (enum-validated)
+- [x] C-05 `POST /operators/:id/verification` — controller route (static-before-dynamic order),
       `@RequirePermissions(MANAGE_OPERATORS)`, swagger decorator
-- [ ] C-06 Service: transition guard — only `PENDING → VERIFIED | REJECTED`; anything else → 409
+- [x] C-06 Service: transition guard — only `PENDING → VERIFIED | REJECTED`; anything else → 409
       with the current status in the message
-- [ ] C-07 Stamp `verificationStatus` + `verificationDecidedAt` atomically (guarded
+- [x] C-07 Stamp `verificationStatus` + `verificationDecidedAt` atomically (guarded
       `updateMany({ where: { id, verificationStatus: 'PENDING' } })` — no decide race)
-- [ ] C-08 Log the acting admin (logger per service conventions: who, operator id, decision)
-- [ ] C-09 Remove `verificationStatus` from `UpdateOperatorDto` (closes the blanket
+- [x] C-08 Log the acting admin (logger per service conventions: who, operator id, decision)
+- [x] C-09 Remove `verificationStatus` from `UpdateOperatorDto` (closes the blanket
       `PATCH /operators/:id` write at `operators.service.ts:401`)
-- [ ] C-10 Operator-creation path sets `verificationStatus: PENDING` explicitly
+- [x] C-10 Operator-creation path sets `verificationStatus: PENDING` explicitly
 
 ### OB-2A approval email
 
-- [ ] C-11 `templates/operator-approved.template.ts` (`auth-email-shell.ts` base): wireframe copy
+- [x] C-11 `templates/operator-approved.template.ts` (`auth-email-shell.ts` base): wireframe copy
       — "Good news, {firstName}" / company approved / "Add your first tour" CTA
       (`${dashboardAppBase()}/tours/new` or the correct dashboard route) + dashboard intro block
-- [ ] C-12 `MailService.sendOperatorApprovedEmail()` facade; barrel export in
+- [x] C-12 `MailService.sendOperatorApprovedEmail()` facade; barrel export in
       `templates/index.ts`
-- [ ] C-13 Send fired from the verification service on VERIFIED (one-shot by the C-07 guarded
+- [x] C-13 Send fired from the verification service on VERIFIED (one-shot by the C-07 guarded
       transition); wrapped best-effort (approval never fails on mail error)
 
 ### INT-1 / INT-2 internal alerts
 
-- [ ] C-14 `templates/operator-signup-internal.template.ts`: table of signatory name, email,
+- [x] C-14 `templates/operator-signup-internal.template.ts`: table of signatory name, email,
       phone/WhatsApp, KvK, accepted-at + agreement version; "Review in admin" deep link to
       `${dashboardAppBase()}/tour-operators/{id}/edit`; **no approve action in the email**
-- [ ] C-15 Recipient resolution helper `salesRecipient()`: `SALES_EMAIL ?? ADMIN_EMAIL ?? null`;
+- [x] C-15 Recipient resolution helper `salesRecipient()`: `SALES_EMAIL ?? ADMIN_EMAIL ?? null`;
       null → log error and skip (tours.service precedent, never throw)
-- [ ] C-16 INT-1 fired fire-and-forget on operator-row creation
-- [ ] C-17 INT-2: extend `notifyReviewSubmitted()` (`tours.service.ts:3396`) — sales-pipeline
+- [x] C-16 INT-1 fired fire-and-forget on operator-row creation
+- [x] C-17 INT-2: extend `notifyReviewSubmitted()` (`tours.service.ts:3396`) — sales-pipeline
       variant to `SALES_EMAIL` when set and different from `ADMIN_EMAIL`; single email when same
-- [ ] C-18 INT-2 template variant (`tour-review.template.ts` addition or sibling): operator name,
+- [x] C-18 INT-2 template variant (`tour-review.template.ts` addition or sibling): operator name,
       submitted-at, "Open the submission" link
 
 ### First-tour-live event
 
-- [ ] C-19 Stamp `firstTourLiveAt` in the tour-publish path with
+- [x] C-19 Stamp `firstTourLiveAt` in the tour-publish path with
       `updateMany({ where: { id: operatorId, firstTourLiveAt: null } })` (one-shot)
-- [ ] C-20 Emit outbox event `operator.first-tour-live` `{ operatorId, tourId }` in the same
+- [x] C-20 Emit outbox event `operator.first-tour-live` `{ operatorId, tourId }` in the same
       transaction as the publish (WP-D consumes; unknown types are logged+dispatched harmlessly
       today — verified `jobsFor` behaviour)
 
 ### List API for the dashboard
 
-- [ ] C-21 Operators list response gains: `verificationStatus` (already there), `toursSubmitted`
+- [x] C-21 Operators list response gains: `verificationStatus` (already there), `toursSubmitted`
       (derived count), `firstTourLiveAt`, `verificationDecidedAt`, days-pending derivable from
       `createdAt` — update DTO + swagger
-- [ ] C-22 List accepts `?verificationStatus=` filter for the queue/pipeline views
+- [x] C-22 List accepts `?verificationStatus=` filter for the queue/pipeline views
 
 ### Tests & ship
 
-- [ ] C-23 Service spec: PENDING→VERIFIED ok, PENDING→REJECTED ok, VERIFIED→* 409, UNVERIFIED→*
+- [x] C-23 Service spec: PENDING→VERIFIED ok, PENDING→REJECTED ok, VERIFIED→* 409, UNVERIFIED→*
       409, decide race (two parallel decides → one winner), one-shot `firstTourLiveAt`
-- [ ] C-24 Spec: OB-2A fires exactly once on approve; mail failure does not fail the approval
-- [ ] C-25 Spec: INT-1/INT-2 recipient resolution matrix (SALES set / unset / equal to ADMIN)
-- [ ] C-26 e2e: endpoint 403 for non-admin, 409 double-decide, DTO rejects unknown decision;
+- [x] C-24 Spec: OB-2A fires exactly once on approve; mail failure does not fail the approval
+- [x] C-25 Spec: INT-1/INT-2 recipient resolution matrix (SALES set / unset / equal to ADMIN)
+- [x] C-26 e2e: endpoint 403 for non-admin, 409 double-decide, DTO rejects unknown decision;
       PATCH /operators/:id with `verificationStatus` in body → 400 (`forbidNonWhitelisted`)
 - [ ] C-27 Suite green · reviewer agent pass · docs same-commit · PR merged
 
