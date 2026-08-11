@@ -89,7 +89,10 @@ describe('EmailCentreService', () => {
   });
 
   it('PATCH writes only provided fields; null clears an override', async () => {
-    await svc.updateSettings({ ob3DelayHours: 12, salesEmail: null });
+    await svc.updateSettings(
+      { ob3DelayHours: 12, salesEmail: null },
+      { id: 'admin-1' },
+    );
     expect(prisma.emailSettings.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         update: { ob3DelayHours: 12, salesEmail: null },
@@ -98,10 +101,13 @@ describe('EmailCentreService', () => {
   });
 
   it('PATCH normalizes weekday csv to lowercase and trims addresses', async () => {
-    await svc.updateSettings({
-      windowWeekdays: ' MON,Fri ',
-      salesEmail: '  sales@x.test ',
-    });
+    await svc.updateSettings(
+      {
+        windowWeekdays: ' MON,Fri ',
+        salesEmail: '  sales@x.test ',
+      },
+      { id: 'admin-1' },
+    );
     expect(prisma.emailSettings.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         update: { windowWeekdays: 'mon,fri', salesEmail: 'sales@x.test' },
@@ -111,22 +117,25 @@ describe('EmailCentreService', () => {
 
   it('PATCH rejects an inverted window measured on MERGED values', async () => {
     // Stored end = 11 (built-in); moving start alone to 11 empties the window.
-    await expect(svc.updateSettings({ windowStartHour: 11 })).rejects.toThrow(
-      BadRequestException,
-    );
+    await expect(
+      svc.updateSettings({ windowStartHour: 11 }, { id: 'admin-1' }),
+    ).rejects.toThrow(BadRequestException);
     expect(prisma.emailSettings.upsert).not.toHaveBeenCalled();
   });
 
   it('PATCH accepts a window move that stays consistent', async () => {
-    await svc.updateSettings({
-      windowStartHour: 13,
-      windowEndHour: 15,
-    });
+    await svc.updateSettings(
+      {
+        windowStartHour: 13,
+        windowEndHour: 15,
+      },
+      { id: 'admin-1' },
+    );
     expect(prisma.emailSettings.upsert).toHaveBeenCalled();
   });
 
   it('the review slice routes to ReviewRequestSettings, not email_settings', async () => {
-    await svc.updateSettings({ review: { enabled: true } });
+    await svc.updateSettings({ review: { enabled: true } }, { id: 'admin-1' });
     expect(prisma.reviewRequestSettings.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'default' },

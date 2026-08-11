@@ -34,6 +34,10 @@ export const WINDOW_CLOSE_HOUR = 11;
  */
 const OPEN_WEEKDAYS: ReadonlySet<number> = new Set([2, 3, 4]);
 
+/** The same built-in trio in settings-csv form - EMAIL_SETTINGS_BUILTINS
+ * derives from THIS so belt and suspender cannot drift (review minor 4). */
+export const BUILTIN_WINDOW_WEEKDAYS_CSV = 'tue,wed,thu';
+
 /** The lifecycle window knobs the dashboard may override (WP-H). */
 export interface LifecycleWindowConfig {
   /** JS `getUTCDay()` numbers (Sunday = 0). Must be non-empty. */

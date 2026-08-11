@@ -25,6 +25,7 @@ import {
   EmailLogService,
   type ClaimAndSendResult,
   TIMELINE_SELECT,
+  KEY_STREAM,
 } from './email-log.service';
 import { emailSafeLogoUrl } from './email-logo.util';
 import { EmailPreferencesService } from './email-preferences.service';
@@ -150,19 +151,6 @@ const RESENDABLE_KEYS: ReadonlySet<EmailTemplateKey> = new Set([
   EmailTemplateKey.OB7_CONNECT_CALENDAR,
   EmailTemplateKey.OB8_PAGE_STRONGER,
 ]);
-
-/** Which stream each resendable key logs under. */
-const KEY_STREAM: Readonly<Partial<Record<EmailTemplateKey, EmailStream>>> = {
-  [EmailTemplateKey.OB2_WELCOME_AGREEMENT]: EmailStream.TRANSACTIONAL,
-  [EmailTemplateKey.OB2A_APPROVED]: EmailStream.TRANSACTIONAL,
-  [EmailTemplateKey.OB3_FIRST_TOUR_HOWTO]: EmailStream.LIFECYCLE,
-  [EmailTemplateKey.OB4_BUILD_IT_WITH_YOU]: EmailStream.LIFECYCLE,
-  [EmailTemplateKey.OB5_TOUR_LIVE]: EmailStream.TRANSACTIONAL,
-  [EmailTemplateKey.OB6_CHECK_IN]: EmailStream.LIFECYCLE,
-  [EmailTemplateKey.OB7_CONNECT_CALENDAR]: EmailStream.LIFECYCLE,
-  [EmailTemplateKey.OB8_PAGE_STRONGER]: EmailStream.LIFECYCLE,
-  [EmailTemplateKey.INT1R_PENDING_REMINDER]: EmailStream.INTERNAL,
-};
 
 /** The operator projection every sender renders from. */
 const OPERATOR_SELECT = {
@@ -478,7 +466,7 @@ export class OnboardingEmailsService {
       templateKey: key,
       scopeId: operatorId,
       toEmail: email,
-      stream: KEY_STREAM[key] ?? EmailStream.LIFECYCLE,
+      stream: KEY_STREAM[key],
       reason,
     });
   }
@@ -710,7 +698,7 @@ export class OnboardingEmailsService {
     const cfg = await this.emailSettings.resolve();
     const rendered = await this.renderForKey(key, operator, site, cfg);
     const email = operator.user.email;
-    const stream = KEY_STREAM[key] ?? EmailStream.LIFECYCLE;
+    const stream = KEY_STREAM[key];
 
     let scopeId = await this.emailLog.nextResendScopeId(key, operatorId);
     let result: ClaimAndSendResult = await this.emailLog.claimAndSend({

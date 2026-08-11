@@ -1,3 +1,4 @@
+import { DEFAULTS as REVIEW_REQUEST_DEFAULTS } from '@/reviews/review-requests.service';
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
@@ -22,13 +23,17 @@ const REVIEW_SLICE_SELECT = {
   giveUpAfterDays: true,
 } satisfies Prisma.ReviewRequestSettingsSelect;
 
-/** Schema defaults of the review slice — the dashboard's "default" hints. */
+/**
+ * Schema defaults of the review slice — the dashboard's "default" hints.
+ * DERIVED from ReviewRequestsService.DEFAULTS (the sweeper's own fallback
+ * table) so the number lives in one place (review of #192, minor 5).
+ */
 const REVIEW_SLICE_DEFAULTS = {
-  enabled: false,
-  firstSendLocalHour: 10,
-  firstSendDelayDays: 1,
-  reminderAfterDays: 5,
-  giveUpAfterDays: 30,
+  enabled: REVIEW_REQUEST_DEFAULTS.enabled,
+  firstSendLocalHour: REVIEW_REQUEST_DEFAULTS.firstSendLocalHour,
+  firstSendDelayDays: REVIEW_REQUEST_DEFAULTS.firstSendDelayDays,
+  reminderAfterDays: REVIEW_REQUEST_DEFAULTS.reminderAfterDays,
+  giveUpAfterDays: REVIEW_REQUEST_DEFAULTS.giveUpAfterDays,
 };
 
 /**
@@ -76,8 +81,19 @@ export class EmailCentreService {
    * effective values — a PATCH that only moves one endpoint cannot sneak an
    * empty or inverted window past per-field validation.
    */
-  async updateSettings(dto: UpdateEmailSettingsDto) {
+  async updateSettings(dto: UpdateEmailSettingsDto, actor: { id: string }) {
     const { review, ...emailPatch } = dto;
+    // The review slice's columns are NOT NULL - an explicit null has no
+    // meaning and would 500 inside Prisma; say so properly (sec review L3).
+    if (review) {
+      const nullKey = Object.entries(review).find(([, v]) => v === null)?.[0];
+      if (nullKey) {
+        throw new BadRequestException(
+          `review.${nullKey} cannot be null - review settings have no ` +
+            'env fallback to clear back to; send a value or omit the field',
+        );
+      }
+    }
 
     const patch: Partial<StoredEmailSettings> = {
       ...emailPatch,
@@ -117,14 +133,31 @@ export class EmailCentreService {
       )
     ) {
       await this.emailSettings.store(patch);
+      // Post-write belt (review of #192, minor 3): two concurrent PATCHes
+      // can each validate against stale state and persist an inverted
+      // window, which would silently close every nudge and MK-1. Re-check
+      // what actually landed; roll back to the built-ins on inversion.
+      const landed = EmailSettingsService.effective(
+        await this.emailSettings.stored(),
+      );
+      if (landed.windowStartHour >= landed.windowEndHour) {
+        await this.emailSettings.store({
+          windowStartHour: null,
+          windowEndHour: null,
+        });
+        throw new BadRequestException(
+          'Concurrent updates produced an empty send window - the window ' +
+            'hours were reset to the built-in defaults; re-apply your change',
+        );
+      }
       this.logger.log(
-        `Email settings updated: ${Object.keys(patch)
+        `Email settings updated by admin ${actor.id}: ${Object.keys(patch)
           .filter((k) => patch[k as keyof typeof patch] !== undefined)
           .join(', ')}`,
       );
     }
     if (review && Object.keys(review).length > 0) {
-      await this.updateReviewSlice(review);
+      await this.updateReviewSlice(review, actor);
     }
     return this.getSettings();
   }
@@ -139,7 +172,10 @@ export class EmailCentreService {
     });
   }
 
-  private async updateReviewSlice(slice: UpdateReviewSettingsSliceDto) {
+  private async updateReviewSlice(
+    slice: UpdateReviewSettingsSliceDto,
+    actor: { id: string },
+  ) {
     const before = await this.reviewSlice();
     const after = await this.prisma.reviewRequestSettings.update({
       where: { id: 'default' },
@@ -150,7 +186,8 @@ export class EmailCentreService {
       // The same deliberate-flip logging the /settings endpoint does — this
       // switch mails real customers.
       this.logger.log(
-        `Post-tour review requests ${after.enabled ? 'ENABLED' : 'DISABLED'} (via email centre)`,
+        `Post-tour review requests ${after.enabled ? 'ENABLED' : 'DISABLED'} ` +
+          `by admin ${actor.id} (via email centre)`,
       );
     }
   }

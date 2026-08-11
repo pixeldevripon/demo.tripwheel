@@ -2,7 +2,11 @@ import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { EmailStream, EmailTemplateKey, Locale } from '@prisma/client';
 import { emailIconBase } from '@/bookings/booking-email.context';
 import { PrismaService } from '@/prisma/prisma.service';
-import { EmailLogService, TIMELINE_SELECT } from './email-log.service';
+import {
+  EmailLogService,
+  TIMELINE_SELECT,
+  KEY_STREAM,
+} from './email-log.service';
 import { emailSafeLogoUrl } from './email-logo.util';
 import { MailService } from './mail.service';
 import type { EmailTemplateContext } from './templates/email-template.renderer';
@@ -33,28 +37,6 @@ import {
   tourSubmittedSalesSubject,
   tourSubmittedSalesTemplate,
 } from './templates';
-
-/** Which stream a test row logs under — the key's natural stream. */
-const KEY_STREAM: Readonly<Record<EmailTemplateKey, EmailStream>> = {
-  [EmailTemplateKey.BK1_CONFIRMATION]: EmailStream.TRANSACTIONAL,
-  [EmailTemplateKey.BK2_PRE_TOUR_REMINDER]: EmailStream.TRANSACTIONAL,
-  [EmailTemplateKey.BK3_REVIEW_REQUEST]: EmailStream.TRANSACTIONAL,
-  [EmailTemplateKey.BK3R_REVIEW_REMINDER]: EmailStream.TRANSACTIONAL,
-  [EmailTemplateKey.MK1_NEXT_ADVENTURE]: EmailStream.MARKETING,
-  [EmailTemplateKey.CX1_CANCELLATION]: EmailStream.TRANSACTIONAL,
-  [EmailTemplateKey.OB1_VERIFY_EMAIL]: EmailStream.TRANSACTIONAL,
-  [EmailTemplateKey.OB2_WELCOME_AGREEMENT]: EmailStream.TRANSACTIONAL,
-  [EmailTemplateKey.OB2A_APPROVED]: EmailStream.TRANSACTIONAL,
-  [EmailTemplateKey.OB3_FIRST_TOUR_HOWTO]: EmailStream.LIFECYCLE,
-  [EmailTemplateKey.OB4_BUILD_IT_WITH_YOU]: EmailStream.LIFECYCLE,
-  [EmailTemplateKey.OB5_TOUR_LIVE]: EmailStream.TRANSACTIONAL,
-  [EmailTemplateKey.OB6_CHECK_IN]: EmailStream.LIFECYCLE,
-  [EmailTemplateKey.OB7_CONNECT_CALENDAR]: EmailStream.LIFECYCLE,
-  [EmailTemplateKey.OB8_PAGE_STRONGER]: EmailStream.LIFECYCLE,
-  [EmailTemplateKey.INT1_NEW_OPERATOR]: EmailStream.INTERNAL,
-  [EmailTemplateKey.INT1R_PENDING_REMINDER]: EmailStream.INTERNAL,
-  [EmailTemplateKey.INT2_NEW_TOUR]: EmailStream.INTERNAL,
-};
 
 /**
  * The scopeId prefix for one admin's test rows. Documented in emails.prisma:

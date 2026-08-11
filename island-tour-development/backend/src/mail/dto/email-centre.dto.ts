@@ -1,4 +1,5 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { UpdateReviewRequestsDto } from '@/settings/dto/settings.dto';
+import { ApiProperty, ApiPropertyOptional, PickType } from '@nestjs/swagger';
 import {
   EmailAudience,
   EmailSendStatus,
@@ -30,9 +31,12 @@ import {
  * attempt to PATCH such a field into a 400.
  */
 
-// Bare-address-or-`Name <addr>` is the MAIL_FROM contract; settings addresses
-// are stricter (a bare mailbox) so a typo cannot silently break Reply-To.
-const EMAIL_SHAPE = /^\S+@\S+\.\S+$/;
+// STRICT single bare mailbox. `\S+` alone admits comma-lists and
+// `Name<addr>` display forms - and these values become live Reply-To
+// headers and internal-alert recipients, so an extra smuggled address is
+// a silent BCC (security review of #192, M1). No commas, no angle
+// brackets, no spaces, exactly one @.
+const EMAIL_SHAPE = /^[^\s@,<>]+@[^\s@,<>]+\.[^\s@,<>]+$/;
 
 // ≥1 weekday of lowercase day names, csv (validated case-insensitively;
 // normalized to lowercase in the service).
@@ -406,49 +410,23 @@ export class EmailPeopleQueryDto {
 
 /**
  * The ReviewRequestSettings slice carried on the same PATCH (H-04: one
- * switchboard, no second screen). Bounds mirror UpdateReviewRequestsDto —
- * these fields are written to the review_request_settings row, never to
- * email_settings. NOT nullable: that table's columns have NOT NULL defaults,
- * so there is no "clear back to fallback" to express.
+ * switchboard, no second screen). Derived via PickType from the CANONICAL
+ * UpdateReviewRequestsDto so the bounds have exactly one owner (review of
+ * #192, Major 1) - these fields write to the review_request_settings row,
+ * never to email_settings. NOT nullable: that table's columns are NOT NULL,
+ * so there is no "clear back to fallback" to express - the service rejects
+ * an explicit null with a 400 instead of letting Prisma 500 (sec Low 3).
  */
-export class UpdateReviewSettingsSliceDto {
-  @ApiPropertyOptional({ example: false, description: 'Master switch.' })
-  @IsOptional()
-  @IsBoolean()
-  enabled?: boolean;
-
-  @ApiPropertyOptional({ example: 10, minimum: 0, maximum: 23 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(0)
-  @Max(23)
-  firstSendLocalHour?: number;
-
-  @ApiPropertyOptional({ example: 1, minimum: 0, maximum: 14 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(0)
-  @Max(14)
-  firstSendDelayDays?: number;
-
-  @ApiPropertyOptional({ example: 5, minimum: 1, maximum: 30 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(30)
-  reminderAfterDays?: number;
-
-  @ApiPropertyOptional({ example: 30, minimum: 1, maximum: 180 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(180)
-  giveUpAfterDays?: number;
-}
+export class UpdateReviewSettingsSliceDto extends PickType(
+  UpdateReviewRequestsDto,
+  [
+    'enabled',
+    'firstSendLocalHour',
+    'firstSendDelayDays',
+    'reminderAfterDays',
+    'giveUpAfterDays',
+  ] as const,
+) {}
 
 /**
  * PATCH /email/settings. Every email-settings field is tri-state: absent =

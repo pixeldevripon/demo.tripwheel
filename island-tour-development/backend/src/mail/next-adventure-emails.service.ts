@@ -19,10 +19,7 @@ import { localNow } from '@/common/utils/timezone.util';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EmailLogService } from './email-log.service';
 import { EmailPreferencesService } from './email-preferences.service';
-import {
-  EmailSettingsService,
-  type EffectiveEmailSettings,
-} from './email-settings.service';
+import { EmailSettingsService } from './email-settings.service';
 import { MailService } from './mail.service';
 import {
   buildNextAdventureEmailContext,

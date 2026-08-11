@@ -1,3 +1,8 @@
+import {
+  BUILTIN_WINDOW_WEEKDAYS_CSV,
+  WINDOW_CLOSE_HOUR,
+  WINDOW_OPEN_HOUR,
+} from './send-window.util';
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { salesRecipient } from '@/common/utils/sales-recipient.util';
@@ -17,9 +22,9 @@ export const EMAIL_SETTINGS_BUILTINS = {
   ob7AfterLiveDays: 3,
   ob8AfterLiveDays: 7,
   pendingReminderBusinessDays: 2,
-  windowWeekdays: 'tue,wed,thu',
-  windowStartHour: 9,
-  windowEndHour: 11,
+  windowWeekdays: BUILTIN_WINDOW_WEEKDAYS_CSV,
+  windowStartHour: WINDOW_OPEN_HOUR,
+  windowEndHour: WINDOW_CLOSE_HOUR,
   mk1DelayHours: 72,
 } as const;
 

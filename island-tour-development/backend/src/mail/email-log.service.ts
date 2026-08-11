@@ -82,6 +82,33 @@ export const TIMELINE_SELECT = {
  * — a suppressed email is decided, not pending, so the next sweep skips it
  * for free via the same P2002.
  */
+/**
+ * THE stream classification of every template key - single owner (review
+ * of #192, Major 2): opt-out semantics, suppression rows, the activity
+ * list's badges and test-send logging all read THIS map. A new enum key
+ * without an entry is a compile error, never a silent default.
+ */
+export const KEY_STREAM: Readonly<Record<EmailTemplateKey, EmailStream>> = {
+  [EmailTemplateKey.BK1_CONFIRMATION]: EmailStream.TRANSACTIONAL,
+  [EmailTemplateKey.BK2_PRE_TOUR_REMINDER]: EmailStream.TRANSACTIONAL,
+  [EmailTemplateKey.BK3_REVIEW_REQUEST]: EmailStream.TRANSACTIONAL,
+  [EmailTemplateKey.BK3R_REVIEW_REMINDER]: EmailStream.TRANSACTIONAL,
+  [EmailTemplateKey.MK1_NEXT_ADVENTURE]: EmailStream.MARKETING,
+  [EmailTemplateKey.CX1_CANCELLATION]: EmailStream.TRANSACTIONAL,
+  [EmailTemplateKey.OB1_VERIFY_EMAIL]: EmailStream.TRANSACTIONAL,
+  [EmailTemplateKey.OB2_WELCOME_AGREEMENT]: EmailStream.TRANSACTIONAL,
+  [EmailTemplateKey.OB2A_APPROVED]: EmailStream.TRANSACTIONAL,
+  [EmailTemplateKey.OB3_FIRST_TOUR_HOWTO]: EmailStream.LIFECYCLE,
+  [EmailTemplateKey.OB4_BUILD_IT_WITH_YOU]: EmailStream.LIFECYCLE,
+  [EmailTemplateKey.OB5_TOUR_LIVE]: EmailStream.TRANSACTIONAL,
+  [EmailTemplateKey.OB6_CHECK_IN]: EmailStream.LIFECYCLE,
+  [EmailTemplateKey.OB7_CONNECT_CALENDAR]: EmailStream.LIFECYCLE,
+  [EmailTemplateKey.OB8_PAGE_STRONGER]: EmailStream.LIFECYCLE,
+  [EmailTemplateKey.INT1_NEW_OPERATOR]: EmailStream.INTERNAL,
+  [EmailTemplateKey.INT1R_PENDING_REMINDER]: EmailStream.INTERNAL,
+  [EmailTemplateKey.INT2_NEW_TOUR]: EmailStream.INTERNAL,
+};
+
 @Injectable()
 export class EmailLogService {
   private readonly logger = new Logger(EmailLogService.name);

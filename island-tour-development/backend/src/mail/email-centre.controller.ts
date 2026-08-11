@@ -54,8 +54,14 @@ export class EmailCentreController {
   @Patch('settings')
   @RequirePermissions(Permission.MANAGE_SYSTEM)
   @ApiUpdateEmailSettingsDocs()
-  updateSettings(@Body() dto: UpdateEmailSettingsDto) {
-    return this.centre.updateSettings(dto);
+  updateSettings(
+    @Body() dto: UpdateEmailSettingsDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    // The switchboard starts/stops mail to real customers - the log must
+    // answer "who flipped it" (security review of #192, M2).
+    const user = req.user as TypedAuthUser;
+    return this.centre.updateSettings(dto, { id: user.id });
   }
 
   @Get('sends')
