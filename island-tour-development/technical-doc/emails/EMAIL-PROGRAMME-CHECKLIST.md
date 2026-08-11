@@ -19,7 +19,7 @@
 | 2 | WP-E dashboard surfaces | dashboard | `feat/operator-onboarding-dashboard` | **merged** | #56 |
 | 2 | WP-F unsubscribe page | frontend | `feat/unsubscribe-page` | **merged** | #183 |
 | 3 | WP-G consent + MK-1 | backend | `feat/email-mk1-marketing` | **merged** | #188 |
-| 4 | WP-H email centre (API) | backend | `feat/email-settings-api` | **PR open** | #192 |
+| 4 | WP-H email centre (API) | backend | `feat/email-settings-api` | **merged** | #192 |
 | 4 | WP-H email centre (UI) | dashboard | `feat/email-centre-dashboard` | not started | — |
 
 Gates: WP-B/D/F start after WP-A merges · WP-D/E also need WP-C · WP-E's edit-form change merges
@@ -557,7 +557,7 @@ Needs WP-A's two public endpoints. Must be **live in production before WP-G merg
       (D-29 rule)
 - [x] H-09 Specs: resolution matrix (settings vs env), settings PATCH validation, list filters,
       test-send logging; e2e: settings roundtrip + 403 non-admin
-- [ ] H-10 Reviewer pass · docs same-commit · PR merged
+- [x] H-10 Reviewer pass (security + solid-dry on #192: zero critical/high; verified findings fixed on-branch) · docs same-commit · PR merged
 
 ## Dashboard — `feat/email-centre-dashboard`
 
