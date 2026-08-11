@@ -1,0 +1,79 @@
+// Email programme spine (technical-doc/emails/EMAIL-IMPLEMENTATION-PLAN.md §2.2/§2.3).
+// Send log + opt-outs + consent + unsubscribe tokens. Enums live in enums.prisma.
+
+/// The send log — one row per automated email DECISION (sent, failed, or
+/// deliberately suppressed). `@@unique([templateKey, scopeId])` IS the
+/// send-once idempotency both wireframes demand: senders claim the row first
+/// (create) and treat P2002 as "already sent, skip". A FAILED row still
+/// occupies the slot — retries go through explicit admin resend, which writes
+/// a new row with `scopeId` suffixed `#resend-{n}` (EmailLogService.resendScopeId).
+model EmailSend {
+  id          String           @id @default(uuid())
+  templateKey EmailTemplateKey
+  /// Dedupe scope: booking id, operator id, or lowercased email — one send
+  /// per (template, scope). Admin resends suffix `#resend-{n}`.
+  scopeId     String
+  toEmail     String
+  stream      EmailStream
+  status      EmailSendStatus
+  /// BCP-47-ish platform locale the copy rendered in (Locale enum value).
+  locale      String?
+  providerMessageId String?
+  /// Set when status = SUPPRESSED — why the email deliberately did not go out.
+  suppressedReason  String?
+  /// Set when status = FAILED — truncated transport error.
+  error       String?
+  createdAt   DateTime @default(now())
+
+  @@unique([templateKey, scopeId])
+  @@index([toEmail, createdAt])
+  @@index([scopeId, createdAt])
+  @@map("email_sends")
+}
+
+/// Stream-scoped opt-out. Suspension of an operator stops everything; an
+/// opt-out stops ONLY the stream it names (LIFECYCLE for OB-3/4/6/7/8,
+/// MARKETING for MK-1). Transactional/internal streams never read this table.
+model EmailOptOut {
+  id        String        @id @default(uuid())
+  /// Lowercased before write — the table is keyed on the canonical form.
+  email     String
+  audience  EmailAudience
+  stream    EmailStream
+  /// 'unsubscribe-link' | 'dashboard' | 'admin'
+  source    String
+  createdAt DateTime      @default(now())
+
+  @@unique([email, audience, stream])
+  @@map("email_opt_outs")
+}
+
+/// Explicit marketing opt-in with provenance (WP-G reads; WP-A only creates
+/// the table). An empty table means zero marketing sends — the safe default.
+model EmailConsent {
+  id        String   @id @default(uuid())
+  /// Lowercased before write.
+  email     String
+  /// 'checkout-newsletter-opt-in'
+  source    String
+  bookingId String?
+  createdAt DateTime @default(now())
+
+  @@unique([email])
+  @@map("email_consents")
+}
+
+/// Long-lived, reusable unsubscribe token — the credential inside every
+/// lifecycle/marketing email footer link. A link in an old email must keep
+/// working, so tokens are never expired or single-use; acting on one is
+/// idempotent. One row is reused per (email, audience, stream) triple.
+model EmailUnsubscribeToken {
+  token     String        @id @default(uuid())
+  email     String
+  audience  EmailAudience
+  stream    EmailStream
+  createdAt DateTime      @default(now())
+
+  @@index([email])
+  @@map("email_unsubscribe_tokens")
+}

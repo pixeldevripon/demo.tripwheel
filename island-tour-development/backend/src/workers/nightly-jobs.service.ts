@@ -148,6 +148,18 @@ export class NightlyJobsService implements OnModuleInit {
     await this.reviewRequests.run();
   }
 
+  /**
+   * Scheduled-email sweep tick (EMAIL-IMPLEMENTATION-PLAN.md §2.6), every
+   * 15 minutes. WP-D fills this with the onboarding/INT1R/MK-1 evaluators;
+   * registering the schedule NOW (WP-A) means WP-D ships pure sender logic
+   * with no scheduler-registration change. Deliberately a logged no-op until
+   * then — the tick must exist and complete so the schedule is proven live.
+   */
+  async emailLifecycleSweep(): Promise<void> {
+    this.logger.log('Email lifecycle sweep: no senders registered (WP-D)');
+    await Promise.resolve();
+  }
+
   /** Job body, exposed so it can be invoked outside the schedule (admin/tests). */
   async run(): Promise<{
     spotlight: { activated: number; expired: number };

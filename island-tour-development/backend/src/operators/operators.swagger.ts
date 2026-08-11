@@ -8,6 +8,7 @@ import {
 } from '@/common/dto/error-responses.dto';
 import { applyDecorators } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiQuery, ApiResponse } from '@nestjs/swagger';
+import { EmailSendDto } from '@/mail/dto/email-preferences.dto';
 import {
   OperatorCompanyInfoResponseDto,
   OperatorMollieConfigResponseDto,
@@ -303,6 +304,23 @@ export function ApiUpdateOperatorMollieConfigDocs() {
       status: 200,
       description: 'Mollie config updated successfully',
       type: OperatorMollieConfigResponseDto,
+    }),
+    ...commonErrors,
+  );
+}
+
+export function ApiListOperatorEmailsDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: "Send-log timeline for an operator's emails",
+      description:
+        'EmailSend rows (sent / failed / suppressed, incl. admin resends) for this operator, newest first. Feeds the dashboard onboarding timeline.',
+    }),
+    ApiParam({ name: 'id', description: 'Operator UUID' }),
+    ApiResponse({
+      status: 200,
+      description: 'Send-log rows, newest first',
+      type: [EmailSendDto],
     }),
     ...commonErrors,
   );

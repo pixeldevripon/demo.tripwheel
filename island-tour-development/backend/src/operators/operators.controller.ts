@@ -43,13 +43,18 @@ import {
   ApiUpdateOperatorMollieConfigDocs,
   ApiUpdateOperatorPaymentProviderDocs,
   ApiUpdateOperatorSocialMediaDocs,
+  ApiListOperatorEmailsDocs,
   ApiUpdateOperatorStripeConfigDocs,
 } from './operators.swagger';
+import { EmailLogService } from '@/mail/email-log.service';
 
 @ApiTags('Operators')
 @Controller('operators')
 export class OperatorsController {
-  constructor(private readonly operatorsService: OperatorsService) {}
+  constructor(
+    private readonly operatorsService: OperatorsService,
+    private readonly emailLog: EmailLogService,
+  ) {}
 
   // ── Core Operator CRUD ─────────────────────────────────────────────────────
 
@@ -100,6 +105,16 @@ export class OperatorsController {
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
     return this.operatorsService.decideVerification(id, dto, user.id);
+  }
+
+  // Email timeline (send-log rows, WP-A) - the dashboard onboarding surface.
+  // MANAGE_OPERATORS per the pinned contract (plan §2.5); rows come from the
+  // global send log (MailModule), not OperatorsService.
+  @Get(':id/emails')
+  @RequirePermissions(Permission.MANAGE_OPERATORS)
+  @ApiListOperatorEmailsDocs()
+  listEmails(@Param('id') id: string) {
+    return this.emailLog.listForOperator(id);
   }
 
   @Delete(':id')
