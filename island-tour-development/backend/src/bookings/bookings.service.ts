@@ -1059,6 +1059,8 @@ export class BookingsService {
       });
     });
     this.logger.log(`Booking ${updated.displayRef} confirmed`);
+    // The OCTO lane's contact just landed; post-commit, never blocking (G-01).
+    this.captureNewsletterConsent(updated);
     const finalized = await this.finalizeConfirmation(updated);
     // Status changed; seats unchanged (already held at reserve).
     this.emitBookingEvents(finalized, { availability: false });
@@ -1415,6 +1417,47 @@ export class BookingsService {
     // contact yet here (provisioning no-ops) and are covered by update().
     void this.customerProvisioning.provisionForBooking(updated);
     return updated;
+  }
+
+  /**
+   * G-01: record the checkout newsletter opt-in as an `EmailConsent` row —
+   * the explicit-consent provenance MK-1's gate reads (plan §2.3). Reserve
+   * carries `newsletterOptIn` but no contact, so this fires wherever a
+   * contact email LANDS on an opted-in booking (`update()` sets it during
+   * checkout; `confirm()` on the OCTO lane) — both call sites pass the row
+   * they just wrote.
+   *
+   * Fire-and-forget BY CONTRACT (G-03): consent bookkeeping must never fail
+   * or slow a booking write (the customerProvisioning/INT-1 rule). Upsert on
+   * the `[email]` unique with `update: {}` keeps the FIRST provenance row —
+   * a second opted-in booking by the same address changes nothing.
+   */
+  private captureNewsletterConsent(booking: {
+    id: string;
+    newsletterOptIn: boolean;
+    contactEmail: string | null;
+  }): void {
+    if (!booking.newsletterOptIn) return;
+    const email = booking.contactEmail?.trim().toLowerCase();
+    if (!email) return;
+    void this.prisma.emailConsent
+      .upsert({
+        where: { email },
+        create: {
+          email,
+          source: 'checkout-newsletter-opt-in',
+          bookingId: booking.id,
+        },
+        update: {},
+        select: { id: true },
+      })
+      .catch((err: unknown) =>
+        // Redacted: an email address in a log line outlives the row itself.
+        this.logger.error(
+          `Newsletter consent upsert failed for booking ${booking.id}: ` +
+            `${err instanceof Error ? err.message : 'unknown'}`,
+        ),
+      );
   }
 
   // ════════════════════════════════════════════════════════════════════════
@@ -3875,6 +3918,11 @@ export class BookingsService {
     // Fire-and-forget; provisioning is idempotent when both hooks run.
     if (dto.contact?.email && updated.status === BookingStatus.CONFIRMED) {
       void this.customerProvisioning.provisionForBooking(updated);
+    }
+    // Checkout's contact write is where reserve's `newsletterOptIn: true`
+    // finally meets an address — record the consent row post-commit (G-01).
+    if (dto.contact?.email) {
+      this.captureNewsletterConsent(updated);
     }
     // Checkout sets the contact here (reserve carries no contact fields): the
     // booker who authored the booking gets a traveler session back, so the TYP

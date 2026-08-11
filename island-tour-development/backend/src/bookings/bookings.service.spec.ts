@@ -139,6 +139,9 @@ function mockPrisma() {
       count: jest.fn().mockResolvedValue(0),
       findMany: jest.fn().mockResolvedValue([]),
     },
+    // WP-G consent capture (G-01): fire-and-forget upsert wherever a contact
+    // email lands on an opted-in booking. Default = succeeds silently.
+    emailConsent: { upsert: jest.fn().mockResolvedValue({ id: 'ec1' }) },
     // Traveller account OTP login codes. Default = no live code, so a verify
     // without an explicit row is the "nothing outstanding" 401 path.
     travelerLoginCode: {
@@ -4151,6 +4154,126 @@ describe('BookingsService', () => {
       );
       await svc.update('b1', { notes: 'gate 4' });
       expect(m.booking.update).toHaveBeenCalled();
+    });
+  });
+
+  // WP-G G-01/G-03: the checkout newsletter tick becomes an EmailConsent row.
+  describe('newsletter consent capture (G-01)', () => {
+    const CONTACT = {
+      firstName: 'Ada',
+      lastName: 'Byron',
+      email: 'Ada.Byron@Example.TEST', // mixed case on purpose
+    };
+
+    /** Flush the fire-and-forget microtask chain. */
+    const settle = () => new Promise((r) => setImmediate(r));
+
+    it('update(): a contact landing on an opted-in booking upserts the consent row (lowercased, keep-first)', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({ status: BookingStatus.ON_HOLD, newsletterOptIn: true }),
+      );
+      m.booking.update.mockImplementation(({ data }: any) =>
+        Promise.resolve(
+          fakeBooking({
+            ...data,
+            status: BookingStatus.ON_HOLD,
+            newsletterOptIn: true,
+          }),
+        ),
+      );
+      await svc.update('b1', { contact: CONTACT });
+      await settle();
+
+      expect(m.emailConsent.upsert).toHaveBeenCalledTimes(1);
+      expect(m.emailConsent.upsert).toHaveBeenCalledWith({
+        where: { email: 'ada.byron@example.test' },
+        create: {
+          email: 'ada.byron@example.test',
+          source: 'checkout-newsletter-opt-in',
+          bookingId: 'b1',
+        },
+        // Keep-first: a second opted-in booking never rewrites provenance.
+        update: {},
+        select: { id: true },
+      });
+    });
+
+    it('update(): fires ONLY on newsletterOptIn=true (G-03)', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({ status: BookingStatus.ON_HOLD, newsletterOptIn: false }),
+      );
+      m.booking.update.mockImplementation(({ data }: any) =>
+        Promise.resolve(
+          fakeBooking({
+            ...data,
+            status: BookingStatus.ON_HOLD,
+            newsletterOptIn: false,
+          }),
+        ),
+      );
+      await svc.update('b1', { contact: CONTACT });
+      await settle();
+      expect(m.emailConsent.upsert).not.toHaveBeenCalled();
+    });
+
+    it('update(): a contact-less edit never touches the consent table', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({ status: BookingStatus.ON_HOLD, newsletterOptIn: true }),
+      );
+      m.booking.update.mockImplementation(({ data }: any) =>
+        Promise.resolve(
+          fakeBooking({
+            ...data,
+            status: BookingStatus.ON_HOLD,
+            newsletterOptIn: true,
+          }),
+        ),
+      );
+      await svc.update('b1', { notes: 'gate 4' });
+      await settle();
+      expect(m.emailConsent.upsert).not.toHaveBeenCalled();
+    });
+
+    it('confirm(): the OCTO-lane contact write captures consent too', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({ newsletterOptIn: true }),
+      );
+      m.booking.update.mockResolvedValue(
+        fakeBooking({
+          status: BookingStatus.CONFIRMED,
+          utcConfirmedAt: new Date(),
+          contactEmail: 'ada@x.io',
+          newsletterOptIn: true,
+        }),
+      );
+      await svc.confirm('b1', { contact: CONTACT });
+      await settle();
+
+      expect(m.emailConsent.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { email: 'ada@x.io' },
+        }),
+      );
+    });
+
+    it('NEVER blocks the booking write: a rejecting upsert still resolves update() (G-03)', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({ status: BookingStatus.ON_HOLD, newsletterOptIn: true }),
+      );
+      m.booking.update.mockImplementation(({ data }: any) =>
+        Promise.resolve(
+          fakeBooking({
+            ...data,
+            status: BookingStatus.ON_HOLD,
+            newsletterOptIn: true,
+          }),
+        ),
+      );
+      m.emailConsent.upsert.mockRejectedValue(new Error('db down'));
+
+      const res = await svc.update('b1', { contact: CONTACT });
+      await settle();
+      expect(res.sessionToken).toBeDefined(); // the booking write succeeded
     });
   });
 
