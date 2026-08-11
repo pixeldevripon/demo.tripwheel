@@ -4,6 +4,13 @@ model Operator {
   isActive           Boolean                    @default(true)
   verificationStatus OperatorVerificationStatus @default(UNVERIFIED)
 
+  // Onboarding state machine (EMAIL-IMPLEMENTATION-PLAN §2.4). The wireframe's
+  // created → accepted → approved maps onto verificationStatus (accepted =
+  // PENDING, approved = VERIFIED); these timestamps anchor the email sequence.
+  verificationDecidedAt  DateTime? // stamped by approve/reject — the OB-3/4/6 anchor
+  firstTourLiveAt        DateTime? // stamped once by the first tour publish — the OB-7/8 anchor
+  salesPendingReminderAt DateTime? // INT1R guard: set when the 2-business-day reminder fires
+
   // Which PSP this operator charges through (mirrors the platform's
   // payment_settings.activeProvider; switch guarded on configured credentials)
   activePaymentProvider PaymentProvider @default(STRIPE)

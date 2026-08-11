@@ -5,6 +5,7 @@ import {
   IsBoolean,
   IsEmail,
   IsEnum,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -14,6 +15,18 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
+
+/**
+ * The only two decisions the verification endpoint accepts: a PENDING
+ * operator is approved or declined. PENDING/UNVERIFIED are states, not
+ * decisions - `@IsIn` rejects them with a 400 before the service runs.
+ */
+export const VERIFICATION_DECISIONS = [
+  OperatorVerificationStatus.VERIFIED,
+  OperatorVerificationStatus.REJECTED,
+] as const;
+
+export type VerificationDecision = (typeof VERIFICATION_DECISIONS)[number];
 
 // ── Response DTOs ─────────────────────────────────────────────────────────────
 
@@ -55,6 +68,27 @@ export class OperatorResponseDto {
     nullable: true,
   })
   companyInfo?: { companyName: string | null } | null;
+
+  @ApiPropertyOptional({
+    example: '2026-08-11T14:00:00.000Z',
+    nullable: true,
+    description: 'When an admin approved/rejected verification',
+  })
+  verificationDecidedAt?: Date | null;
+
+  @ApiPropertyOptional({
+    example: '2026-08-14T09:30:00.000Z',
+    nullable: true,
+    description: 'When the operator’s first tour went live (stamped once)',
+  })
+  firstTourLiveAt?: Date | null;
+
+  @ApiPropertyOptional({
+    example: 2,
+    description:
+      'Derived count of tours ever submitted for review (list endpoint only)',
+  })
+  toursSubmitted?: number;
 
   @ApiProperty({ example: '2024-01-15T10:30:00.000Z' })
   createdAt!: Date;
@@ -168,6 +202,15 @@ export class OperatorQueryDto {
   @Type(() => Boolean)
   isActive?: boolean;
 
+  @ApiPropertyOptional({
+    enum: OperatorVerificationStatus,
+    description:
+      'Filter by verification status (the dashboard queue asks for PENDING)',
+  })
+  @IsOptional()
+  @IsEnum(OperatorVerificationStatus)
+  verificationStatus?: OperatorVerificationStatus;
+
   @ApiPropertyOptional({ description: 'Page number (1-based)', default: 1 })
   @IsOptional()
   @Type(() => Number)
@@ -209,16 +252,19 @@ export class CreateOperatorDto {
   isActive?: boolean = true;
 }
 
+/**
+ * `verificationStatus` is deliberately ABSENT here: the blanket
+ * `PATCH /operators/:id` write used to let any admin edit flip it silently.
+ * The only sanctioned writer is `POST /operators/:id/verification`
+ * ({@link DecideVerificationDto}), which guards the transition and stamps
+ * `verificationDecidedAt`. The global ValidationPipe (forbidNonWhitelisted)
+ * turns any PATCH still carrying the field into a 400.
+ */
 export class UpdateOperatorDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
-
-  @ApiPropertyOptional({ enum: OperatorVerificationStatus })
-  @IsOptional()
-  @IsEnum(OperatorVerificationStatus)
-  verificationStatus?: OperatorVerificationStatus;
 
   @ApiPropertyOptional({ example: 'support@company.com' })
   @IsOptional()
@@ -231,6 +277,17 @@ export class UpdateOperatorDto {
   @IsString()
   @MaxLength(30)
   contactPhone?: string;
+}
+
+export class DecideVerificationDto {
+  @ApiProperty({
+    enum: VERIFICATION_DECISIONS,
+    example: OperatorVerificationStatus.VERIFIED,
+    description:
+      'The verification decision for a PENDING operator. VERIFIED fires the OB-2A approval email; REJECTED sends nothing.',
+  })
+  @IsIn(VERIFICATION_DECISIONS)
+  decision!: VerificationDecision;
 }
 
 export class UpdateOperatorCompanyInfoDto {

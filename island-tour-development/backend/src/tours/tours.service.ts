@@ -61,6 +61,7 @@ import {
 import { FxRatesService } from '@/fx/fx-rates.service';
 import { InboxService } from '@/inbox/inbox.service';
 import { MailService } from '@/mail/mail.service';
+import { salesRecipient } from '@/common/utils/sales-recipient.util';
 import { dashboardAppBase } from '@/common/utils/app-urls.util';
 import {
   AdminToursQueryDto,
@@ -3408,12 +3409,18 @@ export class ToursService {
     // Unlike that flow this does NOT fail the action when it is unset: the
     // tour is in the queue either way, and refusing the submission would
     // punish the operator for our configuration.
-    const to = process.env.ADMIN_EMAIL;
-    if (!to) {
+    const adminTo = process.env.ADMIN_EMAIL;
+    // INT-2: the sales pipeline hears about submissions too. Only a DISTINCT
+    // sales mailbox gets the variant - when salesRecipient() falls back to
+    // ADMIN_EMAIL the reviewer email above is the one and only send.
+    const salesTo = salesRecipient();
+    const distinctSalesTo = salesTo && salesTo !== adminTo ? salesTo : null;
+
+    if (!adminTo) {
       this.logger.error(
         `ADMIN_EMAIL is not configured - tour ${tourId} entered the review queue with nobody notified`,
       );
-      return;
+      if (!distinctSalesTo) return;
     }
 
     void this.prisma.tour
@@ -3421,6 +3428,7 @@ export class ToursService {
         where: { id: tourId },
         select: {
           name: true,
+          submittedAt: true,
           destination: { select: { name: true } },
           operator: {
             select: {
@@ -3432,15 +3440,32 @@ export class ToursService {
       })
       .then((tour) => {
         if (!tour) return;
-        return this.mail.sendTourSubmittedForReviewEmail(to, {
-          tourName: tour.name,
-          operatorName:
-            tour.operator?.companyInfo?.companyName ??
-            tour.operator?.user?.name ??
-            'An operator',
-          destinationName: tour.destination?.name ?? 'the Caribbean',
-          reviewUrl: this.tourReviewUrl(tourId),
-        });
+        const operatorName =
+          tour.operator?.companyInfo?.companyName ??
+          tour.operator?.user?.name ??
+          'An operator';
+        const sends: Promise<void>[] = [];
+        if (adminTo) {
+          sends.push(
+            this.mail.sendTourSubmittedForReviewEmail(adminTo, {
+              tourName: tour.name,
+              operatorName,
+              destinationName: tour.destination?.name ?? 'the Caribbean',
+              reviewUrl: this.tourReviewUrl(tourId),
+            }),
+          );
+        }
+        if (distinctSalesTo) {
+          sends.push(
+            this.mail.sendTourSubmittedSalesEmail(distinctSalesTo, {
+              tourName: tour.name,
+              operatorName,
+              submittedAt: tour.submittedAt ?? new Date(),
+              reviewUrl: this.tourReviewUrl(tourId),
+            }),
+          );
+        }
+        return Promise.all(sends).then(() => undefined);
       })
       .catch((err: unknown) =>
         this.logger.error(
@@ -3571,25 +3596,51 @@ export class ToursService {
     // operator adds availability - the dashboard surfaces this so it is not silent.
     const bookable = await this.availability.computeIsBookable(id);
     const now = new Date();
-    const updated = await this.prisma.tour.update({
-      where: { id },
-      data: {
-        status: TourStatus.LIVE,
-        publishedAt: now,
-        // Stamped ONCE, on the first publish, and never moved by a later
-        // pause/republish - unlike `publishedAt`, which tracks the current
-        // spell. Nothing wrote it before, so it was null on every tour the app
-        // published: the tier engine read that as "still provisional" and
-        // exempted those tours from demotion forever (tiers.service
-        // `isInProvisionalWindow` returns true for null), and the wizard could
-        // never mark its review step done. The demo seed always set it, which
-        // is why seeded data looked correct and published data did not.
-        firstPublishedAt: tour.firstPublishedAt ?? now,
-        isBookable: bookable,
-        // LIVE implies APPROVED: an admin publish is itself the approval.
-        approvalStatus: TourApprovalStatus.APPROVED,
-      },
-      select: this.tourSelect,
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.tour.update({
+        where: { id },
+        data: {
+          status: TourStatus.LIVE,
+          publishedAt: now,
+          // Stamped ONCE, on the first publish, and never moved by a later
+          // pause/republish - unlike `publishedAt`, which tracks the current
+          // spell. Nothing wrote it before, so it was null on every tour the app
+          // published: the tier engine read that as "still provisional" and
+          // exempted those tours from demotion forever (tiers.service
+          // `isInProvisionalWindow` returns true for null), and the wizard could
+          // never mark its review step done. The demo seed always set it, which
+          // is why seeded data looked correct and published data did not.
+          firstPublishedAt: tour.firstPublishedAt ?? now,
+          isBookable: bookable,
+          // LIVE implies APPROVED: an admin publish is itself the approval.
+          approvalStatus: TourApprovalStatus.APPROVED,
+        },
+        select: this.tourSelect,
+      });
+
+      // Operator onboarding anchor (plan §2.4): the operator's FIRST tour
+      // going live is stamped once - the guarded updateMany on
+      // `firstTourLiveAt IS NULL` lets exactly one publish win, ever - and
+      // the winner commits the `operator.first-tour-live` domain event in
+      // the SAME transaction (B6 outbox rule: never enqueue what a rollback
+      // could un-happen). WP-D consumes it for OB-5/OB-7/OB-8; until then
+      // the relay logs-and-dispatches unknown types harmlessly.
+      const stamped = await tx.operator.updateMany({
+        where: { id: tour.operatorId, firstTourLiveAt: null },
+        data: { firstTourLiveAt: now },
+      });
+      if (stamped.count === 1) {
+        await tx.outboxEvent.create({
+          data: {
+            aggregate: 'operator',
+            aggregateId: tour.operatorId,
+            type: 'operator.first-tour-live',
+            payload: { operatorId: tour.operatorId, tourId: id },
+          },
+        });
+      }
+
+      return row;
     });
 
     this.logger.log(

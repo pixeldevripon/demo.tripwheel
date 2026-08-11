@@ -49,6 +49,12 @@ export function ApiGetAllOperatorsDocs() {
   return applyDecorators(
     ApiOperation({ summary: 'List all tour operators (Admin only)' }),
     ApiQuery({ name: 'isActive', type: Boolean, required: false }),
+    ApiQuery({
+      name: 'verificationStatus',
+      required: false,
+      enum: ['UNVERIFIED', 'PENDING', 'VERIFIED', 'REJECTED'],
+      description: 'Filter for the verification queue / pipeline views',
+    }),
     ApiQuery({ name: 'page', required: false, type: Number, example: 1 }),
     ApiQuery({ name: 'limit', required: false, type: Number, example: 20 }),
     ApiResponse({
@@ -108,6 +114,37 @@ export function ApiUpdateOperatorDocs() {
       status: 200,
       description: 'Operator updated successfully',
       type: OperatorResponseDto,
+    }),
+    ...adminErrors,
+  );
+}
+
+export function ApiDecideVerificationDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Approve or reject a PENDING operator (Admin only)',
+      description:
+        'The only sanctioned writer of verificationStatus. Guarded transition: ' +
+        'only PENDING operators can be decided; anything else returns 409 with ' +
+        'the current status. VERIFIED fires the OB-2A approval email and stamps ' +
+        'verificationDecidedAt; REJECTED stamps the timestamp and sends nothing.',
+    }),
+    ApiParam({ name: 'id', description: 'Operator UUID' }),
+    ApiResponse({
+      status: 201,
+      description: 'Decision recorded; the operator with its new status',
+      type: OperatorResponseDto,
+    }),
+    ApiResponse({
+      status: 404,
+      description: 'Operator not found',
+      type: NotFoundErrorDto,
+    }),
+    ApiResponse({
+      status: 409,
+      description:
+        'Operator is not PENDING (already decided, or never accepted)',
+      type: ConflictErrorDto,
     }),
     ...adminErrors,
   );

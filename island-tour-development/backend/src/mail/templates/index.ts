@@ -21,10 +21,22 @@ export {
   tourApprovedTemplate,
   tourChangesRequestedTemplate,
   tourSubmittedForReviewTemplate,
+  tourSubmittedSalesTemplate,
   type TourApprovedTemplateProps,
   type TourChangesRequestedTemplateProps,
   type TourSubmittedForReviewTemplateProps,
+  type TourSubmittedSalesTemplateProps,
 } from './tour-review.template';
+export {
+  OPERATOR_APPROVED_SUBJECT,
+  operatorApprovedTemplate,
+  type OperatorApprovedTemplateProps,
+} from './operator-approved.template';
+export {
+  operatorSignupInternalSubject,
+  operatorSignupInternalTemplate,
+  type OperatorSignupInternalTemplateProps,
+} from './operator-signup-internal.template';
 
 // The booking confirmation is NOT a TS template function: it is the design-owned
 // `booking-confirmation-email.template.html` (master 6.5 + its locked wireframe),

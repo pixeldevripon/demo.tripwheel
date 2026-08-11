@@ -49,6 +49,70 @@ export function tourSubmittedForReviewTemplate({
   });
 }
 
+export interface TourSubmittedSalesTemplateProps {
+  tourName: string;
+  /** Operator company name, else the owner's name. */
+  operatorName: string;
+  /** When the operator submitted (Tour.submittedAt). */
+  submittedAt: Date;
+  /** Dashboard link straight to the tour's review screen. */
+  reviewUrl: string;
+  siteLogoUrl?: string | null;
+}
+
+/**
+ * INT-2, the sales-pipeline variant of the submission alert. Sent to
+ * SALES_EMAIL only when it differs from ADMIN_EMAIL (the same mailbox gets
+ * ONE email - the reviewer variant above). Content is LOCKED by the
+ * onboarding wireframe (stage mint, second card): operator + submitted-at
+ * facts and a single dark "Review in admin" button - internal mail never
+ * wears the brand orange, and never carries an approve action (link
+ * scanners click).
+ *
+ * The trailing space in each label cell and the newline between rows feed
+ * the shell's plain-text part (tags are stripped without spacing); both are
+ * invisible in the rendered HTML.
+ */
+export function tourSubmittedSalesTemplate({
+  tourName,
+  operatorName,
+  submittedAt,
+  reviewUrl,
+  siteLogoUrl,
+}: TourSubmittedSalesTemplateProps) {
+  const submitted = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Curacao',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(submittedAt);
+  const row = (label: string, value: string) =>
+    `<tr><td style="padding:4px 0;color:#6B7280">${label} </td><td style="padding:4px 0;text-align:right;font-weight:600">${value}</td></tr>`;
+  const rows = [
+    row('Operator', escapeHtml(operatorName)),
+    row('Submitted', submitted),
+    row(
+      'Submission',
+      `<a href="${reviewUrl}" style="color:#1F2937">Open the submission</a>`,
+    ),
+  ].join('\n');
+  return authEmailShell({
+    siteLogoUrl,
+    title: `New tour to review: ${escapeHtml(tourName)}`,
+    paragraphs: [
+      `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;font-size:13.5px;color:#374151">${rows}</table>`,
+    ],
+    ctaLabel: 'Review in admin',
+    ctaUrl: reviewUrl,
+    ctaBackground: '#1F2937',
+    footnote:
+      'Internal alert · the review queue in the dashboard is the system of record.',
+  });
+}
+
 export interface TourApprovedTemplateProps {
   tourName: string;
   /** Optional admin note - approval can carry one, unlike rejection. */

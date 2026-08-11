@@ -15,6 +15,7 @@ import { ApiTags } from '@nestjs/swagger';
 import { Permission, Role } from '@prisma/client';
 import {
   CreateOperatorDto,
+  DecideVerificationDto,
   OnboardOperatorDto,
   OperatorQueryDto,
   UpdateOperatorCompanyInfoDto,
@@ -27,6 +28,7 @@ import {
 import { OperatorsService } from './operators.service';
 import {
   ApiCreateOperatorDocs,
+  ApiDecideVerificationDocs,
   ApiDeleteOperatorDocs,
   ApiGetAllOperatorsDocs,
   ApiGetOperatorByIdDocs,
@@ -87,6 +89,17 @@ export class OperatorsController {
   @ApiUpdateOperatorDocs()
   update(@Param('id') id: string, @Body() dto: UpdateOperatorDto) {
     return this.operatorsService.update(id, dto);
+  }
+
+  @Post(':id/verification')
+  @RequirePermissions(Permission.MANAGE_OPERATORS)
+  @ApiDecideVerificationDocs()
+  decideVerification(
+    @Param('id') id: string,
+    @Body() dto: DecideVerificationDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.operatorsService.decideVerification(id, dto, user.id);
   }
 
   @Delete(':id')

@@ -6,6 +6,8 @@ import {
   provisionOrAttachAccount,
   rollbackProvisionOrAttach,
 } from '@/common/utils/invite-provisioning.util';
+import { dashboardAppBase } from '@/common/utils/app-urls.util';
+import { salesRecipient } from '@/common/utils/sales-recipient.util';
 import { MailService } from '@/mail/mail.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import { StaffPermissionsService } from '@/staff/staff-permissions.service';
@@ -18,6 +20,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  OperatorVerificationStatus,
   PaymentProvider,
   Prisma,
   Role,
@@ -27,6 +30,7 @@ import {
 
 import {
   CreateOperatorDto,
+  DecideVerificationDto,
   OnboardOperatorDto,
   OperatorQueryDto,
   UpdateOperatorCompanyInfoDto,
@@ -48,6 +52,8 @@ export class OperatorsService {
     userId: true,
     isActive: true,
     verificationStatus: true,
+    verificationDecidedAt: true,
+    firstTourLiveAt: true,
     contactEmail: true,
     contactPhone: true,
     aggregateRating: true,
@@ -197,6 +203,10 @@ export class OperatorsService {
           userId: user.id,
           isActive: dto.isActive ?? true,
           contactEmail: email,
+          // The onboarding state machine starts at "accepted" = PENDING
+          // (EMAIL-IMPLEMENTATION-PLAN §2.4). The schema default stays
+          // UNVERIFIED for legacy rows, so the creation path says it out loud.
+          verificationStatus: OperatorVerificationStatus.PENDING,
         },
         select: {
           id: true,
@@ -269,6 +279,11 @@ export class OperatorsService {
       this.logger.log(
         `Operator account ${created ? 'created and invited' : 'attached'}: ${email} (operator ${operator.id})`,
       );
+
+      // INT-1: the sales pipeline hears about every new operator, instantly.
+      // Fire-and-forget - a mail outage must never roll back the account.
+      this.notifyOperatorSignup(operator.id);
+
       return operator;
     } catch (err) {
       // Roll back exactly what we created so a failure leaves no orphans.
@@ -341,11 +356,18 @@ export class OperatorsService {
   }
 
   async findAll(query: OperatorQueryDto) {
-    const { search, isActive, page = 1, limit = 20 } = query;
+    const {
+      search,
+      isActive,
+      verificationStatus,
+      page = 1,
+      limit = 20,
+    } = query;
     const skip = (page - 1) * limit;
 
     const where: Prisma.OperatorWhereInput = {};
     if (isActive !== undefined) where.isActive = isActive;
+    if (verificationStatus) where.verificationStatus = verificationStatus;
     if (search) {
       where.OR = [
         { user: { name: { contains: search, mode: 'insensitive' } } },
@@ -366,10 +388,18 @@ export class OperatorsService {
           id: true,
           isActive: true,
           verificationStatus: true,
+          verificationDecidedAt: true,
+          firstTourLiveAt: true,
           createdAt: true,
           updatedAt: true,
           user: { select: { id: true, name: true, email: true } },
           companyInfo: { select: { companyName: true } },
+          // toursSubmitted is DERIVED at read time (plan §2.4): tours that
+          // were EVER submitted for review (submittedAt survives approval and
+          // publish). Filtered relation count - one query, no N+1.
+          _count: {
+            select: { tours: { where: { submittedAt: { not: null } } } },
+          },
         },
         skip,
         take: limit,
@@ -377,7 +407,15 @@ export class OperatorsService {
       }),
     ]);
 
-    return { total, page, limit, data };
+    return {
+      total,
+      page,
+      limit,
+      data: data.map(({ _count, ...operator }) => ({
+        ...operator,
+        toursSubmitted: _count.tours,
+      })),
+    };
   }
 
   async findOne(
@@ -405,6 +443,135 @@ export class OperatorsService {
       data: dto,
       select: this.operatorSelect,
     });
+  }
+
+  /**
+   * The ONLY sanctioned writer of `verificationStatus` (plan §2.5): approve or
+   * reject a PENDING operator. The guarded `updateMany` makes the transition
+   * race-free - two parallel decides produce exactly one winner (the
+   * hold-expiry idiom from bookings.service.ts) - and one-shot: VERIFIED and
+   * REJECTED are terminal until an admin re-pends through a future flow.
+   * Approval fires OB-2A best-effort; a mail failure never fails the decision.
+   */
+  async decideVerification(
+    id: string,
+    dto: DecideVerificationDto,
+    actorId: string,
+  ) {
+    await this.ensureExists(id);
+
+    const res = await this.prisma.operator.updateMany({
+      where: { id, verificationStatus: OperatorVerificationStatus.PENDING },
+      data: {
+        verificationStatus: dto.decision,
+        verificationDecidedAt: new Date(),
+      },
+    });
+
+    if (res.count === 0) {
+      // Lost the guard: either already decided (race, double-click) or never
+      // moved to PENDING. Tell the caller which state blocked the decision.
+      const current = await this.prisma.operator.findUnique({
+        where: { id },
+        select: { verificationStatus: true },
+      });
+      if (!current) throw new NotFoundException(`Operator ${id} not found`);
+      throw new ConflictException(
+        `Operator verification is ${current.verificationStatus} - only a PENDING operator can be decided`,
+      );
+    }
+
+    this.logger.log(
+      `Admin ${actorId} decided operator ${id} verification: ${dto.decision}`,
+    );
+
+    if (dto.decision === OperatorVerificationStatus.VERIFIED) {
+      // OB-2A. One-shot by construction: only the guarded transition above
+      // reaches this line, and it succeeds exactly once per PENDING spell.
+      this.notifyOperatorApproved(id);
+    }
+
+    return this.prisma.operator.findUnique({
+      where: { id },
+      select: this.operatorSelect,
+    });
+  }
+
+  /**
+   * INT-1 "New operator" to the sales pipeline. Fire-and-forget off the
+   * creation path (the tours.service notifyReviewSubmitted pattern): loads
+   * its own recipient data, never fails the mutation, logs-and-skips when no
+   * recipient env is configured.
+   */
+  private notifyOperatorSignup(operatorId: string): void {
+    const to = salesRecipient();
+    if (!to) {
+      this.logger.error(
+        `SALES_EMAIL/ADMIN_EMAIL are not configured - operator ${operatorId} signed up with nobody alerted`,
+      );
+      return;
+    }
+
+    void this.prisma.operator
+      .findUnique({
+        where: { id: operatorId },
+        select: {
+          createdAt: true,
+          contactPhone: true,
+          user: { select: { name: true, email: true } },
+          companyInfo: { select: { companyName: true, companyPhone: true } },
+        },
+      })
+      .then((operator) => {
+        if (!operator) return;
+        return this.mailService.sendOperatorSignupInternalEmail(to, {
+          operatorName: operator.companyInfo?.companyName ?? operator.user.name,
+          signatoryName: operator.user.name,
+          email: operator.user.email,
+          phone: operator.contactPhone ?? operator.companyInfo?.companyPhone,
+          acceptedAt: operator.createdAt,
+          reviewUrl: `${dashboardAppBase()}/tour-operators/${operatorId}/edit`,
+        });
+      })
+      .catch((err: unknown) =>
+        this.logger.error(
+          `Operator-signup internal alert failed for operator ${operatorId}`,
+          err instanceof Error ? err.stack : String(err),
+        ),
+      );
+  }
+
+  /**
+   * OB-2A "You're approved" to the operator's login mailbox. Same
+   * fire-and-forget contract as {@link notifyOperatorSignup}: the approval is
+   * already committed when this runs, and it must stay committed even when
+   * the mail transport is down.
+   */
+  private notifyOperatorApproved(operatorId: string): void {
+    void this.prisma.operator
+      .findUnique({
+        where: { id: operatorId },
+        select: {
+          user: { select: { name: true, email: true } },
+          companyInfo: { select: { companyName: true } },
+        },
+      })
+      .then((operator) => {
+        if (!operator) return;
+        const dashboardUrl = dashboardAppBase();
+        return this.mailService.sendOperatorApprovedEmail(operator.user.email, {
+          firstName: operator.user.name?.trim().split(/\s+/)[0],
+          companyName: operator.companyInfo?.companyName ?? operator.user.name,
+          addTourUrl: `${dashboardUrl}/trips/new`,
+          dashboardUrl,
+        });
+      })
+      .catch((err: unknown) =>
+        this.logger.error(
+          `Operator-approved email failed for operator ${operatorId}`,
+          err instanceof Error ? err.stack : String(err),
+        ),
+      );
   }
 
   /**

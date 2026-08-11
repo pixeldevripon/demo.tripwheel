@@ -28,6 +28,12 @@ export interface AuthEmailShellProps {
   codeNote?: string;
   ctaLabel?: string;
   ctaUrl?: string;
+  /**
+   * CTA background. Defaults to the brand orange; the INTERNAL family (INT-1,
+   * INT-2) passes the wireframe's dark #1F2937 so operational mail never
+   * reads as marketing. Never traveller/operator-authored - style-attr safe.
+   */
+  ctaBackground?: string;
   /** Muted line under the link fallback (e.g. "didn't request this?"). */
   footnote?: string;
 }
@@ -59,6 +65,7 @@ export function authEmailShell({
   codeNote,
   ctaLabel,
   ctaUrl,
+  ctaBackground = '#E8611A',
   footnote,
 }: AuthEmailShellProps): { html: string; text: string } {
   // Same brand-bar variants as booking-notice.template.html.
@@ -89,7 +96,7 @@ export function authEmailShell({
   const ctaBlock =
     ctaLabel && ctaUrl
       ? `
-          <a href="${ctaUrl}" style="display:inline-block;font-family:'Plus Jakarta Sans',Arial,sans-serif;font-size:16px;font-weight:500;color:#fff;background:#E8611A;text-decoration:none;border-radius:10px;padding:13px 24px;margin-top:4px">${ctaLabel}</a>
+          <a href="${ctaUrl}" style="display:inline-block;font-family:'Plus Jakarta Sans',Arial,sans-serif;font-size:16px;font-weight:500;color:#fff;background:${ctaBackground};text-decoration:none;border-radius:10px;padding:13px 24px;margin-top:4px">${ctaLabel}</a>
 
           <div style="font-size:14px;font-weight:400;color:#9aa3b2;margin-top:18px;line-height:1.65">If the button doesn't work, copy and paste this link into your browser:<br>
             <a href="${ctaUrl}" style="color:#4B5563;word-break:break-all">${ctaUrl}</a>
