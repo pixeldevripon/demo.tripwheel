@@ -12,7 +12,7 @@
 
 | Wave | Package | Scope | Branch | Status | PR |
 | --- | --- | --- | --- | --- | --- |
-| 1 | WP-A send spine | backend | `feat/email-send-spine` | in review | — |
+| 1 | WP-A send spine | backend | `feat/email-send-spine` | in review | #181 |
 | 1 | WP-C operator state machine | backend | `feat/operator-onboarding-state` | in review | #180 |
 | 2 | WP-B customer funnel | backend | `feat/email-customer-funnel` | not started | — |
 | 2 | WP-D onboarding sequence | backend | `feat/email-onboarding-sequence` | not started | — |
