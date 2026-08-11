@@ -32,6 +32,7 @@ import {
   operatorSignupInternalSubject,
   operatorSignupInternalTemplate,
   type OperatorSignupInternalTemplateProps,
+  tourSubmittedSalesSubject,
 } from './templates';
 import {
   escapeHtml,
@@ -432,7 +433,7 @@ export class MailService {
     });
     await this.sendMail({
       to,
-      subject: `New tour to review: ${params.tourName}`,
+      subject: tourSubmittedSalesSubject(params.tourName),
       html,
       text,
     });

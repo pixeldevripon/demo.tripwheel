@@ -31,9 +31,12 @@ export interface AuthEmailShellProps {
   /**
    * CTA background. Defaults to the brand orange; the INTERNAL family (INT-1,
    * INT-2) passes the wireframe's dark #1F2937 so operational mail never
-   * reads as marketing. Never traveller/operator-authored - style-attr safe.
+   * reads as marketing. Deliberately a literal union, not string: the value
+   * lands unescaped in a style attribute, so the type is what keeps a future
+   * caller from ever routing user data into it. Extend the union when the
+   * design family grows (WP-D's OB-4 WhatsApp green will be the next entry).
    */
-  ctaBackground?: string;
+  ctaBackground?: '#E8611A' | '#1F2937';
   /** Muted line under the link fallback (e.g. "didn't request this?"). */
   footnote?: string;
 }

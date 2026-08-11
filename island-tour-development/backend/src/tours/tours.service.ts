@@ -3409,16 +3409,23 @@ export class ToursService {
     // Unlike that flow this does NOT fail the action when it is unset: the
     // tour is in the queue either way, and refusing the submission would
     // punish the operator for our configuration.
-    const adminTo = process.env.ADMIN_EMAIL;
+    const adminTo = process.env.ADMIN_EMAIL?.trim() || undefined;
     // INT-2: the sales pipeline hears about submissions too. Only a DISTINCT
     // sales mailbox gets the variant - when salesRecipient() falls back to
-    // ADMIN_EMAIL the reviewer email above is the one and only send.
+    // ADMIN_EMAIL the reviewer email above is the one and only send. The
+    // comparison is case-insensitive: mailboxes are, and a casing mismatch
+    // would double-send to the same inbox.
     const salesTo = salesRecipient();
-    const distinctSalesTo = salesTo && salesTo !== adminTo ? salesTo : null;
+    const distinctSalesTo =
+      salesTo && salesTo.toLowerCase() !== adminTo?.toLowerCase()
+        ? salesTo
+        : null;
 
     if (!adminTo) {
       this.logger.error(
-        `ADMIN_EMAIL is not configured - tour ${tourId} entered the review queue with nobody notified`,
+        distinctSalesTo
+          ? `ADMIN_EMAIL is not configured - tour ${tourId} entered the review queue with no reviewer notified (sales alert still sent)`
+          : `Neither ADMIN_EMAIL nor SALES_EMAIL is configured - tour ${tourId} entered the review queue with nobody notified`,
       );
       if (!distinctSalesTo) return;
     }

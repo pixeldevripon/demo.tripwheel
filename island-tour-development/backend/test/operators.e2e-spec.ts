@@ -36,7 +36,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
-import { OperatorVerificationStatus, PrismaClient, Role } from '@prisma/client';
+import {
+  OperatorVerificationStatus,
+  PrismaClient,
+  Region,
+  Role,
+} from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { AppModule } from './../src/app.module';
 import { AllExceptionsFilter } from './../src/common/filters/http-exception.filter';
@@ -376,5 +381,62 @@ describe('Operators verification (e2e)', () => {
       .get(`${API}/operators?verificationStatus=NOT_A_STATUS`)
       .set('Cookie', adminCookie);
     expect(res.status).toBe(400);
+  });
+
+  it('derives toursSubmitted from submitted tours only (drafts excluded)', async () => {
+    // One submitted + one draft tour for operator B: the count must be 1.
+    // Guards the where({ submittedAt: { not: null } }) filter behind the
+    // dashboard's "0 tours" facet - a regression here makes that facet lie.
+    const suffix = Date.now().toString(36);
+    const destination = await prisma.destination.create({
+      data: {
+        name: `E2E Verif Dest ${suffix}`,
+        slug: `e2e-verif-dest-${suffix}`,
+        region: Region.CARIBBEAN,
+        timezone: 'America/Curacao',
+        isActive: true,
+        isSeeded: false,
+      },
+      select: { id: true },
+    });
+    const tourBase = {
+      destinationId: destination.id,
+      operatorId: operatorBOperatorId,
+      timeZone: 'America/Curacao',
+    };
+    const submitted = await prisma.tour.create({
+      data: {
+        ...tourBase,
+        name: `E2E Verif Submitted ${suffix}`,
+        slug: `e2e-verif-submitted-${suffix}`,
+        submittedAt: new Date(),
+      },
+      select: { id: true },
+    });
+    const draft = await prisma.tour.create({
+      data: {
+        ...tourBase,
+        name: `E2E Verif Draft ${suffix}`,
+        slug: `e2e-verif-draft-${suffix}`,
+      },
+      select: { id: true },
+    });
+
+    try {
+      const res = await request(server)
+        .get(`${API}/operators?verificationStatus=PENDING&limit=100`)
+        .set('Cookie', adminCookie);
+      expect(res.status).toBe(200);
+      const row = (res.body.data as Array<Record<string, unknown>>).find(
+        (r) => r.id === operatorBOperatorId,
+      );
+      expect(row).toBeDefined();
+      expect(row?.toursSubmitted).toBe(1);
+    } finally {
+      await prisma.tour.deleteMany({
+        where: { id: { in: [submitted.id, draft.id] } },
+      });
+      await prisma.destination.delete({ where: { id: destination.id } });
+    }
   });
 });

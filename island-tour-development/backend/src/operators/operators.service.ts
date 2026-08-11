@@ -430,10 +430,17 @@ export class OperatorsService {
       requestingUserRole,
     );
 
-    return this.prisma.operator.findUnique({
+    const decided = await this.prisma.operator.findUnique({
       where: { id },
       select: this.operatorSelect,
     });
+    if (!decided) {
+      // Deleted between the guarded update and this read - vanishingly rare,
+      // but returning null would 201 with an empty body against the swagger
+      // contract.
+      throw new NotFoundException('Operator not found');
+    }
+    return decided;
   }
 
   async update(id: string, dto: UpdateOperatorDto) {

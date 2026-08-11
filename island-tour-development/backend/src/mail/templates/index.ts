@@ -22,6 +22,7 @@ export {
   tourChangesRequestedTemplate,
   tourSubmittedForReviewTemplate,
   tourSubmittedSalesTemplate,
+  tourSubmittedSalesSubject,
   type TourApprovedTemplateProps,
   type TourChangesRequestedTemplateProps,
   type TourSubmittedForReviewTemplateProps,

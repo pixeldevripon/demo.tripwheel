@@ -1,4 +1,10 @@
 import { authEmailShell, EMAIL_EMPHASIS, escapeHtml } from './auth-email-shell';
+import {
+  INTERNAL_CTA_BACKGROUND,
+  factRow,
+  formatInternalTimestamp,
+  internalFactsTable,
+} from './internal-email.util';
 
 /**
  * The two halves of the tour approval workflow (access-roles conflict #1:
@@ -73,6 +79,11 @@ export interface TourSubmittedSalesTemplateProps {
  * the shell's plain-text part (tags are stripped without spacing); both are
  * invisible in the rendered HTML.
  */
+/** INT-2 subject - single owner for the string the service sends with. */
+export function tourSubmittedSalesSubject(tourName: string): string {
+  return `New tour to review: ${tourName}`;
+}
+
 export function tourSubmittedSalesTemplate({
   tourName,
   operatorName,
@@ -80,34 +91,21 @@ export function tourSubmittedSalesTemplate({
   reviewUrl,
   siteLogoUrl,
 }: TourSubmittedSalesTemplateProps) {
-  const submitted = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Curacao',
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(submittedAt);
-  const row = (label: string, value: string) =>
-    `<tr><td style="padding:4px 0;color:#6B7280">${label} </td><td style="padding:4px 0;text-align:right;font-weight:600">${value}</td></tr>`;
   const rows = [
-    row('Operator', escapeHtml(operatorName)),
-    row('Submitted', submitted),
-    row(
+    factRow('Operator', escapeHtml(operatorName)),
+    factRow('Submitted', formatInternalTimestamp(submittedAt)),
+    factRow(
       'Submission',
-      `<a href="${reviewUrl}" style="color:#1F2937">Open the submission</a>`,
+      `<a href="${reviewUrl}" style="color:${INTERNAL_CTA_BACKGROUND}">Open the submission</a>`,
     ),
-  ].join('\n');
+  ];
   return authEmailShell({
     siteLogoUrl,
     title: `New tour to review: ${escapeHtml(tourName)}`,
-    paragraphs: [
-      `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;font-size:13.5px;color:#374151">${rows}</table>`,
-    ],
+    paragraphs: [internalFactsTable(rows)],
     ctaLabel: 'Review in admin',
     ctaUrl: reviewUrl,
-    ctaBackground: '#1F2937',
+    ctaBackground: INTERNAL_CTA_BACKGROUND,
     footnote:
       'Internal alert · the review queue in the dashboard is the system of record.',
   });
