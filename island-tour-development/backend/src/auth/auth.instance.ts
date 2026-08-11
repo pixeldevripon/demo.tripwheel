@@ -7,7 +7,13 @@ import {
   isLoginSurface,
   surfacesForUser,
 } from '@/auth/login-surfaces';
-import { Role, UserStatus } from '@prisma/client';
+import {
+  EmailStream,
+  EmailTemplateKey,
+  EmailSendStatus,
+  Role,
+  UserStatus,
+} from '@prisma/client';
 import { betterAuth } from 'better-auth';
 import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
@@ -159,6 +165,28 @@ export const auth = betterAuth({
           isEmailChange ? 'email-change' : 'account',
         ),
       );
+      // WP-D (D-09): OB-1 send-log row so the account verification appears
+      // on the email timeline. This hook runs pre-DI, so it uses the shared
+      // pre-DI client rather than EmailLogService. Scope = lowercased
+      // address (no operator row exists yet at verification time); the
+      // unique-slot P2002 on a RE-sent verification email is the expected
+      // "already recorded" answer and is swallowed with everything else -
+      // best-effort, the log must never block or fail the send.
+      if (!isEmailChange) {
+        const canonical = user.email.toLowerCase();
+        void authPrismaClient.emailSend
+          .create({
+            data: {
+              templateKey: EmailTemplateKey.OB1_VERIFY_EMAIL,
+              scopeId: canonical,
+              toEmail: canonical,
+              stream: EmailStream.TRANSACTIONAL,
+              status: EmailSendStatus.SENT,
+            },
+            select: { id: true },
+          })
+          .catch(() => undefined);
+      }
     },
   },
 

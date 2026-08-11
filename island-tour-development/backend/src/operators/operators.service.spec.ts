@@ -35,7 +35,9 @@ import {
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PaymentProvider, Role } from '@prisma/client';
+import { EmailLogService } from '@/mail/email-log.service';
 import { MailService } from '@/mail/mail.service';
+import { OnboardingEmailsService } from '@/mail/onboarding-emails.service';
 import { OperatorsService } from './operators.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import { StaffPermissionsService } from '@/staff/staff-permissions.service';
@@ -73,6 +75,23 @@ const mockMailService = {
   sendOperatorSignupInternalEmail: jest.fn().mockResolvedValue(undefined),
 };
 
+// WP-D: OB-2A and INT-1 route through the send log now. The mock honours the
+// claim-first contract's surface (runs the transport, reports the outcome,
+// never throws) so the existing facade assertions keep their meaning.
+const mockEmailLogService = {
+  claimAndSend: jest.fn(
+    async (input: { send: () => Promise<unknown> }): Promise<unknown> => {
+      await input.send();
+      return { outcome: 'sent', providerMessageId: null };
+    },
+  ),
+};
+
+const mockOnboardingEmailsService = {
+  sendWelcome: jest.fn(),
+  resend: jest.fn(),
+};
+
 /** Flush the fire-and-forget promise chains (INT-1 / OB-2A). */
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 
@@ -87,6 +106,11 @@ describe('OperatorsService', () => {
         {
           provide: MailService,
           useValue: mockMailService,
+        },
+        { provide: EmailLogService, useValue: mockEmailLogService },
+        {
+          provide: OnboardingEmailsService,
+          useValue: mockOnboardingEmailsService,
         },
         {
           provide: StaffPermissionsService,
@@ -257,6 +281,15 @@ describe('OperatorsService', () => {
           firstName: 'Mayra',
           companyName: 'Irie Tours B.V.',
           addTourUrl: expect.stringContaining('/trips/new'),
+        }),
+      );
+      // WP-D (D-19): rerouted through the send log - the guarded transition
+      // plus the [templateKey, scopeId] unique are the double one-shot.
+      expect(mockEmailLogService.claimAndSend).toHaveBeenCalledWith(
+        expect.objectContaining({
+          templateKey: 'OB2A_APPROVED',
+          scopeId: 'op1',
+          stream: 'TRANSACTIONAL',
         }),
       );
     });
@@ -473,6 +506,26 @@ describe('OperatorsService', () => {
       ).toHaveBeenCalledWith(
         'sales@island.tours',
         expect.objectContaining({ signatoryName: 'Mayra Martina' }),
+      );
+      // WP-D: INT-1 rides the send log now (scope = the new operator id).
+      expect(mockEmailLogService.claimAndSend).toHaveBeenCalledWith(
+        expect.objectContaining({
+          templateKey: 'INT1_NEW_OPERATOR',
+          scopeId: 'op-new',
+          stream: 'INTERNAL',
+        }),
+      );
+    });
+
+    it('fires the OB-2 welcome alongside INT-1 (WP-D, D-08)', async () => {
+      await service.create({
+        name: 'Mayra Martina',
+        email: 'mayra@irietours.com',
+      });
+      await flush();
+
+      expect(mockOnboardingEmailsService.sendWelcome).toHaveBeenCalledWith(
+        'op-new',
       );
     });
   });

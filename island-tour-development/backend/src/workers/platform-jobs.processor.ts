@@ -2,6 +2,7 @@ import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import type { Job } from 'bullmq';
 import { BookingsService } from '@/bookings/bookings.service';
+import { OnboardingEmailsService } from '@/mail/onboarding-emails.service';
 import { NightlyJobsService } from './nightly-jobs.service';
 import {
   PLATFORM_JOBS,
@@ -34,6 +35,7 @@ export class PlatformJobsProcessor extends WorkerHost {
   constructor(
     private readonly bookings: BookingsService,
     private readonly nightlyJobs: NightlyJobsService,
+    private readonly onboardingEmails: OnboardingEmailsService,
   ) {
     super();
   }
@@ -61,15 +63,13 @@ export class PlatformJobsProcessor extends WorkerHost {
     }
     // The one non-booking payload; each job name maps to exactly one shape,
     // so narrowing by name is honest (see PlatformJobData in platform-queue).
+    // The handler is claim-first idempotent (send log) and never throws for
+    // a decided/missing operator, so retries stay meaningful for real
+    // transport faults only.
     if (job.name === PLATFORM_JOBS.ONBOARDING_EMAIL) {
-      const { operatorId, templateKey } = job.data as OnboardingEmailJobData;
-      // WP-D registers the actual sender. Completing (not throwing) is
-      // deliberate: a retry loop cannot conjure the missing handler.
-      this.logger.warn(
-        `Onboarding email job for operator ${operatorId} (${templateKey}) - ` +
-          'no sender registered until WP-D; completing as a no-op',
+      return this.onboardingEmails.runOnboardingEmailJob(
+        job.data as OnboardingEmailJobData,
       );
-      return;
     }
     const { bookingId } = job.data as BookingJobData;
     switch (job.name) {

@@ -31,14 +31,25 @@ export interface AuthEmailShellProps {
   /**
    * CTA background. Defaults to the brand orange; the INTERNAL family (INT-1,
    * INT-2) passes the wireframe's dark #1F2937 so operational mail never
-   * reads as marketing. Deliberately a literal union, not string: the value
-   * lands unescaped in a style attribute, so the type is what keeps a future
-   * caller from ever routing user data into it. Extend the union when the
-   * design family grows (WP-D's OB-4 WhatsApp green will be the next entry).
+   * reads as marketing, and OB-4's WhatsApp rescue passes #16A34A — the ONE
+   * green button in the family (onboarding wireframe design constants).
+   * Deliberately a literal union, not string: the value lands unescaped in a
+   * style attribute, so the type is what keeps a future caller from ever
+   * routing user data into it. Extend the union when the design family grows.
    */
-  ctaBackground?: '#E8611A' | '#1F2937';
+  ctaBackground?: '#E8611A' | '#1F2937' | '#16A34A';
   /** Muted line under the link fallback (e.g. "didn't request this?"). */
   footnote?: string;
+  /**
+   * LIFECYCLE emails only (OB-3/4/6/7/8): the WP-A unsubscribe link for the
+   * sign-off block's last line — "Prefer no setup emails? Opt out here."
+   * (onboarding wireframe rules footer: the opt-out rides the lifecycle set
+   * only). When present it REPLACES the "transactional account email" line,
+   * which would be a lie on a nudge. Server-minted token URLs only — never
+   * user-supplied strings (the SendMailOptions.headers contract applies to
+   * the body link too).
+   */
+  optOutUrl?: string;
 }
 
 /**
@@ -70,6 +81,7 @@ export function authEmailShell({
   ctaUrl,
   ctaBackground = '#E8611A',
   footnote,
+  optOutUrl,
 }: AuthEmailShellProps): { html: string; text: string } {
   // Same brand-bar variants as booking-notice.template.html.
   const brandBar = siteLogoUrl
@@ -105,6 +117,12 @@ export function authEmailShell({
             <a href="${ctaUrl}" style="color:#4B5563;word-break:break-all">${ctaUrl}</a>
           </div>`
       : '';
+
+  // Lifecycle emails carry the opt-out where transactional ones state their
+  // nature — same slot, so the sign-off block keeps one shape family-wide.
+  const footerLastLine = optOutUrl
+    ? `Prefer no setup emails? <a href="${optOutUrl}" style="color:#b6bcc7;text-decoration:underline">Opt out here</a>.`
+    : 'This is a transactional account email.';
 
   const html = `
 <!DOCTYPE html>
@@ -164,7 +182,7 @@ export function authEmailShell({
           <div style="border-top:1px solid #E8EAED;padding-top:20px">
             <div style="font-size:15px;font-weight:600;color:#1F2937">Island Tours. Built by Islanders.</div>
             <div style="font-size:14px;font-weight:400;color:#9aa3b2;margin-top:5px">www.island.tours</div>
-            <div style="font-size:13px;font-weight:400;color:#b6bcc7;margin-top:12px;line-height:1.65">ITG B.V. (Island Tours Group) · KvK Curaçao 169950<br>Caracasbaaiweg 366, Willemstad, Curaçao<br>This is a transactional account email.</div>
+            <div style="font-size:13px;font-weight:400;color:#b6bcc7;margin-top:12px;line-height:1.65">ITG B.V. (Island Tours Group) · KvK Curaçao 169950<br>Caracasbaaiweg 366, Willemstad, Curaçao<br>${footerLastLine}</div>
           </div>
         </td></tr>
 
@@ -196,6 +214,9 @@ export function authEmailShell({
     ...(footnote ? ['', toText(footnote)] : []),
     '',
     'Island Tours. Built by Islanders.',
+    ...(optOutUrl
+      ? [`Prefer no setup emails? Opt out here: ${optOutUrl}`]
+      : []),
   ].join('\n');
 
   return { html, text };

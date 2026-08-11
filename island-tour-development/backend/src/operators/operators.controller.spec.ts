@@ -16,6 +16,7 @@ jest.mock('@/auth/auth.instance', () => ({
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { EmailLogService } from '@/mail/email-log.service';
+import { OnboardingEmailsService } from '@/mail/onboarding-emails.service';
 import { OperatorsController } from './operators.controller';
 import { OperatorsService } from './operators.service';
 
@@ -45,6 +46,7 @@ describe('OperatorsController', () => {
       providers: [
         { provide: OperatorsService, useValue: mockOperatorsService },
         { provide: EmailLogService, useValue: { listForOperator: jest.fn() } },
+        { provide: OnboardingEmailsService, useValue: { resend: jest.fn() } },
       ],
     }).compile();
 

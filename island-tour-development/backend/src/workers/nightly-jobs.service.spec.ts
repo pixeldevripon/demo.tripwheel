@@ -39,6 +39,7 @@ describe('NightlyJobsService scheduler registration', () => {
     stub, // bookings
     stub, // settlements
     stub, // contentTranslation
+    stub, // onboardingEmails
     queue as never,
   );
   const register = () =>

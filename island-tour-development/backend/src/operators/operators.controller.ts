@@ -44,9 +44,11 @@ import {
   ApiUpdateOperatorPaymentProviderDocs,
   ApiUpdateOperatorSocialMediaDocs,
   ApiListOperatorEmailsDocs,
+  ApiResendOperatorEmailDocs,
   ApiUpdateOperatorStripeConfigDocs,
 } from './operators.swagger';
 import { EmailLogService } from '@/mail/email-log.service';
+import { OnboardingEmailsService } from '@/mail/onboarding-emails.service';
 
 @ApiTags('Operators')
 @Controller('operators')
@@ -54,6 +56,7 @@ export class OperatorsController {
   constructor(
     private readonly operatorsService: OperatorsService,
     private readonly emailLog: EmailLogService,
+    private readonly onboardingEmails: OnboardingEmailsService,
   ) {}
 
   // ── Core Operator CRUD ─────────────────────────────────────────────────────
@@ -115,6 +118,20 @@ export class OperatorsController {
   @ApiListOperatorEmailsDocs()
   listEmails(@Param('id') id: string) {
     return this.emailLog.listForOperator(id);
+  }
+
+  // Admin resend for the onboarding set (WP-D, plan §2.5): writes a
+  // `#resend-{n}` send-log row and returns it. OB set + OB-2A only - the
+  // service 400s anything else; suppression/window/cap are deliberately NOT
+  // re-checked (an explicit admin action is its own authorization).
+  @Post(':id/emails/:templateKey/resend')
+  @RequirePermissions(Permission.MANAGE_OPERATORS)
+  @ApiResendOperatorEmailDocs()
+  resendEmail(
+    @Param('id') id: string,
+    @Param('templateKey') templateKey: string,
+  ) {
+    return this.onboardingEmails.resend(id, templateKey);
   }
 
   @Delete(':id')

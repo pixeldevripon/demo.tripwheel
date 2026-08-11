@@ -325,3 +325,42 @@ export function ApiListOperatorEmailsDocs() {
     ...commonErrors,
   );
 }
+
+export function ApiResendOperatorEmailDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Resend an onboarding email to an operator (Admin only)',
+      description:
+        'Onboarding set only (OB2…OB8 + OB2A) - anything else is a 400. ' +
+        'Writes a new send-log row under `{operatorId}#resend-{n}` and returns ' +
+        'it; suppression, send window and volume cap are deliberately not ' +
+        're-checked for an explicit admin action.',
+    }),
+    ApiParam({ name: 'id', description: 'Operator UUID' }),
+    ApiParam({
+      name: 'templateKey',
+      description: 'Resendable EmailTemplateKey',
+      enum: [
+        'OB2_WELCOME_AGREEMENT',
+        'OB2A_APPROVED',
+        'OB3_FIRST_TOUR_HOWTO',
+        'OB4_BUILD_IT_WITH_YOU',
+        'OB5_TOUR_LIVE',
+        'OB6_CHECK_IN',
+        'OB7_CONNECT_CALENDAR',
+        'OB8_PAGE_STRONGER',
+      ],
+    }),
+    ApiResponse({
+      status: 201,
+      description: 'The new `#resend-{n}` send-log row',
+      type: EmailSendDto,
+    }),
+    ApiResponse({
+      status: 404,
+      description: 'Operator not found',
+      type: NotFoundErrorDto,
+    }),
+    ...adminErrors,
+  );
+}

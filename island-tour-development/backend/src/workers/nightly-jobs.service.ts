@@ -5,6 +5,7 @@ import { Queue } from 'bullmq';
 import { AvailabilityService } from '@/availability/availability.service';
 import { BookingsService } from '@/bookings/bookings.service';
 import { ContentTranslationService } from '@/content-translation/content-translation.service';
+import { OnboardingEmailsService } from '@/mail/onboarding-emails.service';
 import { ReviewRequestsService } from '@/reviews/review-requests.service';
 import { SettlementsService } from '@/settlements/settlements.service';
 import { TiersService } from '@/tiers/tiers.service';
@@ -47,6 +48,7 @@ export class NightlyJobsService implements OnModuleInit {
     private readonly bookings: BookingsService,
     private readonly settlements: SettlementsService,
     private readonly contentTranslation: ContentTranslationService,
+    private readonly onboardingEmails: OnboardingEmailsService,
     @InjectQueue(PLATFORM_QUEUE) private readonly queue: Queue,
   ) {}
 
@@ -150,14 +152,13 @@ export class NightlyJobsService implements OnModuleInit {
 
   /**
    * Scheduled-email sweep tick (EMAIL-IMPLEMENTATION-PLAN.md §2.6), every
-   * 15 minutes. WP-D fills this with the onboarding/INT1R/MK-1 evaluators;
-   * registering the schedule NOW (WP-A) means WP-D ships pure sender logic
-   * with no scheduler-registration change. Deliberately a logged no-op until
-   * then — the tick must exist and complete so the schedule is proven live.
+   * 15 minutes: the WP-D onboarding evaluators — INT1R every tick, the
+   * OB-3/4/6/7/8 nudges only inside the Tue–Thu Curaçao-morning window
+   * (OnboardingEmailsService.sweep decides; a closed-window tick is a cheap
+   * no-op). WP-G adds its MK-1 evaluator to the same tick later.
    */
   async emailLifecycleSweep(): Promise<void> {
-    this.logger.log('Email lifecycle sweep: no senders registered (WP-D)');
-    await Promise.resolve();
+    await this.onboardingEmails.sweep();
   }
 
   /** Job body, exposed so it can be invoked outside the schedule (admin/tests). */

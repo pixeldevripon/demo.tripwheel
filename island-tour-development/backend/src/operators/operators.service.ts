@@ -8,7 +8,9 @@ import {
 } from '@/common/utils/invite-provisioning.util';
 import { dashboardAppBase } from '@/common/utils/app-urls.util';
 import { salesRecipient } from '@/common/utils/sales-recipient.util';
+import { EmailLogService } from '@/mail/email-log.service';
 import { MailService } from '@/mail/mail.service';
+import { OnboardingEmailsService } from '@/mail/onboarding-emails.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import { StaffPermissionsService } from '@/staff/staff-permissions.service';
 import {
@@ -20,6 +22,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  EmailStream,
+  EmailTemplateKey,
   OperatorVerificationStatus,
   PaymentProvider,
   Prisma,
@@ -70,6 +74,8 @@ export class OperatorsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mailService: MailService,
+    private readonly emailLog: EmailLogService,
+    private readonly onboardingEmails: OnboardingEmailsService,
     private readonly staffPermissions: StaffPermissionsService,
   ) {}
 
@@ -283,6 +289,10 @@ export class OperatorsService {
       // INT-1: the sales pipeline hears about every new operator, instantly.
       // Fire-and-forget - a mail outage must never roll back the account.
       this.notifyOperatorSignup(operator.id);
+
+      // OB-2 welcome + agreement to the operator (WP-D, D-08): fires with
+      // INT-1 on the wireframe's `accepted` moment. Same contract.
+      this.onboardingEmails.sendWelcome(operator.id);
 
       return operator;
     } catch (err) {
@@ -531,13 +541,24 @@ export class OperatorsService {
       })
       .then((operator) => {
         if (!operator) return;
-        return this.mailService.sendOperatorSignupInternalEmail(to, {
-          operatorName: operator.companyInfo?.companyName ?? operator.user.name,
-          signatoryName: operator.user.name,
-          email: operator.user.email,
-          phone: operator.contactPhone ?? operator.companyInfo?.companyPhone,
-          acceptedAt: operator.createdAt,
-          reviewUrl: `${dashboardAppBase()}/tour-operators/${operatorId}/edit`,
+        // WP-D: through the send log (scope = operatorId; creation happens
+        // once, so send-once semantics fit). claimAndSend never throws.
+        return this.emailLog.claimAndSend({
+          templateKey: EmailTemplateKey.INT1_NEW_OPERATOR,
+          scopeId: operatorId,
+          toEmail: to,
+          stream: EmailStream.INTERNAL,
+          send: () =>
+            this.mailService.sendOperatorSignupInternalEmail(to, {
+              operatorName:
+                operator.companyInfo?.companyName ?? operator.user.name,
+              signatoryName: operator.user.name,
+              email: operator.user.email,
+              phone:
+                operator.contactPhone ?? operator.companyInfo?.companyPhone,
+              acceptedAt: operator.createdAt,
+              reviewUrl: `${dashboardAppBase()}/tour-operators/${operatorId}/edit`,
+            }),
         });
       })
       .catch((err: unknown) =>
@@ -566,11 +587,22 @@ export class OperatorsService {
       .then((operator) => {
         if (!operator) return;
         const dashboardUrl = dashboardAppBase();
-        return this.mailService.sendOperatorApprovedEmail(operator.user.email, {
-          firstName: operator.user.name?.trim().split(/\s+/)[0],
-          companyName: operator.companyInfo?.companyName ?? operator.user.name,
-          addTourUrl: `${dashboardUrl}/trips/new`,
-          dashboardUrl,
+        // WP-D (D-19): through the send log, so the guarded one-shot
+        // transition gains a second, durable guard AND the send appears on
+        // the dashboard timeline. claimAndSend never throws.
+        return this.emailLog.claimAndSend({
+          templateKey: EmailTemplateKey.OB2A_APPROVED,
+          scopeId: operatorId,
+          toEmail: operator.user.email,
+          stream: EmailStream.TRANSACTIONAL,
+          send: () =>
+            this.mailService.sendOperatorApprovedEmail(operator.user.email, {
+              firstName: operator.user.name?.trim().split(/\s+/)[0],
+              companyName:
+                operator.companyInfo?.companyName ?? operator.user.name,
+              addTourUrl: `${dashboardUrl}/trips/new`,
+              dashboardUrl,
+            }),
         });
       })
       .catch((err: unknown) =>

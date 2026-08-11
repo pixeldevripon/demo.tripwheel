@@ -34,9 +34,13 @@ describe('PlatformJobsProcessor', () => {
     reviewRequestsHourly: jest.fn(),
     run: jest.fn(),
   };
+  const onboardingEmails = {
+    runOnboardingEmailJob: jest.fn(),
+  };
   const proc = new PlatformJobsProcessor(
     bookings as never,
     nightlyJobs as never,
+    onboardingEmails as never,
   );
 
   const job = (name: string) =>
@@ -80,5 +84,16 @@ describe('PlatformJobsProcessor', () => {
 
   it('ignores unknown job names instead of throwing (forward compat)', async () => {
     await expect(proc.process(job('some.future-job'))).resolves.toBeUndefined();
+  });
+
+  // WP-D (D-17): the onboarding email job routes to the registered sender
+  // with its OWN payload shape ({ operatorId, templateKey }, plan §2.6).
+  it('routes email.onboarding-send to OnboardingEmailsService with its payload', async () => {
+    const data = { operatorId: 'op-1', templateKey: 'OB5_TOUR_LIVE' };
+    await proc.process({
+      name: PLATFORM_JOBS.ONBOARDING_EMAIL,
+      data,
+    } as unknown as Job<{ bookingId: string }>);
+    expect(onboardingEmails.runOnboardingEmailJob).toHaveBeenCalledWith(data);
   });
 });
