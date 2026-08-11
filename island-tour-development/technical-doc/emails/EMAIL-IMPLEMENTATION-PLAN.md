@@ -207,11 +207,28 @@ evaluation anyway).
 - `OB6_REPLY_TO` — the founder's monitored inbox for OB-6 (falls back to `MAIL_REPLY_TO`).
 - `CALENDAR_SYNC_AVAILABLE` — `'true'` enables OB-7 (feature flag from the wireframe).
 - `WALKTHROUGH_VIDEO_URL` — optional Loom URL for OB-3 (absent → guide-link-only variant).
+- `MK1_ENABLED` — `'true'` enables MK-1 (WP-G's master switch; deliberately NOT in
+  `env.validate.ts` — an invalid value must read as OFF, never block boot).
+
+> **Since WP-H these env vars are the FALLBACK layer, not the switch.** Every one of them
+> (plus the timings and the send window) resolves through `EmailSettingsService.resolve()`
+> as `stored dashboard value ?? env ?? built-in` — a stored value beats the env var, and a
+> null stored value leaves the env behaviour exactly as written above. Direct
+> `process.env` reads of these survive ONLY inside the resolver's own fallback chain
+> (`salesRecipient()` and the DI-free MailService singleton path).
 
 ### 2.8 Send windows (WP-A utility, used by every scheduled sender)
 
-`src/mail/send-window.util.ts`: `isLifecycleWindowOpen(now)` — Tue–Thu 09:00–11:00
-**America/Curacao** (operator emails, MK-1); `nextLifecycleWindow(now)`. Built on the existing
+`src/mail/send-window.util.ts`: `isLifecycleWindowOpen(now, config?)` — built-in Tue–Thu
+09:00–11:00 **America/Curacao** (operator emails, MK-1); `nextLifecycleWindow(now, config?)`.
+Since WP-H the weekdays and hours are dashboard-editable: the sweep resolves them per tick
+from `EmailSettings` (`windowWeekdays`/`windowStartHour`/`windowEndHour`, null → the
+built-ins above) and passes them as the `config` parameter; `parseWindowWeekdays()` maps the
+stored csv to JS day numbers and falls back to Tue–Thu on an empty/unknown set so a bad
+value can never close the window forever. MK-1's `isMarketingMorningWindowOpen(now, hours?)`
+takes the HOUR pair only — the weekday list never applies to marketing (the trigger is
+tour_end + delay; weekday-pinning would slide sends past the traveller's flight home).
+Built on the existing
 `localNow()` from `@/common/utils/timezone.util` — do not hand-roll timezone math. BK-3's
 "around 10:00 tour-local" stays where it is (`review-requests.service.ts`), untouched.
 Volume cap (wireframe): max ONE lifecycle email per operator per 3 days, priority OB-6 > OB-7 >
@@ -551,9 +568,13 @@ values as fallback.
 **Dashboard (`feat/email-centre-dashboard`):**
 
 5. New nav group **Email** (gate `MANAGE_SYSTEM`): **Activity** (global sends table + detail
-   sheet + Resend where the backend allows), **Settings** (the switchboard: review-request
-   toggle, calendar flag, partner-offer flag, sales/reply-to addresses, with "env fallback"
-   hints showing the effective value), **People** (Opt-outs / Consents tabs, searchable).
+   sheet + Resend where the backend allows), **Settings** (the switchboard — the FULL
+   backend payload, founder decision "every timing editable": the four group switches
+   (marketing / onboarding / calendar / OB-8 partner offer), sales + reply-to addresses,
+   all six onboarding timings, the send window (weekdays + start/end hours), the MK-1
+   delay, and the review-request slice — every field with a "using default (…)" hint from
+   the GET's `defaults` when `stored` is null, and a clear-to-default action that PATCHes
+   null), **People** (Opt-outs / Consents tabs, searchable).
 6. Reuse: data-table primitives, detail-sheet Section/Row, `EMAIL_SEND` badge map,
    `EMAIL_TEMPLATE_LABELS`; `emailKeys` query factory extended.
 7. No `rbac.ts` changes (`MANAGE_SYSTEM` exists); no `cache-tags.ts` changes; email settings

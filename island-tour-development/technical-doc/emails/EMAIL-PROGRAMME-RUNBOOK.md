@@ -136,14 +136,17 @@ API above is live for it.
 ## 8. Go-live sequence (when you're ready)
 
 1. Sign off D1 (BK-3R + CX-1 wording) — the only copy still awaiting your word.
-2. Set `SALES_EMAIL`, `MAIL_REPLY_TO`, `OB6_REPLY_TO` on the VPS (or via WP-H later).
+2. Set the sales + reply-to addresses — dashboard Email settings (or the
+   `SALES_EMAIL`/`MAIL_REPLY_TO`/`OB6_REPLY_TO` env vars as the fallback layer).
 3. Verify Resend domain settings for the from-address (and decide D7 before big MK-1 volume).
 4. Flip `ReviewRequestSettings.enabled` to true → BK-3/BK-3R go live (the sweeper deliberately
    never blasts a backlog on enable).
-5. When calendar sync ships: set `CALENDAR_SYNC_AVAILABLE=true` → OB-7 starts, including for
-   every operator who passed the 3-day mark while it was off (deliberately not skipped).
-6. MK-1: set `MK1_ENABLED=true` when you're ready for marketing sends (it ships dark). Even
-   when on, it only reaches consented, not-opted-out travellers. Watch the first morning's rows.
+5. When calendar sync ships: flip the calendar-email setting in the dashboard (or set
+   `CALENDAR_SYNC_AVAILABLE=true`) → OB-7 starts, including for every operator who passed
+   the 3-day mark while it was off (deliberately not skipped).
+6. MK-1: flip the marketing setting in the dashboard (or set `MK1_ENABLED=true`) when you're
+   ready for marketing sends (it ships dark). Even when on, it only reaches consented,
+   not-opted-out travellers. Watch the first morning's rows.
 7. After any deploy that adds email icons: `pnpm email:icons:upload` (already run for the current set).
 
 ## 9. If something looks wrong

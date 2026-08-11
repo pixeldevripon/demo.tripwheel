@@ -564,8 +564,10 @@ Needs WP-A's two public endpoints. Must be **live in production before WP-G merg
 - [ ] H-11 Nav group "Email" (MANAGE_SYSTEM): Activity / Settings / People
 - [ ] H-12 Activity: global sends table (server filters mirroring H-05) + detail sheet + Resend
       where backend allows (OB set) + suppression-reason/error display
-- [ ] H-13 Settings: switchboard with effective-value hints ("using env fallback" vs "set here");
-      review-request master toggle included
+- [ ] H-13 Settings: switchboard for the FULL payload (4 group switches, addresses, all six
+      onboarding timings, window weekdays/hours, MK-1 delay, review-request slice) with
+      effective-value hints ("using default (…)" when stored is null vs "set here") and a
+      clear-to-default action (PATCH null); no booking-email switch exists to render
 - [ ] H-14 People: Opt-outs and Consents tabs, searchable, with stream/audience badges
 - [ ] H-15 Test-send button on Activity (template picker → sends to self → row appears)
 - [ ] H-16 lib/api/email-centre.ts + hooks with key factories; types mirror backend DTOs
