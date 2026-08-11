@@ -1,6 +1,6 @@
 'use client';
 
-import { emailCentreKeys } from '@/hooks/email-centre/use-email-centre';
+import { emailCentreKeys } from '@/lib/email-centre/query-keys';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { settingsApi } from '@/lib/api/settings';

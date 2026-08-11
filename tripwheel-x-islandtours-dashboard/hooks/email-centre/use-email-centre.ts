@@ -1,5 +1,6 @@
 'use client';
 
+import { emailCentreKeys } from '@/lib/email-centre/query-keys';
 import { settingsKeys } from '@/hooks/settings/use-settings';
 import {
     keepPreviousData,
@@ -16,17 +17,6 @@ import type {
     UpdateEmailSettingsPayload,
 } from '@/types/email-centre';
 
-export const emailCentreKeys = {
-    all: ['email-centre'] as const,
-    settings: () => [...emailCentreKeys.all, 'settings'] as const,
-    sends: (params: EmailSendsQueryParams) =>
-        [...emailCentreKeys.all, 'sends', params] as const,
-    sendsAll: () => [...emailCentreKeys.all, 'sends'] as const,
-    optOuts: (params: EmailPeopleQueryParams) =>
-        [...emailCentreKeys.all, 'opt-outs', params] as const,
-    consents: (params: EmailPeopleQueryParams) =>
-        [...emailCentreKeys.all, 'consents', params] as const,
-};
 
 export function useEmailSettings() {
     return useQuery({
@@ -137,3 +127,5 @@ export function useResendFromActivity() {
         },
     });
 }
+
+export { emailCentreKeys };
