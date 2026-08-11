@@ -41,7 +41,7 @@ export interface ClaimAndSendInput {
 }
 
 /** The timeline projection — exactly what the dashboard renders. */
-const TIMELINE_SELECT = {
+export const TIMELINE_SELECT = {
   id: true,
   templateKey: true,
   scopeId: true,

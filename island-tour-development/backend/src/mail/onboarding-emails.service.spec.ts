@@ -143,10 +143,39 @@ describe('OnboardingEmailsService', () => {
     expect(mail.sendMail).not.toHaveBeenCalled();
   });
 
-  it('inside the window: all five nudge queries run (priority order)', async () => {
+  it('inside the window with the calendar flag ON: all five nudge queries run', async () => {
+    process.env.CALENDAR_SYNC_AVAILABLE = 'true';
     await svc.sweep(WINDOW_OPEN);
     // INT1R + OB6 + OB7 + OB8 + OB3 + OB4.
     expect(prisma.$queryRaw).toHaveBeenCalledTimes(6);
+  });
+
+  it('anchors: each nudge query receives cutoff = now - its offset (D-22)', async () => {
+    process.env.CALENDAR_SYNC_AVAILABLE = 'true';
+    await svc.sweep(WINDOW_OPEN);
+    // Pin the spec table's offsets: a wrong offsetMs constant must fail HERE,
+    // not ship silently (review of #185, Major 3).
+    const HOUR = 3_600_000;
+    const DAY = 24 * HOUR;
+    const expected: Record<string, number> = {
+      [EmailTemplateKey.OB3_FIRST_TOUR_HOWTO]: 48 * HOUR,
+      [EmailTemplateKey.OB4_BUILD_IT_WITH_YOU]: 7 * DAY,
+      [EmailTemplateKey.OB6_CHECK_IN]: 14 * DAY,
+      [EmailTemplateKey.OB7_CONNECT_CALENDAR]: 3 * DAY,
+      [EmailTemplateKey.OB8_PAGE_STRONGER]: 7 * DAY,
+    };
+    const seen: Record<string, number> = {};
+    for (const call of prisma.$queryRaw.mock.calls) {
+      const values = call.slice(1) as unknown[];
+      const key = values.find((v) => typeof v === 'string' && v in expected) as
+        | string
+        | undefined;
+      const cutoff = values.find((v) => v instanceof Date);
+      if (key && cutoff) {
+        seen[key] = WINDOW_OPEN.getTime() - cutoff.getTime();
+      }
+    }
+    expect(seen).toEqual(expected);
   });
 
   // ── The send path (D-16, D-10, D-28) ───────────────────────────────────────
@@ -221,6 +250,7 @@ describe('OnboardingEmailsService', () => {
   });
 
   it('suspension kills the WHOLE due set, one reason row per key', async () => {
+    process.env.CALENDAR_SYNC_AVAILABLE = 'true';
     prisma.$queryRaw.mockImplementation(
       candidatesByKey({
         OB6_CHECK_IN: ['op1'],
@@ -263,7 +293,10 @@ describe('OnboardingEmailsService', () => {
     );
   });
 
-  it('OB-7 is flag-gated: no CALENDAR_SYNC_AVAILABLE → flag-off row', async () => {
+  it('OB-7 flag off = "not yet": the candidate query is SKIPPED, no row burned', async () => {
+    // A SUPPRESSED row would occupy the unique slot forever - every operator
+    // passing live+3d pre-launch would be permanently excluded from OB-7.
+    // The anti-join re-finds them all when the flag flips (review Major 2).
     prisma.$queryRaw.mockImplementation(
       candidatesByKey({ OB7_CONNECT_CALENDAR: ['op1'] }),
     );
@@ -271,13 +304,12 @@ describe('OnboardingEmailsService', () => {
 
     await svc.sweep(WINDOW_OPEN);
 
+    const queriedKeys = prisma.$queryRaw.mock.calls
+      .flatMap((c: unknown[]) => c.slice(1))
+      .filter((v: unknown) => typeof v === 'string');
+    expect(queriedKeys).not.toContain(EmailTemplateKey.OB7_CONNECT_CALENDAR);
     expect(emailLog.claimAndSend).not.toHaveBeenCalled();
-    expect(emailLog.recordSuppressed).toHaveBeenCalledWith(
-      expect.objectContaining({
-        templateKey: EmailTemplateKey.OB7_CONNECT_CALENDAR,
-        reason: 'flag-off',
-      }),
-    );
+    expect(emailLog.recordSuppressed).not.toHaveBeenCalled();
   });
 
   it('OB-7 with the flag on but a connected feed → calendar-connected row', async () => {
@@ -502,7 +534,9 @@ describe('OnboardingEmailsService', () => {
     expect(emailLog.claimAndSend).toHaveBeenCalledWith(
       expect.objectContaining({ scopeId: 'op1#resend-1' }),
     );
-    expect(row).toEqual({ id: 'row-1' });
+    // recipientOptedOut surfaced so an admin overriding an unsubscribe does
+    // it knowingly (security review of #185, Low 2).
+    expect(row).toEqual({ id: 'row-1', recipientOptedOut: false });
   });
 
   it('resend retries ONCE with n+1 when a concurrent resend won the claim (D-27)', async () => {

@@ -156,15 +156,13 @@ export const auth = betterAuth({
       const isEmailChange =
         decodeJwtPayloadUnsafe(token)?.requestType ===
         'change-email-verification';
-      sendInBackground(
-        'verification',
-        mailService.sendVerificationEmail(
-          user.email,
-          url,
-          user.name ?? undefined,
-          isEmailChange ? 'email-change' : 'account',
-        ),
+      const verificationSend = mailService.sendVerificationEmail(
+        user.email,
+        url,
+        user.name ?? undefined,
+        isEmailChange ? 'email-change' : 'account',
       );
+      sendInBackground('verification', verificationSend);
       // WP-D (D-09): OB-1 send-log row so the account verification appears
       // on the email timeline. This hook runs pre-DI, so it uses the shared
       // pre-DI client rather than EmailLogService. Scope = lowercased
@@ -173,18 +171,24 @@ export const auth = betterAuth({
       // "already recorded" answer and is swallowed with everything else -
       // best-effort, the log must never block or fail the send.
       if (!isEmailChange) {
+        // Row written only AFTER the transport resolves, so the timeline
+        // never claims SENT for a send that failed (review of #185). A
+        // failed dispatch leaves no row - the next verification attempt
+        // records its own.
         const canonical = user.email.toLowerCase();
-        void authPrismaClient.emailSend
-          .create({
-            data: {
-              templateKey: EmailTemplateKey.OB1_VERIFY_EMAIL,
-              scopeId: canonical,
-              toEmail: canonical,
-              stream: EmailStream.TRANSACTIONAL,
-              status: EmailSendStatus.SENT,
-            },
-            select: { id: true },
-          })
+        void verificationSend
+          .then(() =>
+            authPrismaClient.emailSend.create({
+              data: {
+                templateKey: EmailTemplateKey.OB1_VERIFY_EMAIL,
+                scopeId: canonical,
+                toEmail: canonical,
+                stream: EmailStream.TRANSACTIONAL,
+                status: EmailSendStatus.SENT,
+              },
+              select: { id: true },
+            }),
+          )
           .catch(() => undefined);
       }
     },

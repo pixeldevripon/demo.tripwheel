@@ -22,7 +22,11 @@ import { salesRecipient } from '@/common/utils/sales-recipient.util';
 import { buildWhatsappUrl } from '@/common/utils/whatsapp.util';
 import { PrismaService } from '@/prisma/prisma.service';
 import { subtractBusinessDays } from './business-days.util';
-import { EmailLogService, type ClaimAndSendResult } from './email-log.service';
+import {
+  EmailLogService,
+  type ClaimAndSendResult,
+  TIMELINE_SELECT,
+} from './email-log.service';
 import { emailSafeLogoUrl } from './email-logo.util';
 import { EmailPreferencesService } from './email-preferences.service';
 import { MailService } from './mail.service';
@@ -54,6 +58,16 @@ const DAY_MS = 24 * HOUR_MS;
 
 /** Candidate cap per nudge per tick — bounds a tick, the next tick resumes. */
 const SWEEP_BATCH = 500;
+
+/**
+ * Hard ceiling on SENDS per tick (the ReviewRequestsService batchSize
+ * precedent). Candidates beyond it are deferred, not suppressed - the
+ * anti-join re-finds them next tick.
+ */
+const SEND_CAP_PER_TICK = 200;
+
+/** ~2 sends/second - under Resend's default rate limit. */
+const SEND_PACING_MS = 500;
 
 /** Volume cap (wireframe rules): max ONE lifecycle email per operator per 3 days. */
 const VOLUME_CAP_MS = 3 * DAY_MS;
@@ -123,6 +137,7 @@ const KEY_STREAM: Readonly<Partial<Record<EmailTemplateKey, EmailStream>>> = {
   [EmailTemplateKey.OB6_CHECK_IN]: EmailStream.LIFECYCLE,
   [EmailTemplateKey.OB7_CONNECT_CALENDAR]: EmailStream.LIFECYCLE,
   [EmailTemplateKey.OB8_PAGE_STRONGER]: EmailStream.LIFECYCLE,
+  [EmailTemplateKey.INT1R_PENDING_REMINDER]: EmailStream.INTERNAL,
 };
 
 /** The operator projection every sender renders from. */
@@ -210,9 +225,19 @@ export class OnboardingEmailsService {
    * 09:00–11:00 Curaçao window. OB-5 never runs here — it is outbox-driven.
    */
   async sweep(now: Date = new Date()): Promise<void> {
-    await this.sweepPendingReminders(now);
-    if (!isLifecycleWindowOpen(now)) return;
-    await this.sweepLifecycleNudges(now);
+    const startedAt = Date.now();
+    try {
+      await this.sweepPendingReminders(now);
+      if (!isLifecycleWindowOpen(now)) return;
+      await this.sweepLifecycleNudges(now);
+    } finally {
+      const ms = Date.now() - startedAt;
+      // An overrun tick overlaps the next schedule and eats worker slots on
+      // the shared queue - make it visible long before it happens.
+      if (ms > 60_000) {
+        this.logger.warn(`Lifecycle sweep tick took ${ms}ms`);
+      }
+    }
   }
 
   // ── Lifecycle nudges: OB-3/4/6/7/8 (D-11…D-16) ─────────────────────────────
@@ -220,7 +245,19 @@ export class OnboardingEmailsService {
   private async sweepLifecycleNudges(now: Date): Promise<void> {
     // operatorId → due keys, kept in LIFECYCLE_NUDGES priority order.
     const due = new Map<string, EmailTemplateKey[]>();
+    const calendarSyncOn =
+      process.env.CALENDAR_SYNC_AVAILABLE?.trim() === 'true';
     for (const spec of LIFECYCLE_NUDGES) {
+      // Flag off = "not yet", never a decision: a SUPPRESSED row would
+      // occupy the unique slot FOREVER, so every operator passing live+3d
+      // before launch would be permanently excluded from OB-7. Skipping the
+      // query lets the anti-join pick them all up when the flag flips.
+      if (
+        spec.key === EmailTemplateKey.OB7_CONNECT_CALENDAR &&
+        !calendarSyncOn
+      ) {
+        continue;
+      }
       const cutoff = new Date(now.getTime() - spec.offsetMs);
       const ids = await this.fetchDueOperatorIds(spec, cutoff);
       for (const id of ids) {
@@ -238,14 +275,28 @@ export class OnboardingEmailsService {
     const site = await this.siteContext();
 
     let sent = 0;
+    let capped = 0;
     for (const operator of operators) {
       const keys = due.get(operator.id);
       if (!keys?.length) continue;
+      if (sent >= SEND_CAP_PER_TICK) {
+        // Backlog beyond the cap simply waits: the anti-join re-finds every
+        // undecided operator next tick. Bounds a post-downtime burst so one
+        // tick can never overrun the 15-min cadence (perf review, High).
+        capped++;
+        continue;
+      }
       const outcome = await this.evaluateOperator(operator, keys, site, now);
-      if (outcome === 'sent') sent++;
+      if (outcome === 'sent') {
+        sent++;
+        // Pace to ~2 sends/s (Resend's default rate limit): a 429 would mark
+        // the claim FAILED and burn the send-once slot permanently.
+        await OnboardingEmailsService.sleep(SEND_PACING_MS);
+      }
     }
     this.logger.log(
-      `Lifecycle sweep: ${due.size} operator(s) due, ${sent} sent`,
+      `Lifecycle sweep: ${due.size} operator(s) due, ${sent} sent` +
+        (capped ? `, ${capped} deferred by the per-tick cap` : ''),
     );
   }
 
@@ -363,10 +414,9 @@ export class OnboardingEmailsService {
         // The how-to/rescue pair exists to get the FIRST tour submitted.
         return operator._count.tours >= 1 ? 'tours-submitted' : null;
       case EmailTemplateKey.OB7_CONNECT_CALENDAR:
-        // Feature-flag gated; pointless once a feed is already connected.
-        if (process.env.CALENDAR_SYNC_AVAILABLE?.trim() !== 'true') {
-          return 'flag-off';
-        }
+        // The feature flag is handled upstream (candidate query skipped while
+        // off - "not yet" must not burn the unique slot). Here only the
+        // permanent condition suppresses.
         return operator._count.calendarFeeds >= 1 ? 'calendar-connected' : null;
       default:
         return null;
@@ -383,12 +433,7 @@ export class OnboardingEmailsService {
       templateKey: key,
       scopeId: operatorId,
       toEmail: email,
-      stream:
-        key === EmailTemplateKey.INT1R_PENDING_REMINDER
-          ? EmailStream.INTERNAL
-          : key === EmailTemplateKey.OB5_TOUR_LIVE
-            ? EmailStream.TRANSACTIONAL
-            : EmailStream.LIFECYCLE,
+      stream: KEY_STREAM[key] ?? EmailStream.LIFECYCLE,
       reason,
     });
   }
@@ -401,6 +446,12 @@ export class OnboardingEmailsService {
    * (the D-18 stamp), the anti-join, and the claim.
    */
   private async sweepPendingReminders(now: Date): Promise<void> {
+    const to = salesRecipient();
+    if (!to) {
+      // No recipient, no query: when SALES_EMAIL/ADMIN_EMAIL appear later
+      // the reminders still fire (no claim, no stamp was written).
+      return;
+    }
     const cutoff = subtractBusinessDays(now, PENDING_REMINDER_BUSINESS_DAYS);
     const rows = await this.prisma.$queryRaw<{ id: string }[]>`
       SELECT o."id"
@@ -416,16 +467,6 @@ export class OnboardingEmailsService {
       LIMIT ${SWEEP_BATCH}
     `;
     if (rows.length === 0) return;
-
-    const to = salesRecipient();
-    if (!to) {
-      // No claim and no stamp: when SALES_EMAIL/ADMIN_EMAIL appear later the
-      // reminder still fires (the tour-submitted log-and-skip precedent).
-      this.logger.error(
-        `SALES_EMAIL/ADMIN_EMAIL are not configured - ${rows.length} pending-operator reminder(s) skipped`,
-      );
-      return;
-    }
 
     const operators = await this.prisma.operator.findMany({
       where: { id: { in: rows.map((r) => r.id) } },
@@ -516,6 +557,18 @@ export class OnboardingEmailsService {
       );
       return;
     }
+    if (!operator.isActive) {
+      // "Suspension stops everything" applies here too: OB-5 bypasses the
+      // sweep's evaluator (outbox-driven), so it re-checks on its own - the
+      // publish→suspend→delayed-job window is narrow but real.
+      await this.suppress(
+        EmailTemplateKey.OB5_TOUR_LIVE,
+        operator.id,
+        operator.user.email,
+        'suspended',
+      );
+      return;
+    }
     const rendered = await this.renderTourLive(
       operator,
       await this.siteContext(),
@@ -551,29 +604,20 @@ export class OnboardingEmailsService {
       });
       if (!operator) return;
       const site = await this.siteContext();
-      const { html, text } = operatorWelcomeAgreementTemplate({
-        firstName: OnboardingEmailsService.firstNameOf(operator),
-        acceptedAt: operator.createdAt,
-        // No acceptance flow records a version yet — the line degrades to
-        // the dated acceptance sentence (see template JSDoc / PR notes).
-        agreementVersion: null,
-        agreementUrl: null,
-        supportEmail: process.env.MAIL_REPLY_TO?.trim() || null,
-        whatsappUrl: site.whatsappUrl,
-        siteLogoUrl: site.siteLogoUrl,
-      });
+      // Rendered through renderForKey so the OB-2 props (agreement version/
+      // URL, once D4 lands) have exactly ONE owner - the admin resend path
+      // renders the same way and can never ship a stale variant.
+      const rendered = await this.renderForKey(
+        EmailTemplateKey.OB2_WELCOME_AGREEMENT,
+        operator,
+        site,
+      );
       await this.emailLog.claimAndSend({
         templateKey: EmailTemplateKey.OB2_WELCOME_AGREEMENT,
         scopeId: operator.id,
         toEmail: operator.user.email,
         stream: EmailStream.TRANSACTIONAL,
-        send: () =>
-          this.mail.sendMail({
-            to: operator.user.email,
-            subject: OPERATOR_WELCOME_AGREEMENT_SUBJECT,
-            html,
-            text,
-          }),
+        send: () => this.sendRendered(operator.user.email, rendered),
       });
     })().catch((err: unknown) =>
       this.logger.error(
@@ -641,9 +685,23 @@ export class OnboardingEmailsService {
     this.logger.log(
       `Admin resend ${key} for operator ${operatorId}: ${result.outcome} (${scopeId})`,
     );
-    return this.prisma.emailSend.findUnique({
+    const row = await this.prisma.emailSend.findUnique({
       where: { templateKey_scopeId: { templateKey: key, scopeId } },
+      select: TIMELINE_SELECT,
     });
+    // The resend deliberately bypasses opt-out (an explicit admin action is
+    // its own authorization) - but the admin must know they overrode one:
+    // sending lifecycle mail after an unsubscribe is a compliance judgement
+    // call, and it should be an INFORMED one (security review of #185).
+    const recipientOptedOut =
+      stream === EmailStream.LIFECYCLE
+        ? await this.emailLog.isOptedOut(
+            email,
+            EmailAudience.OPERATOR,
+            EmailStream.LIFECYCLE,
+          )
+        : false;
+    return { ...row, recipientOptedOut };
   }
 
   // ── Rendering ──────────────────────────────────────────────────────────────
@@ -854,6 +912,10 @@ export class OnboardingEmailsService {
       // An email must never fail over branding (the MailService rule).
       return { siteLogoUrl: null, whatsappUrl: null };
     }
+  }
+
+  private static sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   private static firstNameOf(operator: OperatorRow): string | undefined {
