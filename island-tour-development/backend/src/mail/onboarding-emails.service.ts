@@ -757,18 +757,14 @@ export class OnboardingEmailsService {
     site: SiteContext,
   ): Promise<RenderedEmail> {
     const email = operator.user.email;
-    const token = await this.emailPreferences.issueUnsubscribeToken(
-      email,
-      EmailAudience.OPERATOR,
-      EmailStream.LIFECYCLE,
-    );
-    // D-28: both values are built from env-derived bases + the server-minted
-    // token — never a caller/user-supplied string, never CR/LF.
-    const optOutUrl = `${islandToursBase()}/unsubscribe/${token}`;
-    const headers: Record<string, string> = {
-      'List-Unsubscribe': `<${publicApiBase()}/api/v1/email/unsubscribe/${token}>`,
-      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-    };
+    // D-28: one owner for the recipe (EmailPreferencesService) — values are
+    // env bases + the server-minted token, never caller-supplied, never CR/LF.
+    const { optOutUrl, headers } =
+      await this.emailPreferences.unsubscribeWiring(
+        email,
+        EmailAudience.OPERATOR,
+        EmailStream.LIFECYCLE,
+      );
     const dash = dashboardAppBase();
 
     switch (key) {

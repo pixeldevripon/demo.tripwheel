@@ -10,7 +10,7 @@
 model EmailSend {
   id          String           @id @default(uuid())
   templateKey EmailTemplateKey
-  /// Dedupe scope: booking id, operator id, or lowercased email — one send
+  /// Dedupe scope: booking id or operator id — one send
   /// per (template, scope). Admin resends suffix `#resend-{n}`.
   scopeId     String
   toEmail     String

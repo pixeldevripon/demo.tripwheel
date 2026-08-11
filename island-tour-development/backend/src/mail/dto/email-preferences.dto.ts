@@ -52,7 +52,7 @@ export class EmailSendDto {
   @ApiProperty({
     example: 'op_9f8e7d6c',
     description:
-      'Dedupe scope: booking id, operator id, or lowercased email. Admin resends carry a `#resend-{n}` suffix.',
+      'Dedupe scope: booking id or operator id. Admin resends carry a `#resend-{n}` suffix.',
   })
   scopeId!: string;
 

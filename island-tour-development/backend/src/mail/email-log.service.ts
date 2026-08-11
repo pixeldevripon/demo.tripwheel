@@ -29,7 +29,7 @@ export type ClaimAndSendResult =
 
 export interface ClaimAndSendInput {
   templateKey: EmailTemplateKey;
-  /** Booking id, operator id, or lowercased email — the dedupe scope. */
+  /** Booking id or operator id — the dedupe scope (MK-1 uses booking id). */
   scopeId: string;
   toEmail: string;
   stream: EmailStream;
@@ -303,7 +303,7 @@ export class EmailLogService {
     return { gte: prefix, lt: `${prefix}\uffff` };
   }
 
-  /** Redacts email-shaped scope ids (MK-1 scopes are lowercased addresses). */
+  /** Defensive: redacts a scope id if a future sender ever keys by address. */
   private static redactScope(scopeId: string): string {
     return scopeId.includes('@') ? redactEmail(scopeId) : scopeId;
   }

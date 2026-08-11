@@ -9,6 +9,7 @@ import { timeZoneOffsetMs } from '@/common/utils/timezone.util';
 import {
   LIFECYCLE_WINDOW_TZ,
   isLifecycleWindowOpen,
+  isMarketingMorningWindowOpen,
   nextLifecycleWindow,
 } from './send-window.util';
 
@@ -63,6 +64,46 @@ describe('send-window.util', () => {
       expect(isLifecycleWindowOpen(new Date(`${TUE}T14:30:00.000Z`))).toBe(
         true,
       );
+    });
+  });
+
+  describe('isMarketingMorningWindowOpen (WP-G, MK-1)', () => {
+    it('shares the 09:00–11:00 boundary minutes with the lifecycle window', () => {
+      expect(isMarketingMorningWindowOpen(curacao(TUE, '08:59'))).toBe(false);
+      expect(isMarketingMorningWindowOpen(curacao(TUE, '09:00'))).toBe(true);
+      expect(isMarketingMorningWindowOpen(curacao(TUE, '10:59'))).toBe(true);
+      expect(isMarketingMorningWindowOpen(curacao(TUE, '11:00'))).toBe(false);
+    });
+
+    it('opens EVERY day - the 72h trigger must not slide across a weekend', () => {
+      for (const day of [
+        MON,
+        TUE,
+        WED,
+        THU,
+        FRI,
+        '2026-08-15', // Sat
+        '2026-08-16', // Sun
+      ]) {
+        expect(isMarketingMorningWindowOpen(curacao(day, '10:00'))).toBe(true);
+      }
+    });
+
+    it('diverges from the lifecycle window exactly on the weekday rule', () => {
+      // Monday 10:00 local: marketing open, lifecycle closed.
+      expect(isMarketingMorningWindowOpen(curacao(MON, '10:00'))).toBe(true);
+      expect(isLifecycleWindowOpen(curacao(MON, '10:00'))).toBe(false);
+    });
+
+    it('is decided in Curaçao local time, not the server clock', () => {
+      // 10:00 UTC = 06:00 on the island - closed, any day.
+      expect(
+        isMarketingMorningWindowOpen(new Date(`${MON}T10:00:00.000Z`)),
+      ).toBe(false);
+      // 14:00 UTC = 10:00 on the island - open, even on a Sunday.
+      expect(
+        isMarketingMorningWindowOpen(new Date('2026-08-16T14:00:00.000Z')),
+      ).toBe(true);
     });
   });
 

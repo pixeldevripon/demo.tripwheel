@@ -81,6 +81,7 @@ Build guides and per-feature checklists: [IMPLEMENTATION-GUIDE.md](./03-implemen
 | File | Purpose |
 | --- | --- |
 | [emails/EMAIL-IMPLEMENTATION-PLAN.md](./emails/EMAIL-IMPLEMENTATION-PLAN.md) | **Start here.** The build plan: seven work packages (WP-A…WP-G) with pinned contracts, per-repo file paths, dependency graph — each independently buildable by a separate agent. |
+| [emails/EMAIL-PROGRAMME-RUNBOOK.md](./emails/EMAIL-PROGRAMME-RUNBOOK.md) | **The operator's manual, in plain language**: every trigger, every switch and where it lives, how to test, consent, logs, the go-live sequence, troubleshooting. |
 | [emails/EMAIL-PROGRAMME-CHECKLIST.md](./emails/EMAIL-PROGRAMME-CHECKLIST.md) | The tracking checklist: every package broken into small atomic tasks with stable IDs, grouped by scope (backend / dashboard / frontend). Update in the same commit as the work. |
 | [emails/island-tours-email-programme-status.md](./emails/island-tours-email-programme-status.md) | Build-status audit of all 17 emails vs the codebase, estimate, phasing ([HTML version](./emails/island-tours-email-programme-status.html)). |
 | [emails/island-tours-email-funnel-wireframe.html](./emails/island-tours-email-funnel-wireframe.html) | Customer funnel wireframe (BK-1..3R, MK-1, CX-1). |

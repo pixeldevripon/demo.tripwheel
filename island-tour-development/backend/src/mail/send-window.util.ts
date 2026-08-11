@@ -1,9 +1,10 @@
 /**
  * Lifecycle send window (EMAIL-IMPLEMENTATION-PLAN.md §2.8).
  *
- * Operator lifecycle nudges (OB-3/4/6/7/8) and traveller marketing (MK-1) go
- * out Tue–Thu 09:00–11:00 **America/Curacao** — mid-morning on the island the
- * platform operates from, never Monday chaos or Friday wind-down. Built on
+ * Operator lifecycle nudges (OB-3/4/6/7/8) go out Tue–Thu 09:00–11:00
+ * **America/Curacao** — mid-morning on the island the platform operates from,
+ * never Monday chaos or Friday wind-down. Traveller marketing (MK-1) shares
+ * the HOURS but not the weekdays — see `isMarketingMorningWindowOpen`. Built on
  * `localNow()` from the shared timezone util so no timezone math is
  * hand-rolled here; Curaçao is fixed UTC-4 with no DST (asserted in the
  * spec), so the window is the same absolute UTC hours year-round.
@@ -36,6 +37,23 @@ export function isLifecycleWindowOpen(now: Date = new Date()): boolean {
   const local = localNow(LIFECYCLE_WINDOW_TZ, now);
   if (!OPEN_WEEKDAYS.has(local.getUTCDay())) return false;
   const hour = local.getUTCHours();
+  return hour >= WINDOW_OPEN_HOUR && hour < WINDOW_CLOSE_HOUR;
+}
+
+/**
+ * Is the MARKETING morning window open at `now`?
+ *
+ * MK-1 (WP-G) goes out "Curaçao morning" per the funnel wireframe — the same
+ * 09:00–11:00 America/Curacao hours as the lifecycle window, but on ANY day
+ * of the week: the trigger is `tour_end + 72h`, so pinning it to Tue–Thu
+ * would slide a Friday-due email three days and mail travellers who have
+ * already flown home. Deliberately a SEPARATE helper rather than a flag on
+ * `isLifecycleWindowOpen` — the two windows are different rules that happen
+ * to share hours, and coupling them would let a lifecycle change silently
+ * move marketing sends.
+ */
+export function isMarketingMorningWindowOpen(now: Date = new Date()): boolean {
+  const hour = localNow(LIFECYCLE_WINDOW_TZ, now).getUTCHours();
   return hour >= WINDOW_OPEN_HOUR && hour < WINDOW_CLOSE_HOUR;
 }
 

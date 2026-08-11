@@ -5,6 +5,7 @@ import { Queue } from 'bullmq';
 import { AvailabilityService } from '@/availability/availability.service';
 import { BookingsService } from '@/bookings/bookings.service';
 import { ContentTranslationService } from '@/content-translation/content-translation.service';
+import { NextAdventureEmailsService } from '@/mail/next-adventure-emails.service';
 import { OnboardingEmailsService } from '@/mail/onboarding-emails.service';
 import { ReviewRequestsService } from '@/reviews/review-requests.service';
 import { SettlementsService } from '@/settlements/settlements.service';
@@ -49,6 +50,7 @@ export class NightlyJobsService implements OnModuleInit {
     private readonly settlements: SettlementsService,
     private readonly contentTranslation: ContentTranslationService,
     private readonly onboardingEmails: OnboardingEmailsService,
+    private readonly nextAdventureEmails: NextAdventureEmailsService,
     @InjectQueue(PLATFORM_QUEUE) private readonly queue: Queue,
   ) {}
 
@@ -155,10 +157,15 @@ export class NightlyJobsService implements OnModuleInit {
    * 15 minutes: the WP-D onboarding evaluators — INT1R every tick, the
    * OB-3/4/6/7/8 nudges only inside the Tue–Thu Curaçao-morning window
    * (OnboardingEmailsService.sweep decides; a closed-window tick is a cheap
-   * no-op). WP-G adds its MK-1 evaluator to the same tick later.
+   * no-op) — plus the WP-G MK-1 evaluator, which gates itself on the
+   * ANY-day Curaçao-morning marketing window instead (the two windows share
+   * hours, not weekdays). Sequential on purpose: each runs its own
+   * capped+paced send loop, and the operator drip keeps first claim on a
+   * tick's wall-clock budget.
    */
   async emailLifecycleSweep(): Promise<void> {
     await this.onboardingEmails.sweep();
+    await this.nextAdventureEmails.sweep();
   }
 
   /** Job body, exposed so it can be invoked outside the schedule (admin/tests). */

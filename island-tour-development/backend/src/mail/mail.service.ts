@@ -92,6 +92,12 @@ const BOOKING_NOTICE_TEMPLATE = fs.readFileSync(
   'utf8',
 );
 
+/** MK-1 "Next adventure" (WP-G marketing rail) - sibling of the reminder. */
+const NEXT_ADVENTURE_TEMPLATE = fs.readFileSync(
+  path.join(TEMPLATE_DIR, 'next-adventure-email.template.html'),
+  'utf8',
+);
+
 export interface SendMailOptions {
   to: string;
   subject: string;
@@ -626,6 +632,38 @@ export class MailService {
       subject,
       html: renderEmailTemplate(PRE_TOUR_REMINDER_TEMPLATE, context),
       text,
+    });
+  }
+
+  // ── MK-1 "Next adventure" (WP-G marketing rail) ─────────────────────────────
+
+  /**
+   * Render + send the locked MK-1 template. Same facade contract as the
+   * confirmation/reminder: the caller owns the token context
+   * (`buildNextAdventureEmailContext`), the subject and the one-click
+   * unsubscribe headers (G-14 — env-derived bases + server-minted tokens
+   * only, per the `SendMailOptions.headers` contract). Missing tokens log
+   * loudly rather than emailing a literal `{cardOneName}`.
+   */
+  async sendNextAdventureEmail(
+    to: string,
+    subject: string,
+    context: EmailTemplateContext,
+    text: string,
+    headers: Record<string, string>,
+  ): Promise<{ providerMessageId: string | null }> {
+    const missing = findUnresolvedTokens(NEXT_ADVENTURE_TEMPLATE, context);
+    if (missing.length) {
+      this.logger.error(
+        `Next-adventure email context is missing tokens: ${missing.join(', ')}`,
+      );
+    }
+    return this.sendMail({
+      to,
+      subject,
+      html: renderEmailTemplate(NEXT_ADVENTURE_TEMPLATE, context),
+      text,
+      headers,
     });
   }
 

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="{locale}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no">
+  <meta name="color-scheme" content="light">
+  <meta name="supported-color-schemes" content="light">
+  <title>{subjectLine}</title>
+  <!-- Plus Jakarta Sans, exactly as the wireframe loads it. Which clients render
+       it is a CLIENT capability, not something any sender can change - see the
+       note in booking-confirmation-email.template.html, the sibling this
+       template mirrors block for block. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+    /* Lock the palette to the light design. Clients that honor color-scheme
+       (Apple Mail, iOS) stop inverting the card and logo in dark mode; Gmail
+       ignores it - the logo itself ships with a baked-in white chip for that. */
+    :root { color-scheme: light; supported-color-schemes: light; }
+
+    /* Founder-approved mobile refinement (same as the confirmation): tighten
+       the outer gutter and cell padding on phones. */
+    @media only screen and (max-width: 480px) {
+      .it-shell-pad { padding: 12px 6px !important; }
+      .it-cell { padding-left: 16px !important; padding-right: 16px !important; }
+    }
+  </style>
+  <!-- MK-1 "Next adventure" (marketing rail), locked to the funnel wireframe's
+       embedded template (island-tours-email-funnel-wireframe.html, tpl-next).
+       An AVAILABILITY email, not a recommendation email (wireframe trigbar).
+       HARD RULES this template carries (wireframe + checklist G-05, and the
+       render spec bans the vocabulary itself, comments included):
+         - no price cuts or promo framing of any kind - the plain from-price
+           the listing shows is the only money on the page
+         - no timers and no per-tour urgency or remaining-seat claims - the
+           one availability sentence is the general fill note
+         - exactly three cards (contrast / adjacent / flagship), availability
+           resolved AT SEND TIME by the sender; fewer than three qualifying
+           tours means the email is not sent at all
+         - marketing footer with a working unsubscribe (WP-F page) - this is
+           the MARKETING stream, soft opt-in under ePrivacy 13(2)
+       Copy strings arrive as tokens from next-adventure-email.copy.ts
+       (7 locales); this file owns only the design. The three cards are fixed
+       One/Two/Three slots (the BK-1 relatedTour pattern): the renderer's
+       loop tag repeats one plain escaped string per entry, so multi-field
+       cards cannot be list-driven without assembling HTML in TypeScript -
+       which would move design out of this file. -->
+</head>
+<body style="margin:0;padding:0;background:#EDEFF2;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#1F2937;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
+    {previewText}
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:#EDEFF2">
+    <tr><td align="center" class="it-shell-pad" style="padding:26px 16px">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#FFFFFF;border-radius:16px;overflow:hidden;border:1px solid #E8EAED;border-collapse:separate">
+
+        <!-- Brand bar -->
+        <tr><td class="it-cell" style="padding:18px 28px;border-bottom:1px solid #E8EAED">
+          [IF siteLogoUrl]<img src="{siteLogoUrl}" height="48" alt="Island Tours" style="display:block;border:0;height:48px;width:auto">[ELSE]<span style="font-family:'Plus Jakarta Sans',Arial,sans-serif;font-weight:800;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:#1F2937">ISLAND <span style="color:#E8611A">TOURS</span></span>[/IF]
+        </td></tr>
+
+        <!-- Block 1: headline + intro. Availability first, and it has to work for someone who already flew home. -->
+        <tr><td class="it-cell" style="padding:26px 28px 4px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <div style="font-size:22px;font-weight:800;letter-spacing:-.02em;color:#1F2937;line-height:1.25">{headline}</div>
+          <div style="font-size:16px;color:#374151;line-height:1.6;margin-top:12px">
+            {introBeforeTourName}<b style="color:#1F2937">{bookedTourName}</b>{introAfterTourName}
+          </div>
+          <div style="font-size:14px;color:#9aa3b2;line-height:1.5;margin-top:8px">{alreadyHome}</div>
+        </td></tr>
+
+        <!-- Block 2: three cards, contrast / adjacent / flagship. Same 2-up card format as the confirmation and the reminder,
+             so every tour card in the funnel is the same size. Availability is resolved at send time. -->
+        <tr><td class="it-cell" style="padding:18px 28px 0;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+            <tr>
+              <td width="50%" style="padding:0 7px 14px 0;vertical-align:top">
+              <a href="{cardOneUrl}" style="text-decoration:none;color:inherit;display:block">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #E8EAED;border-radius:12px;overflow:hidden">
+                  <tr><td>
+                    <img src="{cardOneImageUrl}" width="100%" height="92" alt="{cardOneName}" style="display:block;width:100%;height:92px;object-fit:cover;border:0;background:#1FB6C9">
+                    <div style="padding:11px 13px 13px">
+                      <div style="font-size:13.5px;font-weight:700;color:#1F2937;line-height:1.3">{cardOneName}</div>
+                      <div style="font-size:12.5px;color:#6B7280;margin-top:5px">{cardOneMetaPrefix}<b style="color:#1F2937">{cardOnePrice}</b></div>
+                      <div style="font-size:12px;color:#15803D;font-weight:700;margin-top:5px">{cardOneOpenDays}</div>
+                      [IF cardOneLine]<div style="font-size:12.5px;color:#6B7280;line-height:1.5;margin-top:7px">{cardOneLine}</div>[/IF]
+                      <div style="font-size:12.5px;color:#E8611A;font-weight:700;margin-top:9px">{seeTimes} &rsaquo;</div>
+                    </div>
+                  </td></tr>
+                </table>
+              </a>
+              </td>
+              <td width="50%" style="padding:0 0 14px 7px;vertical-align:top">
+              <a href="{cardTwoUrl}" style="text-decoration:none;color:inherit;display:block">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #E8EAED;border-radius:12px;overflow:hidden">
+                  <tr><td>
+                    <img src="{cardTwoImageUrl}" width="100%" height="92" alt="{cardTwoName}" style="display:block;width:100%;height:92px;object-fit:cover;border:0;background:#1FB6C9">
+                    <div style="padding:11px 13px 13px">
+                      <div style="font-size:13.5px;font-weight:700;color:#1F2937;line-height:1.3">{cardTwoName}</div>
+                      <div style="font-size:12.5px;color:#6B7280;margin-top:5px">{cardTwoMetaPrefix}<b style="color:#1F2937">{cardTwoPrice}</b></div>
+                      <div style="font-size:12px;color:#15803D;font-weight:700;margin-top:5px">{cardTwoOpenDays}</div>
+                      [IF cardTwoLine]<div style="font-size:12.5px;color:#6B7280;line-height:1.5;margin-top:7px">{cardTwoLine}</div>[/IF]
+                      <div style="font-size:12.5px;color:#E8611A;font-weight:700;margin-top:9px">{seeTimes} &rsaquo;</div>
+                    </div>
+                  </td></tr>
+                </table>
+              </a>
+              </td>
+            </tr>
+            <tr>
+              <td width="50%" style="padding:0 7px 0 0;vertical-align:top">
+              <a href="{cardThreeUrl}" style="text-decoration:none;color:inherit;display:block">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #E8EAED;border-radius:12px;overflow:hidden">
+                  <tr><td>
+                    <img src="{cardThreeImageUrl}" width="100%" height="92" alt="{cardThreeName}" style="display:block;width:100%;height:92px;object-fit:cover;border:0;background:#1FB6C9">
+                    <div style="padding:11px 13px 13px">
+                      <div style="font-size:13.5px;font-weight:700;color:#1F2937;line-height:1.3">{cardThreeName}</div>
+                      <div style="font-size:12.5px;color:#6B7280;margin-top:5px">{cardThreeMetaPrefix}<b style="color:#1F2937">{cardThreePrice}</b></div>
+                      <div style="font-size:12px;color:#15803D;font-weight:700;margin-top:5px">{cardThreeOpenDays}</div>
+                      [IF cardThreeLine]<div style="font-size:12.5px;color:#6B7280;line-height:1.5;margin-top:7px">{cardThreeLine}</div>[/IF]
+                      <div style="font-size:12.5px;color:#E8611A;font-weight:700;margin-top:9px">{seeTimes} &rsaquo;</div>
+                    </div>
+                  </td></tr>
+                </table>
+              </a>
+              </td>
+              <td width="50%" style="padding:0 0 0 7px;vertical-align:top"></td>
+            </tr>
+          </table>
+        </td></tr>
+
+        <!-- The one availability sentence: a general truth, never per-tour scarcity -->
+        <tr><td class="it-cell" style="padding:16px 28px 0;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <div style="font-size:14px;color:#9aa3b2;text-align:center;line-height:1.5">{fillNote}</div>
+        </td></tr>
+
+        <!-- See all tours on the island -->
+        <tr><td class="it-cell" style="padding:16px 28px 0;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <div style="text-align:center"><a href="{allToursUrl}" style="font-size:14.5px;color:#E8611A;font-weight:700;text-decoration:underline">{seeAllLabel} &rsaquo;</a></div>
+        </td></tr>
+
+        <!-- Free reschedule: the flexibility promise that replaces any price incentive -->
+        <tr><td class="it-cell" style="padding:20px 28px 0;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <div style="background:#F7F8FA;border:1px solid #E8EAED;border-radius:12px;padding:14px 16px">
+            <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+              <td style="vertical-align:top;padding-right:9px;padding-top:1px">
+                <img src="{emailIconBase}/icon-reschedule-green.png" width="16" height="16" alt="" style="display:block;border:0">
+              </td>
+              <td style="font-size:14px;color:#374151;line-height:1.5"><b style="color:#1F2937">{rescheduleBold}</b> {rescheduleRest}</td>
+            </tr></table>
+          </div>
+        </td></tr>
+
+        <!-- Personal sign-off (wireframe-exact wording, not localized) -->
+        <tr><td class="it-cell" style="padding:20px 28px 0;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <div style="font-size:14.5px;color:#374151;line-height:1.6">Shanice<br><span style="color:#9aa3b2;font-size:13px">Island Tours · Willemstad, Curaçao</span></div>
+        </td></tr>
+
+        <!-- Marketing footer: provenance line + working unsubscribe (G-14).
+             Both links act on the MARKETING stream via the same WP-F token
+             page - no preference centre exists yet, so "Get fewer emails"
+             and "Unsubscribe" resolve to the same tokenized surface. -->
+        <tr><td class="it-cell" style="padding:22px 28px 26px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <div style="height:1px;background:#E8EAED;margin-bottom:16px"></div>
+          <div style="font-size:12px;color:#6B7280;line-height:1.7">
+            {footerBeforeTourName}<b style="color:#6B7280">{bookedTourName}</b>{footerAfterTourName}<br>
+            <a href="{unsubscribeUrl}" style="color:#6B7280;text-decoration:underline">{unsubscribeLabel}</a> · <a href="{unsubscribeUrl}" style="color:#6B7280;text-decoration:underline">{fewerEmailsLabel}</a><br>
+            ITG B.V. (Island Tours Group) · KvK Curaçao 169950<br>Caracasbaaiweg 366, Willemstad, Curaçao
+          </div>
+          <div style="font-size:15px;font-weight:800;letter-spacing:-.01em;color:#1F2937;margin-top:14px">Built by Islanders.</div>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>

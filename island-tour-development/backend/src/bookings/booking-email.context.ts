@@ -48,7 +48,8 @@ const INTL_LOCALE: Record<Locale, string> = {
  */
 const WALL_CLOCK_ZONE = 'UTC';
 
-function intlLocale(locale: Locale | null | undefined): string {
+/** Exported for the MK-1 context builder (weekday names share this mapping). */
+export function intlLocale(locale: Locale | null | undefined): string {
   return INTL_LOCALE[locale ?? Locale.en] ?? INTL_LOCALE.en;
 }
 
