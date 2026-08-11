@@ -8,7 +8,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
  * free-cancellation deadline because the request silently failed.
  */
 
-vi.mock('server-only', () => ({}));
 
 const revalidateTag = vi.fn();
 vi.mock('next/cache', () => ({

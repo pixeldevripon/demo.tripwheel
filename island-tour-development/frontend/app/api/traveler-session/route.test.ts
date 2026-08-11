@@ -11,7 +11,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // `server-only` throws outside an RSC graph; the module under test reaches it
 // through `lib/traveler-session.server`.
-vi.mock('server-only', () => ({}));
 
 const revalidateTag = vi.fn();
 vi.mock('next/cache', () => ({

@@ -1,4 +1,5 @@
 import { seg } from '@/lib/api/api-path';
+import type { PublicUnsubscribeInfo } from '@/lib/api/public/unsubscribe';
 import { BACKEND_API_BASE } from '@/lib/api/backend-url';
 
 /**
@@ -16,21 +17,13 @@ import { BACKEND_API_BASE } from '@/lib/api/backend-url';
  * no-op, not an error, because the link in a months-old email must keep
  * working however many times it is clicked.
  */
-export async function confirmUnsubscribe(token: string): Promise<{
-  email: string;
-  audience: 'TRAVELLER' | 'OPERATOR';
-  stream: 'LIFECYCLE' | 'MARKETING';
-  optedOut: true;
-}> {
+export async function confirmUnsubscribe(
+  token: string,
+): Promise<PublicUnsubscribeInfo & { optedOut: true }> {
   const res = await fetch(`${BACKEND_API_BASE}/email/unsubscribe/${seg(token)}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
   });
   if (!res.ok) throw new Error(`Request failed (${res.status})`);
-  return (await res.json()) as {
-    email: string;
-    audience: 'TRAVELLER' | 'OPERATOR';
-    stream: 'LIFECYCLE' | 'MARKETING';
-    optedOut: true;
-  };
+  return (await res.json()) as PublicUnsubscribeInfo & { optedOut: true };
 }

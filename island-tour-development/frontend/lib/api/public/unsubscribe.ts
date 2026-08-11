@@ -10,6 +10,7 @@
 import 'server-only';
 
 import { seg } from '@/lib/api/api-path';
+import { perVisitorThrottleHeaders } from '@/lib/api/visitor-throttle';
 import { BACKEND_API_BASE } from '@/lib/api/backend-url';
 
 /** Who the token's email belongs to - mirrors the backend `EmailAudience`. */
@@ -40,9 +41,18 @@ export async function getUnsubscribeInfo(
   token: string,
 ): Promise<PublicUnsubscribeInfo | null> {
   try {
+    // Per-visitor throttle bucket: without these headers every SSR resolve
+    // on the platform shares ONE 10/min bucket keyed on our egress IP, and a
+    // junk-token loop makes every legitimate unsubscribe link render "no
+    // longer valid" - a false statement on a compliance surface. Safe here
+    // precisely because the route declares its own @Throttle (the key only
+    // re-keys the bucket, never bypasses it). Template: claimConversionPush.
     const res = await fetch(`${BACKEND_API_BASE}/email/unsubscribe/${seg(token)}`, {
       cache: 'no-store',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(await perVisitorThrottleHeaders()),
+      },
     });
     if (!res.ok) return null;
     return (await res.json()) as PublicUnsubscribeInfo;

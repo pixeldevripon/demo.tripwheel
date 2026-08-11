@@ -11,7 +11,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
  * of them decides whether a traveller can pay.
  */
 
-vi.mock('server-only', () => ({}));
 
 const reserveBooking = vi.fn();
 const updateBookingContact = vi.fn();

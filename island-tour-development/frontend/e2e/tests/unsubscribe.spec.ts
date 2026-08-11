@@ -37,7 +37,7 @@ const SEEDED_TOKEN = process.env.E2E_UNSUBSCRIBE_TOKEN;
  * waits for interactivity, which the confirm-click test needs regardless.
  */
 function card(page: Page) {
-  return page.locator('[data-hydrated="true"]');
+  return page.locator('#unsubscribe-card[data-hydrated="true"]');
 }
 
 async function gotoUnsubscribe(page: Page, path: string) {

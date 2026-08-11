@@ -141,9 +141,7 @@ export function UnsubscribeConfirm({
                 <h1 className='mx-auto mb-0 max-w-md font-normal text-[24px] leading-[1.25] tracking-[-0.012em] text-it-heading sm:text-[28px]'>
                     {info.optedOut ? dict.alreadyTitle : dict.successTitle}
                 </h1>
-                <p
-                    aria-live='polite'
-                    className='mx-auto mt-3 mb-0 max-w-md text-[15px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                <p className='mx-auto mt-3 mb-0 max-w-md text-[15px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                     {info.optedOut ? dict.alreadyBody : dict.successBody}
                 </p>
                 {/* The line that keeps this page from scaring people off
@@ -190,12 +188,11 @@ export function UnsubscribeConfirm({
                     {status === 'working' ? dict.working : dict.confirm}
                 </motion.button>
 
-                {/* One live region for the outcome; the button above stays,
-                    so "try again" is the same tap that failed. */}
+                {/* Visible error line; the announcement itself comes from the
+                    card's persistent live region below, and the button above
+                    stays so "try again" is the same tap that failed. */}
                 {status === 'error' && (
-                    <p
-                        aria-live='polite'
-                        className='mx-auto mt-3 mb-0 max-w-md text-[13px] font-semibold leading-[1.5] text-it-error'>
+                    <p className='mx-auto mt-3 mb-0 max-w-md text-[13px] font-semibold leading-[1.5] text-it-error'>
                         {dict.error} {dict.retry}
                     </p>
                 )}
@@ -203,11 +200,31 @@ export function UnsubscribeConfirm({
         );
     }
 
+    // One PERSISTENTLY-MOUNTED live region for every outcome: a region that
+    // appears together with its content is typically not announced (the
+    // saved-email-box precedent keeps the region mounted and swaps text).
+    // It is visually hidden - the visible branches above carry the same
+    // words for sighted users.
+    const liveText =
+        status === 'error'
+            ? `${dict.error} ${dict.retry}`
+            : status === 'working'
+              ? dict.working
+              : status === 'done' && info
+                ? info.optedOut
+                    ? dict.alreadyBody
+                    : dict.successBody
+                : '';
+
     return (
         <div
+            id='unsubscribe-card'
             data-hydrated={hydrated || undefined}
             className='w-full max-w-xl rounded-[16px] bg-it-white p-8 text-center shadow-[0_26px_70px_-20px_rgba(0,0,0,0.25)] sm:p-12'>
             {body}
+            <p aria-live='polite' className='sr-only'>
+                {liveText}
+            </p>
         </div>
     );
 }

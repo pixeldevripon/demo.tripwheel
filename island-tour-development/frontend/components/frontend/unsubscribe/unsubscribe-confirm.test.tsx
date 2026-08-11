@@ -124,7 +124,9 @@ describe('UnsubscribeConfirm - confirm outcomes', () => {
 
         expect(confirmMock).toHaveBeenCalledWith('tok-1');
         expect(await screen.findByText(DICT.successTitle)).toBeInTheDocument();
-        expect(screen.getByText(DICT.successBody)).toBeInTheDocument();
+        // Twice by design: the visible paragraph plus the card's persistent
+        // sr-only live region announcing the same outcome.
+        expect(screen.getAllByText(DICT.successBody)).toHaveLength(2);
         // The line that must survive every redesign: opting out never touches
         // transactional email.
         expect(screen.getByText(DICT.transactionalNote)).toBeInTheDocument();
@@ -158,7 +160,8 @@ describe('UnsubscribeConfirm - confirm outcomes', () => {
         const button = screen.getByRole('button', { name: DICT.confirm });
         await user.click(button);
         expect(
-            await screen.findByText(`${DICT.error} ${DICT.retry}`),
+            // Two matches by design: visible error line + sr-only live region.
+            (await screen.findAllByText(`${DICT.error} ${DICT.retry}`))[0],
         ).toBeInTheDocument();
 
         // Same tap, second try - the failure must not dead-end the page.
