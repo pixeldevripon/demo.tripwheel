@@ -87,7 +87,12 @@ describe('NextAdventureEmailsService', () => {
   let prefs: { issueUnsubscribeToken: jest.Mock; unsubscribeWiring: jest.Mock };
   let svc: NextAdventureEmailsService;
 
+  const envBefore = process.env.MK1_ENABLED;
+
   beforeEach(() => {
+    // The suite tests the machinery, so the master switch is ON here; the
+    // dedicated test below covers the default-off behaviour.
+    process.env.MK1_ENABLED = 'true';
     prisma = {
       // Tagged-template mock: the candidate query (NOT EXISTS anti-join)
       // returns ids; the booked-again probe (count(*)) returns n=0.
@@ -154,6 +159,23 @@ describe('NextAdventureEmailsService', () => {
 
   it('outside the Curaçao morning: no candidate query, nothing written', async () => {
     await svc.sweep(MONDAY_MIDDAY_CLOSED);
+    expect(prisma.$queryRaw).not.toHaveBeenCalled();
+    expect(emailLog.claimAndSend).not.toHaveBeenCalled();
+    expect(emailLog.recordSuppressed).not.toHaveBeenCalled();
+  });
+
+  afterEach(() => {
+    if (envBefore === undefined) delete process.env.MK1_ENABLED;
+    else process.env.MK1_ENABLED = envBefore;
+  });
+
+  it('the MASTER SWITCH defaults OFF: no queries, nothing written, "not yet" semantics', async () => {
+    // The ReviewRequestSettings.enabled precedent - a deploy must never
+    // start marketing sends; the founder flips the switch (env today,
+    // dashboard setting in WP-H). The anti-join re-finds every candidate
+    // when it turns on, so nothing is lost while dark.
+    delete process.env.MK1_ENABLED;
+    await svc.sweep(MONDAY_MORNING_OPEN);
     expect(prisma.$queryRaw).not.toHaveBeenCalled();
     expect(emailLog.claimAndSend).not.toHaveBeenCalled();
     expect(emailLog.recordSuppressed).not.toHaveBeenCalled();

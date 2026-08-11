@@ -35,7 +35,7 @@ email-provider day degrades gracefully instead of exploding.
 | **BK-3 Review request** | The morning after the tour (~10:00 tour-local) | **Master switch is OFF** (`ReviewRequestSettings.enabled`); cancelled/no-longer-completed bookings |
 | **BK-3R Review reminder** | 5 days after BK-3, once only | Review already submitted; same master switch |
 | **CX-1 Cancellation confirmed** | When the admin confirms a cancellation | — (wording adapts to how the booking was paid) |
-| **MK-1 Next adventure** (marketing) | 72h after tour end, mornings 09:00–11:00 Curaçao | **No consent recorded**, opted out, booked again, cancelled, 1–2★ review, or fewer than 3 bookable tours to recommend |
+| **MK-1 Next adventure** (marketing) | 72h after tour end, mornings 09:00–11:00 Curaçao | **Master switch `MK1_ENABLED` is OFF (ships dark)**; no consent recorded, opted out, booked again, cancelled, 1–2★ review, or fewer than 3 bookable tours to recommend |
 
 **Operator emails** (English):
 
@@ -84,7 +84,7 @@ OB-7 > OB-8, and everything stops instantly on suspension or opt-out.
 | Sales inbox address | `SALES_EMAIL` env (falls back to `ADMIN_EMAIL`) | Not yet → WP-H |
 | Reply-to addresses | `MAIL_REPLY_TO`, `OB6_REPLY_TO` env | Not yet → WP-H |
 | From-address + provider key | `MAIL_FROM`, `RESEND_API_KEY` env | No (deliberately) |
-| MK-1 marketing ON/OFF | **No switch — the consent data IS the switch.** Empty consent list = zero sends, guaranteed | People view → WP-H |
+| MK-1 marketing ON/OFF | `MK1_ENABLED` env var, **default OFF** (like the review switch) — AND the consent data beneath it (empty consent list = zero sends even when on) | Switchboard → WP-H |
 | Opt-outs | Written automatically by the unsubscribe page | Viewer → WP-H |
 
 **WP-H (planned, plan §4) moves the first five into a dashboard "Email" section** — Activity log,
@@ -129,7 +129,8 @@ fallback so nothing breaks during the transition.
    never blasts a backlog on enable).
 5. When calendar sync ships: set `CALENDAR_SYNC_AVAILABLE=true` → OB-7 starts, including for
    every operator who passed the 3-day mark while it was off (deliberately not skipped).
-6. MK-1 needs no flip — it grows with the consent list. Watch the first morning's Activity rows.
+6. MK-1: set `MK1_ENABLED=true` when you're ready for marketing sends (it ships dark). Even
+   when on, it only reaches consented, not-opted-out travellers. Watch the first morning's rows.
 7. After any deploy that adds email icons: `pnpm email:icons:upload` (already run for the current set).
 
 ## 9. If something looks wrong

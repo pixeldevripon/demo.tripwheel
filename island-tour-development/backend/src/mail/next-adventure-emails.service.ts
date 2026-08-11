@@ -199,6 +199,12 @@ export class NextAdventureEmailsService {
     // Closed window = "not yet", never a decision: nothing is written and
     // the anti-join re-finds every candidate when the morning opens.
     if (!isMarketingMorningWindowOpen(now)) return;
+    // MASTER SWITCH, the ReviewRequestSettings.enabled precedent: MK-1 stays
+    // dark until deliberately enabled, even for consented addresses - the
+    // founder flips it, not a deploy. "Not yet" semantics: nothing is
+    // written, the anti-join re-finds everyone when it turns on. WP-H moves
+    // this to a dashboard setting with the env var as fallback.
+    if (process.env.MK1_ENABLED?.trim() !== 'true') return;
     this.cardRowsCache.clear();
 
     const ids = await this.fetchCandidateIds(now);
