@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="{locale}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no">
+  <meta name="color-scheme" content="light">
+  <meta name="supported-color-schemes" content="light">
+  <title>{subjectLine}</title>
+  <!-- Plus Jakarta Sans, exactly as the wireframe loads it. Which clients render
+       it is a CLIENT capability, not something any sender can change - see the
+       note in booking-confirmation-email.template.html, the sibling this
+       template mirrors block for block. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+    /* Lock the palette to the light design. Clients that honor color-scheme
+       (Apple Mail, iOS) stop inverting the card and logo in dark mode; Gmail
+       ignores it - the logo itself ships with a baked-in white chip for that. */
+    :root { color-scheme: light; supported-color-schemes: light; }
+
+    /* Founder-approved mobile refinement (same as the confirmation): tighten
+       the outer gutter and cell padding on phones. */
+    @media only screen and (max-width: 480px) {
+      .it-shell-pad { padding: 12px 6px !important; }
+      .it-cell { padding-left: 16px !important; padding-right: 16px !important; }
+    }
+  </style>
+  <!-- BK-2 pre-tour reminder (master 6.7), locked to the funnel wireframe's
+       embedded template (island-tours-email-funnel-wireframe.html, tpl-remind).
+       HARD RULES this template carries (wireframe + checklist B-02):
+         - NEVER links to any payment, never a cancellation CTA
+         - no balance nudge beyond the single balance note
+           (operator_link only, hidden when the amount is zero)
+         - weather block only on weather_dependent tours
+         - subject and greeting switch to "today" for same-day starts
+       Copy strings arrive as tokens from pre-tour-reminder-email.copy.ts
+       (7 locales); this file owns only the design. -->
+</head>
+<body style="margin:0;padding:0;background:#EDEFF2;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#1F2937;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
+    {previewText}
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:#EDEFF2">
+    <tr><td align="center" class="it-shell-pad" style="padding:26px 16px">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#FFFFFF;border-radius:16px;overflow:hidden;border:1px solid #E8EAED;border-collapse:separate">
+
+        <!-- Brand bar -->
+        <tr><td class="it-cell" style="padding:18px 28px;border-bottom:1px solid #E8EAED">
+          [IF siteLogoUrl]<img src="{siteLogoUrl}" height="48" alt="Island Tours" style="display:block;border:0;height:48px;width:auto">[ELSE]<span style="font-family:'Plus Jakarta Sans',Arial,sans-serif;font-weight:800;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:#1F2937">ISLAND <span style="color:#E8611A">TOURS</span></span>[/IF]
+        </td></tr>
+
+        <!-- Headline: orange clock chip + "You're set for tomorrow/today" -->
+        <tr><td class="it-cell" style="padding:26px 28px 6px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+            <td style="vertical-align:middle;padding-right:10px">
+              <span style="display:inline-block;width:30px;height:30px;border-radius:50%;background:#FBF1EA;text-align:center;line-height:30px">
+                <img src="{emailIconBase}/icon-clock-orange.png" width="16" height="16" alt="" style="vertical-align:middle;border:0">
+              </span>
+            </td>
+            <td style="vertical-align:middle"><div style="font-size:22px;font-weight:800;letter-spacing:-.02em;color:#1F2937">{headline}</div></td>
+          </tr></table>
+          <div style="font-size:13.5px;color:#6B7280;margin-top:10px">[IF startTime]{subLinePrefix} <b style="color:#1F2937">{startTime}</b> {localTimeSuffix}[ELSE]{tourName}[/IF]</div>
+          <div style="font-size:13px;color:#6B7280;margin-top:4px">{refLabel} <b style="color:#1F2937">{bookingRef}</b></div>
+        </td></tr>
+
+        <!-- Booking card: featured image beside title, same format as the confirmation -->
+        <tr><td class="it-cell" style="padding:20px 28px 4px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%"><tr>
+            <td width="96" style="vertical-align:top;padding-right:14px">
+              <img src="{featuredImageUrl}" width="96" height="96" alt="{tourName}" style="display:block;width:96px;height:96px;border-radius:10px;object-fit:cover;border:0;background:#1FB6C9">
+            </td>
+            <td style="vertical-align:top">
+              <div style="font-size:17px;font-weight:800;color:#1F2937;line-height:1.25;letter-spacing:-.01em">{tourName}</div>
+              <div style="font-size:13.5px;color:#6B7280;margin-top:4px">{operatorName}</div>
+              <div style="font-size:14px;color:#374151;font-weight:600;margin-top:7px">{dateLong}[IF startTime] · {startTime}[/IF]</div>
+            </td>
+          </tr></table>
+
+          <div style="height:1px;background:#E8EAED;margin:16px 0 14px"></div>
+
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="font-size:14.5px;color:#374151;line-height:1.45">
+            <tr><td style="padding:5px 0;width:26px;vertical-align:top">
+              <img src="{emailIconBase}/icon-pin.png" width="17" height="17" alt="" style="display:block;border:0;margin-top:2px">
+            </td><td style="padding:5px 0">[IF hasPickup]{pickupLabel} {pickupLocation}, <b style="color:#1F2937">{beReadyAt} {pickupTime}</b>.[ELSE]{meetingPointLabel} {meetingPoint}. {arriveEarlyLine}[/IF] <a href="{mapUrl}" style="color:#E8611A;font-weight:600;text-decoration:underline">{openInMaps}</a></td></tr>
+
+            <tr><td style="padding:5px 0;vertical-align:top">
+              <img src="{emailIconBase}/icon-users.png" width="17" height="17" alt="" style="display:block;border:0;margin-top:2px">
+            </td><td style="padding:5px 0">{partyBreakdown}</td></tr>
+
+            [IF durationLine]<tr><td style="padding:5px 0;vertical-align:top">
+              <img src="{emailIconBase}/icon-clock.png" width="17" height="17" alt="" style="display:block;border:0;margin-top:2px">
+            </td><td style="padding:5px 0">{durationLine}</td></tr>[/IF]
+          </table>
+        </td></tr>
+
+        <!-- What to bring -->
+        [IF whatToBring]<tr><td class="it-cell" style="padding:18px 28px 0;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#6B7280">{whatToBringTitle}</div>
+          <table role="presentation" cellpadding="0" cellspacing="0" style="font-size:14.5px;color:#374151;line-height:1.5;margin-top:6px">
+            [EACH whatToBring]<tr><td style="padding:2px 8px 2px 0;color:#E8611A">&bull;</td><td>{item}</td></tr>[/EACH]
+          </table>
+        </td></tr>[/IF]
+
+        <!-- Balance note: operator_link only, hidden at zero, never a link -->
+        [IF balanceNote]<tr><td class="it-cell" style="padding:18px 28px 0;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <div style="background:#F7F7F5;border:1px solid #E8EAED;border-radius:12px;padding:14px 16px">
+            <div style="font-size:13px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.04em">{balanceTitle}</div>
+            <div style="font-size:14.5px;color:#1F2937;margin-top:5px;line-height:1.5">{balanceNote}</div>
+          </div>
+        </td></tr>[/IF]
+
+        <!-- Weather (weather_dependent tours only) -->
+        [IF weatherDependent]<tr><td class="it-cell" style="padding:16px 28px 0;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <table role="presentation" cellpadding="0" cellspacing="0" style="font-size:13.5px;color:#6B7280;line-height:1.5"><tr>
+            <td style="width:26px;vertical-align:top;padding-top:2px">
+              <img src="{emailIconBase}/icon-cloud.png" width="17" height="17" alt="" style="display:block;border:0">
+            </td>
+            <td>{weatherNote}</td>
+          </tr></table>
+        </td></tr>[/IF]
+
+        <!-- Questions: the operator first, the platform second -->
+        <tr><td class="it-cell" style="padding:20px 28px 0;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <div style="height:1px;background:#E8EAED;margin-bottom:16px"></div>
+          <div style="font-size:15px;font-weight:800;color:#1F2937">{questionsTitle}</div>
+          <div style="font-size:14px;color:#374151;margin-top:7px;line-height:1.55">
+            {talkToLocals} <b style="color:#1F2937">{operatorName}</b><br>
+            [IF operatorPhone]<a href="tel:{operatorPhone}" style="color:#E8611A;font-weight:600;text-decoration:underline">{operatorPhone}</a>[/IF][IF operatorPhone AND operatorEmail] · [/IF][IF operatorEmail]<a href="mailto:{operatorEmail}" style="color:#E8611A;font-weight:600;text-decoration:underline">{operatorEmail}</a>[/IF]
+          </div>
+          [IF whatsappUrl]<div style="font-size:12.5px;color:#6B7280;margin-top:8px">{platformIssue} <a href="{whatsappUrl}" style="color:#E8611A;font-weight:600;text-decoration:underline">{whatsappUs}</a>{supportHours}</div>[/IF]
+        </td></tr>
+
+        <!-- Sign-off (transactional footer, same as the confirmation) -->
+        <tr><td class="it-cell" style="padding:24px 28px 24px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <div style="border-top:1px solid #E8EAED;padding-top:18px">
+            <div style="font-size:13px;font-weight:800;color:#1F2937">Island Tours. Built by Islanders.</div>
+            <div style="font-size:12.5px;color:#9aa3b2;margin-top:4px">www.island.tours</div>
+            <div style="font-size:11.5px;color:#b6bcc7;margin-top:10px;line-height:1.6">ITG B.V. (Island Tours Group) · KvK Curaçao 169950<br>Caracasbaaiweg 366, Willemstad, Curaçao<br>This is a transactional booking email.</div>
+          </div>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>

@@ -11,11 +11,14 @@ import {
   buildConfirmationEmailSubject,
   buildConfirmationEmailText,
   buildPartyLines,
+  buildReminderEmailContext,
+  buildReminderEmailText,
   depositPctOf,
   durationLabel,
   preferLocale,
   toLocale,
   type ConfirmationEmailInput,
+  type ReminderEmailInput,
 } from './booking-email.context';
 import {
   findUnresolvedTokens,
@@ -698,5 +701,214 @@ describe('helpers', () => {
       expect(ctx.recommendationTwoName).toBe('B');
       expect(ctx.recommendationThreeName).toBe('');
     });
+  });
+});
+
+// ── BK-2 pre-tour reminder builder (WP-B) ────────────────────────────────────
+
+describe('buildReminderEmailContext', () => {
+  const REMINDER_TEMPLATE = fs.readFileSync(
+    path.join(
+      __dirname,
+      '..',
+      'mail',
+      'templates',
+      'pre-tour-reminder-email.template.html',
+    ),
+    'utf8',
+  );
+
+  function reminderInput(
+    over: Partial<ReminderEmailInput> = {},
+  ): ReminderEmailInput {
+    return {
+      booking: {
+        displayRef: 'IT-2026-04821',
+        currency: Currency.USD,
+        customerLocale: Locale.en,
+        contactFirstName: 'Denley',
+        paymentModel: PaymentModel.OPERATOR_LINK,
+        balanceAmount: '160.00',
+        tourStartDateTime: startAt,
+        localDate: new Date(Date.UTC(2026, 4, 22)),
+        startTime: '08:00',
+        tourEndDateTime: new Date(Date.UTC(2026, 4, 22, 17, 0)),
+        pickupRequested: true,
+        pickupAddress: 'Hotel Brion',
+        pickupMinutesPrior: 45,
+        pickupWindowStart: null,
+        pickupWindowEnd: null,
+        partyLines: ['2 adults', '1 child'],
+        ...over.booking,
+      },
+      tour: {
+        name: 'Klein Curacao Day Trip',
+        heroImageUrl: 'https://cdn.test/hero.jpg',
+        durationLabel: '9 hours',
+        weatherDependent: true,
+        checkInMinutesBefore: 30,
+        meetingPoint: 'Sint Annabaai Pier',
+        meetingPointLat: 12.1,
+        meetingPointLng: -68.9,
+        whatToBring: ['Towel', 'Sunscreen'],
+        ...over.tour,
+      },
+      operator: {
+        name: 'Miss Ann Boat Trips',
+        email: 'hello@missann.test',
+        phone: '+5999 123 4567',
+        ...over.operator,
+      },
+      site: {
+        logoUrl: 'https://cdn.test/logo.png',
+        whatsappNumber: '+599 9 123 4567',
+        whatsappEnabled: true,
+        ...over.site,
+      },
+      isSameDay: over.isSameDay ?? false,
+      config: { emailIconBase: 'https://cdn.test/icons', ...over.config },
+    };
+  }
+
+  it('renders the locked template with nothing left literal', () => {
+    const ctx = buildReminderEmailContext(reminderInput());
+    expect(findUnresolvedTokens(REMINDER_TEMPLATE, ctx)).toEqual([]);
+    const html = renderEmailTemplate(REMINDER_TEMPLATE, ctx);
+    expect(html).not.toMatch(/\{[a-zA-Z][a-zA-Z0-9_.]*\}/);
+  });
+
+  it('subject is "Tomorrow: {tour} · {time}" at T-24h and switches wholesale for same-day', () => {
+    expect(buildReminderEmailContext(reminderInput()).subjectLine).toBe(
+      'Tomorrow: Klein Curacao Day Trip · 08:00',
+    );
+    const today = buildReminderEmailContext(reminderInput({ isSameDay: true }));
+    expect(today.subjectLine).toBe('Today: Klein Curacao Day Trip · 08:00');
+    expect(today.headline).toBe("You're set for today, Denley.");
+    expect(today.questionsTitle).toBe('Questions about today?');
+  });
+
+  it('drops the dangling separator when the snapshot has no start time', () => {
+    const ctx = buildReminderEmailContext(
+      reminderInput({
+        booking: { ...reminderInput().booking, startTime: null },
+      }),
+    );
+    expect(ctx.subjectLine).toBe('Tomorrow: Klein Curacao Day Trip');
+  });
+
+  describe('the balance note (the ONLY money mention, B-02)', () => {
+    it('operator_link with a real balance gets the wireframe note - amount, no link', () => {
+      const ctx = buildReminderEmailContext(reminderInput());
+      expect(ctx.balanceNote).toContain('$160.00');
+      expect(ctx.balanceNote).toContain('Miss Ann Boat Trips');
+      expect(ctx.balanceNote).toContain('Already paid?');
+      expect(String(ctx.balanceNote)).not.toMatch(/https?:\/\//);
+    });
+
+    it.each([
+      PaymentModel.ON_ARRIVAL,
+      PaymentModel.PAID_IN_FULL,
+      PaymentModel.OPERATOR_FULL,
+    ])('%s never gets a balance note', (paymentModel) => {
+      const ctx = buildReminderEmailContext(
+        reminderInput({
+          booking: { ...reminderInput().booking, paymentModel },
+        }),
+      );
+      expect(ctx.balanceNote).toBe('');
+    });
+
+    it('a zero balance hides the note even on operator_link', () => {
+      const ctx = buildReminderEmailContext(
+        reminderInput({
+          booking: { ...reminderInput().booking, balanceAmount: '0.00' },
+        }),
+      );
+      expect(ctx.balanceNote).toBe('');
+    });
+  });
+
+  it('carries the weather flag straight from the tour snapshot', () => {
+    expect(buildReminderEmailContext(reminderInput()).weatherDependent).toBe(
+      true,
+    );
+    expect(
+      buildReminderEmailContext(
+        reminderInput({
+          tour: { ...reminderInput().tour, weatherDependent: false },
+        }),
+      ).weatherDependent,
+    ).toBe(false);
+  });
+
+  it('"back around" reads the local wall clock off the end snapshot', () => {
+    expect(buildReminderEmailContext(reminderInput()).durationLine).toBe(
+      'Duration: 9 hours, back around 17:00',
+    );
+    const noEnd = buildReminderEmailContext(
+      reminderInput({
+        booking: { ...reminderInput().booking, tourEndDateTime: null },
+      }),
+    );
+    expect(noEnd.durationLine).toBe('Duration: 9 hours');
+  });
+
+  it('localises copy through the 7-locale module (de sample)', () => {
+    const ctx = buildReminderEmailContext(
+      reminderInput({
+        booking: { ...reminderInput().booking, customerLocale: Locale.de },
+      }),
+    );
+    expect(ctx.subjectLine).toBe('Morgen: Klein Curacao Day Trip · 08:00');
+    expect(ctx.headline).toBe('Morgen geht es los, Denley.');
+    expect(ctx.whatToBringTitle).toBe('Was du mitbringst');
+    // Money still formats for the reader's locale, in the charged currency.
+    expect(ctx.balanceNote).toContain('160,00');
+    // The German template renders with zero unresolved tokens too.
+    expect(findUnresolvedTokens(REMINDER_TEMPLATE, ctx)).toEqual([]);
+  });
+
+  it('the text part mirrors the html and never contains markup', () => {
+    const ctx = buildReminderEmailContext(reminderInput());
+    const text = buildReminderEmailText(ctx);
+    expect(text).toContain("You're set for tomorrow, Denley.");
+    expect(text).toContain('Pickup: Hotel Brion');
+    expect(text).toContain('- Towel');
+    expect(text).not.toContain('<');
+  });
+});
+
+describe('buildConfirmationEmailSubject locales (B-18/B-22)', () => {
+  const base = {
+    tourName: 'Klein Curacao Day Trip',
+    dateShort: '22. Mai 2026',
+    start: startAt,
+  };
+
+  it('resolves the dated subject in the traveller locale', () => {
+    expect(
+      buildConfirmationEmailSubject({
+        ...base,
+        localNow: new Date(Date.UTC(2026, 4, 1, 8, 0)),
+        locale: Locale.de,
+      }),
+    ).toBe('Gebucht: Klein Curacao Day Trip am 22. Mai 2026');
+  });
+
+  it('resolves the <24h today/tomorrow variants in the traveller locale', () => {
+    expect(
+      buildConfirmationEmailSubject({
+        ...base,
+        localNow: new Date(Date.UTC(2026, 4, 22, 6, 0)),
+        locale: Locale.fr,
+      }),
+    ).toBe("Réservé pour aujourd'hui : Klein Curacao Day Trip");
+    expect(
+      buildConfirmationEmailSubject({
+        ...base,
+        localNow: new Date(Date.UTC(2026, 4, 21, 20, 0)),
+        locale: Locale.nl,
+      }),
+    ).toBe('Geboekt voor morgen: Klein Curacao Day Trip');
   });
 });

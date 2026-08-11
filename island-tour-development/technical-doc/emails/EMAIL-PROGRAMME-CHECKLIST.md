@@ -14,7 +14,7 @@
 | --- | --- | --- | --- | --- | --- |
 | 1 | WP-A send spine | backend | `feat/email-send-spine` | **merged** | #181 |
 | 1 | WP-C operator state machine | backend | `feat/operator-onboarding-state` | **merged** | #180 |
-| 2 | WP-B customer funnel | backend | `feat/email-customer-funnel` | not started | — |
+| 2 | WP-B customer funnel | backend | `feat/email-customer-funnel` | **in review** | — |
 | 2 | WP-D onboarding sequence | backend | `feat/email-onboarding-sequence` | **in review** | #185 |
 | 2 | WP-E dashboard surfaces | dashboard | `feat/operator-onboarding-dashboard` | not started | — |
 | 2 | WP-F unsubscribe page | frontend | `feat/unsubscribe-page` | not started | — |
@@ -201,69 +201,69 @@ AFTER WP-C (DTO strips `verificationStatus`) · **WP-G may not merge until WP-F 
 
 ### BK-2 pre-tour reminder
 
-- [ ] B-01 `templates/pre-tour-reminder-email.template.html` — locked template from the funnel
+- [x] B-01 `templates/pre-tour-reminder-email.template.html` — locked template from the funnel
       wireframe: hero "You're set for tomorrow, {firstName}", tour card, pickup/be-ready line,
       what-to-bring `[EACH]`, weather block `[IF weatherDependent]`, remaining-balance note
       (`operator_link` only, "Already paid? You're all set" — never a link), operator contact,
       WhatsApp support block
-- [ ] B-02 Enforce the negative rules in the template: NO payment link, NO cancellation CTA, NO
+- [x] B-02 Enforce the negative rules in the template: NO payment link, NO cancellation CTA, NO
       balance nudge beyond the note, zero-amount money lines hidden
-- [ ] B-03 "Today" variant: `[IF isSameDay]` subject/greeting switch (booked-inside-24h bookings
+- [x] B-03 "Today" variant: `[IF isSameDay]` subject/greeting switch (booked-inside-24h bookings
       never get BK-2 — `jobsFor` already skips them; same-day here means the T-24h fire lands on
       the tour date in tour-local time)
-- [ ] B-04 `buildReminderEmailContext()` in `booking-email.context.ts` reusing `formatDateLong`,
+- [x] B-04 `buildReminderEmailContext()` in `booking-email.context.ts` reusing `formatDateLong`,
       `formatMoney`, `toLocale`, `emailIconBase`
-- [ ] B-05 7-locale copy module `pre-tour-reminder-email.copy.ts` (`Record<Locale, …>`, en
+- [x] B-05 7-locale copy module `pre-tour-reminder-email.copy.ts` (`Record<Locale, …>`, en
       canonical, machine-first translations)
-- [ ] B-06 `MailService.sendPreTourReminderEmail()` facade
-- [ ] B-07 Fill `runPreTourReminderJob()` (`bookings.service.ts:1524`): keep existing guards
+- [x] B-06 `MailService.sendPreTourReminderEmail()` facade
+- [x] B-07 Fill `runPreTourReminderJob()` (`bookings.service.ts:1524`): keep existing guards
       (missing / `utcReminderSentAt` set / not CONFIRMED) → `claimAndSend(BK2, bookingId)` →
       stamp `utcReminderSentAt` on success only
-- [ ] B-08 Render spec `pre-tour-reminder-email.template.spec.ts`: token coverage per payment
+- [x] B-08 Render spec `pre-tour-reminder-email.template.spec.ts`: token coverage per payment
       model, orphan-icon check, wireframe diff (funnel wireframe's embedded template)
-- [ ] B-09 Service spec: job path happy / already-stamped / not-confirmed / claim-lost (P2002)
+- [x] B-09 Service spec: job path happy / already-stamped / not-confirmed / claim-lost (P2002)
 
 ### BK-3R review reminder
 
-- [ ] B-10 Draft BK-3R copy (one reminder, lighter touch than BK-3, star-row CTA kept) — included
+- [x] B-10 Draft BK-3R copy (one reminder, lighter touch than BK-3, star-row CTA kept) — included
       in PR body for founder sign-off (decision D1)
-- [ ] B-11 Replace the `isReminder` paragraph branch in `sendReviewRequestEmail` with the new copy
-- [ ] B-12 7-locale copy module for both BK-3 and BK-3R subjects/bodies
-- [ ] B-13 Route BK-3 first-touch through `claimAndSend(BK3, bookingId)`; BK-3R through
+- [x] B-11 Replace the `isReminder` paragraph branch in `sendReviewRequestEmail` with the new copy
+- [x] B-12 7-locale copy module for both BK-3 and BK-3R subjects/bodies
+- [x] B-13 Route BK-3 first-touch through `claimAndSend(BK3, bookingId)`; BK-3R through
       `claimAndSend(BK3R, bookingId)` — keep `sentAt`/`remindedAt` stamps as the sweeper's cursor
-- [ ] B-14 `review-requests.service.spec.ts` updated: distinct copy asserted, log rows written,
+- [x] B-14 `review-requests.service.spec.ts` updated: distinct copy asserted, log rows written,
       remind-on-failure semantics preserved
 
 ### BK-1 confirmation reconciliation
 
-- [ ] B-15 Template: add operator-note block (`[IF operatorNote]`), what-to-bring `[EACH]`,
+- [x] B-15 Template: add operator-note block (`[IF operatorNote]`), what-to-bring `[EACH]`,
       good-to-know `[EACH]`
-- [ ] B-16 Verify/normalize anti-fraud line placement: inside/directly under "How to pay the
+- [x] B-16 Verify/normalize anti-fraud line placement: inside/directly under "How to pay the
       rest" (C2 mitigation — above the payment fold), all four payment models
-- [ ] B-17 Related-tours rail: "More {island} experiences", 2 cards (image, name, rating, from
+- [x] B-17 Related-tours rail: "More {island} experiences", 2 cards (image, name, rating, from
       price) from the tour's destination + "Browse all" link (context builder picks; no live
       availability requirement for BK-1)
-- [ ] B-18 Today/tomorrow subject variant for bookings created <24h before start (the funnel rule
+- [x] B-18 Today/tomorrow subject variant for bookings created <24h before start (the funnel rule
       "BK-2 skipped → BK-1 carries it")
-- [ ] B-19 `buildConfirmationEmailContext()` extended for the new blocks; source fields confirmed
+- [x] B-19 `buildConfirmationEmailContext()` extended for the new blocks; source fields confirmed
       in schema (operator note = tour/operator field; what-to-bring/good-to-know = tour children)
-- [ ] B-20 Log through `claimAndSend(BK1, bookingId)` while keeping `utcConfirmationEmailSentAt`;
+- [x] B-20 Log through `claimAndSend(BK1, bookingId)` while keeping `utcConfirmationEmailSentAt`;
       manual resend path writes `#resend-{n}`
-- [ ] B-21 Render spec extended: new blocks token-covered, four payment models + `onArrivalPayment`
+- [x] B-21 Render spec extended: new blocks token-covered, four payment models + `onArrivalPayment`
       sub-variants diffed against the (updated) wireframe fixture
-- [ ] B-22 7-locale copy module for the changed strings
+- [x] B-22 7-locale copy module for the changed strings
 
 ### CX-1 cancellation
 
-- [ ] B-23 `sendCancellationConfirmedNotices()` paragraph sets branch on `paymentModel` (master
+- [x] B-23 `sendCancellationConfirmedNotices()` paragraph sets branch on `paymentModel` (master
       6.4 locked copy): deposit models (deposit back + operator refunds balance part),
       `paid_in_full` ("Your payment is on its way back from us"), `operator_full` (no refund
       line; "Nothing was paid to Island Tours…")
-- [ ] B-24 Keep the existing `CancellationRefund` FULL/PARTIAL overlay working with the new
+- [x] B-24 Keep the existing `CancellationRefund` FULL/PARTIAL overlay working with the new
       branches (matrix, not replacement)
-- [ ] B-25 7-locale copy module; operator-facing notice stays English
-- [ ] B-26 Log traveller send via `claimAndSend(CX1, bookingId)`
-- [ ] B-27 Spec: paymentModel × refund matrix renders the locked lines
+- [x] B-25 7-locale copy module; operator-facing notice stays English
+- [x] B-26 Log traveller send via `claimAndSend(CX1, bookingId)`
+- [x] B-27 Spec: paymentModel × refund matrix renders the locked lines
 
 ### Ship
 

@@ -270,6 +270,61 @@ describe('booking-confirmation-email.template.html', () => {
     });
   });
 
+  // ── C2 anti-phishing mitigation (WP-B: B-16/B-21) ─────────────────────────
+  // The anti-fraud line must render for EVERY payment model and sit directly
+  // under the "how to pay" foreshadow - above the fold of the payment area,
+  // before the prepare/contact blocks (funnel wireframe, block 6).
+
+  describe('anti-fraud line placement (C2)', () => {
+    const CASES: ReadonlyArray<[string, EmailTemplateContext, string]> = [
+      [
+        'operator_link',
+        { paymentModel: 'operator_link' },
+        "We'll never ask you to send card details",
+      ],
+      [
+        'on_arrival card_or_cash',
+        { paymentModel: 'on_arrival', onArrivalPayment: 'card_or_cash' },
+        "We'll never send a link to pay the balance",
+      ],
+      [
+        'on_arrival cash_only',
+        { paymentModel: 'on_arrival', onArrivalPayment: 'cash_only' },
+        "We'll never send a link to pay the balance",
+      ],
+      [
+        'paid_in_full',
+        { paymentModel: 'paid_in_full' },
+        'No one should ask you for further payment',
+      ],
+      [
+        'operator_full',
+        { paymentModel: 'operator_full' },
+        "We'll never ask you to send card details",
+      ],
+    ];
+
+    it.each(CASES)('%s renders its anti-fraud line', (_name, over, line) => {
+      const html = renderEmailTemplate(TEMPLATE, ctx(over));
+      expect(html).toContain(line);
+    });
+
+    it.each(CASES)(
+      '%s keeps the line above the payment fold (after the pay box, before prepare)',
+      (_name, over, line) => {
+        const html = renderEmailTemplate(TEMPLATE, ctx(over));
+        const shieldAt = html.indexOf('icon-shield-check.png');
+        const lineAt = html.indexOf(line);
+        const paymentAt = html.indexOf('>Payment<');
+        const prepareAt = html.indexOf('What to bring');
+        expect(paymentAt).toBeGreaterThan(-1);
+        expect(lineAt).toBeGreaterThan(paymentAt);
+        expect(shieldAt).toBeGreaterThan(paymentAt);
+        expect(prepareAt).toBeGreaterThan(lineAt);
+      },
+    );
+  });
+
   describe('brand bar', () => {
     it('renders the settings logo when SiteInfo.logo is set', () => {
       const html = renderEmailTemplate(TEMPLATE, ctx());

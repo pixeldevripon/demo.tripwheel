@@ -29,7 +29,33 @@ function mockPrisma(): any {
 }
 
 function mockMail(): any {
-  return { sendReviewRequestEmail: jest.fn().mockResolvedValue(true) };
+  return {
+    sendReviewRequestEmail: jest
+      .fn()
+      .mockResolvedValue({ providerMessageId: 'resend-1' }),
+  };
+}
+
+/**
+ * Send-log stub that RUNS the send closure, mirroring the real claim-first
+ * contract: 'sent' on success, 'failed' (never a throw) when the transport
+ * rejects. Individual tests override it to simulate a lost claim ('skipped').
+ */
+function mockEmailLog(): any {
+  return {
+    claimAndSend: jest.fn(async ({ send }: { send: () => Promise<any> }) => {
+      try {
+        await send();
+        return { outcome: 'sent', providerMessageId: 'resend-1' };
+      } catch (err) {
+        return {
+          outcome: 'failed',
+          error: err instanceof Error ? err.message : 'unknown',
+        };
+      }
+    }),
+    recordSuppressed: jest.fn().mockResolvedValue({ recorded: true }),
+  };
 }
 
 /** Cadence with the job switched ON, since `enabled` ships false. */
@@ -62,7 +88,9 @@ function invitation(over: Record<string, unknown> = {}) {
       ...booking(),
       contactEmail: 'guest@example.test',
       contactFirstName: 'Ada',
-      locale: 'en',
+      customerLocale: 'en',
+      reviewWhatsappOptIn: false,
+      operator: { companyInfo: { companyName: 'Miss Ann Boat Trips' } },
       tour: {
         timeZone: 'America/Curacao',
         name: 'Sunset Cruise',
@@ -78,12 +106,14 @@ function invitation(over: Record<string, unknown> = {}) {
 describe('ReviewRequestsService', () => {
   let prisma: any;
   let mail: any;
+  let emailLog: any;
   let svc: ReviewRequestsService;
 
   beforeEach(() => {
     prisma = mockPrisma();
     mail = mockMail();
-    svc = new ReviewRequestsService(prisma, mail);
+    emailLog = mockEmailLog();
+    svc = new ReviewRequestsService(prisma, mail, emailLog);
   });
 
   // ── The master switch ────────────────────────────────────────────────────
@@ -343,8 +373,8 @@ describe('ReviewRequestsService', () => {
 
     it('stamps remindedAt even when delivery FAILS', async () => {
       onlyReminderDue(invitation());
-      // Delivery failure is a THROWN error, not a falsy return - `deliver()`
-      // wraps the send in try/catch and reports false only from the catch.
+      // Delivery failure surfaces as claimAndSend's 'failed' outcome (the log
+      // stub runs the closure and maps the throw) - deliver() returns false.
       mail.sendReviewRequestEmail.mockRejectedValue(
         new Error('550 mailbox unavailable'),
       );
@@ -395,6 +425,128 @@ describe('ReviewRequestsService', () => {
 
       expect(res.reminded).toBe(0);
       expect(mail.sendReviewRequestEmail).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── 5. Send log + distinct BK-3 / BK-3R copy (WP-B: B-11…B-14) ───────────
+
+  describe('send-log routing and copy', () => {
+    beforeEach(() => {
+      prisma.reviewRequestSettings.findFirst.mockResolvedValue(ENABLED);
+    });
+
+    function firstTouchDue(inv: any) {
+      prisma.reviewInvitation.findMany.mockImplementation((args: any) =>
+        args?.where?.sentAt === null ? [inv] : [],
+      );
+    }
+    function onlyReminderDue(inv: any) {
+      prisma.reviewInvitation.findMany.mockImplementation((args: any) =>
+        args?.where?.remindedAt === null ? [inv] : [],
+      );
+    }
+
+    it('claims BK3 on the first touch, scoped to the booking id', async () => {
+      firstTouchDue(invitation());
+
+      await svc.run(at('2026-03-11T14:00:00.000Z'));
+
+      expect(emailLog.claimAndSend).toHaveBeenCalledWith(
+        expect.objectContaining({
+          templateKey: 'BK3_REVIEW_REQUEST',
+          scopeId: 'bk1',
+          toEmail: 'guest@example.test',
+          stream: 'TRANSACTIONAL',
+          locale: 'en',
+        }),
+      );
+      // The facade receives the DISTINCT-copy inputs: not a reminder, the
+      // named operator, the traveller's locale.
+      expect(mail.sendReviewRequestEmail).toHaveBeenCalledWith(
+        'guest@example.test',
+        expect.objectContaining({
+          isReminder: false,
+          locale: 'en',
+          operatorName: 'Miss Ann Boat Trips',
+        }),
+      );
+    });
+
+    it('claims BK3R for the reminder - a separate slot on the same booking', async () => {
+      onlyReminderDue(invitation());
+
+      await svc.run(at('2026-03-20T14:00:00.000Z'));
+
+      expect(emailLog.claimAndSend).toHaveBeenCalledWith(
+        expect.objectContaining({
+          templateKey: 'BK3R_REVIEW_REMINDER',
+          scopeId: 'bk1',
+        }),
+      );
+      expect(mail.sendReviewRequestEmail).toHaveBeenCalledWith(
+        'guest@example.test',
+        expect.objectContaining({ isReminder: true, whatsappOptIn: false }),
+      );
+    });
+
+    it('passes the WhatsApp opt-in through so the reminder can mention it', async () => {
+      onlyReminderDue(
+        invitation({
+          booking: { ...invitation().booking, reviewWhatsappOptIn: true },
+        }),
+      );
+
+      await svc.run(at('2026-03-20T14:00:00.000Z'));
+
+      expect(mail.sendReviewRequestEmail).toHaveBeenCalledWith(
+        'guest@example.test',
+        expect.objectContaining({ isReminder: true, whatsappOptIn: true }),
+      );
+    });
+
+    it("resolves the review URL and copy from the booking's snapshotted locale", async () => {
+      firstTouchDue(
+        invitation({
+          booking: { ...invitation().booking, customerLocale: 'de-DE' },
+        }),
+      );
+
+      await svc.run(at('2026-03-11T14:00:00.000Z'));
+
+      const [, ctx] = mail.sendReviewRequestEmail.mock.calls[0];
+      expect(ctx.locale).toBe('de');
+      // Email language and page language must never disagree.
+      expect(ctx.reviewUrl).toContain('/de/review/tok1');
+    });
+
+    it("a lost claim ('skipped') still stamps sentAt so the sweep stops re-picking", async () => {
+      firstTouchDue(invitation());
+      emailLog.claimAndSend.mockResolvedValue({
+        outcome: 'skipped',
+        reason: 'already-sent',
+      });
+
+      const res = await svc.run(at('2026-03-11T14:00:00.000Z'));
+
+      // Decided is decided: the cursor moves even though THIS run sent nothing.
+      expect(res.sent).toBe(1);
+      expect(mail.sendReviewRequestEmail).not.toHaveBeenCalled();
+      expect(prisma.reviewInvitation.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'inv1' },
+          data: expect.objectContaining({ sentAt: expect.any(Date) }),
+        }),
+      );
+    });
+
+    it('a FAILED claim leaves sentAt null - the next pass converges via the occupied slot', async () => {
+      firstTouchDue(invitation());
+      mail.sendReviewRequestEmail.mockRejectedValue(new Error('provider down'));
+
+      const res = await svc.run(at('2026-03-11T14:00:00.000Z'));
+
+      expect(res.failed).toBe(1);
+      expect(prisma.reviewInvitation.update).not.toHaveBeenCalled();
     });
   });
 });
