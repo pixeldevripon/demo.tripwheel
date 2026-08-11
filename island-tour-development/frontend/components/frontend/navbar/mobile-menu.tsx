@@ -16,8 +16,9 @@ import type { Category, Island, NavDict, NavHub } from './lib/navbar.types';
  * the navbar (the toggle lives in the action cluster).
  *
  * The island's qualifying hubs sit ABOVE the categories (MCK-19), same order
- * as the desktop dropdown, distinguished by the pin rather than a heading -
- * a place reads as a place everywhere.
+ * as the desktop dropdown, distinguished by the pin - a place reads as a
+ * place everywhere. They render before the "Categories" heading (rule
+ * between), so a hub never reads as a member of the categories group.
  *
  * Islands deliberately do NOT appear here: the bar's own island pill opens the
  * same list a couple of inches away (client, 2026-08-05).
@@ -60,7 +61,7 @@ export function MobileMenu({
                         duration: 0.28,
                         ease: [0.04, 0.62, 0.23, 0.98],
                     }}
-                    className='absolute top-18 left-0 right-0 overflow-hidden bg-it-white border-b border-it-border z-50 md:hidden'>
+                    className='absolute top-full left-0 right-0 overflow-hidden bg-it-white border-b border-it-border z-50 md:hidden'>
                     <div className='border-t border-it-border px-4 py-6 flex flex-col gap-1'>
                         {/* No island list here: the bar's own island pill sits
                             two inches away and opens the same choice, so
@@ -68,9 +69,6 @@ export function MobileMenu({
                             (client, 2026-08-05). */}
                         {!isHome && categories.length > 0 && (
                             <>
-                                <span className='px-1 pb-1 text-xs font-normal text-it-ink-muted'>
-                                    {dict.categories}
-                                </span>
                                 {hubs.map((hub, i) => (
                                     <motion.div
                                         key={hub.slug}
@@ -93,6 +91,15 @@ export function MobileMenu({
                                         </Link>
                                     </motion.div>
                                 ))}
+                                {hubs.length > 0 && (
+                                    <div
+                                        aria-hidden='true'
+                                        className='my-2 h-px bg-it-divider'
+                                    />
+                                )}
+                                <span className='px-1 pb-1 text-xs font-normal text-it-ink-muted'>
+                                    {dict.categories}
+                                </span>
                                 {categories.map((cat, i) => (
                                     <motion.div
                                         key={cat.slug}
