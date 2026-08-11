@@ -1,5 +1,9 @@
 'use client';
 
+import {
+  type OperatorFacet,
+  VERIFICATION_FILTER_VALUES,
+} from './operator-filters';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { PlusSignIcon, Store01Icon } from '@hugeicons/core-free-icons';
 
@@ -24,6 +28,24 @@ import { useUpdateOperator } from '@/hooks/operators/use-operators';
 import { useRole } from '@/contexts/role-context';
 import type { OperatorListItem } from '@/types/operator';
 
+/**
+ * Verification status chip row: server-side `?verificationStatus=` filter.
+ * Derived from the list view's exported filter values - single source.
+ */
+const VERIFICATION_CHIPS = [
+  { value: 'all', label: 'All' },
+  ...VERIFICATION_FILTER_VALUES.map((v) => ({
+    value: v,
+    label: v.charAt(0) + v.slice(1).toLowerCase(),
+  })),
+] as const;
+
+/** Pipeline facets (client-side on the fetched page - see list view). */
+const FACET_CHIPS = [
+  { value: 'zeroTours', label: '0 tours' },
+  { value: 'firstTourLive', label: 'First tour live' },
+] as const;
+
 interface OperatorsTableProps {
   data: OperatorListItem[];
   total: number;
@@ -36,6 +58,10 @@ interface OperatorsTableProps {
   onLimitChange: (limit: number) => void;
   onStatusFilterChange: (value: string) => void;
   statusFilter: string;
+  verificationFilter: string;
+  onVerificationFilterChange: (value: string) => void;
+  facet: OperatorFacet | undefined;
+  onFacetChange: (value: OperatorFacet | undefined) => void;
 }
 
 export function OperatorsTable({
@@ -50,6 +76,10 @@ export function OperatorsTable({
   onLimitChange,
   onStatusFilterChange,
   statusFilter,
+  verificationFilter,
+  onVerificationFilterChange,
+  facet,
+  onFacetChange,
 }: OperatorsTableProps) {
   const { mutateAsync: updateOperatorAsync } = useUpdateOperator();
   const { can } = useRole();
@@ -70,12 +100,21 @@ export function OperatorsTable({
       data={data}
       isLoading={isLoading}
       pagination={{ total, page, limit, onPageChange, onLimitChange }}
-      empty={{
-        icon: Store01Icon,
-        title: 'No tour operators found.',
-        description: 'Invite your first operator to get started.',
-        action: addButton,
-      }}
+      empty={
+        facet && total > 0
+          ? {
+              icon: Store01Icon,
+              title: 'No operators on this page match the facet.',
+              description:
+                'The facet filters the current page only - page through, or clear it to see everything.',
+            }
+          : {
+              icon: Store01Icon,
+              title: 'No tour operators found.',
+              description: 'Invite your first operator to get started.',
+              action: addButton,
+            }
+      }
       toolbar={(table) => (
         <>
           <DataTableSearch
@@ -93,6 +132,45 @@ export function OperatorsTable({
               <SelectItem value='inactive'>Inactive</SelectItem>
             </SelectContent>
           </Select>
+          {/* Onboarding pipeline chips (WP-E E-16): verification status is a
+              server-side filter; the two facets narrow the fetched page to
+              the zero-tour non-responders / first-tour-live cohorts. */}
+          <div
+            className='flex items-center gap-1'
+            role='group'
+            aria-label='Verification status filter'>
+            {VERIFICATION_CHIPS.map((chip) => (
+              <Button
+                key={chip.value}
+                size='sm'
+                variant={
+                  verificationFilter === chip.value ? 'secondary' : 'ghost'
+                }
+                aria-pressed={verificationFilter === chip.value}
+                onClick={() => onVerificationFilterChange(chip.value)}
+              >
+                {chip.label}
+              </Button>
+            ))}
+          </div>
+          <div
+            className='flex items-center gap-1'
+            role='group'
+            aria-label='Pipeline facets'>
+            {FACET_CHIPS.map((chip) => (
+              <Button
+                key={chip.value}
+                size='sm'
+                variant={facet === chip.value ? 'secondary' : 'outline'}
+                aria-pressed={facet === chip.value}
+                onClick={() =>
+                  onFacetChange(facet === chip.value ? undefined : chip.value)
+                }
+              >
+                {chip.label}
+              </Button>
+            ))}
+          </div>
           <DataTableActions>
             {addButton}
           </DataTableActions>

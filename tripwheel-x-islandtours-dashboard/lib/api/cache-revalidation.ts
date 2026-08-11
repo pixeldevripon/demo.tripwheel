@@ -106,6 +106,10 @@ function tagsForMutation(path: string, method: string): CacheTag[] {
     // (getUserProfile reads operator company-info / social-media). `tours`/
     // `search` too, defensively, in case a listing card ever surfaces operator.
     case 'operators':
+      // Email timeline reads/resends under /operators/:id/emails change no
+      // public content - purging operator/tours/search for every resend is
+      // pure cache churn (review finding 7 on PR #56).
+      if (parts[2] === 'emails') break;
       if (seg1) tags.push(`operator:${seg1}`);
       tags.push('tours', 'search', 'user-profile');
       break;

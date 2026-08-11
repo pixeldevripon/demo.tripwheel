@@ -5,6 +5,7 @@ import type {
   OperatorsQueryParams,
   PaginatedOperators,
   UpdateOperatorPayload,
+  VerificationDecision,
 } from '@/types/operator';
 import { apiFetch, buildQuery } from './fetch';
 
@@ -31,6 +32,24 @@ export const operatorsApi = {
       method: 'POST',
       body: JSON.stringify(payload),
     });
+  },
+
+  /**
+   * The ONLY writer of `verificationStatus` (WP-C): approves or rejects a
+   * PENDING operator. 409s when the operator is not PENDING; VERIFIED also
+   * triggers the OB-2A "You're approved" email backend-side.
+   */
+  decideVerification(
+    id: string,
+    decision: VerificationDecision,
+  ): Promise<OperatorDetail> {
+    return apiFetch<OperatorDetail>(
+      `/operators/${encodeURIComponent(id)}/verification`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ decision }),
+      },
+    );
   },
 
   update(id: string, payload: UpdateOperatorPayload): Promise<OperatorDetail> {

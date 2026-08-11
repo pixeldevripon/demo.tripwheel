@@ -27,10 +27,13 @@ import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/common/status-badge';
 import {
   BOOKING_DISPLAY_STATUS,
+  emailSendMeta,
   REFUND_STATUS,
   SETTLEMENT_METHOD_LABEL,
   SETTLEMENT_STATUS,
 } from '@/components/common/status-maps';
+import { useBookingEmails } from '@/hooks/emails/use-operator-emails';
+import { emailTemplateLabel } from '@/lib/emails/template-labels';
 import {
   MoneyRow,
   Row,
@@ -65,6 +68,12 @@ export function BookingDetailsSheet({
   // projection - every money field and the traveler email arrive null, so the
   // Payment/Settlement sections would render as rows of dashes. Hide them.
   const showFinancials = can('VIEW_BOOKING_FINANCIALS');
+  // Send-log rows for the Timeline section (WP-E E-22), fetched only while
+  // the sheet is open AND the seat holds financials: the rows carry the
+  // traveller's email (toEmail), the exact field the manifest projection
+  // withholds from guide-level seats - so those seats must never even
+  // REQUEST them (security review of PR #56, finding 1).
+  const { data: emails } = useBookingEmails(b.id, open && showFinancials);
   const due = refundDue(b);
   const statusMeta = BOOKING_DISPLAY_STATUS[b.displayStatus];
 
@@ -277,6 +286,29 @@ export function BookingDetailsSheet({
                 }
               />
             )}
+            {/* Send-log rows (BK/CX...), newest first from the API. A
+                suppressed/failed row carries its reason in the badge hint. */}
+            {(emails ?? []).map((e) => (
+              <Row
+                key={e.id}
+                label={emailTemplateLabel(e.templateKey)}
+                value={
+                  <span className="inline-flex items-center gap-2">
+                    <StatusBadge
+                      variant={emailSendMeta(e.status).variant}
+                      hint={
+                        e.suppressedReason ??
+                        e.error ??
+                        emailSendMeta(e.status).hint
+                      }
+                    >
+                      {emailSendMeta(e.status).label}
+                    </StatusBadge>
+                    {formatDate(e.createdAt, 'long')}
+                  </span>
+                }
+              />
+            ))}
           </Section>
 
           <Section label="Reference">

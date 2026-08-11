@@ -14,8 +14,8 @@ export default function TourOperatorsLoading() {
         <ListPageSkeleton
             title='Tour Operators'
             description='Create and manage tour operator accounts'
-            columns={7}
-            filters={2}
+            columns={8}
+            filters={4}
         />
     );
 }

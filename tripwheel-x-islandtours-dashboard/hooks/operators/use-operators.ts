@@ -2,10 +2,12 @@
 
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { operatorsApi } from '@/lib/api/operators';
+import { emailKeys } from '@/hooks/emails/use-operator-emails';
 import type {
   CreateOperatorPayload,
   OperatorsQueryParams,
   UpdateOperatorPayload,
+  VerificationDecision,
 } from '@/types/operator';
 
 export const operatorKeys = {
@@ -62,6 +64,33 @@ export function useUpdateOperator() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: operatorKeys.all });
       queryClient.invalidateQueries({ queryKey: operatorKeys.detail(data.id) });
+    },
+  });
+}
+
+/**
+ * Approve/reject a PENDING operator via `POST /operators/:id/verification` -
+ * the only sanctioned `verificationStatus` writer (WP-C). Invalidates every
+ * operator query (queue, list, detail) so the row leaves the PENDING queue at
+ * once. Success/error toasts live with the confirm dialogs, which own the
+ * decision-specific copy.
+ */
+export function useDecideVerification() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      decision,
+    }: {
+      id: string;
+      decision: VerificationDecision;
+    }) => operatorsApi.decideVerification(id, decision),
+    onSuccess: (_data, { id }) => {
+      queryClient.invalidateQueries({ queryKey: operatorKeys.all });
+      // Approval fires OB-2A backend-side; without this the mounted (or
+      // 30s-stale-cached) email timeline never shows the row the admin was
+      // just told about (review finding 1 on PR #56).
+      queryClient.invalidateQueries({ queryKey: emailKeys.operator(id) });
     },
   });
 }

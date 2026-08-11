@@ -9,20 +9,16 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldDescription, FieldError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
+import { StatusBadge } from '@/components/common/status-badge';
+import { OPERATOR_VERIFICATION } from '@/components/common/status-maps';
 import { useRole } from '@/contexts/role-context';
 import { useUpdateOperator } from '@/hooks/operators/use-operators';
+import { formatDate } from '@/lib/utils';
 import type {
     OperatorDetail,
     OperatorVerificationStatus,
 } from '@/types/operator';
-import { OPERATOR_VERIFICATION_STATUS_VALUES } from '@/types/operator';
+import { getOperatorDisplayName } from '@/types/operator';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -30,9 +26,14 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { OperatorDeleteDialog } from './operator-delete-dialog';
+import { OperatorEmailTimeline } from './operator-email-timeline';
+import {
+    ApproveOperatorDialog,
+    RejectOperatorDialog,
+    type DecisionTarget,
+} from './verification-decision-dialogs';
 
 const detailsSchema = z.object({
-    verificationStatus: z.enum(OPERATOR_VERIFICATION_STATUS_VALUES),
     isActive: z.boolean(),
     contactEmail: z
         .string()
@@ -75,6 +76,12 @@ export function OperatorDetailsForm({ operator }: OperatorDetailsFormProps) {
     const [deleteOpen, setDeleteOpen] = useState(false);
 
     const { mutate: updateOperator, isPending } = useUpdateOperator();
+    const [approveTarget, setApproveTarget] = useState<DecisionTarget | null>(
+        null,
+    );
+    const [rejectTarget, setRejectTarget] = useState<DecisionTarget | null>(
+        null,
+    );
 
     const {
         register,
@@ -85,22 +92,22 @@ export function OperatorDetailsForm({ operator }: OperatorDetailsFormProps) {
     } = useForm<DetailsFormValues>({
         resolver: zodResolver(detailsSchema),
         defaultValues: {
-            verificationStatus: operator.verificationStatus,
             isActive: operator.isActive,
             contactEmail: operator.contactEmail ?? '',
             contactPhone: operator.contactPhone ?? '',
         },
     });
 
-    const verificationValue = watch('verificationStatus');
     const isActiveValue = watch('isActive');
 
     function onSubmit(values: DetailsFormValues) {
+        // `verificationStatus` is deliberately NOT in this payload: the
+        // backend DTO rejects it (400) - decisions go through the dedicated
+        // verification endpoint via the Approve/Reject buttons below.
         updateOperator(
             {
                 id: operator.id,
                 payload: {
-                    verificationStatus: values.verificationStatus,
                     isActive: values.isActive,
                     contactEmail: values.contactEmail || null,
                     contactPhone: values.contactPhone || null,
@@ -123,6 +130,12 @@ export function OperatorDetailsForm({ operator }: OperatorDetailsFormProps) {
         operator.aggregateRating != null
             ? `${operator.aggregateRating.toFixed(1)} (${operator.aggregateReviewCount} reviews)`
             : 'No reviews yet';
+
+    const verificationMeta = OPERATOR_VERIFICATION[operator.verificationStatus];
+    const decisionTarget: DecisionTarget = {
+        id: operator.id,
+        name: getOperatorDisplayName(operator),
+    };
 
     return (
         <div className='space-y-6'>
@@ -165,35 +178,59 @@ export function OperatorDetailsForm({ operator }: OperatorDetailsFormProps) {
                     <form
                         onSubmit={handleSubmit(onSubmit)}
                         className='space-y-6'>
+                        {/* Read-only by design (WP-E E-15): the backend's
+                            PATCH DTO rejects verificationStatus. The decision
+                            endpoint is the only writer, reached through the
+                            Approve/Reject dialogs. */}
                         <Field>
                             <Label>Verification Status</Label>
-                            <Select
-                                value={verificationValue}
-                                onValueChange={v =>
-                                    setValue(
-                                        'verificationStatus',
-                                        v as OperatorVerificationStatus,
-                                        { shouldValidate: true }
-                                    )
-                                }
-                                disabled={!canManage}>
-                                <SelectTrigger
-                                    aria-invalid={!!errors.verificationStatus}>
-                                    <SelectValue placeholder='Select status' />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {OPERATOR_VERIFICATION_STATUS_VALUES.map(
-                                        s => (
-                                            <SelectItem key={s} value={s}>
-                                                {STATUS_LABEL[s]}
-                                            </SelectItem>
-                                        )
+                            <div className='flex flex-wrap items-center gap-3'>
+                                <StatusBadge
+                                    variant={verificationMeta.variant}
+                                    hint={verificationMeta.hint}>
+                                    {verificationMeta.label}
+                                </StatusBadge>
+                                {operator.verificationDecidedAt && (
+                                    <span className='text-xs text-muted-foreground'>
+                                        Decided{' '}
+                                        {formatDate(
+                                            operator.verificationDecidedAt,
+                                            'long'
+                                        )}
+                                    </span>
+                                )}
+                                {canManage &&
+                                    operator.verificationStatus ===
+                                        'PENDING' && (
+                                        <div className='flex gap-2'>
+                                            <Button
+                                                type='button'
+                                                size='sm'
+                                                variant='outline'
+                                                onClick={() =>
+                                                    setRejectTarget(
+                                                        decisionTarget
+                                                    )
+                                                }>
+                                                Reject
+                                            </Button>
+                                            <Button
+                                                type='button'
+                                                size='sm'
+                                                onClick={() =>
+                                                    setApproveTarget(
+                                                        decisionTarget
+                                                    )
+                                                }>
+                                                Approve
+                                            </Button>
+                                        </div>
                                     )}
-                                </SelectContent>
-                            </Select>
+                            </div>
                             <FieldDescription>
-                                Controls whether the operator&apos;s tours can
-                                be published and ranked.
+                                Set by the approval decision - approving sends
+                                the &ldquo;You&rsquo;re approved&rdquo; email
+                                and lets the operator publish tours.
                             </FieldDescription>
                         </Field>
 
@@ -253,6 +290,30 @@ export function OperatorDetailsForm({ operator }: OperatorDetailsFormProps) {
                     </form>
                 </CardContent>
             </Card>
+
+            {/* Every send-log row for this operator (WP-E E-21): onboarding
+                sequence, approval email, internal alerts - with per-row
+                resend for the OB set. */}
+            <Card>
+                <CardHeader className='border-b pb-8'>
+                    <CardTitle>Emails</CardTitle>
+                </CardHeader>
+                <CardContent className='pt-4'>
+                    <OperatorEmailTimeline
+                        operatorId={operator.id}
+                        canResend={canManage}
+                    />
+                </CardContent>
+            </Card>
+
+            <ApproveOperatorDialog
+                target={approveTarget}
+                onClose={() => setApproveTarget(null)}
+            />
+            <RejectOperatorDialog
+                target={rejectTarget}
+                onClose={() => setRejectTarget(null)}
+            />
 
             {canManage && (
                 <Card className='border-destructive/30 ring-destructive/10'>
