@@ -24,6 +24,20 @@ import { useUpdateOperator } from '@/hooks/operators/use-operators';
 import { useRole } from '@/contexts/role-context';
 import type { OperatorListItem } from '@/types/operator';
 
+/** Verification status chip row: server-side `?verificationStatus=` filter. */
+const VERIFICATION_CHIPS = [
+  { value: 'all', label: 'All' },
+  { value: 'PENDING', label: 'Pending' },
+  { value: 'VERIFIED', label: 'Verified' },
+  { value: 'REJECTED', label: 'Rejected' },
+] as const;
+
+/** Pipeline facets (client-side on the fetched page - see list view). */
+const FACET_CHIPS = [
+  { value: 'zeroTours', label: '0 tours' },
+  { value: 'firstTourLive', label: 'First tour live' },
+] as const;
+
 interface OperatorsTableProps {
   data: OperatorListItem[];
   total: number;
@@ -36,6 +50,10 @@ interface OperatorsTableProps {
   onLimitChange: (limit: number) => void;
   onStatusFilterChange: (value: string) => void;
   statusFilter: string;
+  verificationFilter: string;
+  onVerificationFilterChange: (value: string) => void;
+  facet: 'zeroTours' | 'firstTourLive' | undefined;
+  onFacetChange: (value: 'zeroTours' | 'firstTourLive' | undefined) => void;
 }
 
 export function OperatorsTable({
@@ -50,6 +68,10 @@ export function OperatorsTable({
   onLimitChange,
   onStatusFilterChange,
   statusFilter,
+  verificationFilter,
+  onVerificationFilterChange,
+  facet,
+  onFacetChange,
 }: OperatorsTableProps) {
   const { mutateAsync: updateOperatorAsync } = useUpdateOperator();
   const { can } = useRole();
@@ -93,6 +115,45 @@ export function OperatorsTable({
               <SelectItem value='inactive'>Inactive</SelectItem>
             </SelectContent>
           </Select>
+          {/* Onboarding pipeline chips (WP-E E-16): verification status is a
+              server-side filter; the two facets narrow the fetched page to
+              the zero-tour non-responders / first-tour-live cohorts. */}
+          <div
+            className='flex items-center gap-1'
+            role='group'
+            aria-label='Verification status filter'>
+            {VERIFICATION_CHIPS.map((chip) => (
+              <Button
+                key={chip.value}
+                size='sm'
+                variant={
+                  verificationFilter === chip.value ? 'secondary' : 'ghost'
+                }
+                aria-pressed={verificationFilter === chip.value}
+                onClick={() => onVerificationFilterChange(chip.value)}
+              >
+                {chip.label}
+              </Button>
+            ))}
+          </div>
+          <div
+            className='flex items-center gap-1'
+            role='group'
+            aria-label='Pipeline facets'>
+            {FACET_CHIPS.map((chip) => (
+              <Button
+                key={chip.value}
+                size='sm'
+                variant={facet === chip.value ? 'secondary' : 'outline'}
+                aria-pressed={facet === chip.value}
+                onClick={() =>
+                  onFacetChange(facet === chip.value ? undefined : chip.value)
+                }
+              >
+                {chip.label}
+              </Button>
+            ))}
+          </div>
           <DataTableActions>
             {addButton}
           </DataTableActions>

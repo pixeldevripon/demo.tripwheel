@@ -7,6 +7,7 @@ import type {
     SettlementMethod,
     SettlementStatus,
 } from '@/types/booking';
+import type { EmailSendStatus } from '@/types/email';
 import type { OperatorVerificationStatus } from '@/types/operator';
 import type {
     AvailabilityScheduleStatus,
@@ -348,6 +349,25 @@ export const OPERATOR_VERIFICATION: Record<
         label: 'Rejected',
         variant: 'danger',
         hint: 'Verification declined',
+    },
+};
+
+/** Email send-log rows (types/email.ts EmailSendStatus) - WP-E timelines. */
+export const EMAIL_SEND: Record<EmailSendStatus, StatusMeta> = {
+    SENT: {
+        label: 'Sent',
+        variant: 'success',
+        hint: 'Handed to the email provider',
+    },
+    FAILED: {
+        label: 'Failed',
+        variant: 'danger',
+        hint: 'Transport error - the email did not go out',
+    },
+    SUPPRESSED: {
+        label: 'Suppressed',
+        variant: 'neutral',
+        hint: 'Deliberately not sent - see the recorded reason',
     },
 };
 

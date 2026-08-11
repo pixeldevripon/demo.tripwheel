@@ -6,6 +6,7 @@ import type {
   CreateOperatorPayload,
   OperatorsQueryParams,
   UpdateOperatorPayload,
+  VerificationDecision,
 } from '@/types/operator';
 
 export const operatorKeys = {
@@ -62,6 +63,29 @@ export function useUpdateOperator() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: operatorKeys.all });
       queryClient.invalidateQueries({ queryKey: operatorKeys.detail(data.id) });
+    },
+  });
+}
+
+/**
+ * Approve/reject a PENDING operator via `POST /operators/:id/verification` -
+ * the only sanctioned `verificationStatus` writer (WP-C). Invalidates every
+ * operator query (queue, list, detail) so the row leaves the PENDING queue at
+ * once. Success/error toasts live with the confirm dialogs, which own the
+ * decision-specific copy.
+ */
+export function useDecideVerification() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      decision,
+    }: {
+      id: string;
+      decision: VerificationDecision;
+    }) => operatorsApi.decideVerification(id, decision),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: operatorKeys.all });
     },
   });
 }

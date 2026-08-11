@@ -1,5 +1,6 @@
 import {
     Calendar01Icon,
+    CheckmarkBadge01Icon,
     Calendar03Icon,
     CalendarCheckIn01Icon,
     CalendarRemove01Icon,
@@ -230,6 +231,16 @@ const dashboardNav: NavGroup[] = [
                 title: 'Tour Operators',
                 url: 'tour-operators',
                 icon: Store01Icon,
+                permissions: [Permission.MANAGE_OPERATORS],
+            },
+            {
+                // The operator approval queue (WP-E): PENDING signups awaiting
+                // an approve/reject decision. Nested under tour-operators like
+                // 'pages/new' - NavMain resolves the deepest match, so only
+                // this row lights up on /tour-operators/verification.
+                title: 'Operator Verification',
+                url: 'tour-operators/verification',
+                icon: CheckmarkBadge01Icon,
                 permissions: [Permission.MANAGE_OPERATORS],
             },
         ],

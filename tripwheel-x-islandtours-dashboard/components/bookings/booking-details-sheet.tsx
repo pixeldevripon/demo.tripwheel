@@ -27,10 +27,13 @@ import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/common/status-badge';
 import {
   BOOKING_DISPLAY_STATUS,
+  EMAIL_SEND,
   REFUND_STATUS,
   SETTLEMENT_METHOD_LABEL,
   SETTLEMENT_STATUS,
 } from '@/components/common/status-maps';
+import { useBookingEmails } from '@/hooks/emails/use-operator-emails';
+import { emailTemplateLabel } from '@/lib/emails/template-labels';
 import {
   MoneyRow,
   Row,
@@ -61,6 +64,10 @@ export function BookingDetailsSheet({
   position?: { index: number; count: number };
 }) {
   const { can } = useRole();
+  // Send-log rows for the Timeline section (WP-E E-22) - fetched only while
+  // the sheet is open. The endpoint applies the same booking-scope rule as
+  // GET /bookings/:id, so whoever can open this sheet can read these rows.
+  const { data: emails } = useBookingEmails(b.id, open);
   // Conflict #7: a seat without VIEW_BOOKING_FINANCIALS receives the manifest
   // projection - every money field and the traveler email arrive null, so the
   // Payment/Settlement sections would render as rows of dashes. Hide them.
@@ -277,6 +284,29 @@ export function BookingDetailsSheet({
                 }
               />
             )}
+            {/* Send-log rows (BK/CX...), newest first from the API. A
+                suppressed/failed row carries its reason in the badge hint. */}
+            {(emails ?? []).map((e) => (
+              <Row
+                key={e.id}
+                label={emailTemplateLabel(e.templateKey)}
+                value={
+                  <span className="inline-flex items-center gap-2">
+                    <StatusBadge
+                      variant={EMAIL_SEND[e.status].variant}
+                      hint={
+                        e.suppressedReason ??
+                        e.error ??
+                        EMAIL_SEND[e.status].hint
+                      }
+                    >
+                      {EMAIL_SEND[e.status].label}
+                    </StatusBadge>
+                    {formatDate(e.createdAt, 'long')}
+                  </span>
+                }
+              />
+            ))}
           </Section>
 
           <Section label="Reference">

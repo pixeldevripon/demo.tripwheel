@@ -11,6 +11,7 @@ import {
   OPERATOR_VERIFICATION,
 } from '@/components/common/status-maps';
 import { Checkbox } from '@/components/ui/checkbox';
+import { formatDate } from '@/lib/utils';
 import type { OperatorListItem } from '@/types/operator';
 import { getOperatorDisplayName } from '@/types/operator';
 import { OperatorRowActions } from './operator-row-actions';
@@ -77,6 +78,23 @@ export function buildOperatorColumns(): ColumnDef<OperatorListItem>[] {
         <div className="flex items-center gap-1.5">
           <HugeiconsIcon icon={Mail01Icon} className="size-3 text-muted-foreground shrink-0" />
           <span className="text-sm truncate max-w-56">{row.original.user.email}</span>
+        </div>
+      ),
+      enableSorting: false,
+    },
+    {
+      // The pipeline signal behind the "0 tours" / "first tour live" facets:
+      // submitted-tour count, plus the first-live date once one is published.
+      accessorKey: 'toursSubmitted',
+      header: 'Tours',
+      cell: ({ row }) => (
+        <div className="min-w-0">
+          <span className="tabular-nums">{row.original.toursSubmitted}</span>
+          {row.original.firstTourLiveAt && (
+            <span className="text-xs text-muted-foreground block">
+              Live since {formatDate(row.original.firstTourLiveAt)}
+            </span>
+          )}
         </div>
       ),
       enableSorting: false,
