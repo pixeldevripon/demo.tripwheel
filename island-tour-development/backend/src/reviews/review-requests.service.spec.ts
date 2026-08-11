@@ -72,6 +72,7 @@ const ENABLED = {
 function booking(over: Record<string, unknown> = {}) {
   return {
     id: 'bk1',
+    displayRef: 'IT-2026-TEST1',
     localDate: at('2026-03-10T00:00:00.000Z'),
     tourEndDateTime: at('2026-03-10T17:00:00.000Z'),
     tourTimeZone: 'America/Curacao',

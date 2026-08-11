@@ -716,6 +716,10 @@ export class MailService {
     const signoff = context.isReminder
       ? copy.reminderTextSignoff
       : copy.textSignoff;
+    // The sign-off ("Masha danki...") is BODY copy per the wireframe and the
+    // founder draft - it renders in the HTML paragraphs, not only the
+    // plain-text part (review of #186, minor 8).
+    const bodyParagraphs = [...paragraphs, signoff];
 
     return this.sendBookingNoticeEmail(
       to,
@@ -726,7 +730,7 @@ export class MailService {
         tourName: context.tourName,
         dateLong: context.dateLong,
         startTime: context.startTime,
-        noticeParagraphs: paragraphs,
+        noticeParagraphs: bodyParagraphs,
         ctaUrl: context.reviewUrl,
         ctaLabel: copy.cta,
         siteLogoUrl: context.siteLogoUrl ?? '',

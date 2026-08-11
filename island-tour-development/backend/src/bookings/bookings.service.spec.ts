@@ -1796,6 +1796,32 @@ describe('BookingsService', () => {
         expect(emailLog.claimAndSend).not.toHaveBeenCalled();
         expect(m.booking.updateMany).not.toHaveBeenCalled();
       });
+
+      it('pending cancellation request: suppressed with cancellation-pending (still CONFIRMED)', async () => {
+        // The booking stays CONFIRMED until the admin acts on the request -
+        // "You're set for tomorrow!" to someone waiting to be cancelled is
+        // the user-reported trust-damage class the resendConfirmation guard
+        // closes (security review of #186, Medium).
+        stubContext();
+        m.booking.findUnique.mockResolvedValue(
+          remindable({
+            utcCancellationRequestedAt: new Date('2026-05-21T10:00:00Z'),
+            utcCancelledAt: null,
+          }),
+        );
+
+        await svc.runPreTourReminderJob('b1');
+
+        expect(emailLog.recordSuppressed).toHaveBeenCalledWith(
+          expect.objectContaining({
+            templateKey: 'BK2_PRE_TOUR_REMINDER',
+            scopeId: 'b1',
+            reason: 'cancellation-pending',
+          }),
+        );
+        expect(emailLog.claimAndSend).not.toHaveBeenCalled();
+        expect(m.booking.updateMany).not.toHaveBeenCalled();
+      });
     });
 
     // ── BK-1 send-log routing (WP-B: B-20) ────────────────────────────────

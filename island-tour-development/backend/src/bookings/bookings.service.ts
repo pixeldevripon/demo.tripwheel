@@ -1539,8 +1539,12 @@ export class BookingsService {
    *
    * Suppression at send time: CONFIRMED only (cancelled / forfeited /
    * operator-cancelled all leave CONFIRMED, so the status check covers the
-   * wireframe's whole list). A confirmed booking with no contact email is a
-   * DECIDED non-send: it writes a SUPPRESSED row so the timeline says why.
+   * wireframe's whole list) - PLUS a pending cancellation request: the
+   * booking stays CONFIRMED until the admin acts, and "You're set for
+   * tomorrow!" to someone waiting to be cancelled is the same user-reported
+   * trust-damage class the resendConfirmation guard already closes
+   * (2026-07-30). A confirmed booking with no contact email is a DECIDED
+   * non-send: it writes a SUPPRESSED row so the timeline says why.
    */
   async runPreTourReminderJob(bookingId: string): Promise<void> {
     const booking = await this.prisma.booking.findUnique({
@@ -1550,6 +1554,17 @@ export class BookingsService {
     if (!booking) return;
     if (booking.utcReminderSentAt) return;
     if (booking.status !== BookingStatus.CONFIRMED) return; // cancelled/expired since
+    if (booking.utcCancellationRequestedAt && !booking.utcCancelledAt) {
+      // Mirrors resendConfirmation: a decided non-send, recorded with why.
+      await this.emailLog.recordSuppressed({
+        templateKey: EmailTemplateKey.BK2_PRE_TOUR_REMINDER,
+        scopeId: booking.id,
+        toEmail: booking.contactEmail ?? '',
+        stream: EmailStream.TRANSACTIONAL,
+        reason: 'cancellation-pending',
+      });
+      return;
+    }
 
     const to = booking.contactEmail;
     if (!to) {
