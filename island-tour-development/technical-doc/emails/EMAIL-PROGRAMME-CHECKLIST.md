@@ -15,7 +15,7 @@
 | 1 | WP-A send spine | backend | `feat/email-send-spine` | **merged** | #181 |
 | 1 | WP-C operator state machine | backend | `feat/operator-onboarding-state` | **merged** | #180 |
 | 2 | WP-B customer funnel | backend | `feat/email-customer-funnel` | not started | — |
-| 2 | WP-D onboarding sequence | backend | `feat/email-onboarding-sequence` | not started | — |
+| 2 | WP-D onboarding sequence | backend | `feat/email-onboarding-sequence` | **in review** | #185 |
 | 2 | WP-E dashboard surfaces | dashboard | `feat/operator-onboarding-dashboard` | not started | — |
 | 2 | WP-F unsubscribe page | frontend | `feat/unsubscribe-page` | not started | — |
 | 3 | WP-G consent + MK-1 | backend | `feat/email-mk1-marketing` | not started | — |
@@ -274,85 +274,85 @@ AFTER WP-C (DTO strips `verificationStatus`) · **WP-G may not merge until WP-F 
 
 ### Templates (English, wireframe copy locked, on `auth-email-shell.ts`)
 
-- [ ] D-01 OB-3 `operator-first-tour-howto.template.ts` — walkthrough alternates: Loom thumbnail
+- [x] D-01 OB-3 `operator-first-tour-howto.template.ts` — walkthrough alternates: Loom thumbnail
       when `WALKTHROUGH_VIDEO_URL` set, guide-link-only otherwise; "Add your first tour" CTA;
       opt-out footer
-- [ ] D-02 OB-4 `operator-build-with-you.template.ts` — WhatsApp CTA (the only green button),
+- [x] D-02 OB-4 `operator-build-with-you.template.ts` — WhatsApp CTA (the only green button),
       email-to-sales alternative, self-serve link; opt-out footer
-- [ ] D-03 OB-5 `operator-tour-live.template.ts` — "{tourName} is live", see-your-page CTA,
+- [x] D-03 OB-5 `operator-tour-live.template.ts` — "{tourName} is live", see-your-page CTA,
       availability-habit block; transactional (no opt-out footer)
-- [ ] D-04 OB-6 `operator-check-in.template.ts` — near-plain text, no buttons/images, from
+- [x] D-04 OB-6 `operator-check-in.template.ts` — near-plain text, no buttons/images, from
       "Denley from Island Tours", `replyTo: OB6_REPLY_TO`; opt-out footer
-- [ ] D-05 OB-7 `operator-connect-calendar.template.ts` — connect CTA + manual-is-fine line;
+- [x] D-05 OB-7 `operator-connect-calendar.template.ts` — connect CTA + manual-is-fine line;
       opt-out footer
-- [ ] D-06 OB-8 `operator-page-stronger.template.ts` — photo tips + Dronebaas block behind
+- [x] D-06 OB-8 `operator-page-stronger.template.ts` — photo tips + Dronebaas block behind
       decision D6 (`[IF]`-style flag param so it ships either way); opt-out footer
-- [ ] D-07 INT1R `operator-pending-reminder` (variant of INT-1 template: "still pending after 2
+- [x] D-07 INT1R `operator-pending-reminder` (variant of INT-1 template: "still pending after 2
       business days")
-- [ ] D-08 OB-2 agreement email: extend the acceptance flow — agreement PDF attachment
+- [x] D-08 OB-2 agreement email: extend the acceptance flow — agreement PDF attachment
       (version-pinned file, via WP-A `attachments`) + hosted link; graceful hosted-link-only when
       the PDF asset is absent (decision D4)
-- [ ] D-09 OB-1: record an `EmailSend` row (OB1, scopeId=operatorId or lowercased email
+- [x] D-09 OB-1: record an `EmailSend` row (OB1, scopeId=operatorId or lowercased email
       pre-operator) from the Better Auth verification hook — no template change
-- [ ] D-10 All new templates exported from `templates/index.ts`; every lifecycle footer carries
+- [x] D-10 All new templates exported from `templates/index.ts`; every lifecycle footer carries
       the WP-A unsubscribe token link ("Prefer no setup emails? Opt out here")
 
 ### Wave-1 review carry-overs (bind on this package)
 
-- [ ] D-25 Sweeps pre-filter candidates with an anti-join / `NOT EXISTS` on
+- [x] D-25 Sweeps pre-filter candidates with an anti-join / `NOT EXISTS` on
       `(templateKey, scopeId)` and use `claimAndSend` only to close the residual
       race — a P2002-rejected INSERT still writes a dead tuple, and re-claiming
       every candidate each 15-min tick is permanent autovacuum churn
       (perf review M1; JSDoc on `claimAndSend` states the rule)
-- [ ] D-26 Suppression evaluator excludes ADMIN shadow operators: an admin
+- [x] D-26 Suppression evaluator excludes ADMIN shadow operators: an admin
       publishing their own tour gets `firstTourLiveAt` stamped like anyone else
       (`operator.util.ts` auto-provisions the row) — gate every OB nudge on
       `verificationStatus = VERIFIED` so shadow operators never enter the drip
       (security review of #180, LOW-4)
-- [ ] D-27 Resend endpoint retries once with n+1 when `claimAndSend` reports
+- [x] D-27 Resend endpoint retries once with n+1 when `claimAndSend` reports
       `skipped/already-sent` after `nextResendScopeId` — two concurrent admin
       resends compute the same n (JSDoc on `nextResendScopeId`)
-- [ ] D-28 `List-Unsubscribe`/`List-Unsubscribe-Post` header values built ONLY
+- [x] D-28 `List-Unsubscribe`/`List-Unsubscribe-Post` header values built ONLY
       from server-minted tokens + env URLs — the `SendMailOptions.headers`
       contract forbids user-supplied strings and CR/LF
-- [ ] D-29 If WP-D adds any FAILED-send monitoring query, add the
+- [x] D-29 If WP-D adds any FAILED-send monitoring query, add the
       `[status, createdAt]` composite index in the same PR (perf review L2)
 
 ### Sweeper (`src/mail/onboarding-emails.service.ts` or `EmailProgrammeModule`)
 
-- [ ] D-11 Fill `emailLifecycleSweep()`: query due candidates per anchor —
+- [x] D-11 Fill `emailLifecycleSweep()`: query due candidates per anchor —
       `verificationDecidedAt` +48h → OB-3, +7d → OB-4, +14d → OB-6; `firstTourLiveAt` +3d → OB-7,
       +7d → OB-8; PENDING operators older than 2 business days with `salesPendingReminderAt`
       null → INT1R
-- [ ] D-12 Suppression evaluated AT SEND TIME: tours-submitted count ≥1 kills OB-3/OB-4;
+- [x] D-12 Suppression evaluated AT SEND TIME: tours-submitted count ≥1 kills OB-3/OB-4;
       `isActive=false` (suspension) kills the whole set; LIFECYCLE opt-out kills OB-3/4/6/7/8;
       OB-7 additionally needs `CALENDAR_SYNC_AVAILABLE==='true'` and no connected calendar feed
-- [ ] D-13 Every suppression writes `recordSuppressed()` with a machine-readable reason
+- [x] D-13 Every suppression writes `recordSuppressed()` with a machine-readable reason
       (`tours-submitted`, `suspended`, `opted-out`, `flag-off`, `calendar-connected`, …)
-- [ ] D-14 Volume cap: skip an operator whose latest LIFECYCLE `EmailSend` is <3 days old;
+- [x] D-14 Volume cap: skip an operator whose latest LIFECYCLE `EmailSend` is <3 days old;
       when several nudges are due at once send only the highest priority (OB-6 > OB-7 > OB-8;
       OB-3/4 are mutually exclusive by their zero-tours condition + anchor offsets)
-- [ ] D-15 Window: whole sweep no-ops unless `isLifecycleWindowOpen()` (INT1R and OB-5 are
+- [x] D-15 Window: whole sweep no-ops unless `isLifecycleWindowOpen()` (INT1R and OB-5 are
       exempt — internal/transactional)
-- [ ] D-16 All sends through `claimAndSend` (scopeId = operatorId) — the unique index makes
+- [x] D-16 All sends through `claimAndSend` (scopeId = operatorId) — the unique index makes
       re-sweeps idempotent; no new guard columns
-- [ ] D-17 OB-5 wired off the outbox: `operator.first-tour-live` → `PLATFORM_JOBS.ONBOARDING_EMAIL`
+- [x] D-17 OB-5 wired off the outbox: `operator.first-tour-live` → `PLATFORM_JOBS.ONBOARDING_EMAIL`
       fan-out in `jobsFor()` → processor → send (instant, not sweep-gated)
-- [ ] D-18 INT1R stamps `salesPendingReminderAt` (fires once); business-day math helper
+- [x] D-18 INT1R stamps `salesPendingReminderAt` (fires once); business-day math helper
       (Sat/Sun excluded) with unit spec
-- [ ] D-19 OB-2A send (WP-C) rerouted through `claimAndSend(OB2A, operatorId)`
+- [x] D-19 OB-2A send (WP-C) rerouted through `claimAndSend(OB2A, operatorId)`
 
 ### Resend endpoint
 
-- [ ] D-20 `POST /operators/:id/emails/:templateKey/resend` — `MANAGE_OPERATORS`, OB set + OB-2A
+- [x] D-20 `POST /operators/:id/emails/:templateKey/resend` — `MANAGE_OPERATORS`, OB set + OB-2A
       only (400 otherwise), writes `#resend-{n}` row, returns the new `EmailSend`
-- [ ] D-21 e2e: resend happy path, non-OB key 400, non-admin 403
+- [x] D-21 e2e: resend happy path, non-OB key 400, non-admin 403
 
 ### Tests & ship
 
-- [ ] D-22 Sweeper spec: window closed → zero sends; each anchor/offset; each suppression reason
+- [x] D-22 Sweeper spec: window closed → zero sends; each anchor/offset; each suppression reason
       row; volume-cap priority; opt-out honoured; suspension kills all; INT1R business days
-- [ ] D-23 Template token-coverage specs (one per template, `findUnresolvedTokens` empty)
+- [x] D-23 Template token-coverage specs (one per template, `findUnresolvedTokens` empty)
 - [ ] D-24 Suite green · reviewer agent pass · docs same-commit · PR merged
 
 ## WP-G — Consent + MK-1 — `feat/email-mk1-marketing` (LAST; gated on WP-F live in prod)

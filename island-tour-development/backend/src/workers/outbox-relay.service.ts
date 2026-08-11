@@ -3,11 +3,13 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import { Queue } from 'bullmq';
 import { PrismaService } from '@/prisma/prisma.service';
+import { EmailTemplateKey } from '@prisma/client';
 import {
   PLATFORM_JOB_OPTS,
   PLATFORM_JOBS,
   PLATFORM_QUEUE,
   REMINDER_LEAD_MS,
+  type PlatformJobData,
   type PlatformJobName,
 } from './platform-queue';
 
@@ -61,18 +63,18 @@ export class OutboxRelayService {
       take: RELAY_BATCH,
     });
     for (const row of rows) {
-      for (const { name, opts } of this.jobsFor(row.type, row.payload)) {
-        await this.queue.add(
-          name,
-          { bookingId: row.aggregateId },
-          {
-            ...PLATFORM_JOB_OPTS,
-            // `__`, not `:` - BullMQ rejects custom job ids containing its
-            // Redis key separator.
-            jobId: `${row.aggregateId}__${name}`,
-            ...opts,
-          },
-        );
+      for (const { name, data, opts } of this.jobsFor(
+        row.type,
+        row.aggregateId,
+        row.payload,
+      )) {
+        await this.queue.add(name, data, {
+          ...PLATFORM_JOB_OPTS,
+          // `__`, not `:` - BullMQ rejects custom job ids containing its
+          // Redis key separator.
+          jobId: `${row.aggregateId}__${name}`,
+          ...opts,
+        });
       }
       await this.prisma.outboxEvent.update({
         where: { id: row.id },
@@ -90,17 +92,30 @@ export class OutboxRelayService {
    * email, operator notice, CAPI conversion, and - when the start is more than
    * the lead time away - a DELAYED pre-tour reminder (doc §5.4: compute the
    * delay at enqueue; the consumer re-validates state at fire time).
+   * `operator.first-tour-live` (WP-C emits, once per operator) fans out to
+   * the instant OB-5 send (WP-D, checklist D-17) - here the aggregateId is
+   * the OPERATOR id, so each job names its own payload shape.
    */
   private jobsFor(
     type: string,
+    aggregateId: string,
     payload: unknown,
-  ): { name: PlatformJobName; opts?: { delay: number } }[] {
+  ): {
+    name: PlatformJobName;
+    data: PlatformJobData;
+    opts?: { delay: number };
+  }[] {
     switch (type) {
       case 'booking.confirmed': {
-        const jobs: { name: PlatformJobName; opts?: { delay: number } }[] = [
-          { name: PLATFORM_JOBS.CONFIRMATION_EMAIL },
-          { name: PLATFORM_JOBS.OPERATOR_NOTICE },
-          { name: PLATFORM_JOBS.CAPI_CONVERSION },
+        const data = { bookingId: aggregateId };
+        const jobs: {
+          name: PlatformJobName;
+          data: PlatformJobData;
+          opts?: { delay: number };
+        }[] = [
+          { name: PLATFORM_JOBS.CONFIRMATION_EMAIL, data },
+          { name: PLATFORM_JOBS.OPERATOR_NOTICE, data },
+          { name: PLATFORM_JOBS.CAPI_CONVERSION, data },
         ];
         const startIso = (payload as { tourStartDateTime?: string | null })
           ?.tourStartDateTime;
@@ -112,6 +127,7 @@ export class OutboxRelayService {
           if (delay > 0) {
             jobs.push({
               name: PLATFORM_JOBS.PRE_TOUR_REMINDER,
+              data,
               opts: { delay },
             });
           }
@@ -119,7 +135,22 @@ export class OutboxRelayService {
         return jobs;
       }
       case 'booking.refund-owed':
-        return [{ name: PLATFORM_JOBS.REFUND_EXECUTE }];
+        return [
+          {
+            name: PLATFORM_JOBS.REFUND_EXECUTE,
+            data: { bookingId: aggregateId },
+          },
+        ];
+      case 'operator.first-tour-live':
+        return [
+          {
+            name: PLATFORM_JOBS.ONBOARDING_EMAIL,
+            data: {
+              operatorId: aggregateId,
+              templateKey: EmailTemplateKey.OB5_TOUR_LIVE,
+            },
+          },
+        ];
       default:
         this.logger.warn(
           `Unknown outbox event type '${type}' - marked dispatched, no job`,

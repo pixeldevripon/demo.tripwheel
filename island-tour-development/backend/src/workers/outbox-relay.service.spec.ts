@@ -112,6 +112,31 @@ describe('OutboxRelayService', () => {
     );
   });
 
+  it('fans operator.first-tour-live out to the OB-5 onboarding email job (D-17)', async () => {
+    prisma.outboxEvent.findMany.mockResolvedValue([
+      row({
+        aggregate: 'operator',
+        aggregateId: 'op1',
+        type: 'operator.first-tour-live',
+        payload: { operatorId: 'op1', tourId: 't1' },
+      }),
+    ]);
+
+    await svc.dispatchPending();
+
+    expect(queue.add).toHaveBeenCalledTimes(1);
+    // The aggregateId is the OPERATOR here - the payload must be the §2.6
+    // onboarding shape, never a bookingId.
+    expect(queue.add).toHaveBeenCalledWith(
+      PLATFORM_JOBS.ONBOARDING_EMAIL,
+      { operatorId: 'op1', templateKey: 'OB5_TOUR_LIVE' },
+      expect.objectContaining({
+        jobId: `op1__${PLATFORM_JOBS.ONBOARDING_EMAIL}`,
+      }),
+    );
+    expect(prisma.outboxEvent.update).toHaveBeenCalledTimes(1);
+  });
+
   it('a failed enqueue leaves the row UNDISPATCHED for the next tick', async () => {
     prisma.outboxEvent.findMany.mockResolvedValue([row()]);
     queue.add.mockRejectedValue(new Error('redis down'));

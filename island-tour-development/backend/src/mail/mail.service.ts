@@ -149,7 +149,10 @@ export class MailService {
     // singleton created before env validation (mail.singleton.ts).
     const replyTo = opts.replyTo ?? process.env.MAIL_REPLY_TO;
 
-    const { data, error } = await this.resend.emails.send({
+    // A hung transport call must not pin a caller (the sweep serially sends;
+    // undici's defaults allow ~300s per stuck request - one bad Resend day
+    // would stall a tick for hours; perf review of #185, High).
+    const sendPromise = this.resend.emails.send({
       from: this.from,
       to: opts.to,
       subject: opts.subject,
@@ -159,6 +162,15 @@ export class MailService {
       ...(opts.headers ? { headers: opts.headers } : {}),
       ...(opts.attachments ? { attachments: opts.attachments } : {}),
     });
+    const { data, error } = await Promise.race([
+      sendPromise,
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error('Email send timed out after 15s')),
+          15_000,
+        ).unref?.(),
+      ),
+    ]);
 
     if (error) {
       // Log the provider error name/message (they never contain the API key),
