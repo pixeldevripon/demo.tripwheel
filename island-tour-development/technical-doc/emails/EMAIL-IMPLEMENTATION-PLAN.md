@@ -493,16 +493,51 @@ switch needed) — assert that in the spec.
 Requested by the founder after Wave 3: one dashboard section where everything email-related is
 visible and configurable — activity, switches, people, test-sends. Two PRs (backend first).
 
+**Founder decisions taken 2026-08-11:** GROUP switches only (booking emails BK-1/BK-2/CX-1 are
+contractual and always-on — no switch may exist for them); copy stays locked in code (no
+dashboard copy editing in WP-H). Every schedule timing IS dashboard-editable, with the built-in
+values as fallback.
+
 **Backend (`feat/email-settings-api`):**
 
 1. **`EmailSettings` singleton** (in `prisma/settings.prisma`, the `ReviewRequestSettings`
-   precedent — `id @default("default")`): `salesEmail String?`, `mailReplyTo String?`,
-   `ob6ReplyTo String?`, `calendarSyncEnabled Boolean?`, `ob8PartnerOffer Boolean?`. Resolution
-   rule: **a non-null settings value wins; null falls back to the env var** — zero-risk rollout,
-   env keeps working until an admin touches a field.
-2. Consumers switch to a small `EmailSettingsService.resolve()` (cached ~60s):
-   `salesRecipient()`, `MAIL_REPLY_TO` default in `sendMail`, `OB6_REPLY_TO` in the OB-6 render,
-   the OB-7 flag check (replaces `CALENDAR_SYNC_AVAILABLE` read), the OB-8 partner-offer flag.
+   precedent — `id @default("default")`). Every field NULLABLE; **null = the built-in default /
+   env fallback shown in parens** — zero-risk rollout, nothing changes until an admin edits:
+
+   ```prisma
+   // Group switches (null → default)
+   marketingEnabled     Boolean?  // MK1_ENABLED env, default false
+   onboardingEnabled    Boolean?  // default true — kills OB-3…OB-8 candidate queries when false ("not yet", no rows burned)
+   calendarEmailEnabled Boolean?  // CALENDAR_SYNC_AVAILABLE env, default false
+   ob8PartnerOffer      Boolean?  // default true (founder D6)
+   // Addresses (null → env)
+   salesEmail  String?   // SALES_EMAIL ?? ADMIN_EMAIL
+   mailReplyTo String?   // MAIL_REPLY_TO
+   ob6ReplyTo  String?   // OB6_REPLY_TO ?? mailReplyTo
+   // Onboarding timings (null → built-in)
+   ob3DelayHours               Int?  // 48
+   ob4DelayDays                Int?  // 7
+   ob6DelayDays                Int?  // 14
+   ob7AfterLiveDays            Int?  // 3
+   ob8AfterLiveDays            Int?  // 7
+   pendingReminderBusinessDays Int?  // 2
+   // Send window for lifecycle nudges (null → built-in)
+   windowWeekdays  String?  // csv of lowercase day names; default "tue,wed,thu"
+   windowStartHour Int?     // 9   (America/Curacao)
+   windowEndHour   Int?     // 11
+   // Marketing timing (null → built-in)
+   mk1DelayHours Int?  // 72
+   ```
+
+   The review pair's switch + timings stay in `ReviewRequestSettings` (already DB-backed) and are
+   read/written through the SAME settings endpoint payload — one switchboard. PATCH validates
+   bounds (hours 0–23, start<end, delays 1–90 days / 1–720 h, ≥1 weekday, email shapes). Timing
+   changes are safe by construction: the anti-join keeps decided rows decided; a shortened delay
+   only makes not-yet-decided candidates due sooner.
+2. Consumers switch to a small `EmailSettingsService.resolve()` (cached ~60s, cache dropped on
+   PATCH): `salesRecipient()`, `sendMail`'s reply-to default, the OB-6 reply-to, the OB-7 flag,
+   the OB-8 offer flag, **the onboarding sweep's anchor offsets + window + INT1R business days
+   (LIFECYCLE_NUDGES offsets become resolved-per-tick), and MK-1's enabled flag + delay**.
 3. **Endpoints** (all `MANAGE_SYSTEM`): `GET/PATCH /email/settings` (PATCH validates email
    shapes); `GET /email/sends` (global paginated list: filters templateKey/status/stream/toEmail
    (exact, lowercased)/date-range; select = TIMELINE_SELECT + scopeId);

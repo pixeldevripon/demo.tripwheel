@@ -535,12 +535,16 @@ Needs WP-A's two public endpoints. Must be **live in production before WP-G merg
 
 ## Backend — `feat/email-settings-api`
 
-- [ ] H-01 `EmailSettings` singleton in `prisma/settings.prisma` (salesEmail, mailReplyTo,
-      ob6ReplyTo, calendarSyncEnabled, ob8PartnerOffer — all nullable; null = env fallback)
+- [ ] H-01 `EmailSettings` singleton in `prisma/settings.prisma` — the FULL plan-§4 field set:
+      4 group switches, 3 addresses, 6 onboarding timings, window (weekdays/start/end),
+      mk1DelayHours — all nullable; null = built-in/env fallback (founder decision 2026-08-11:
+      group switches only, booking emails always-on, copy stays locked)
 - [ ] H-02 Migration (new table only) + `EmailSettingsService.resolve()` with ~60s cache and
       settings-win-over-env resolution
 - [ ] H-03 Consumers switched: salesRecipient(), sendMail reply-to default, OB-6 reply-to,
-      OB-7 flag check, OB-8 partner-offer flag
+      OB-7 flag, OB-8 offer flag, onboarding anchor offsets + window + INT1R business days
+      (resolved per tick), MK-1 enabled + delay; onboardingEnabled=false skips the candidate
+      queries entirely (not-yet semantics, no rows burned)
 - [ ] H-04 `GET/PATCH /email/settings` (MANAGE_SYSTEM; PATCH validates email shapes; payload also
       carries the ReviewRequestSettings toggle + timing read/write)
 - [ ] H-05 `GET /email/sends` — global paginated list (filters: templateKey, status, stream,
