@@ -34,6 +34,7 @@ import { AvailabilityService } from '@/availability/availability.service';
 import { FxRatesService } from '@/fx/fx-rates.service';
 import { InboxService } from '@/inbox/inbox.service';
 import { MailService } from '@/mail/mail.service';
+import { EmailSettingsService } from '@/mail/email-settings.service';
 import { ToursService } from './tours.service';
 
 // ── Mock factory ──────────────────────────────────────────────────────────────
@@ -205,6 +206,17 @@ describe('ToursService', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: AvailabilityService, useValue: availability },
         { provide: MailService, useValue: mail },
+        {
+          provide: EmailSettingsService,
+          // WP-H: env-faithful - the INT-2 tests' SALES_EMAIL env choreography
+          // still steers the resolved sales recipient.
+          useValue: {
+            resolve: jest.fn(() =>
+              Promise.resolve(EmailSettingsService.defaults()),
+            ),
+            invalidate: jest.fn(),
+          },
+        },
         { provide: InboxService, useValue: { notify: jest.fn() } },
         {
           provide: FxRatesService,

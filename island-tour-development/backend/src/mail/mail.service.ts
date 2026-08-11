@@ -1,11 +1,12 @@
 import { redactEmail } from '@/common/utils/redact-email.util';
 import { authPrismaClient } from '@/auth/auth-prisma.client';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Locale } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Resend } from 'resend';
 import { emailSafeLogoUrl } from './email-logo.util';
+import { EmailSettingsService } from './email-settings.service';
 import { copyFor, fillCopy } from './templates/email-copy.util';
 import { REVIEW_REQUEST_COPY } from './templates/review-request-email.copy';
 import {
@@ -128,7 +129,17 @@ export class MailService {
   private readonly resend: Resend | null;
   private readonly from: string;
 
-  constructor() {
+  /**
+   * WP-H: the reply-to default resolves through EmailSettingsService
+   * (stored `mailReplyTo` ?? `MAIL_REPLY_TO` env). @Optional() because this
+   * service ALSO runs as a DI-free singleton created before the Nest app
+   * exists (mail.singleton.ts, used by auth.instance.ts) — that instance has
+   * no settings service and keeps the plain env read.
+   */
+  constructor(
+    @Optional()
+    private readonly emailSettings: EmailSettingsService | null = null,
+  ) {
     const apiKey = process.env.RESEND_API_KEY;
     if (!apiKey) {
       this.logger.warn('RESEND_API_KEY is missing. Email sending will fail.');
@@ -159,10 +170,16 @@ export class MailService {
       throw new Error('Email service is not configured');
     }
 
-    // Default reply-to from MAIL_REPLY_TO (a monitored inbox) — read per send,
-    // not in the constructor, because this service also runs as a DI-free
-    // singleton created before env validation (mail.singleton.ts).
-    const replyTo = opts.replyTo ?? process.env.MAIL_REPLY_TO;
+    // Default reply-to (a monitored inbox) — read per send, not in the
+    // constructor, because this service also runs as a DI-free singleton
+    // created before env validation (mail.singleton.ts). Under DI the value
+    // resolves through the WP-H settings (stored ?? MAIL_REPLY_TO env,
+    // cached ~60s); the singleton keeps the raw env read.
+    const replyTo =
+      opts.replyTo ??
+      (this.emailSettings
+        ? ((await this.emailSettings.resolve()).mailReplyTo ?? undefined)
+        : process.env.MAIL_REPLY_TO);
 
     // A hung transport call must not pin a caller (the sweep serially sends;
     // undici's defaults allow ~300s per stuck request - one bad Resend day

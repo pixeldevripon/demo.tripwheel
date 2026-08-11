@@ -7,8 +7,8 @@ import {
   rollbackProvisionOrAttach,
 } from '@/common/utils/invite-provisioning.util';
 import { dashboardAppBase } from '@/common/utils/app-urls.util';
-import { salesRecipient } from '@/common/utils/sales-recipient.util';
 import { EmailLogService } from '@/mail/email-log.service';
+import { EmailSettingsService } from '@/mail/email-settings.service';
 import { MailService } from '@/mail/mail.service';
 import { OnboardingEmailsService } from '@/mail/onboarding-emails.service';
 import { PrismaService } from '@/prisma/prisma.service';
@@ -75,6 +75,7 @@ export class OperatorsService {
     private readonly prisma: PrismaService,
     private readonly mailService: MailService,
     private readonly emailLog: EmailLogService,
+    private readonly emailSettings: EmailSettingsService,
     private readonly onboardingEmails: OnboardingEmailsService,
     private readonly staffPermissions: StaffPermissionsService,
   ) {}
@@ -518,19 +519,20 @@ export class OperatorsService {
    * INT-1 "New operator" to the sales pipeline. Fire-and-forget off the
    * creation path (the tours.service notifyReviewSubmitted pattern): loads
    * its own recipient data, never fails the mutation, logs-and-skips when no
-   * recipient env is configured.
+   * recipient is configured. WP-H (H-03): the recipient resolves through the
+   * email settings (stored salesEmail ?? SALES_EMAIL ?? ADMIN_EMAIL env).
    */
   private notifyOperatorSignup(operatorId: string): void {
-    const to = salesRecipient();
-    if (!to) {
-      this.logger.error(
-        `SALES_EMAIL/ADMIN_EMAIL are not configured - operator ${operatorId} signed up with nobody alerted`,
-      );
-      return;
-    }
+    void (async () => {
+      const to = (await this.emailSettings.resolve()).salesEmail;
+      if (!to) {
+        this.logger.error(
+          `No sales mailbox is configured (dashboard setting or SALES_EMAIL/ADMIN_EMAIL env) - operator ${operatorId} signed up with nobody alerted`,
+        );
+        return;
+      }
 
-    void this.prisma.operator
-      .findUnique({
+      const operator = await this.prisma.operator.findUnique({
         where: { id: operatorId },
         select: {
           createdAt: true,
@@ -538,35 +540,32 @@ export class OperatorsService {
           user: { select: { name: true, email: true } },
           companyInfo: { select: { companyName: true, companyPhone: true } },
         },
-      })
-      .then((operator) => {
-        if (!operator) return;
-        // WP-D: through the send log (scope = operatorId; creation happens
-        // once, so send-once semantics fit). claimAndSend never throws.
-        return this.emailLog.claimAndSend({
-          templateKey: EmailTemplateKey.INT1_NEW_OPERATOR,
-          scopeId: operatorId,
-          toEmail: to,
-          stream: EmailStream.INTERNAL,
-          send: () =>
-            this.mailService.sendOperatorSignupInternalEmail(to, {
-              operatorName:
-                operator.companyInfo?.companyName ?? operator.user.name,
-              signatoryName: operator.user.name,
-              email: operator.user.email,
-              phone:
-                operator.contactPhone ?? operator.companyInfo?.companyPhone,
-              acceptedAt: operator.createdAt,
-              reviewUrl: `${dashboardAppBase()}/tour-operators/${operatorId}/edit`,
-            }),
-        });
-      })
-      .catch((err: unknown) =>
-        this.logger.error(
-          `Operator-signup internal alert failed for operator ${operatorId}`,
-          err instanceof Error ? err.stack : String(err),
-        ),
-      );
+      });
+      if (!operator) return;
+      // WP-D: through the send log (scope = operatorId; creation happens
+      // once, so send-once semantics fit). claimAndSend never throws.
+      await this.emailLog.claimAndSend({
+        templateKey: EmailTemplateKey.INT1_NEW_OPERATOR,
+        scopeId: operatorId,
+        toEmail: to,
+        stream: EmailStream.INTERNAL,
+        send: () =>
+          this.mailService.sendOperatorSignupInternalEmail(to, {
+            operatorName:
+              operator.companyInfo?.companyName ?? operator.user.name,
+            signatoryName: operator.user.name,
+            email: operator.user.email,
+            phone: operator.contactPhone ?? operator.companyInfo?.companyPhone,
+            acceptedAt: operator.createdAt,
+            reviewUrl: `${dashboardAppBase()}/tour-operators/${operatorId}/edit`,
+          }),
+      });
+    })().catch((err: unknown) =>
+      this.logger.error(
+        `Operator-signup internal alert failed for operator ${operatorId}`,
+        err instanceof Error ? err.stack : String(err),
+      ),
+    );
   }
 
   /**

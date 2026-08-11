@@ -18,7 +18,6 @@ import {
   islandToursBase,
   publicApiBase,
 } from '@/common/utils/app-urls.util';
-import { salesRecipient } from '@/common/utils/sales-recipient.util';
 import { buildWhatsappUrl } from '@/common/utils/whatsapp.util';
 import { PrismaService } from '@/prisma/prisma.service';
 import { subtractBusinessDays } from './business-days.util';
@@ -29,8 +28,16 @@ import {
 } from './email-log.service';
 import { emailSafeLogoUrl } from './email-logo.util';
 import { EmailPreferencesService } from './email-preferences.service';
+import {
+  EmailSettingsService,
+  type EffectiveEmailSettings,
+} from './email-settings.service';
 import { MailService } from './mail.service';
-import { isLifecycleWindowOpen } from './send-window.util';
+import {
+  isLifecycleWindowOpen,
+  parseWindowWeekdays,
+  type LifecycleWindowConfig,
+} from './send-window.util';
 import {
   OPERATOR_APPROVED_SUBJECT,
   operatorApprovedTemplate,
@@ -72,9 +79,6 @@ const SEND_PACING_MS = 500;
 /** Volume cap (wireframe rules): max ONE lifecycle email per operator per 3 days. */
 const VOLUME_CAP_MS = 3 * DAY_MS;
 
-/** INT1R threshold: PENDING for more than 2 business days (Sat/Sun excluded). */
-const PENDING_REMINDER_BUSINESS_DAYS = 2;
-
 /**
  * One lifecycle nudge: when is it due, and off which anchor column. Listed in
  * SEND-PRIORITY order (wireframe volume-cap rule: OB-6 > OB-7 > OB-8; OB-3/4
@@ -87,33 +91,53 @@ interface NudgeSpec {
   offsetMs: number;
 }
 
-const LIFECYCLE_NUDGES: readonly NudgeSpec[] = [
-  {
-    key: EmailTemplateKey.OB6_CHECK_IN,
-    anchor: 'verificationDecidedAt',
-    offsetMs: 14 * DAY_MS,
-  },
-  {
-    key: EmailTemplateKey.OB7_CONNECT_CALENDAR,
-    anchor: 'firstTourLiveAt',
-    offsetMs: 3 * DAY_MS,
-  },
-  {
-    key: EmailTemplateKey.OB8_PAGE_STRONGER,
-    anchor: 'firstTourLiveAt',
-    offsetMs: 7 * DAY_MS,
-  },
-  {
-    key: EmailTemplateKey.OB3_FIRST_TOUR_HOWTO,
-    anchor: 'verificationDecidedAt',
-    offsetMs: 48 * HOUR_MS,
-  },
-  {
-    key: EmailTemplateKey.OB4_BUILD_IT_WITH_YOU,
-    anchor: 'verificationDecidedAt',
-    offsetMs: 7 * DAY_MS,
-  },
-];
+/**
+ * WP-H (H-03): the offsets are dashboard-editable, so the nudge list is
+ * built PER TICK from the resolved settings — the built-ins the drip shipped
+ * with (48h / 7d / 14d / live+3d / live+7d) are now those fields' defaults
+ * in `EMAIL_SETTINGS_BUILTINS`. Order here IS the send-priority order.
+ * Timing changes are safe by construction: the anti-join keeps decided rows
+ * decided; a shortened delay only makes not-yet-decided candidates due
+ * sooner.
+ */
+function lifecycleNudgesFor(cfg: EffectiveEmailSettings): readonly NudgeSpec[] {
+  return [
+    {
+      key: EmailTemplateKey.OB6_CHECK_IN,
+      anchor: 'verificationDecidedAt',
+      offsetMs: cfg.ob6DelayDays * DAY_MS,
+    },
+    {
+      key: EmailTemplateKey.OB7_CONNECT_CALENDAR,
+      anchor: 'firstTourLiveAt',
+      offsetMs: cfg.ob7AfterLiveDays * DAY_MS,
+    },
+    {
+      key: EmailTemplateKey.OB8_PAGE_STRONGER,
+      anchor: 'firstTourLiveAt',
+      offsetMs: cfg.ob8AfterLiveDays * DAY_MS,
+    },
+    {
+      key: EmailTemplateKey.OB3_FIRST_TOUR_HOWTO,
+      anchor: 'verificationDecidedAt',
+      offsetMs: cfg.ob3DelayHours * HOUR_MS,
+    },
+    {
+      key: EmailTemplateKey.OB4_BUILD_IT_WITH_YOU,
+      anchor: 'verificationDecidedAt',
+      offsetMs: cfg.ob4DelayDays * DAY_MS,
+    },
+  ];
+}
+
+/** The lifecycle window as the resolved settings describe it. */
+function windowConfigOf(cfg: EffectiveEmailSettings): LifecycleWindowConfig {
+  return {
+    weekdays: parseWindowWeekdays(cfg.windowWeekdays),
+    startHour: cfg.windowStartHour,
+    endHour: cfg.windowEndHour,
+  };
+}
 
 /** The keys the admin resend endpoint accepts (plan §2.5: OB set + OB-2A). */
 const RESENDABLE_KEYS: ReadonlySet<EmailTemplateKey> = new Set([
@@ -215,21 +239,32 @@ export class OnboardingEmailsService {
     private readonly mail: MailService,
     private readonly emailLog: EmailLogService,
     private readonly emailPreferences: EmailPreferencesService,
+    private readonly emailSettings: EmailSettingsService,
   ) {}
 
   // ── The 15-minute sweep tick (D-11) ────────────────────────────────────────
 
   /**
    * One `email.lifecycle-sweep` tick. INT1R runs every tick (internal mail is
-   * window-exempt, D-15); the operator nudges only inside the Tue–Thu
-   * 09:00–11:00 Curaçao window. OB-5 never runs here — it is outbox-driven.
+   * window-exempt, D-15); the operator nudges only inside the configured
+   * Curaçao window (built-in Tue–Thu 09:00–11:00). OB-5 never runs here — it
+   * is outbox-driven.
+   *
+   * WP-H (H-03): everything schedule-shaped resolves from `EmailSettings`
+   * once per tick. `onboardingEnabled=false` skips the OB-3…OB-8 candidate
+   * queries ENTIRELY — "not yet" semantics like the old OB-7 flag-off rule:
+   * nothing is written, no unique slot is burned, and flipping the switch
+   * back on lets the anti-join pick everyone up where they left off. INT1R
+   * is internal pipeline mail and deliberately keeps running.
    */
   async sweep(now: Date = new Date()): Promise<void> {
     const startedAt = Date.now();
     try {
-      await this.sweepPendingReminders(now);
-      if (!isLifecycleWindowOpen(now)) return;
-      await this.sweepLifecycleNudges(now);
+      const cfg = await this.emailSettings.resolve();
+      await this.sweepPendingReminders(now, cfg);
+      if (!cfg.onboardingEnabled) return;
+      if (!isLifecycleWindowOpen(now, windowConfigOf(cfg))) return;
+      await this.sweepLifecycleNudges(now, cfg);
     } finally {
       const ms = Date.now() - startedAt;
       // An overrun tick overlaps the next schedule and eats worker slots on
@@ -242,19 +277,22 @@ export class OnboardingEmailsService {
 
   // ── Lifecycle nudges: OB-3/4/6/7/8 (D-11…D-16) ─────────────────────────────
 
-  private async sweepLifecycleNudges(now: Date): Promise<void> {
-    // operatorId → due keys, kept in LIFECYCLE_NUDGES priority order.
+  private async sweepLifecycleNudges(
+    now: Date,
+    cfg: EffectiveEmailSettings,
+  ): Promise<void> {
+    // operatorId → due keys, kept in nudge priority order.
     const due = new Map<string, EmailTemplateKey[]>();
-    const calendarSyncOn =
-      process.env.CALENDAR_SYNC_AVAILABLE?.trim() === 'true';
-    for (const spec of LIFECYCLE_NUDGES) {
+    for (const spec of lifecycleNudgesFor(cfg)) {
       // Flag off = "not yet", never a decision: a SUPPRESSED row would
       // occupy the unique slot FOREVER, so every operator passing live+3d
       // before launch would be permanently excluded from OB-7. Skipping the
       // query lets the anti-join pick them all up when the flag flips.
+      // (WP-H: the flag is the resolved calendarEmailEnabled — stored value
+      // first, CALENDAR_SYNC_AVAILABLE env as fallback.)
       if (
         spec.key === EmailTemplateKey.OB7_CONNECT_CALENDAR &&
-        !calendarSyncOn
+        !cfg.calendarEmailEnabled
       ) {
         continue;
       }
@@ -286,7 +324,13 @@ export class OnboardingEmailsService {
         capped++;
         continue;
       }
-      const outcome = await this.evaluateOperator(operator, keys, site, now);
+      const outcome = await this.evaluateOperator(
+        operator,
+        keys,
+        site,
+        now,
+        cfg,
+      );
       if (outcome === 'sent') {
         sent++;
         // Pace to ~2 sends/s (Resend's default rate limit): a 429 would mark
@@ -338,6 +382,7 @@ export class OnboardingEmailsService {
     dueKeys: EmailTemplateKey[],
     site: SiteContext,
     now: Date,
+    cfg: EffectiveEmailSettings,
   ): Promise<'sent' | 'skipped'> {
     const email = operator.user.email;
 
@@ -390,9 +435,9 @@ export class OnboardingEmailsService {
       return 'skipped';
     }
 
-    // Highest priority only — dueKeys arrived in LIFECYCLE_NUDGES order.
+    // Highest priority only — dueKeys arrived in nudge-priority order.
     const key = sendable[0];
-    const rendered = await this.renderLifecycleNudge(key, operator, site);
+    const rendered = await this.renderLifecycleNudge(key, operator, site, cfg);
     const result = await this.emailLog.claimAndSend({
       templateKey: key,
       scopeId: operator.id,
@@ -441,18 +486,22 @@ export class OnboardingEmailsService {
   // ── INT1R: the 2-business-day pending reminder (D-18) ──────────────────────
 
   /**
-   * PENDING operators older than 2 business days, one internal reminder each.
-   * Window-exempt (D-15) and guarded three deep: `salesPendingReminderAt`
-   * (the D-18 stamp), the anti-join, and the claim.
+   * PENDING operators older than the configured business-day threshold
+   * (built-in 2), one internal reminder each. Window-exempt (D-15) and
+   * guarded three deep: `salesPendingReminderAt` (the D-18 stamp), the
+   * anti-join, and the claim.
    */
-  private async sweepPendingReminders(now: Date): Promise<void> {
-    const to = salesRecipient();
+  private async sweepPendingReminders(
+    now: Date,
+    cfg: EffectiveEmailSettings,
+  ): Promise<void> {
+    const to = cfg.salesEmail;
     if (!to) {
-      // No recipient, no query: when SALES_EMAIL/ADMIN_EMAIL appear later
-      // the reminders still fire (no claim, no stamp was written).
+      // No recipient, no query: when a sales address appears later (setting
+      // or env) the reminders still fire (no claim, no stamp was written).
       return;
     }
-    const cutoff = subtractBusinessDays(now, PENDING_REMINDER_BUSINESS_DAYS);
+    const cutoff = subtractBusinessDays(now, cfg.pendingReminderBusinessDays);
     const rows = await this.prisma.$queryRaw<{ id: string }[]>`
       SELECT o."id"
       FROM "operators" o
@@ -604,6 +653,7 @@ export class OnboardingEmailsService {
       });
       if (!operator) return;
       const site = await this.siteContext();
+      const cfg = await this.emailSettings.resolve();
       // Rendered through renderForKey so the OB-2 props (agreement version/
       // URL, once D4 lands) have exactly ONE owner - the admin resend path
       // renders the same way and can never ship a stale variant.
@@ -611,6 +661,7 @@ export class OnboardingEmailsService {
         EmailTemplateKey.OB2_WELCOME_AGREEMENT,
         operator,
         site,
+        cfg,
       );
       await this.emailLog.claimAndSend({
         templateKey: EmailTemplateKey.OB2_WELCOME_AGREEMENT,
@@ -656,7 +707,8 @@ export class OnboardingEmailsService {
     if (!operator) throw new NotFoundException('Operator not found');
 
     const site = await this.siteContext();
-    const rendered = await this.renderForKey(key, operator, site);
+    const cfg = await this.emailSettings.resolve();
+    const rendered = await this.renderForKey(key, operator, site, cfg);
     const email = operator.user.email;
     const stream = KEY_STREAM[key] ?? EmailStream.LIFECYCLE;
 
@@ -711,6 +763,7 @@ export class OnboardingEmailsService {
     key: EmailTemplateKey,
     operator: OperatorRow,
     site: SiteContext,
+    cfg: EffectiveEmailSettings,
   ): Promise<RenderedEmail> {
     switch (key) {
       case EmailTemplateKey.OB2_WELCOME_AGREEMENT: {
@@ -719,7 +772,7 @@ export class OnboardingEmailsService {
           acceptedAt: operator.createdAt,
           agreementVersion: null,
           agreementUrl: null,
-          supportEmail: process.env.MAIL_REPLY_TO?.trim() || null,
+          supportEmail: cfg.mailReplyTo,
           whatsappUrl: site.whatsappUrl,
           siteLogoUrl: site.siteLogoUrl,
         });
@@ -746,7 +799,7 @@ export class OnboardingEmailsService {
         return rendered;
       }
       default:
-        return this.renderLifecycleNudge(key, operator, site);
+        return this.renderLifecycleNudge(key, operator, site, cfg);
     }
   }
 
@@ -755,6 +808,7 @@ export class OnboardingEmailsService {
     key: EmailTemplateKey,
     operator: OperatorRow,
     site: SiteContext,
+    cfg: EffectiveEmailSettings,
   ): Promise<RenderedEmail> {
     const email = operator.user.email;
     // D-28: one owner for the recipe (EmailPreferencesService) — values are
@@ -788,7 +842,7 @@ export class OnboardingEmailsService {
       case EmailTemplateKey.OB4_BUILD_IT_WITH_YOU: {
         const { html, text } = operatorBuildWithYouTemplate({
           whatsappUrl: site.whatsappUrl,
-          salesEmail: salesRecipient(),
+          salesEmail: cfg.salesEmail,
           addTourUrl: `${dash}/trips/new`,
           optOutUrl,
           siteLogoUrl: site.siteLogoUrl,
@@ -810,9 +864,10 @@ export class OnboardingEmailsService {
           html,
           text,
           headers,
-          // The founder's monitored inbox; sendMail falls back to
-          // MAIL_REPLY_TO when unset (never noreply@ — wireframe rule).
-          replyTo: process.env.OB6_REPLY_TO?.trim() || undefined,
+          // The founder's monitored inbox (resolved OB6_REPLY_TO ??
+          // mailReplyTo); sendMail falls back to the default reply-to when
+          // unset (never noreply@ — wireframe rule).
+          replyTo: cfg.ob6ReplyTo ?? undefined,
         };
       }
       case EmailTemplateKey.OB7_CONNECT_CALENDAR: {
@@ -829,11 +884,12 @@ export class OnboardingEmailsService {
         };
       }
       case EmailTemplateKey.OB8_PAGE_STRONGER: {
-        const sales = salesRecipient();
+        const sales = cfg.salesEmail;
         const { html, text } = operatorPageStrongerTemplate({
-          // Decision D6: ships wireframe-verbatim (offer on); flipping this
-          // flag is the one-line change if counsel pulls the partner block.
-          includePartnerOffer: true,
+          // Decision D6: ships ON by default; the dashboard switchboard's
+          // ob8PartnerOffer flag is the one-click change if counsel pulls
+          // the partner block.
+          includePartnerOffer: cfg.ob8PartnerOffer,
           photoShootContactUrl:
             site.whatsappUrl ?? (sales ? `mailto:${sales}` : null),
           toursUrl: `${dash}/trips`,

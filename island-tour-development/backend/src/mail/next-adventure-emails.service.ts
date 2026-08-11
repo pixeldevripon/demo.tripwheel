@@ -19,6 +19,10 @@ import { localNow } from '@/common/utils/timezone.util';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EmailLogService } from './email-log.service';
 import { EmailPreferencesService } from './email-preferences.service';
+import {
+  EmailSettingsService,
+  type EffectiveEmailSettings,
+} from './email-settings.service';
 import { MailService } from './mail.service';
 import {
   buildNextAdventureEmailContext,
@@ -31,8 +35,10 @@ import { isMarketingMorningWindowOpen } from './send-window.util';
 const HOUR_MS = 60 * 60 * 1_000;
 const DAY_MS = 24 * HOUR_MS;
 
-/** The wireframe trigger: tour_end + 72h, evaluated in the booking's zone. */
-const TRIGGER_OFFSET_MS = 72 * HOUR_MS;
+// The wireframe trigger — tour_end + 72h, evaluated in the booking's zone —
+// is dashboard-editable since WP-H: `mk1DelayHours` resolves per tick from
+// EmailSettings (stored ?? built-in 72) and threads through the candidate
+// query and `isDue`.
 
 /**
  * How stale a tour end may be and still get MK-1. "Still have days left on
@@ -192,22 +198,35 @@ export class NextAdventureEmailsService {
     private readonly mail: MailService,
     private readonly emailLog: EmailLogService,
     private readonly emailPreferences: EmailPreferencesService,
+    private readonly emailSettings: EmailSettingsService,
   ) {}
 
   /** One `email.lifecycle-sweep` tick's MK-1 pass (G-10). */
   async sweep(now: Date = new Date()): Promise<void> {
+    const cfg = await this.emailSettings.resolve();
     // Closed window = "not yet", never a decision: nothing is written and
-    // the anti-join re-finds every candidate when the morning opens.
-    if (!isMarketingMorningWindowOpen(now)) return;
+    // the anti-join re-finds every candidate when the morning opens. WP-H:
+    // the hours are the dashboard-configured pair (shared with the lifecycle
+    // window; MK-1 ignores the weekday list on purpose - see class JSDoc).
+    if (
+      !isMarketingMorningWindowOpen(now, {
+        startHour: cfg.windowStartHour,
+        endHour: cfg.windowEndHour,
+      })
+    ) {
+      return;
+    }
     // MASTER SWITCH, the ReviewRequestSettings.enabled precedent: MK-1 stays
     // dark until deliberately enabled, even for consented addresses - the
     // founder flips it, not a deploy. "Not yet" semantics: nothing is
-    // written, the anti-join re-finds everyone when it turns on. WP-H moves
-    // this to a dashboard setting with the env var as fallback.
-    if (process.env.MK1_ENABLED?.trim() !== 'true') return;
+    // written, the anti-join re-finds everyone when it turns on. WP-H (H-03):
+    // the resolved marketingEnabled - stored switch first, MK1_ENABLED env
+    // as fallback - and false skips the candidate query entirely.
+    if (!cfg.marketingEnabled) return;
     this.cardRowsCache.clear();
 
-    const ids = await this.fetchCandidateIds(now);
+    const triggerOffsetMs = cfg.mk1DelayHours * HOUR_MS;
+    const ids = await this.fetchCandidateIds(now, triggerOffsetMs);
     if (ids.length === 0) return;
 
     const bookings = await this.prisma.booking.findMany({
@@ -232,6 +251,7 @@ export class NextAdventureEmailsService {
         now,
         siteLogoUrl,
         tourCounts,
+        triggerOffsetMs,
       );
       if (outcome === 'sent') {
         sent++;
@@ -255,12 +275,15 @@ export class NextAdventureEmailsService {
    * REJECTED / PENDING never completed checkout and stay out entirely —
    * they are not customers and must not spawn suppression rows.
    */
-  private async fetchCandidateIds(now: Date): Promise<string[]> {
+  private async fetchCandidateIds(
+    now: Date,
+    triggerOffsetMs: number,
+  ): Promise<string[]> {
     const coarseCutoff = new Date(
-      now.getTime() - TRIGGER_OFFSET_MS + ZONE_SLACK_MS,
+      now.getTime() - triggerOffsetMs + ZONE_SLACK_MS,
     );
     const horizon = new Date(
-      now.getTime() - TRIGGER_OFFSET_MS - HORIZON_MS - ZONE_SLACK_MS,
+      now.getTime() - triggerOffsetMs - HORIZON_MS - ZONE_SLACK_MS,
     );
     const rows = await this.prisma.$queryRaw<{ id: string }[]>`
       SELECT b."id"
@@ -295,8 +318,9 @@ export class NextAdventureEmailsService {
     now: Date,
     siteLogoUrl: string | null,
     tourCounts: Map<string, number>,
+    triggerOffsetMs: number,
   ): Promise<'sent' | 'skipped'> {
-    if (!this.isDue(booking, now)) return 'skipped';
+    if (!this.isDue(booking, now, triggerOffsetMs)) return 'skipped';
 
     // The candidate SQL requires contactEmail IS NOT NULL; a blank-after-trim
     // address is "not yet" (nothing written) rather than a decided reason
@@ -455,18 +479,22 @@ export class NextAdventureEmailsService {
   }
 
   /**
-   * Has tour_end + 72h passed in the booking's OWN zone? Both instants are
-   * local wall clock (the BK-3 `hasTourFinished` idiom); no resolvable zone
-   * = not due, never a guess — a late MK-1 is recoverable, one sent mid-stay
-   * off a wrong clock is spam.
+   * Has tour_end + the configured delay (built-in 72h) passed in the
+   * booking's OWN zone? Both instants are local wall clock (the BK-3
+   * `hasTourFinished` idiom); no resolvable zone = not due, never a guess —
+   * a late MK-1 is recoverable, one sent mid-stay off a wrong clock is spam.
    */
-  private isDue(booking: BookingRow, now: Date): boolean {
+  private isDue(
+    booking: BookingRow,
+    now: Date,
+    triggerOffsetMs: number,
+  ): boolean {
     const zone = booking.tourTimeZone ?? booking.tour.timeZone ?? null;
     if (!zone || !booking.tourEndDateTime) return false;
     const localNowDate = localNow(zone, now);
     return (
       localNowDate.getTime() - booking.tourEndDateTime.getTime() >=
-      TRIGGER_OFFSET_MS
+      triggerOffsetMs
     );
   }
 

@@ -1,4 +1,5 @@
 import { EmailAudience, EmailStream, EmailTemplateKey } from '@prisma/client';
+import { EmailSettingsService } from './email-settings.service';
 import { NextAdventureEmailsService } from './next-adventure-emails.service';
 
 /**
@@ -85,6 +86,9 @@ describe('NextAdventureEmailsService', () => {
     isOptedOut: jest.Mock;
   };
   let prefs: { issueUnsubscribeToken: jest.Mock; unsubscribeWiring: jest.Mock };
+  // WP-H: env-faithful settings mock (defaults() re-reads process.env per
+  // call, so MK1_ENABLED still steers marketingEnabled here).
+  let settings: { resolve: jest.Mock; invalidate: jest.Mock };
   let svc: NextAdventureEmailsService;
 
   const envBefore = process.env.MK1_ENABLED;
@@ -142,11 +146,17 @@ describe('NextAdventureEmailsService', () => {
       }),
     };
 
+    settings = {
+      resolve: jest.fn(() => Promise.resolve(EmailSettingsService.defaults())),
+      invalidate: jest.fn(),
+    };
+
     svc = new NextAdventureEmailsService(
       prisma as never,
       mail as never,
       emailLog as never,
       prefs as never,
+      settings as never,
     );
   });
 
@@ -436,5 +446,54 @@ describe('NextAdventureEmailsService', () => {
       error: 'boom',
     });
     await expect(svc.sweep(MONDAY_MORNING_OPEN)).resolves.toBeUndefined();
+  });
+
+  // ── WP-H (H-03): resolved settings steer the switch, window and delay ──────
+
+  describe('WP-H settings resolution', () => {
+    it('stored marketingEnabled=false beats MK1_ENABLED=true env: nothing runs', async () => {
+      process.env.MK1_ENABLED = 'true';
+      settings.resolve.mockResolvedValue({
+        ...EmailSettingsService.defaults(),
+        marketingEnabled: false,
+      });
+      await svc.sweep(MONDAY_MORNING_OPEN);
+      expect(prisma.$queryRaw).not.toHaveBeenCalled();
+      expect(emailLog.claimAndSend).not.toHaveBeenCalled();
+      expect(emailLog.recordSuppressed).not.toHaveBeenCalled();
+    });
+
+    it('configured window hours move the marketing morning: 10:30 local closed under a 14-16 window', async () => {
+      settings.resolve.mockResolvedValue({
+        ...EmailSettingsService.defaults(),
+        windowStartHour: 14,
+        windowEndHour: 16,
+      });
+      await svc.sweep(MONDAY_MORNING_OPEN); // 10:30 local — outside 14-16
+      expect(prisma.$queryRaw).not.toHaveBeenCalled();
+      // …and 14:30Z+2h = Mon 12:30 local is still closed; Mon 18:30Z = 14:30
+      // local is open under the same config.
+      await svc.sweep(new Date('2026-08-10T18:30:00.000Z'));
+      expect(prisma.$queryRaw).toHaveBeenCalled();
+    });
+
+    it('mk1DelayHours is resolved per tick and threads into the candidate cutoff', async () => {
+      settings.resolve.mockResolvedValue({
+        ...EmailSettingsService.defaults(),
+        mk1DelayHours: 24,
+      });
+      prisma.$queryRaw.mockResolvedValue([]); // candidate query only
+      await svc.sweep(MONDAY_MORNING_OPEN);
+      const values = prisma.$queryRaw.mock.calls[0].slice(1) as unknown[];
+      const dates = values.filter((v): v is Date => v instanceof Date);
+      // coarseCutoff = now - delay + ZONE_SLACK (14h): 24h delay → now - 10h.
+      const HOUR = 3_600_000;
+      expect(dates.map((d) => d.getTime())).toContain(
+        MONDAY_MORNING_OPEN.getTime() - 24 * HOUR + 14 * HOUR,
+      );
+      // A due-at-72h booking is NOT due at 24h? No - shorter delay makes
+      // candidates due SOONER; the 72h-old fixture stays due. The precise
+      // isDue re-check is covered by the not-yet-due test above.
+    });
   });
 });

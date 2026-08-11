@@ -12,6 +12,10 @@ model EmailSend {
   templateKey EmailTemplateKey
   /// Dedupe scope: booking id or operator id — one send
   /// per (template, scope). Admin resends suffix `#resend-{n}`.
+  /// Dashboard test-sends (WP-H) use `test:<userId>#<n>` — the `test:` prefix
+  /// can never equal a booking/operator UUID, so no sweep anti-join (they all
+  /// match `scopeId` against `o."id"` / `b."id"` exactly) ever counts a test
+  /// row as a decision for a real send.
   scopeId     String
   toEmail     String
   stream      EmailStream
@@ -28,6 +32,10 @@ model EmailSend {
   @@unique([templateKey, scopeId])
   @@index([toEmail, createdAt])
   @@index([scopeId, createdAt])
+  // WP-H: the email centre's global activity list filters by status in SQL
+  // (GET /email/sends?status=…) — the D-29 rule adds the index the moment a
+  // status-led query exists.
+  @@index([status, createdAt])
   @@map("email_sends")
 }
 

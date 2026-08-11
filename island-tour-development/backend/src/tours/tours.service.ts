@@ -60,8 +60,8 @@ import {
 } from '@prisma/client';
 import { FxRatesService } from '@/fx/fx-rates.service';
 import { InboxService } from '@/inbox/inbox.service';
+import { EmailSettingsService } from '@/mail/email-settings.service';
 import { MailService } from '@/mail/mail.service';
-import { salesRecipient } from '@/common/utils/sales-recipient.util';
 import { dashboardAppBase } from '@/common/utils/app-urls.util';
 import {
   AdminToursQueryDto,
@@ -116,6 +116,7 @@ export class ToursService {
     private readonly availability: AvailabilityService,
     private readonly fx: FxRatesService,
     private readonly mail: MailService,
+    private readonly emailSettings: EmailSettingsService,
     private readonly inbox: InboxService,
   ) {}
 
@@ -3405,33 +3406,34 @@ export class ToursService {
    * email in it would publish it to travellers.
    */
   private notifyReviewSubmitted(tourId: string): void {
-    // ADMIN_EMAIL is the same reviewer mailbox the cancellation flow uses.
-    // Unlike that flow this does NOT fail the action when it is unset: the
-    // tour is in the queue either way, and refusing the submission would
-    // punish the operator for our configuration.
-    const adminTo = process.env.ADMIN_EMAIL?.trim() || undefined;
-    // INT-2: the sales pipeline hears about submissions too. Only a DISTINCT
-    // sales mailbox gets the variant - when salesRecipient() falls back to
-    // ADMIN_EMAIL the reviewer email above is the one and only send. The
-    // comparison is case-insensitive: mailboxes are, and a casing mismatch
-    // would double-send to the same inbox.
-    const salesTo = salesRecipient();
-    const distinctSalesTo =
-      salesTo && salesTo.toLowerCase() !== adminTo?.toLowerCase()
-        ? salesTo
-        : null;
+    void (async () => {
+      // ADMIN_EMAIL is the same reviewer mailbox the cancellation flow uses.
+      // Unlike that flow this does NOT fail the action when it is unset: the
+      // tour is in the queue either way, and refusing the submission would
+      // punish the operator for our configuration.
+      const adminTo = process.env.ADMIN_EMAIL?.trim() || undefined;
+      // INT-2: the sales pipeline hears about submissions too. Only a
+      // DISTINCT sales mailbox gets the variant - when the resolved sales
+      // address (WP-H: stored setting ?? SALES_EMAIL ?? ADMIN_EMAIL env)
+      // falls back to ADMIN_EMAIL the reviewer email above is the one and
+      // only send. The comparison is case-insensitive: mailboxes are, and a
+      // casing mismatch would double-send to the same inbox.
+      const salesTo = (await this.emailSettings.resolve()).salesEmail;
+      const distinctSalesTo =
+        salesTo && salesTo.toLowerCase() !== adminTo?.toLowerCase()
+          ? salesTo
+          : null;
 
-    if (!adminTo) {
-      this.logger.error(
-        distinctSalesTo
-          ? `ADMIN_EMAIL is not configured - tour ${tourId} entered the review queue with no reviewer notified (sales alert still sent)`
-          : `Neither ADMIN_EMAIL nor SALES_EMAIL is configured - tour ${tourId} entered the review queue with nobody notified`,
-      );
-      if (!distinctSalesTo) return;
-    }
+      if (!adminTo) {
+        this.logger.error(
+          distinctSalesTo
+            ? `ADMIN_EMAIL is not configured - tour ${tourId} entered the review queue with no reviewer notified (sales alert still sent)`
+            : `No reviewer or sales mailbox is configured - tour ${tourId} entered the review queue with nobody notified`,
+        );
+        if (!distinctSalesTo) return;
+      }
 
-    void this.prisma.tour
-      .findUnique({
+      const tour = await this.prisma.tour.findUnique({
         where: { id: tourId },
         select: {
           name: true,
@@ -3444,42 +3446,40 @@ export class ToursService {
             },
           },
         },
-      })
-      .then((tour) => {
-        if (!tour) return;
-        const operatorName =
-          tour.operator?.companyInfo?.companyName ??
-          tour.operator?.user?.name ??
-          'An operator';
-        const sends: Promise<void>[] = [];
-        if (adminTo) {
-          sends.push(
-            this.mail.sendTourSubmittedForReviewEmail(adminTo, {
-              tourName: tour.name,
-              operatorName,
-              destinationName: tour.destination?.name ?? 'the Caribbean',
-              reviewUrl: this.tourReviewUrl(tourId),
-            }),
-          );
-        }
-        if (distinctSalesTo) {
-          sends.push(
-            this.mail.sendTourSubmittedSalesEmail(distinctSalesTo, {
-              tourName: tour.name,
-              operatorName,
-              submittedAt: tour.submittedAt ?? new Date(),
-              reviewUrl: this.tourReviewUrl(tourId),
-            }),
-          );
-        }
-        return Promise.all(sends).then(() => undefined);
-      })
-      .catch((err: unknown) =>
-        this.logger.error(
-          `Review-submitted email failed for tour ${tourId}`,
-          err instanceof Error ? err.stack : String(err),
-        ),
-      );
+      });
+      if (!tour) return;
+      const operatorName =
+        tour.operator?.companyInfo?.companyName ??
+        tour.operator?.user?.name ??
+        'An operator';
+      const sends: Promise<void>[] = [];
+      if (adminTo) {
+        sends.push(
+          this.mail.sendTourSubmittedForReviewEmail(adminTo, {
+            tourName: tour.name,
+            operatorName,
+            destinationName: tour.destination?.name ?? 'the Caribbean',
+            reviewUrl: this.tourReviewUrl(tourId),
+          }),
+        );
+      }
+      if (distinctSalesTo) {
+        sends.push(
+          this.mail.sendTourSubmittedSalesEmail(distinctSalesTo, {
+            tourName: tour.name,
+            operatorName,
+            submittedAt: tour.submittedAt ?? new Date(),
+            reviewUrl: this.tourReviewUrl(tourId),
+          }),
+        );
+      }
+      await Promise.all(sends);
+    })().catch((err: unknown) =>
+      this.logger.error(
+        `Review-submitted email failed for tour ${tourId}`,
+        err instanceof Error ? err.stack : String(err),
+      ),
+    );
   }
 
   private notifyChangesRequested(tourId: string, note: string): void {
