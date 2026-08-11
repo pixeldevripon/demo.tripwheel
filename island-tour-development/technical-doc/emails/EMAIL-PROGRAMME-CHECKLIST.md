@@ -18,7 +18,7 @@
 | 2 | WP-D onboarding sequence | backend | `feat/email-onboarding-sequence` | **merged** | #185 |
 | 2 | WP-E dashboard surfaces | dashboard | `feat/operator-onboarding-dashboard` | **merged** | #56 |
 | 2 | WP-F unsubscribe page | frontend | `feat/unsubscribe-page` | **merged** | #183 |
-| 3 | WP-G consent + MK-1 | backend | `feat/email-mk1-marketing` | **in review** | #188 |
+| 3 | WP-G consent + MK-1 | backend | `feat/email-mk1-marketing` | **merged** | #188 |
 | 4 | WP-H email centre (API) | backend | `feat/email-settings-api` | not started | — |
 | 4 | WP-H email centre (UI) | dashboard | `feat/email-centre-dashboard` | not started | — |
 
@@ -403,7 +403,7 @@ AFTER WP-C (DTO strips `verificationStatus`) · **WP-G may not merge until WP-F 
 - [x] G-15 Selection spec: category contrast/adjacent/flagship, 7-day availability edge, <3 drop
 - [x] G-16 Suppression matrix spec (each of the six + consent-missing + opt-out)
 - [x] G-17 Backfill assertion (run twice → same count)
-- [ ] G-18 Suite green · reviewer agent pass · docs same-commit · PR merged · verify WP-F
+- [x] G-18 Suite green · reviewer agent pass · docs same-commit · PR merged · verify WP-F
       unsubscribe URL resolves in prod BEFORE enabling the sweep path
 
 ---
