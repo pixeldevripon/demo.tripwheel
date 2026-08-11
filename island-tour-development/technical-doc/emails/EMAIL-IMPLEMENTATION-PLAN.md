@@ -232,7 +232,7 @@ OB-8 — enforced in the sweeper by checking the operator's latest LIFECYCLE `Em
 
 ## 3. Dependency graph and parallelisation
 
-```
+```text
 WP-A  send spine (backend)  ──────────────┬──▶ WP-B  customer funnel (backend)
                                           ├──▶ WP-D  onboarding sequence (backend)   ◀── WP-C
 WP-C  operator state machine (backend) ───┤
@@ -261,6 +261,7 @@ The foundation: send log, opt-outs, unsubscribe API, mail-service widening, wind
 plumbing. **No behaviour change to any existing email** — this PR only adds capability.
 
 Build:
+
 1. **Schema** — new `prisma/emails.prisma` with §2.2/§2.3 models; enums into `prisma/enums.prisma`
    (§2.1 + `EmailStream`, `EmailSendStatus`, `EmailAudience`). One migration
    (`email_programme_spine`). Demo seed parity: small seeder in `prisma/demo/` (a few EmailSend
@@ -498,10 +499,6 @@ switch needed) — assert that in the spec.
 
 ## 6. Package status
 
-- [ ] WP-A send spine (backend)
-- [ ] WP-B customer funnel: BK-1 · BK-2 · BK-3R · CX-1 (backend)
-- [ ] WP-C operator state machine + INT-1/INT-2 (backend)
-- [ ] WP-D onboarding sequence OB-1…OB-8 + sweeper (backend)
-- [ ] WP-E dashboard: queue · pipeline · email timeline (dashboard repo)
-- [ ] WP-F unsubscribe page (frontend)
-- [ ] WP-G consent + MK-1 (backend, last)
+Tracked task-by-task in [`EMAIL-PROGRAMME-CHECKLIST.md`](./EMAIL-PROGRAMME-CHECKLIST.md) — one
+checkbox per atomic task with stable IDs (`A-01`…`G-18`), grouped by scope (backend / dashboard /
+frontend). Update it in the same commit as the work.
