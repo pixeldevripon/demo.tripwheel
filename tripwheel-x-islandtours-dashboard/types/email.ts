@@ -72,7 +72,10 @@ export interface EmailSendRow {
  * paths and are never resent from here.
  */
 export const RESENDABLE_TEMPLATE_KEYS = [
-    'OB1_VERIFY_EMAIL',
+    // OB1 is DELIBERATELY absent: the backend's resend allowlist excludes it
+    // (verification links are minted by Better Auth, not re-renderable), and
+    // OB1 ledger rows are scoped by EMAIL ADDRESS, not operator id - a
+    // resend button on them could only ever fail (review of #57, High).
     'OB2_WELCOME_AGREEMENT',
     'OB2A_APPROVED',
     'OB3_FIRST_TOUR_HOWTO',

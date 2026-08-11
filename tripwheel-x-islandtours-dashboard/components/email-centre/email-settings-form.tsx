@@ -18,6 +18,10 @@
  * saying so instead of a control.
  */
 
+import {
+    REVIEW_REQUEST_BOUNDS,
+    clockLabel,
+} from '@/lib/settings/review-request-bounds';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -86,16 +90,11 @@ const NUMBER_BOUNDS: Partial<Record<ScalarKey, NumberBounds>> = {
     mk1DelayHours: { min: 1, max: 720 },
 };
 
-/** Review-slice bounds (UpdateReviewRequestsDto via PickType). */
+/** Review-slice bounds - the shared dashboard owner (review of #57, Low 5). */
 const REVIEW_BOUNDS: Record<
     Exclude<keyof ReviewRequestSettingsSlice, 'enabled'>,
     NumberBounds
-> = {
-    firstSendLocalHour: { min: 0, max: 23 },
-    firstSendDelayDays: { min: 0, max: 14 },
-    reminderAfterDays: { min: 1, max: 30 },
-    giveUpAfterDays: { min: 1, max: 180 },
-};
+> = REVIEW_REQUEST_BOUNDS;
 
 const ADDRESS_KEYS = ['salesEmail', 'mailReplyTo', 'ob6ReplyTo'] as const;
 
@@ -120,9 +119,7 @@ function weekdaysLabel(csv: string): string {
         .join(', ');
 }
 
-function hourLabel(hour: number): string {
-    return `${String(hour).padStart(2, '0')}:00`;
-}
+
 
 // ── Shared field chrome ──────────────────────────────────────────────────────
 
@@ -482,9 +479,9 @@ export function EmailSettingsForm() {
             !out.windowEndHour &&
             mergedStart >= mergedEnd
         ) {
-            out.windowEndHour = `The window must open before it closes (currently ${hourLabel(
+            out.windowEndHour = `The window must open before it closes (currently ${clockLabel(
                 mergedStart,
-            )}-${hourLabel(mergedEnd)})`;
+            )}-${clockLabel(mergedEnd)})`;
         }
 
         for (const [key, bounds] of Object.entries(REVIEW_BOUNDS) as [

@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/select';
 import { useEmailSends } from '@/hooks/email-centre/use-email-centre';
 import { EMAIL_TEMPLATE_LABELS } from '@/lib/emails/template-labels';
+import { EMAIL_STREAM, emailSendMeta } from '@/components/common/status-maps';
 import {
     EMAIL_SEND_STATUS_VALUES,
     EMAIL_TEMPLATE_KEYS,
@@ -35,22 +36,21 @@ import {
     type EmailStream,
 } from '@/types/email';
 import type { EmailSendsQueryParams } from '@/types/email-centre';
-import { makeEmailSendColumns } from './email-send-columns';
+import { EMAIL_SEND_COLUMNS } from './email-send-columns';
 import { EmailSendDetailSheet } from './email-send-detail-sheet';
 import { TestSendDialog } from './test-send-dialog';
 
-const STREAM_OPTIONS = [
-    ['TRANSACTIONAL', 'Transactional'],
-    ['LIFECYCLE', 'Lifecycle'],
-    ['MARKETING', 'Marketing'],
-    ['INTERNAL', 'Internal'],
-] as const;
+// Filter options derive from the shared status maps - one label owner
+// (review of #57, Medium 4; the bookings-table convention).
+const STREAM_OPTIONS = (
+    Object.entries(EMAIL_STREAM) as Array<
+        [EmailStream, { label: string }]
+    >
+).map(([value, meta]) => [value, meta.label] as const);
 
-const STATUS_LABELS: Record<EmailSendStatus, string> = {
-    SENT: 'Sent',
-    FAILED: 'Failed',
-    SUPPRESSED: 'Suppressed',
-};
+const STATUS_OPTIONS = EMAIL_SEND_STATUS_VALUES.map(
+    (value) => [value, emailSendMeta(value).label] as const,
+);
 
 export function EmailActivityView() {
     const {
@@ -83,12 +83,22 @@ export function EmailActivityView() {
         ...(filters.to ? { to: `${filters.to}T23:59:59.999Z` } : {}),
     };
 
-    const { data, isLoading } = useEmailSends(params);
+    const { data, isLoading, isError } = useEmailSends(params);
     const rows = data?.data ?? [];
 
-    const columns = makeEmailSendColumns();
-    // Index-based so the sheet's prev/next arrows can walk the current page.
-    const [viewIndex, setViewIndex] = useState<number | null>(null);
+    // Selection is by ROW ID, index derived: a resend invalidates the list
+    // and the newest-first refetch prepends the new row, shifting every
+    // index - an index-held sheet would silently swap to a DIFFERENT send
+    // under the admin's eyes (review of #57, Medium 3). The pager still
+    // walks the current page via the derived index.
+    const [viewId, setViewId] = useState<string | null>(null);
+    const viewIndex =
+        viewId != null
+            ? (() => {
+                  const i = rows.findIndex((r) => r.id === viewId);
+                  return i === -1 ? null : i;
+              })()
+            : null;
     const viewing = viewIndex != null ? (rows[viewIndex] ?? null) : null;
 
     return (
@@ -96,16 +106,16 @@ export function EmailActivityView() {
             <EmailSendDetailSheet
                 send={viewing}
                 onOpenChange={(open) => {
-                    if (!open) setViewIndex(null);
+                    if (!open) setViewId(null);
                 }}
                 onPrev={
                     viewIndex != null && viewIndex > 0
-                        ? () => setViewIndex(viewIndex - 1)
+                        ? () => setViewId(rows[viewIndex - 1]!.id)
                         : undefined
                 }
                 onNext={
                     viewIndex != null && viewIndex < rows.length - 1
-                        ? () => setViewIndex(viewIndex + 1)
+                        ? () => setViewId(rows[viewIndex + 1]!.id)
                         : undefined
                 }
                 position={
@@ -114,12 +124,23 @@ export function EmailActivityView() {
                         : undefined
                 }
             />
+            {isError ? (
+
+                <p className='text-sm text-destructive'>
+
+                    Could not load the email activity log. You need system-admin
+
+                    access, and the filters must be valid — adjust and retry.
+
+                </p>
+
+            ) : null}
             <DataTable
-                columns={columns}
+                columns={EMAIL_SEND_COLUMNS}
+                getRowId={(r: EmailSendRow) => r.id}
                 data={rows}
                 isLoading={isLoading}
-                onRowClick={(r: EmailSendRow) =>
-                    setViewIndex(rows.findIndex((x) => x.id === r.id))
+                onRowClick={(r: EmailSendRow) => setViewId(r.id)
                 }
                 pagination={{
                     total: data?.total ?? 0,
@@ -177,7 +198,7 @@ export function EmailActivityView() {
                                 <SelectItem value='all'>All Status</SelectItem>
                                 {EMAIL_SEND_STATUS_VALUES.map((s) => (
                                     <SelectItem key={s} value={s}>
-                                        {STATUS_LABELS[s]}
+                                        {emailSendMeta(s).label}
                                     </SelectItem>
                                 ))}
                             </SelectContent>

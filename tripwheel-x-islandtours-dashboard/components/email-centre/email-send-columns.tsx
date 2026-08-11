@@ -22,9 +22,11 @@ export function isResendRow(row: Pick<EmailSendRow, 'scopeId'>): boolean {
 }
 
 /**
- * For the OB templates the send-log `scopeId` IS the operator id — a resend
- * appends `#resend-{n}`, so strip from the first `#`. Never valid for test
- * rows (`test:<userId>#<n>`), which the caller excludes first.
+ * For the RESENDABLE OB templates (OB-2…OB-8, OB-2A) the send-log `scopeId`
+ * IS the operator id — a resend appends `#resend-{n}`, so strip from the
+ * first `#`. NOT true for OB-1 (scoped by email address, and deliberately
+ * not resendable) or test rows (`test:<userId>#<n>`) — the caller excludes
+ * both first via RESENDABLE_TEMPLATE_KEYS.
  */
 export function operatorIdFromScope(scopeId: string): string {
     return scopeId.split('#')[0];
@@ -142,3 +144,9 @@ export function makeEmailSendColumns(): ColumnDef<EmailSendRow>[] {
         },
     ];
 }
+
+/**
+ * Module-level singleton: the factory takes no arguments, so building it per
+ * render was pure waste (review of #57, Low 6).
+ */
+export const EMAIL_SEND_COLUMNS = makeEmailSendColumns();

@@ -1,5 +1,6 @@
 'use client';
 
+import { settingsKeys } from '@/hooks/settings/use-settings';
 import {
     keepPreviousData,
     useMutation,
@@ -45,8 +46,16 @@ export function useUpdateEmailSettings() {
     return useMutation({
         mutationFn: (payload: UpdateEmailSettingsPayload) =>
             emailCentreApi.updateSettings(payload),
-        onSuccess: (result) => {
+        onSuccess: (result, payload) => {
             queryClient.setQueryData(emailCentreKeys.settings(), result);
+            if (payload.review) {
+                // The review slice writes the SAME rows the older Settings →
+                // Review Requests form reads - without this it serves stale
+                // values for up to its staleTime (review of #57, Medium 2).
+                void queryClient.invalidateQueries({
+                    queryKey: settingsKeys.reviewRequests(),
+                });
+            }
         },
     });
 }
