@@ -2,6 +2,7 @@
 
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { operatorsApi } from '@/lib/api/operators';
+import { emailKeys } from '@/hooks/emails/use-operator-emails';
 import type {
   CreateOperatorPayload,
   OperatorsQueryParams,
@@ -84,8 +85,12 @@ export function useDecideVerification() {
       id: string;
       decision: VerificationDecision;
     }) => operatorsApi.decideVerification(id, decision),
-    onSuccess: () => {
+    onSuccess: (_data, { id }) => {
       queryClient.invalidateQueries({ queryKey: operatorKeys.all });
+      // Approval fires OB-2A backend-side; without this the mounted (or
+      // 30s-stale-cached) email timeline never shows the row the admin was
+      // just told about (review finding 1 on PR #56).
+      queryClient.invalidateQueries({ queryKey: emailKeys.operator(id) });
     },
   });
 }

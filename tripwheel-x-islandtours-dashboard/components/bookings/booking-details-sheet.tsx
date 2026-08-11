@@ -27,7 +27,7 @@ import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/common/status-badge';
 import {
   BOOKING_DISPLAY_STATUS,
-  EMAIL_SEND,
+  emailSendMeta,
   REFUND_STATUS,
   SETTLEMENT_METHOD_LABEL,
   SETTLEMENT_STATUS,
@@ -64,14 +64,16 @@ export function BookingDetailsSheet({
   position?: { index: number; count: number };
 }) {
   const { can } = useRole();
-  // Send-log rows for the Timeline section (WP-E E-22) - fetched only while
-  // the sheet is open. The endpoint applies the same booking-scope rule as
-  // GET /bookings/:id, so whoever can open this sheet can read these rows.
-  const { data: emails } = useBookingEmails(b.id, open);
   // Conflict #7: a seat without VIEW_BOOKING_FINANCIALS receives the manifest
   // projection - every money field and the traveler email arrive null, so the
   // Payment/Settlement sections would render as rows of dashes. Hide them.
   const showFinancials = can('VIEW_BOOKING_FINANCIALS');
+  // Send-log rows for the Timeline section (WP-E E-22), fetched only while
+  // the sheet is open AND the seat holds financials: the rows carry the
+  // traveller's email (toEmail), the exact field the manifest projection
+  // withholds from guide-level seats - so those seats must never even
+  // REQUEST them (security review of PR #56, finding 1).
+  const { data: emails } = useBookingEmails(b.id, open && showFinancials);
   const due = refundDue(b);
   const statusMeta = BOOKING_DISPLAY_STATUS[b.displayStatus];
 
@@ -293,14 +295,14 @@ export function BookingDetailsSheet({
                 value={
                   <span className="inline-flex items-center gap-2">
                     <StatusBadge
-                      variant={EMAIL_SEND[e.status].variant}
+                      variant={emailSendMeta(e.status).variant}
                       hint={
                         e.suppressedReason ??
                         e.error ??
-                        EMAIL_SEND[e.status].hint
+                        emailSendMeta(e.status).hint
                       }
                     >
-                      {EMAIL_SEND[e.status].label}
+                      {emailSendMeta(e.status).label}
                     </StatusBadge>
                     {formatDate(e.createdAt, 'long')}
                   </span>

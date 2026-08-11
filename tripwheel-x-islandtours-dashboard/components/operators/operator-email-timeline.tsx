@@ -28,7 +28,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatusBadge } from '@/components/common/status-badge';
-import { EMAIL_SEND } from '@/components/common/status-maps';
+import { emailSendMeta } from '@/components/common/status-maps';
 import { Section } from '@/components/common/detail-sheet';
 import {
     useOperatorEmails,
@@ -96,7 +96,7 @@ function EmailTimelineRow({
     canResend: boolean;
     onResend: (row: EmailSendRow) => void;
 }) {
-    const meta = EMAIL_SEND[row.status];
+    const meta = emailSendMeta(row.status);
     const isResend = row.scopeId.includes('#resend-');
 
     return (

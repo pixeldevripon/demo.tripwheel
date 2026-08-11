@@ -371,6 +371,23 @@ export const EMAIL_SEND: Record<EmailSendStatus, StatusMeta> = {
     },
 };
 
+/**
+ * Crash-proof EMAIL_SEND lookup. `templateKey` is already widened to string
+ * so unknown templates degrade to their raw key; an unknown STATUS from a
+ * newer backend must degrade the same way instead of throwing on `.variant`
+ * and taking the whole sheet down (the REFUND_STATUS[null] failure class,
+ * test report 2026-08-01 §Admin.3).
+ */
+export function emailSendMeta(status: string): StatusMeta {
+    return (
+        EMAIL_SEND[status as EmailSendStatus] ?? {
+            label: status,
+            variant: 'neutral' as const,
+            hint: 'Unrecognized send status (newer backend?)',
+        }
+    );
+}
+
 /** Boolean actives (destinations, hubs, categories, collections, operators). */
 /** Legal & policy pages (types/pages.ts PageStatus). */
 export const PAGE_STATUS: Record<PageStatus, StatusMeta> = {

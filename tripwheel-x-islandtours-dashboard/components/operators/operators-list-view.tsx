@@ -6,14 +6,13 @@ import { OperatorsTable } from './operators-table';
 import { useOperators } from '@/hooks/operators/use-operators';
 import type { OperatorVerificationStatus } from '@/types/operator';
 
-/** The list's pipeline facets (WP-E E-16). */
-export type OperatorFacet = 'zeroTours' | 'firstTourLive';
+import {
+  type OperatorFacet,
+  VERIFICATION_FILTER_VALUES,
+} from './operator-filters';
 
-const VERIFICATION_FILTER_VALUES: OperatorVerificationStatus[] = [
-  'PENDING',
-  'VERIFIED',
-  'REJECTED',
-];
+// Re-exported for existing consumers of the list view's types.
+export type { OperatorFacet };
 
 export function OperatorsListView() {
   const {
@@ -29,9 +28,9 @@ export function OperatorsListView() {
   } = useTableState();
   const statusFilter = filters.isActive ?? 'all';
   // Server-side filter - the backend list API validates ?verificationStatus=.
-  const verificationFilter = VERIFICATION_FILTER_VALUES.includes(
-    filters.verificationStatus as OperatorVerificationStatus,
-  )
+  const verificationFilter = (
+    VERIFICATION_FILTER_VALUES as readonly OperatorVerificationStatus[]
+  ).includes(filters.verificationStatus as OperatorVerificationStatus)
     ? (filters.verificationStatus as OperatorVerificationStatus)
     : 'all';
   const facet =

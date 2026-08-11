@@ -1,5 +1,9 @@
 'use client';
 
+import {
+  type OperatorFacet,
+  VERIFICATION_FILTER_VALUES,
+} from './operator-filters';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { PlusSignIcon, Store01Icon } from '@hugeicons/core-free-icons';
 
@@ -24,12 +28,16 @@ import { useUpdateOperator } from '@/hooks/operators/use-operators';
 import { useRole } from '@/contexts/role-context';
 import type { OperatorListItem } from '@/types/operator';
 
-/** Verification status chip row: server-side `?verificationStatus=` filter. */
+/**
+ * Verification status chip row: server-side `?verificationStatus=` filter.
+ * Derived from the list view's exported filter values - single source.
+ */
 const VERIFICATION_CHIPS = [
   { value: 'all', label: 'All' },
-  { value: 'PENDING', label: 'Pending' },
-  { value: 'VERIFIED', label: 'Verified' },
-  { value: 'REJECTED', label: 'Rejected' },
+  ...VERIFICATION_FILTER_VALUES.map((v) => ({
+    value: v,
+    label: v.charAt(0) + v.slice(1).toLowerCase(),
+  })),
 ] as const;
 
 /** Pipeline facets (client-side on the fetched page - see list view). */
@@ -52,8 +60,8 @@ interface OperatorsTableProps {
   statusFilter: string;
   verificationFilter: string;
   onVerificationFilterChange: (value: string) => void;
-  facet: 'zeroTours' | 'firstTourLive' | undefined;
-  onFacetChange: (value: 'zeroTours' | 'firstTourLive' | undefined) => void;
+  facet: OperatorFacet | undefined;
+  onFacetChange: (value: OperatorFacet | undefined) => void;
 }
 
 export function OperatorsTable({
@@ -92,12 +100,21 @@ export function OperatorsTable({
       data={data}
       isLoading={isLoading}
       pagination={{ total, page, limit, onPageChange, onLimitChange }}
-      empty={{
-        icon: Store01Icon,
-        title: 'No tour operators found.',
-        description: 'Invite your first operator to get started.',
-        action: addButton,
-      }}
+      empty={
+        facet && total > 0
+          ? {
+              icon: Store01Icon,
+              title: 'No operators on this page match the facet.',
+              description:
+                'The facet filters the current page only - page through, or clear it to see everything.',
+            }
+          : {
+              icon: Store01Icon,
+              title: 'No tour operators found.',
+              description: 'Invite your first operator to get started.',
+              action: addButton,
+            }
+      }
       toolbar={(table) => (
         <>
           <DataTableSearch
