@@ -1124,5 +1124,25 @@
         "saving": "Enregistrement...",
         "error": "Cela n'a pas fonctionné. Veuillez réessayer.",
         "verifiedNote": "Votre avis est publié intégralement, quelle que soit la note. Chaque avis sur Island Tours provient d'une réservation confirmée."
+    },
+    "unsubscribe": {
+        "invalidTitle": "Ce lien n'est plus valide.",
+        "invalidBody": "Le lien est peut-être incomplet ou provient d'un e-mail très ancien. Si vous continuez à recevoir des e-mails indésirables, contactez-nous et nous réglerons cela.",
+        "invalidBrowse": "Voir les tours",
+        "titleLifecycle": "Se désabonner des e-mails de configuration ?",
+        "titleMarketing": "Se désabonner des idées de voyage et des offres ?",
+        "bodyLifecycle": "Vous ne recevrez plus nos conseils et rappels concernant la configuration de vos tours sur Island Tours.",
+        "bodyMarketing": "Vous ne recevrez plus d'idées de voyage et d'offres occasionnelles d'Island Tours.",
+        "emailLine": "Cela s'applique à {email}.",
+        "confirm": "Se désabonner",
+        "working": "Désabonnement...",
+        "alreadyTitle": "Vous êtes déjà désabonné.",
+        "alreadyBody": "Nous n'enverrons plus ces e-mails à cette adresse.",
+        "successTitle": "Vous êtes désabonné.",
+        "successBody": "Vous ne recevrez plus ces e-mails.",
+        "transactionalNote": "Les e-mails concernant vos réservations - confirmations, modifications et annulations - arrivent toujours.",
+        "error": "Cela n'a pas fonctionné.",
+        "retry": "Veuillez réessayer.",
+        "browse": "Voir les tours"
     }
 }

@@ -17,7 +17,7 @@
 | 2 | WP-B customer funnel | backend | `feat/email-customer-funnel` | **in review** | #186 |
 | 2 | WP-D onboarding sequence | backend | `feat/email-onboarding-sequence` | **in review** | #185 |
 | 2 | WP-E dashboard surfaces | dashboard | `feat/operator-onboarding-dashboard` | not started | — |
-| 2 | WP-F unsubscribe page | frontend | `feat/unsubscribe-page` | not started | — |
+| 2 | WP-F unsubscribe page | frontend | `feat/unsubscribe-page` | **in review** | #183 |
 | 3 | WP-G consent + MK-1 | backend | `feat/email-mk1-marketing` | not started | — |
 
 Gates: WP-B/D/F start after WP-A merges · WP-D/E also need WP-C · WP-E's edit-form change merges
@@ -488,39 +488,39 @@ Needs WP-A's two public endpoints. Must be **live in production before WP-G merg
 
 ### Data layer
 
-- [ ] F-01 `lib/api/public/unsubscribe.ts` — `getUnsubscribeInfo(token)` shaped like
+- [x] F-01 `lib/api/public/unsubscribe.ts` — `getUnsubscribeInfo(token)` shaped like
       `review-invitation.ts`: plain `fetch`, `cache: 'no-store'`, **never `'use cache'`** (token
       resolvers must not cache validity), token through `seg()`, null on 404/failure
-- [ ] F-02 `confirmUnsubscribe(token)` client-lane POST (the `review-submit.ts` shape: plain
+- [x] F-02 `confirmUnsubscribe(token)` client-lane POST (the `review-submit.ts` shape: plain
       fetch to `BACKEND_API_BASE`, no cookie, throws on `!res.ok`)
 
 ### Route & UI
 
-- [ ] F-03 `app/(frontend)/[locale]/unsubscribe/[token]/page.tsx`: noindex metadata, `isLocale`
+- [x] F-03 `app/(frontend)/[locale]/unsubscribe/[token]/page.tsx`: noindex metadata, `isLocale`
       guard → `notFound()`, placeholder `generateStaticParams` (`[{ token: 'sample' }]`),
       `await connection()` + `Suspense` with skeleton
-- [ ] F-04 `loading.tsx` matching the Suspense fallback shape
-- [ ] F-05 Valid-token view: masked email, stream explanation (lifecycle vs marketing wording),
+- [x] F-04 `loading.tsx` matching the Suspense fallback shape
+- [x] F-05 Valid-token view: masked email, stream explanation (lifecycle vs marketing wording),
       confirm button; already-opted-out state renders "You're already unsubscribed"
-- [ ] F-06 Invalid/unknown token → one shared "link no longer valid" state (no oracle)
-- [ ] F-07 Client confirm component: POST → success state ("You won't get these emails
+- [x] F-06 Invalid/unknown token → one shared "link no longer valid" state (no oracle)
+- [x] F-07 Client confirm component: POST → success state ("You won't get these emails
       anymore" + "your booking emails always arrive" line); error → retry affordance
-- [ ] F-08 Design: `it-*` tokens, `it-section`/`it-container`, px values, no inline styles;
+- [x] F-08 Design: `it-*` tokens, `it-section`/`it-container`, px values, no inline styles;
       minimal `LegalPageShell`-adjacent layout
 
 ### Locale & routing
 
-- [ ] F-09 `proxy.ts`: rewrite rule #3 `^\/unsubscribe\/[^/]+$` → URL-preserving rewrite to
+- [x] F-09 `proxy.ts`: rewrite rule #3 `^\/unsubscribe\/[^/]+$` → URL-preserving rewrite to
       `DEFAULT_LOCALE` (emails link bare `/unsubscribe/{token}`; a 302 breaks one-click scanners)
-- [ ] F-10 New top-level `unsubscribe` key in ALL 7 `lib/i18n/dictionaries/*.json` (en canonical,
+- [x] F-10 New top-level `unsubscribe` key in ALL 7 `lib/i18n/dictionaries/*.json` (en canonical,
       machine-first for the other six)
-- [ ] F-11 **Bump `DICTIONARY_VERSION`** in `lib/i18n/dictionaries.ts`
-- [ ] F-12 Typed dict slice passed to the client component (`SavedEmailDict` pattern)
+- [x] F-11 **Bump `DICTIONARY_VERSION`** in `lib/i18n/dictionaries.ts`
+- [x] F-12 Typed dict slice passed to the client component (`SavedEmailDict` pattern)
 
 ### Tests & ship
 
-- [ ] F-13 Vitest: loader null-on-404 / shape-on-200; confirm component success + error states
-- [ ] F-14 Playwright e2e: happy path (resolve → confirm → success), invalid token state,
+- [x] F-13 Vitest: loader null-on-404 / shape-on-200; confirm component success + error states
+- [x] F-14 Playwright e2e: happy path (resolve → confirm → success), invalid token state,
       bare-URL rewrite lands on the page (not a redirect)
 - [ ] F-15 `pnpm test` + `pnpm test:e2e` green · reviewer agents (frontend-code-reviewer +
       frontend-security-reviewer in parallel, verify findings against source) · docs same-commit

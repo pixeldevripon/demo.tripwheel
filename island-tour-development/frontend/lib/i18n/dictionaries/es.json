@@ -1124,5 +1124,25 @@
         "saving": "Guardando...",
         "error": "No se ha podido enviar. Inténtalo de nuevo.",
         "verifiedNote": "Tu reseña se publica íntegra, sea cual sea la puntuación. Cada reseña en Island Tours procede de una reserva confirmada."
+    },
+    "unsubscribe": {
+        "invalidTitle": "Este enlace ya no es válido.",
+        "invalidBody": "Puede que el enlace esté incompleto o venga de un correo muy antiguo. Si sigues recibiendo correos que no quieres, escríbenos y lo resolvemos.",
+        "invalidBrowse": "Ver tours",
+        "titleLifecycle": "¿Cancelar la suscripción a los correos de configuración?",
+        "titleMarketing": "¿Cancelar la suscripción a ideas de viaje y ofertas?",
+        "bodyLifecycle": "Dejarás de recibir nuestros consejos y recordatorios sobre la configuración de tus tours en Island Tours.",
+        "bodyMarketing": "Dejarás de recibir ideas de viaje y ofertas ocasionales de Island Tours.",
+        "emailLine": "Esto se aplica a {email}.",
+        "confirm": "Cancelar suscripción",
+        "working": "Cancelando...",
+        "alreadyTitle": "Ya has cancelado la suscripción.",
+        "alreadyBody": "No enviaremos estos correos a esta dirección.",
+        "successTitle": "Suscripción cancelada.",
+        "successBody": "Ya no recibirás estos correos.",
+        "transactionalNote": "Los correos sobre tus reservas - confirmaciones, cambios y cancelaciones - siempre llegan.",
+        "error": "No se ha podido completar.",
+        "retry": "Inténtalo de nuevo.",
+        "browse": "Ver tours"
     }
 }

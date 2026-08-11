@@ -208,7 +208,9 @@ separately).
 ### Still open
 
 Admin custom scripts run on the tokenized routes (`/review/<token>`,
-`/cancel/*`, `*/thank-you/*`, receipts, `/checkout/processing`) because they
+`/cancel/*`, `*/thank-you/*`, receipts, `/checkout/processing`, and since
+2026-08-11 `/unsubscribe/<token>` — a never-expiring opt-out token, weaker
+than the review write-token but the same reach class) because they
 mount in the root layout. The write-path allowlist is genuinely strict and
 React drops `on*` props, so this is a *reach* problem, not an injection one: a
 compromised vendor CDN could read a review write-token from `location.pathname`.

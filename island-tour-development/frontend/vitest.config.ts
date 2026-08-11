@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import { defineConfig } from 'vitest/config';
@@ -22,6 +23,19 @@ export default defineConfig({
     test: {
         environment: 'jsdom',
         setupFiles: ['./vitest.setup.ts'],
+        // `import 'server-only'` is a NEXT BUNDLER alias, not an installable
+        // package. Specs CAN stub it per-file with the factory form
+        // (`vi.mock('server-only', () => ({}))` - three route/handler specs
+        // did exactly that); this alias just centralises the stub so every
+        // server-only lib module (the public token loaders, etc.) is
+        // testable without each spec repeating it. The guarantee the marker
+        // provides in the app - "this never reaches a client bundle" - is
+        // Next's to enforce, not the test runner's.
+        alias: {
+            'server-only': fileURLToPath(
+                new URL('./vitest.server-only-stub.ts', import.meta.url),
+            ),
+        },
         // Colocated: `foo.ts` is tested by `foo.test.ts` beside it, so a moved
         // file takes its test with it and an untested module is visible in the
         // directory listing rather than hidden in a parallel tree.

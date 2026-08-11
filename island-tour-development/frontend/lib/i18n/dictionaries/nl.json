@@ -1124,5 +1124,25 @@
         "saving": "Opslaan...",
         "error": "Dat is niet gelukt. Probeer het opnieuw.",
         "verifiedNote": "Je review wordt volledig gepubliceerd, wat de score ook is. Elke review op Island Tours komt van een bevestigde boeking."
+    },
+    "unsubscribe": {
+        "invalidTitle": "Deze link is niet meer geldig.",
+        "invalidBody": "De link is mogelijk onvolledig of komt uit een heel oude e-mail. Blijf je e-mails ontvangen die je niet wilt, neem dan contact op en we lossen het op.",
+        "invalidBrowse": "Bekijk tours",
+        "titleLifecycle": "Afmelden voor instel-e-mails?",
+        "titleMarketing": "Afmelden voor reisideeën en aanbiedingen?",
+        "bodyLifecycle": "Je ontvangt geen tips en herinneringen meer over het instellen van je tours op Island Tours.",
+        "bodyMarketing": "Je ontvangt geen reisideeën en aanbiedingen meer van Island Tours.",
+        "emailLine": "Dit geldt voor {email}.",
+        "confirm": "Afmelden",
+        "working": "Bezig met afmelden...",
+        "alreadyTitle": "Je bent al afgemeld.",
+        "alreadyBody": "We sturen deze e-mails niet meer naar dit adres.",
+        "successTitle": "Je bent afgemeld.",
+        "successBody": "Je ontvangt deze e-mails niet meer.",
+        "transactionalNote": "E-mails over je boekingen - bevestigingen, wijzigingen en annuleringen - komen altijd aan.",
+        "error": "Dat is niet gelukt.",
+        "retry": "Probeer het opnieuw.",
+        "browse": "Bekijk tours"
     }
 }

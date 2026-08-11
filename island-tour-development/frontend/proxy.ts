@@ -115,6 +115,18 @@ export async function proxy(request: NextRequest) {
         return NextResponse.rewrite(url);
     }
 
+    // 5c. Unsubscribe page - same contract again (email programme WP-F):
+    //     every lifecycle/marketing email footer links /unsubscribe/{token}
+    //     with no locale prefix, served from the default-locale branch via a
+    //     URL-preserving rewrite. It must be a REWRITE: mailbox providers'
+    //     one-click-unsubscribe scanners treat a redirect as a dead link.
+    //     Tokenized and noindex; the GET only resolves - opting out is a POST.
+    if (/^\/unsubscribe\/[^/]+$/.test(pathname)) {
+        const url = request.nextUrl.clone();
+        url.pathname = `/${DEFAULT_LOCALE}${pathname}`;
+        return NextResponse.rewrite(url);
+    }
+
     // 6. Public path without a locale → redirect to the locale-prefixed URL.
     const locale = resolveLocale(request);
     const url = request.nextUrl.clone();
