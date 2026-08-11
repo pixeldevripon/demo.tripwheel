@@ -18,7 +18,7 @@
 | 2 | WP-D onboarding sequence | backend | `feat/email-onboarding-sequence` | **merged** | #185 |
 | 2 | WP-E dashboard surfaces | dashboard | `feat/operator-onboarding-dashboard` | **merged** | #56 |
 | 2 | WP-F unsubscribe page | frontend | `feat/unsubscribe-page` | **merged** | #183 |
-| 3 | WP-G consent + MK-1 | backend | `feat/email-mk1-marketing` | **in review** | — |
+| 3 | WP-G consent + MK-1 | backend | `feat/email-mk1-marketing` | **in review** | #188 |
 
 Gates: WP-B/D/F start after WP-A merges · WP-D/E also need WP-C · WP-E's edit-form change merges
 AFTER WP-C (DTO strips `verificationStatus`) · **WP-G may not merge until WP-F is live in prod.**
