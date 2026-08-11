@@ -3,6 +3,9 @@ import type { Currency } from '@prisma/client';
 import { buildWhatsappUrl } from '@/common/utils/whatsapp.util';
 import { emailSafeLogoUrl } from '@/mail/email-logo.util';
 import type { EmailTemplateContext } from '@/mail/templates/email-template.renderer';
+import { copyFor, fillCopy } from '@/mail/templates/email-copy.util';
+import { CONFIRMATION_SUBJECT_COPY } from '@/mail/templates/booking-confirmation-email.copy';
+import { PRE_TOUR_REMINDER_COPY } from '@/mail/templates/pre-tour-reminder-email.copy';
 
 /**
  * Builds the token context for the LOCKED confirmation-email template
@@ -166,7 +169,7 @@ function urlLabel(url: string): string {
  * describes which currency a shopper is *quoted*, and re-deriving it here would
  * relabel a real charge - a $220 booking reading "220 EUR".
  */
-function formatMoney(
+export function formatMoney(
   amount: string,
   currency: Currency,
   locale: Locale | null,
@@ -526,7 +529,12 @@ function recommendationUrl(
  * Both come from the BOOKING's snapshot, never a live join: the traveler was told a
  * time, and a later edit to the pickup point must not rewrite it (guide §17).
  */
-function pickupTimeLabel(booking: ConfirmationEmailInput['booking']): string {
+function pickupTimeLabel(
+  booking: Pick<
+    ConfirmationEmailInput['booking'],
+    'pickupWindowStart' | 'pickupWindowEnd' | 'pickupMinutesPrior' | 'startTime'
+  >,
+): string {
   const { pickupWindowStart, pickupWindowEnd, pickupMinutesPrior, startTime } =
     booking;
   if (pickupWindowStart && pickupWindowEnd) {
@@ -700,20 +708,277 @@ export function buildConfirmationEmailSubject(input: {
   dateShort: string;
   start: Date | null;
   localNow: Date;
+  /** Traveller's platform locale; omitted (operator paths) reads as English. */
+  locale?: Locale | null;
 }): string {
   const { tourName, dateShort, start, localNow } = input;
+  const copy = copyFor(CONFIRMATION_SUBJECT_COPY, input.locale ?? Locale.en);
   if (start) {
     const hoursAway = (start.getTime() - localNow.getTime()) / 3_600_000;
     if (hoursAway < 24 && hoursAway >= 0) {
       const sameDay =
         start.toISOString().slice(0, 10) ===
         localNow.toISOString().slice(0, 10);
-      return sameDay
-        ? `You're booked today: ${tourName}`
-        : `You're booked for tomorrow: ${tourName}`;
+      return fillCopy(sameDay ? copy.subjectToday : copy.subjectTomorrow, {
+        tourName,
+      });
     }
   }
-  return `You're booked: ${tourName} on ${dateShort}`;
+  return fillCopy(copy.subject, { tourName, dateShort });
+}
+
+// ── BK-2 pre-tour reminder (master 6.7, funnel wireframe tpl-remind) ─────────
+
+export type ReminderEmailInput = {
+  booking: {
+    displayRef: string;
+    currency: Currency;
+    customerLocale: Locale | null;
+    contactFirstName: string | null;
+    paymentModel: PaymentModel;
+    balanceAmount: string;
+    tourStartDateTime: Date | null;
+    localDate: Date;
+    startTime: string | null;
+    /** Local wall-clock end; drives "back around {time}". */
+    tourEndDateTime: Date | null;
+    pickupRequested: boolean;
+    pickupAddress: string | null;
+    pickupMinutesPrior: number | null;
+    pickupWindowStart: string | null;
+    pickupWindowEnd: string | null;
+    partyLines: readonly string[];
+  };
+  tour: {
+    name: string;
+    heroImageUrl: string | null;
+    durationLabel: string | null;
+    weatherDependent: boolean;
+    checkInMinutesBefore: number | null;
+    meetingPoint: string | null;
+    meetingPointLat: number | null;
+    meetingPointLng: number | null;
+    whatToBring: readonly string[];
+  };
+  operator: {
+    name: string | null;
+    email: string | null;
+    phone: string | null;
+  };
+  site: {
+    logoUrl: string | null;
+    whatsappNumber: string | null;
+    whatsappEnabled: boolean;
+  };
+  /**
+   * The wireframe's "today" switch: true when the T-24h fire lands on the
+   * tour date in TOUR-LOCAL time. Computed by the caller from `localNow(
+   * booking.tourTimeZone)` - this builder stays clock-free and pure.
+   */
+  isSameDay: boolean;
+  config: {
+    emailIconBase: string;
+  };
+};
+
+/**
+ * Token context for the LOCKED pre-tour reminder template
+ * (`mail/templates/pre-tour-reminder-email.template.html`). Pure over loaded
+ * rows, exactly like {@link buildConfirmationEmailContext} - the negative
+ * rules the wireframe pins (no payment link, no cancel CTA, balance note only
+ * for `operator_link` and only when non-zero) are enforced HERE, where a unit
+ * test can see them.
+ *
+ * All copy tokens resolve through `pre-tour-reminder-email.copy.ts` in the
+ * traveller's locale (§2.9); the template file carries design only.
+ */
+export function buildReminderEmailContext(
+  input: ReminderEmailInput,
+): EmailTemplateContext {
+  const { booking, tour, operator, site, isSameDay, config } = input;
+
+  const locale = toLocale(booking.customerLocale);
+  const copy = copyFor(PRE_TOUR_REMINDER_COPY, locale);
+  const operatorName = operator.name ?? 'your operator';
+
+  const start = booking.tourStartDateTime ?? booking.localDate;
+  const startTime = booking.startTime ?? '';
+  const hasPickup = booking.pickupRequested && !!booking.pickupAddress;
+  const pickupTime = pickupTimeLabel(booking);
+
+  // Subject: today/tomorrow via the copy module (B-03). Time-less snapshots
+  // fall back to the no-time variants rather than emailing a dangling "·".
+  const subjectLine = fillCopy(
+    isSameDay
+      ? startTime
+        ? copy.subjectToday
+        : copy.subjectTodayNoTime
+      : startTime
+        ? copy.subjectTomorrow
+        : copy.subjectTomorrowNoTime,
+    { tourName: tour.name, startTime },
+  );
+
+  // "Duration: 9 hours, back around 17:00" - the return time only when the
+  // snapshot carries a local end instant.
+  const endTime = wallClockTime(booking.tourEndDateTime);
+  const durationLine = tour.durationLabel
+    ? fillCopy(endTime ? copy.durationLineWithReturn : copy.durationLine, {
+        duration: tour.durationLabel,
+        endTime,
+      })
+    : '';
+
+  // The single allowed balance mention (B-02): operator_link only, hidden at
+  // zero, phrased exactly as the wireframe's note - never a link, and never a
+  // claim of "all paid" (the platform cannot see the operator's ledger).
+  const balance = Number(booking.balanceAmount);
+  const balanceNote =
+    booking.paymentModel === PaymentModel.OPERATOR_LINK &&
+    Number.isFinite(balance) &&
+    balance > 0
+      ? fillCopy(copy.balanceNote, {
+          balance: formatMoney(booking.balanceAmount, booking.currency, locale),
+          operator: operatorName,
+        })
+      : '';
+
+  return {
+    // Chrome + head
+    locale,
+    emailIconBase: config.emailIconBase,
+    siteLogoUrl: emailSafeLogoUrl(site.logoUrl) ?? '',
+    subjectLine,
+    previewText: hasPickup
+      ? fillCopy(copy.previewPickup, {
+          pickupTime,
+          pickupLocation: booking.pickupAddress ?? '',
+        })
+      : copy.preview,
+
+    // Headline
+    headline: fillCopy(isSameDay ? copy.headlineToday : copy.headlineTomorrow, {
+      firstName: booking.contactFirstName ?? 'there',
+    }),
+    subLinePrefix: fillCopy(
+      isSameDay ? copy.subLinePrefixToday : copy.subLinePrefixTomorrow,
+      { tourName: tour.name },
+    ),
+    localTimeSuffix: copy.localTimeSuffix,
+    refLabel: copy.refLabel,
+    bookingRef: booking.displayRef,
+
+    // Booking card
+    tourName: tour.name,
+    operatorName,
+    featuredImageUrl: tour.heroImageUrl ?? '',
+    dateLong: formatDateLong(start, locale),
+    startTime,
+
+    // Logistics
+    hasPickup,
+    pickupLabel: copy.pickupLabel,
+    pickupLocation: booking.pickupAddress ?? '',
+    beReadyAt: copy.beReadyAt,
+    pickupTime,
+    meetingPointLabel: copy.meetingPointLabel,
+    meetingPoint: tour.meetingPoint ?? '',
+    arriveEarlyLine: fillCopy(copy.arriveEarly, {
+      minutes: tour.checkInMinutesBefore ?? 15,
+    }),
+    mapUrl: hasPickup
+      ? mapsUrl(null, null, booking.pickupAddress)
+      : mapsUrl(tour.meetingPointLat, tour.meetingPointLng, tour.meetingPoint),
+    openInMaps: copy.openInMaps,
+    partyBreakdown: joinParty(booking.partyLines),
+    durationLine,
+
+    // What to bring
+    whatToBring: bullets(tour.whatToBring),
+    whatToBringTitle: copy.whatToBringTitle,
+
+    // Balance note (operator_link only; empty string hides the block)
+    balanceTitle: copy.balanceTitle,
+    balanceNote,
+
+    // Weather (weather_dependent tours only)
+    weatherDependent: tour.weatherDependent,
+    weatherNote: fillCopy(copy.weatherNote, { operator: operatorName }),
+
+    // Questions
+    questionsTitle: isSameDay
+      ? copy.questionsTitleToday
+      : copy.questionsTitleTomorrow,
+    talkToLocals: copy.talkToLocals,
+    operatorPhone: operator.phone ?? '',
+    operatorEmail: operator.email ?? '',
+    platformIssue: copy.platformIssue,
+    whatsappUs: copy.whatsappUs,
+    supportHours: copy.supportHours,
+    whatsappUrl:
+      buildWhatsappUrl(site.whatsappNumber, site.whatsappEnabled) ?? '',
+  };
+}
+
+/**
+ * Plain-text part of the reminder, from the same context as the HTML (same
+ * rationale as {@link buildConfirmationEmailText} - a missing text part costs
+ * real spam score, and the reminder's whole job is reaching the inbox).
+ */
+export function buildReminderEmailText(ctx: EmailTemplateContext): string {
+  const get = (key: string): string => String(ctx[key] ?? '').trim();
+  const bring = Array.isArray(ctx.whatToBring) ? ctx.whatToBring : [];
+
+  const where = ctx.hasPickup
+    ? `${get('pickupLabel')} ${get('pickupLocation')}, ${get('beReadyAt')} ${get('pickupTime')}.`
+    : `${get('meetingPointLabel')} ${get('meetingPoint')}. ${get('arriveEarlyLine')}`;
+
+  const lines: Array<string | null> = [
+    get('headline'),
+    `${get('refLabel')} ${get('bookingRef')}`,
+    '',
+    get('tourName'),
+    get('operatorName'),
+    `${get('dateLong')}${get('startTime') ? ` · ${get('startTime')} ${get('localTimeSuffix')}` : ''}`,
+    '',
+    where,
+    get('partyBreakdown'),
+    optional(get('durationLine'), (v) => v),
+    '',
+    ...(bring.length
+      ? [
+          get('whatToBringTitle'),
+          ...bring.map((item) => `- ${String(item)}`),
+          '',
+        ]
+      : []),
+    optional(get('balanceNote'), (v) => `${get('balanceTitle')}: ${v}`),
+    ctx.weatherDependent ? get('weatherNote') : null,
+    '',
+    get('questionsTitle'),
+    `${get('talkToLocals')} ${get('operatorName')}`,
+    optional(
+      [get('operatorPhone'), get('operatorEmail')].filter(Boolean).join(' · '),
+      (v) => v,
+    ),
+    optional(
+      get('whatsappUrl'),
+      (v) =>
+        `${get('platformIssue')} ${get('whatsappUs')}: ${v}${get('supportHours')}`,
+    ),
+    '',
+    'Island Tours. Built by Islanders.',
+    'This is a transactional booking email.',
+  ];
+  return lines.filter((line): line is string => line !== null).join('\n');
+}
+
+/** "17:00" from a Z-labelled local wall-clock instant; '' when absent. */
+function wallClockTime(date: Date | null): string {
+  if (!date) return '';
+  const h = String(date.getUTCHours()).padStart(2, '0');
+  const m = String(date.getUTCMinutes()).padStart(2, '0');
+  return `${h}:${m}`;
 }
 
 // ── Plain-text alternative ───────────────────────────────────────────────────

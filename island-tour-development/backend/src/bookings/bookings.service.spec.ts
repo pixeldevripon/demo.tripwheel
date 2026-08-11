@@ -388,17 +388,42 @@ describe('BookingsService', () => {
   let staffPermissions: any;
   let inbox: any;
   let recommendations: any;
+  let emailLog: any;
   let svc: BookingsService;
 
   beforeEach(() => {
     prisma = mockPrisma();
     m = prisma;
     mail = {
-      sendBookingConfirmationEmail: jest.fn().mockResolvedValue(undefined),
+      sendBookingConfirmationEmail: jest
+        .fn()
+        .mockResolvedValue({ providerMessageId: 'resend-1' }),
+      sendPreTourReminderEmail: jest
+        .fn()
+        .mockResolvedValue({ providerMessageId: 'resend-2' }),
       sendOperatorBookingReceivedEmail: jest.fn().mockResolvedValue(undefined),
       sendCancellationRequestEmail: jest.fn().mockResolvedValue(undefined),
-      sendBookingNoticeEmail: jest.fn().mockResolvedValue(undefined),
+      sendBookingNoticeEmail: jest
+        .fn()
+        .mockResolvedValue({ providerMessageId: 'resend-3' }),
       sendTravellerLoginCodeEmail: jest.fn().mockResolvedValue(undefined),
+    };
+    // Send-log stub honouring the claim-first contract: runs the closure,
+    // 'sent' on success, 'failed' (never a throw) on transport rejection.
+    emailLog = {
+      claimAndSend: jest.fn(async ({ send }: { send: () => Promise<any> }) => {
+        try {
+          await send();
+          return { outcome: 'sent', providerMessageId: 'resend-x' };
+        } catch (err) {
+          return {
+            outcome: 'failed',
+            error: err instanceof Error ? err.message : 'unknown',
+          };
+        }
+      }),
+      recordSuppressed: jest.fn().mockResolvedValue({ recorded: true }),
+      nextResendScopeId: jest.fn().mockResolvedValue('b1#resend-1'),
     };
     tracking = { fireBookingComplete: jest.fn().mockResolvedValue(undefined) };
     notifications = {
@@ -472,6 +497,7 @@ describe('BookingsService', () => {
       staffPermissions,
       inbox,
       recommendations,
+      emailLog,
     );
   });
 
@@ -1644,15 +1670,381 @@ describe('BookingsService', () => {
       expect(stripe.refundIntent).not.toHaveBeenCalled();
     });
 
-    it('pre-tour reminder job is a state-checked stub until the template lands', async () => {
-      m.booking.findUnique.mockResolvedValue({
-        id: 'b1',
-        displayRef: 'IT-2030-AAAA',
-        status: BookingStatus.CONFIRMED,
-        utcReminderSentAt: null,
+    // ── BK-2 pre-tour reminder job (WP-B: B-07/B-09) ──────────────────────
+
+    describe('pre-tour reminder job (BK-2)', () => {
+      const remindable = (over: Record<string, unknown> = {}) =>
+        confirmed({
+          utcReminderSentAt: null,
+          customerLocale: 'en',
+          tourTimeZone: 'America/Curacao',
+          tourStartDateTime: new Date('2030-06-05T09:00:00.000Z'),
+          ...over,
+        });
+
+      /** The reminder assembly is I/O; stub it so these tests see the JOB. */
+      const stubContext = () =>
+        jest
+          .spyOn(svc as never, 'assembleReminderContext' as never)
+          .mockResolvedValue({
+            subjectLine: 'Tomorrow: Tour · 09:00',
+            headline: "You're set for tomorrow, Ada.",
+          } as never);
+
+      it('happy path: claims (BK2, bookingId), sends, stamps the guard', async () => {
+        stubContext();
+        m.booking.findUnique.mockResolvedValue(remindable());
+
+        await svc.runPreTourReminderJob('b1');
+
+        expect(emailLog.claimAndSend).toHaveBeenCalledWith(
+          expect.objectContaining({
+            templateKey: 'BK2_PRE_TOUR_REMINDER',
+            scopeId: 'b1',
+            toEmail: 'guest@example.test',
+            stream: 'TRANSACTIONAL',
+            locale: 'en',
+          }),
+        );
+        expect(mail.sendPreTourReminderEmail).toHaveBeenCalledWith(
+          'guest@example.test',
+          'Tomorrow: Tour · 09:00',
+          expect.anything(),
+          expect.any(String),
+        );
+        expect(m.booking.updateMany).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: { id: 'b1', utcReminderSentAt: null },
+            data: { utcReminderSentAt: expect.any(Date) },
+          }),
+        );
       });
-      await expect(svc.runPreTourReminderJob('b1')).resolves.toBeUndefined();
-      expect(mail.sendBookingConfirmationEmail).not.toHaveBeenCalled();
+
+      it('already stamped: returns without touching the log or the transport', async () => {
+        stubContext();
+        m.booking.findUnique.mockResolvedValue(
+          remindable({ utcReminderSentAt: new Date() }),
+        );
+
+        await svc.runPreTourReminderJob('b1');
+
+        expect(emailLog.claimAndSend).not.toHaveBeenCalled();
+        expect(mail.sendPreTourReminderEmail).not.toHaveBeenCalled();
+        expect(m.booking.updateMany).not.toHaveBeenCalled();
+      });
+
+      it('not CONFIRMED (cancelled since enqueue): suppressed by the status guard', async () => {
+        stubContext();
+        m.booking.findUnique.mockResolvedValue(
+          remindable({ status: BookingStatus.CANCELLED }),
+        );
+
+        await svc.runPreTourReminderJob('b1');
+
+        expect(emailLog.claimAndSend).not.toHaveBeenCalled();
+        expect(mail.sendPreTourReminderEmail).not.toHaveBeenCalled();
+      });
+
+      it("claim lost (P2002 -> 'skipped'): no send, but the guard still converges", async () => {
+        stubContext();
+        m.booking.findUnique.mockResolvedValue(remindable());
+        emailLog.claimAndSend.mockResolvedValue({
+          outcome: 'skipped',
+          reason: 'already-sent',
+        });
+
+        await svc.runPreTourReminderJob('b1');
+
+        expect(mail.sendPreTourReminderEmail).not.toHaveBeenCalled();
+        // The earlier run crashed between claim and stamp - this run repairs
+        // the guard so the legacy check and the send log agree.
+        expect(m.booking.updateMany).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: { utcReminderSentAt: expect.any(Date) },
+          }),
+        );
+      });
+
+      it('transport failure: throws for BullMQ, guard NOT stamped', async () => {
+        stubContext();
+        m.booking.findUnique.mockResolvedValue(remindable());
+        mail.sendPreTourReminderEmail.mockRejectedValue(
+          new Error('provider down'),
+        );
+
+        await expect(svc.runPreTourReminderJob('b1')).rejects.toThrow(
+          /Pre-tour reminder failed/,
+        );
+        expect(m.booking.updateMany).not.toHaveBeenCalled();
+      });
+
+      it('no contact email: records a SUPPRESSED decision instead of claiming', async () => {
+        stubContext();
+        m.booking.findUnique.mockResolvedValue(
+          remindable({ contactEmail: null }),
+        );
+
+        await svc.runPreTourReminderJob('b1');
+
+        expect(emailLog.recordSuppressed).toHaveBeenCalledWith(
+          expect.objectContaining({
+            templateKey: 'BK2_PRE_TOUR_REMINDER',
+            scopeId: 'b1',
+            reason: 'no-contact-email',
+          }),
+        );
+        expect(emailLog.claimAndSend).not.toHaveBeenCalled();
+        expect(m.booking.updateMany).not.toHaveBeenCalled();
+      });
+
+      it('pending cancellation request: suppressed with cancellation-pending (still CONFIRMED)', async () => {
+        // The booking stays CONFIRMED until the admin acts on the request -
+        // "You're set for tomorrow!" to someone waiting to be cancelled is
+        // the user-reported trust-damage class the resendConfirmation guard
+        // closes (security review of #186, Medium).
+        stubContext();
+        m.booking.findUnique.mockResolvedValue(
+          remindable({
+            utcCancellationRequestedAt: new Date('2026-05-21T10:00:00Z'),
+            utcCancelledAt: null,
+          }),
+        );
+
+        await svc.runPreTourReminderJob('b1');
+
+        expect(emailLog.recordSuppressed).toHaveBeenCalledWith(
+          expect.objectContaining({
+            templateKey: 'BK2_PRE_TOUR_REMINDER',
+            scopeId: 'b1',
+            reason: 'cancellation-pending',
+          }),
+        );
+        expect(emailLog.claimAndSend).not.toHaveBeenCalled();
+        expect(m.booking.updateMany).not.toHaveBeenCalled();
+      });
+    });
+
+    // ── BK-1 send-log routing (WP-B: B-20) ────────────────────────────────
+
+    describe('confirmation email send-log routing (BK-1)', () => {
+      const bookingRow = (over: Record<string, unknown> = {}) =>
+        fakeBooking({
+          status: BookingStatus.CONFIRMED,
+          contactEmail: 'guest@example.test',
+          customerLocale: 'en',
+          ...over,
+        });
+
+      beforeEach(() => {
+        jest
+          .spyOn(svc as never, 'assembleConfirmationContext' as never)
+          .mockResolvedValue({
+            tourName: 'Sunset Cruise',
+            dateShort: '5 Jun 2030',
+          } as never);
+      });
+
+      it('the automated first send claims the base (BK1, bookingId) slot', async () => {
+        await (svc as any).sendConfirmationEmail(bookingRow());
+
+        expect(emailLog.claimAndSend).toHaveBeenCalledTimes(1);
+        expect(emailLog.claimAndSend).toHaveBeenCalledWith(
+          expect.objectContaining({
+            templateKey: 'BK1_CONFIRMATION',
+            scopeId: 'b1',
+            toEmail: 'guest@example.test',
+            stream: 'TRANSACTIONAL',
+            locale: 'en',
+          }),
+        );
+        expect(mail.sendBookingConfirmationEmail).toHaveBeenCalled();
+      });
+
+      it("a redelivered first send reads 'skipped' as success (idempotency, not error)", async () => {
+        emailLog.claimAndSend.mockResolvedValue({
+          outcome: 'skipped',
+          reason: 'already-sent',
+        });
+
+        await expect(
+          (svc as any).sendConfirmationEmail(bookingRow(), { rethrow: true }),
+        ).resolves.toBeUndefined();
+        expect(mail.sendBookingConfirmationEmail).not.toHaveBeenCalled();
+      });
+
+      it('a manual resend claims #resend-{n}, never the base slot', async () => {
+        await (svc as any).sendConfirmationEmail(bookingRow(), {
+          resend: true,
+        });
+
+        expect(emailLog.nextResendScopeId).toHaveBeenCalledWith(
+          'BK1_CONFIRMATION',
+          'b1',
+        );
+        expect(emailLog.claimAndSend).toHaveBeenCalledWith(
+          expect.objectContaining({ scopeId: 'b1#resend-1' }),
+        );
+      });
+
+      it('two concurrent resends: the loser retries once with the next slot', async () => {
+        emailLog.nextResendScopeId
+          .mockResolvedValueOnce('b1#resend-1')
+          .mockResolvedValueOnce('b1#resend-2');
+        emailLog.claimAndSend
+          .mockResolvedValueOnce({ outcome: 'skipped', reason: 'already-sent' })
+          .mockResolvedValueOnce({
+            outcome: 'sent',
+            providerMessageId: 'resend-y',
+          });
+
+        await (svc as any).sendConfirmationEmail(bookingRow(), {
+          resend: true,
+        });
+
+        const scopes = emailLog.claimAndSend.mock.calls.map(
+          (c: any[]) => c[0].scopeId,
+        );
+        expect(scopes).toEqual(['b1#resend-1', 'b1#resend-2']);
+      });
+
+      it('subject resolves in the traveller locale (B-18/B-22 copy module)', async () => {
+        await (svc as any).sendConfirmationEmail(
+          bookingRow({ customerLocale: 'de' }),
+        );
+
+        const [, subject] = mail.sendBookingConfirmationEmail.mock.calls[0];
+        expect(subject).toBe('Gebucht: Sunset Cruise am 5 Jun 2030');
+      });
+    });
+  });
+
+  // ── CX-1 cancellation copy matrix (WP-B: B-23…B-27) ───────────────────────
+  // paymentModel × CancellationRefund, per the LOCKED master 6.4 wording. The
+  // private method is called directly: cancel() plumbing is covered elsewhere,
+  // and the matrix is about what each traveller is TOLD about their money.
+
+  describe('cancellation-confirmed traveller copy (CX-1)', () => {
+    const cxBooking = (over: Record<string, unknown> = {}) =>
+      fakeBooking({
+        status: BookingStatus.CANCELLED,
+        contactEmail: 'guest@example.test',
+        customerLocale: 'en',
+        island: 'curacao',
+        ...over,
+      });
+
+    beforeEach(() => {
+      m.operator.findUnique.mockResolvedValue({
+        contactEmail: 'supplier@op.test',
+        companyInfo: {
+          companyEmail: 'office@op.test',
+          companyName: 'Miss Ann Boat Trips',
+        },
+      });
+      m.tour.findUnique.mockResolvedValue({ name: 'Sunset Cruise' });
+    });
+
+    const send = (booking: any, refund: CancellationRefund) =>
+      (svc as any).sendCancellationConfirmedNotices(booking, refund);
+
+    const travellerParagraphs = (): string[] => {
+      const call = mail.sendBookingNoticeEmail.mock.calls.find(
+        (c: any[]) => c[0] === 'guest@example.test',
+      );
+      expect(call).toBeDefined();
+      return call![2].noticeParagraphs as string[];
+    };
+
+    it('operator_link × FULL: deposit back from us + the operator refunds the balance part', async () => {
+      await send(
+        cxBooking({ paymentModel: PaymentModel.OPERATOR_LINK }),
+        'FULL',
+      );
+
+      const [, refundLine] = travellerParagraphs();
+      // fakeBooking: 31.99 / 159.98 -> a 20% deposit.
+      expect(refundLine).toContain('Your 20% deposit is on its way back');
+      expect(refundLine).toContain('the tour operator refunds that part');
+    });
+
+    it('on_arrival × FULL: deposit back only - no balance was payable before arrival', async () => {
+      await send(cxBooking({ paymentModel: PaymentModel.ON_ARRIVAL }), 'FULL');
+
+      const [, refundLine] = travellerParagraphs();
+      expect(refundLine).toContain('deposit is on its way back');
+      expect(refundLine).not.toContain('refunds that part');
+    });
+
+    it('paid_in_full × FULL: "your payment is on its way back from us" with the full amount', async () => {
+      await send(
+        cxBooking({ paymentModel: PaymentModel.PAID_IN_FULL }),
+        'FULL',
+      );
+
+      const [, refundLine] = travellerParagraphs();
+      expect(refundLine).toContain('is on its way back from us');
+      expect(refundLine).toContain('€159.98');
+      expect(refundLine).not.toContain('deposit');
+    });
+
+    it('operator_full: NO refund-from-us line under any verdict - the operator refunds directly', async () => {
+      for (const refund of ['FULL', 'PARTIAL', 'NONE'] as const) {
+        mail.sendBookingNoticeEmail.mockClear();
+        await send(
+          cxBooking({ paymentModel: PaymentModel.OPERATOR_FULL }),
+          refund,
+        );
+        const [, refundLine] = travellerParagraphs();
+        expect(refundLine).toContain('Nothing was paid to Island Tours');
+        expect(refundLine).toContain(
+          'Miss Ann Boat Trips refunds you directly',
+        );
+        expect(refundLine).not.toContain('on its way back');
+      }
+    });
+
+    it('PARTIAL verdict keeps the existing overlay on deposit models', async () => {
+      await send(
+        cxBooking({ paymentModel: PaymentModel.OPERATOR_LINK }),
+        'PARTIAL',
+      );
+      const [, refundLine] = travellerParagraphs();
+      expect(refundLine).toContain('A partial refund applies');
+    });
+
+    it('NONE verdict keeps the outside-the-window line', async () => {
+      await send(
+        cxBooking({ paymentModel: PaymentModel.PAID_IN_FULL }),
+        'NONE',
+      );
+      const [, refundLine] = travellerParagraphs();
+      expect(refundLine).toContain('no refund is due');
+    });
+
+    it('logs the traveller send once via claimAndSend(CX1, bookingId)', async () => {
+      await send(cxBooking(), 'FULL');
+
+      expect(emailLog.claimAndSend).toHaveBeenCalledWith(
+        expect.objectContaining({
+          templateKey: 'CX1_CANCELLATION',
+          scopeId: 'b1',
+          toEmail: 'guest@example.test',
+          stream: 'TRANSACTIONAL',
+        }),
+      );
+    });
+
+    it('traveller copy localises; the operator notice stays English (B-25)', async () => {
+      await send(cxBooking({ customerLocale: 'de' }), 'FULL');
+
+      const calls = mail.sendBookingNoticeEmail.mock.calls;
+      const traveller = calls.find(
+        (c: any[]) => c[0] === 'guest@example.test',
+      )!;
+      const operatorCall = calls.find((c: any[]) => c[0] === 'office@op.test')!;
+      expect(traveller[1]).toContain('Deine Buchung ist storniert');
+      expect(traveller[2].noticeTitle).toBe('Deine Buchung ist storniert.');
+      expect(operatorCall[2].noticeTitle).toBe('Cancellation confirmed.');
     });
   });
 

@@ -1,9 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { BookingStatus, Prisma } from '@prisma/client';
+import {
+  BookingStatus,
+  EmailStream,
+  EmailTemplateKey,
+  Prisma,
+} from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { MailService } from '@/mail/mail.service';
+import { EmailLogService } from '@/mail/email-log.service';
 import { emailSafeLogoUrl } from '@/mail/email-logo.util';
-import { emailIconBase } from '@/bookings/booking-email.context';
+import { emailIconBase, toLocale } from '@/bookings/booking-email.context';
 import { islandToursBase } from '@/common/utils/app-urls.util';
 import { localNow } from '@/common/utils/timezone.util';
 
@@ -95,6 +101,7 @@ export class ReviewRequestsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mail: MailService,
+    private readonly emailLog: EmailLogService,
   ) {}
 
   /**
@@ -299,9 +306,12 @@ export class ReviewRequestsService {
           tourTimeZone: true,
           contactEmail: true,
           contactFirstName: true,
-          contactLocales: true,
+          customerLocale: true,
           reviewWhatsappOptIn: true,
           tour: { select: { name: true, timeZone: true } },
+          operator: {
+            select: { companyInfo: { select: { companyName: true } } },
+          },
         },
       },
     } satisfies Prisma.ReviewInvitationSelect;
@@ -376,49 +386,77 @@ export class ReviewRequestsService {
     return emailSafeLogoUrl(site?.logo ?? null) ?? '';
   }
 
+  /**
+   * One review email through the send log. BK-3 and BK-3R are SEPARATE
+   * template keys on the same `scopeId = bookingId`, so the unique index
+   * allows exactly one of each (plan §2.1/§2.2).
+   *
+   * Returns true for 'sent' AND for 'skipped' (an earlier run already decided
+   * this email but crashed before stamping the invitation): both must move
+   * the sweeper's cursor (`sentAt`/`remindedAt`), or the sweep would re-pick
+   * the invitation every hour and burn a claim attempt each time. 'failed'
+   * returns false - the FAILED row keeps the slot, so the next pass resolves
+   * to 'skipped' and the cursor converges; recovery is an admin resend.
+   */
   private async deliver(
     inv: { token: string; booking: BookingForEmail },
     isReminder: boolean,
     siteLogoUrl: string,
   ): Promise<boolean> {
     const b = inv.booking;
-    if (!b.contactEmail) return false;
+    const to = b.contactEmail;
+    if (!to) return false;
 
-    // Locale-prefixed, matching every other public route. The traveller's booked
-    // locale is preferred so the page opens in the language they booked in.
-    const locale = b.contactLocales?.[0] ?? 'en';
+    // §2.9: copy language resolves from the booking's snapshotted locale.
+    // The review URL is locale-prefixed with the SAME locale, so the email
+    // and the page it opens can never disagree on language.
+    const locale = toLocale(b.customerLocale);
     const reviewUrl = `${islandToursBase()}/${locale}/review/${inv.token}`;
 
-    try {
-      await this.mail.sendReviewRequestEmail(b.contactEmail, {
-        firstName: b.contactFirstName ?? 'there',
-        tourName: b.tour?.name ?? 'your tour',
-        bookingRef: b.displayRef,
-        dateLong: b.localDate.toISOString().slice(0, 10),
-        startTime: b.startTime ?? '',
-        reviewUrl,
-        emailIconBase: emailIconBase(),
-        siteLogoUrl,
-        isReminder,
-      });
-      return true;
-    } catch (err) {
+    const result = await this.emailLog.claimAndSend({
+      templateKey: isReminder
+        ? EmailTemplateKey.BK3R_REVIEW_REMINDER
+        : EmailTemplateKey.BK3_REVIEW_REQUEST,
+      scopeId: b.id,
+      toEmail: to,
+      stream: EmailStream.TRANSACTIONAL,
+      locale,
+      send: () =>
+        this.mail.sendReviewRequestEmail(to, {
+          firstName: b.contactFirstName ?? 'there',
+          tourName: b.tour?.name ?? 'your tour',
+          bookingRef: b.displayRef,
+          dateLong: b.localDate.toISOString().slice(0, 10),
+          startTime: b.startTime ?? '',
+          reviewUrl,
+          emailIconBase: emailIconBase(),
+          siteLogoUrl,
+          isReminder,
+          locale,
+          operatorName: b.operator?.companyInfo?.companyName ?? null,
+          whatsappOptIn: b.reviewWhatsappOptIn,
+        }),
+    });
+
+    if (result.outcome === 'failed') {
       this.logger.error(
-        `Review request ${isReminder ? 'reminder ' : ''}failed for booking ${b.displayRef}: ${
-          err instanceof Error ? err.message : 'unknown'
-        }`,
+        `Review request ${isReminder ? 'reminder ' : ''}failed for booking ${b.displayRef}: ${result.error}`,
       );
       return false;
     }
+    return true;
   }
 }
 
 type BookingForEmail = {
+  id: string;
   displayRef: string;
   localDate: Date;
   startTime: string | null;
   contactEmail: string | null;
   contactFirstName: string | null;
-  contactLocales: string[];
+  customerLocale: string | null;
+  reviewWhatsappOptIn: boolean;
   tour: { name: string } | null;
+  operator: { companyInfo: { companyName: string | null } | null } | null;
 };

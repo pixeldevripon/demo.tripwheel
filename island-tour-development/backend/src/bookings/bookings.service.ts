@@ -19,6 +19,8 @@ import {
   CancelledBy,
   Currency,
   DepartureStatus,
+  EmailStream,
+  EmailTemplateKey,
   InboxEvent,
   Locale,
   PaymentKind,
@@ -43,7 +45,10 @@ import { StripeService } from '@/payments/stripe.service';
 import { UnrecoverableError } from 'bullmq';
 import { PrismaService } from '@/prisma/prisma.service';
 import { MailService } from '@/mail/mail.service';
+import { EmailLogService } from '@/mail/email-log.service';
 import { emailSafeLogoUrl } from '@/mail/email-logo.util';
+import { copyFor, fillCopy } from '@/mail/templates/email-copy.util';
+import { CANCELLATION_EMAIL_COPY } from '@/mail/templates/cancellation-email.copy';
 import {
   hashLoginCode,
   issueBookingSession,
@@ -108,10 +113,13 @@ import {
   buildOperatorNotificationSubject,
   buildOperatorNotificationText,
   buildPartyLines,
+  buildReminderEmailContext,
+  buildReminderEmailText,
   depositPctOf,
   durationLabel,
   emailIconBase,
   formatDateLong,
+  formatMoney,
   pickTourLocation,
   preferLocale,
   toLocale,
@@ -402,6 +410,7 @@ export class BookingsService {
     private readonly staffPermissions: StaffPermissionsService,
     private readonly inbox: InboxService,
     private readonly recommendations: RecommendationsService,
+    private readonly emailLog: EmailLogService,
   ) {}
 
   /**
@@ -1522,28 +1531,223 @@ export class BookingsService {
   }
 
   /**
-   * Pre-tour reminder (24h before start) - guard: `utcReminderSentAt`.
-   * CONTENT IS PENDING A FOUNDER DECISION (D3): the delayed job plumbing ships
-   * with B6 so future bookings are already scheduled; until the template lands
-   * this logs and leaves the guard null (so shipping content later picks up
-   * any booking whose reminder has not fired yet).
+   * Pre-tour reminder (24h before start) - guard: `utcReminderSentAt`, and
+   * beneath it the send log's `(BK2, bookingId)` unique claim (WP-B, master
+   * 6.7). The delayed job is enqueued by the outbox relay at T-24h tour-local;
+   * bookings created inside the 24h window never get one (`jobsFor` rule) -
+   * BK-1's today/tomorrow subject carries the nudge for those instead.
+   *
+   * Suppression at send time: CONFIRMED only (cancelled / forfeited /
+   * operator-cancelled all leave CONFIRMED, so the status check covers the
+   * wireframe's whole list) - PLUS a pending cancellation request: the
+   * booking stays CONFIRMED until the admin acts, and "You're set for
+   * tomorrow!" to someone waiting to be cancelled is the same user-reported
+   * trust-damage class the resendConfirmation guard already closes
+   * (2026-07-30). A confirmed booking with no contact email is a DECIDED
+   * non-send: it writes a SUPPRESSED row so the timeline says why.
    */
   async runPreTourReminderJob(bookingId: string): Promise<void> {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
-      select: {
-        id: true,
-        displayRef: true,
-        status: true,
-        utcReminderSentAt: true,
-      },
+      include: { unitItems: true },
     });
     if (!booking) return;
     if (booking.utcReminderSentAt) return;
     if (booking.status !== BookingStatus.CONFIRMED) return; // cancelled/expired since
-    this.logger.log(
-      `Pre-tour reminder due for ${booking.displayRef} - template pending founder decision, nothing sent`,
-    );
+    if (booking.utcCancellationRequestedAt && !booking.utcCancelledAt) {
+      // Mirrors resendConfirmation: a decided non-send, recorded with why.
+      await this.emailLog.recordSuppressed({
+        templateKey: EmailTemplateKey.BK2_PRE_TOUR_REMINDER,
+        scopeId: booking.id,
+        toEmail: booking.contactEmail ?? '',
+        stream: EmailStream.TRANSACTIONAL,
+        reason: 'cancellation-pending',
+      });
+      return;
+    }
+
+    const to = booking.contactEmail;
+    if (!to) {
+      await this.emailLog.recordSuppressed({
+        templateKey: EmailTemplateKey.BK2_PRE_TOUR_REMINDER,
+        scopeId: booking.id,
+        toEmail: '',
+        stream: EmailStream.TRANSACTIONAL,
+        reason: 'no-contact-email',
+      });
+      this.logger.warn(
+        `Pre-tour reminder suppressed for ${booking.displayRef}: no contact email`,
+      );
+      return;
+    }
+
+    const context = await this.assembleReminderContext(booking);
+    const result = await this.emailLog.claimAndSend({
+      templateKey: EmailTemplateKey.BK2_PRE_TOUR_REMINDER,
+      scopeId: booking.id,
+      toEmail: to,
+      stream: EmailStream.TRANSACTIONAL,
+      locale: toLocale(booking.customerLocale),
+      send: () =>
+        this.mail.sendPreTourReminderEmail(
+          to,
+          String(context.subjectLine ?? `Reminder: ${booking.displayRef}`),
+          context,
+          buildReminderEmailText(context),
+        ),
+    });
+
+    if (result.outcome === 'failed') {
+      // Throw so BullMQ records the failure loudly. The retry does NOT
+      // double-send: a claimed-then-FAILED row occupies the unique slot, so
+      // the next attempt resolves to 'skipped' and stamps the guard below -
+      // recovery from a hard bounce is an explicit admin resend (plan §2.2).
+      throw new Error(
+        `Pre-tour reminder failed for ${booking.displayRef}: ${result.error}`,
+      );
+    }
+
+    // 'sent' or 'skipped' (already decided by an earlier crashed run): stamp
+    // the guard so the legacy check and the send log agree.
+    await this.prisma.booking.updateMany({
+      where: { id: bookingId, utcReminderSentAt: null },
+      data: { utcReminderSentAt: new Date() },
+    });
+  }
+
+  /**
+   * Load everything the locked reminder template needs and fold it into the
+   * token context - the I/O around the pure {@link buildReminderEmailContext},
+   * mirroring {@link assembleConfirmationContext}.
+   */
+  private async assembleReminderContext(
+    booking: BookingWithItems,
+  ): Promise<EmailTemplateContext> {
+    const locale = toLocale(booking.customerLocale);
+
+    const [tour, operator, site] = await Promise.all([
+      this.prisma.tour.findUnique({
+        where: { id: booking.tourId },
+        select: {
+          name: true,
+          durationMinutesFrom: true,
+          checkInMinutesBefore: true,
+          weatherDependent: true,
+          meetingPointLat: true,
+          meetingPointLng: true,
+          ageBands: { select: { id: true, label: true } },
+          images: {
+            where: { isHero: true },
+            select: { url: true },
+            take: 1,
+          },
+          translations: {
+            where: { locale: { in: [locale, Locale.en] } },
+            select: {
+              locale: true,
+              whatToBring: true,
+              meetingPointText: true,
+            },
+          },
+          locations: {
+            select: {
+              types: true,
+              streetAddress: true,
+              translations: {
+                where: { locale: { in: [locale, Locale.en] } },
+                select: { locale: true, title: true },
+              },
+            },
+          },
+        },
+      }),
+      this.prisma.operator.findUnique({
+        where: { id: booking.operatorId },
+        select: {
+          contactEmail: true,
+          contactPhone: true,
+          companyInfo: {
+            select: {
+              companyName: true,
+              companyEmail: true,
+              companyPhone: true,
+            },
+          },
+        },
+      }),
+      this.prisma.siteInfo.findFirst({
+        select: {
+          logo: true,
+          whatsappNumber: true,
+          enableWhatsappChat: true,
+        },
+      }),
+    ]);
+    if (!tour) throw new NotFoundException('Tour not found');
+
+    const translation = preferLocale(tour.translations, locale);
+    const meetingPoint =
+      pickTourLocation(tour.locations, 'START', locale) ??
+      translation?.meetingPointText ??
+      null;
+
+    // "Today" switch (wireframe): does the T-24h fire land on the tour date
+    // in TOUR-LOCAL time? Both sides are local wall clock, compared as dates.
+    const start = booking.tourStartDateTime ?? booking.localDate;
+    const isSameDay =
+      start.toISOString().slice(0, 10) ===
+      localNow(booking.tourTimeZone ?? 'UTC')
+        .toISOString()
+        .slice(0, 10);
+
+    return buildReminderEmailContext({
+      booking: {
+        displayRef: booking.displayRef,
+        currency: booking.currency,
+        customerLocale: locale,
+        contactFirstName: booking.contactFirstName,
+        paymentModel: booking.paymentModel,
+        balanceAmount: booking.balanceAmount.toString(),
+        tourStartDateTime: booking.tourStartDateTime,
+        localDate: booking.localDate,
+        startTime: booking.startTime,
+        tourEndDateTime: booking.tourEndDateTime,
+        pickupRequested: booking.pickupRequested,
+        pickupAddress: booking.pickupAddress,
+        pickupMinutesPrior: booking.pickupMinutesPrior,
+        pickupWindowStart: booking.pickupWindowStart,
+        pickupWindowEnd: booking.pickupWindowEnd,
+        partyLines: buildPartyLines(
+          booking.unitItems,
+          new Map(tour.ageBands.map((b) => [b.id, b.label])),
+        ),
+      },
+      tour: {
+        name: tour.name,
+        heroImageUrl: tour.images[0]?.url ?? null,
+        durationLabel: durationLabel(tour.durationMinutesFrom),
+        weatherDependent: tour.weatherDependent,
+        checkInMinutesBefore: tour.checkInMinutesBefore,
+        meetingPoint,
+        meetingPointLat: tour.meetingPointLat,
+        meetingPointLng: tour.meetingPointLng,
+        whatToBring: translation?.whatToBring ?? [],
+      },
+      operator: {
+        name: operator?.companyInfo?.companyName ?? null,
+        email:
+          operator?.contactEmail ?? operator?.companyInfo?.companyEmail ?? null,
+        phone:
+          operator?.contactPhone ?? operator?.companyInfo?.companyPhone ?? null,
+      },
+      site: {
+        logoUrl: site?.logo ?? null,
+        whatsappNumber: site?.whatsappNumber ?? null,
+        whatsappEnabled: site?.enableWhatsappChat ?? false,
+      },
+      isSameDay,
+      config: { emailIconBase: emailIconBase() },
+    });
   }
 
   /**
@@ -1651,26 +1855,69 @@ export class BookingsService {
    *   already captured, so an email-provider outage must never fail the booking (the
    *   traveler can resend from the TYP). A traveler-initiated resend passes true
    *   - they asked, so tell them the truth instead of showing a false success.
+   * @param resend  The AUTOMATED first send claims the base `(BK1, bookingId)`
+   *   slot in the send log; every later human-triggered send (TYP resend, the
+   *   restore counter-notice) passes true and claims `#resend-{n}` instead
+   *   (plan §2.2) - otherwise the base claim would silently swallow it.
    */
   private async sendConfirmationEmail(
     booking: BookingWithItems,
-    { rethrow = false }: { rethrow?: boolean } = {},
+    {
+      rethrow = false,
+      resend = false,
+    }: { rethrow?: boolean; resend?: boolean } = {},
   ): Promise<void> {
-    if (!booking.contactEmail) return; // no recipient yet (e.g. OPERATOR_FULL before contact)
+    const to = booking.contactEmail;
+    if (!to) return; // no recipient yet (e.g. OPERATOR_FULL before contact)
     try {
       const context = await this.assembleConfirmationContext(booking);
+      const locale = toLocale(booking.customerLocale);
       const subject = buildConfirmationEmailSubject({
         tourName: String(context.tourName ?? 'Your tour'),
         dateShort: String(context.dateShort ?? ''),
         start: booking.tourStartDateTime,
         localNow: localNow(booking.tourTimeZone ?? 'UTC'),
+        locale,
       });
-      await this.mail.sendBookingConfirmationEmail(
-        booking.contactEmail,
-        subject,
-        context,
-        buildConfirmationEmailText(context),
-      );
+      const claim = {
+        templateKey: EmailTemplateKey.BK1_CONFIRMATION,
+        toEmail: to,
+        stream: EmailStream.TRANSACTIONAL,
+        locale,
+        send: () =>
+          this.mail.sendBookingConfirmationEmail(
+            to,
+            subject,
+            context,
+            buildConfirmationEmailText(context),
+          ),
+      };
+      let result = await this.emailLog.claimAndSend({
+        ...claim,
+        scopeId: resend
+          ? await this.emailLog.nextResendScopeId(
+              EmailTemplateKey.BK1_CONFIRMATION,
+              booking.id,
+            )
+          : booking.id,
+      });
+      // Two concurrent resends compute the same n and the loser reads as
+      // "already sent" - misleading for someone who clicked Resend, so retry
+      // once with the next slot (nextResendScopeId JSDoc rule).
+      if (resend && result.outcome === 'skipped') {
+        result = await this.emailLog.claimAndSend({
+          ...claim,
+          scopeId: await this.emailLog.nextResendScopeId(
+            EmailTemplateKey.BK1_CONFIRMATION,
+            booking.id,
+          ),
+        });
+      }
+      // 'skipped' on the automated first send = someone else already decided
+      // this email (idempotency working) - success, not an error.
+      if (result.outcome === 'failed') {
+        throw new Error(result.error);
+      }
     } catch (err) {
       this.logger.error(
         `Confirmation email failed for ${booking.displayRef}`,
@@ -2031,7 +2278,7 @@ export class BookingsService {
     }
 
     this.logger.log(`Resending confirmation for ${booking.displayRef}`);
-    await this.sendConfirmationEmail(booking, { rethrow: true });
+    await this.sendConfirmationEmail(booking, { rethrow: true, resend: true });
     return { sent: true };
   }
 
@@ -2519,8 +2766,10 @@ export class BookingsService {
       localDate: Date;
       tourStartDateTime: Date | null;
       startTime: string | null;
-      currency: string;
+      currency: Currency;
       totalRetail: Prisma.Decimal;
+      paymentModel: PaymentModel;
+      depositAmount: Prisma.Decimal;
     },
     refund: CancellationRefund,
   ): Promise<void> {
@@ -2556,44 +2805,92 @@ export class BookingsService {
       startTime: booking.startTime ?? '',
     };
 
-    // What the traveller is told about their money. `cancellationRefund` is
-    // the POLICY verdict, not proof a refund has settled, so the copy speaks
-    // to what happens next rather than claiming it is already back.
-    const refundLine =
-      refund === CancellationRefund.FULL
-        ? `You cancelled within the free-cancellation window, so the full ${booking.currency} ${booking.totalRetail.toString()} is on its way back to your original payment method within 3 to 5 business days.`
-        : refund === CancellationRefund.PARTIAL
-          ? 'A partial refund applies under the cancellation terms for this trip. We will email you the exact amount as it is processed.'
-          : 'This cancellation falls outside the free-cancellation window for this trip, so no refund is due. If you think something went wrong, just reply to this email.';
-
-    if (booking.contactEmail) {
+    const travellerEmail = booking.contactEmail;
+    if (travellerEmail) {
       const locale = toLocale(booking.customerLocale);
+      const copy = copyFor(CANCELLATION_EMAIL_COPY, locale);
+
+      // What the traveller is told about their money: a MATRIX of the master
+      // 6.4 payment-model copy × the CancellationRefund verdict (B-23/B-24).
+      // `cancellationRefund` is the POLICY verdict, not proof a refund has
+      // settled, so every line speaks to what happens next.
+      //  - operator_full: Island Tours never held money - no refund-from-us
+      //    line under ANY verdict; the operator refunds directly.
+      //  - FULL: paid_in_full gets "your payment is on its way back from us";
+      //    operator_link gets the deposit-back + operator-balance split;
+      //    on_arrival gets deposit-back only (no balance was payable before
+      //    arrival, so the split sentence would describe money that cannot
+      //    exist).
+      //  - PARTIAL / NONE: the existing verdict overlay, unchanged.
+      const operatorRefundName =
+        operator?.companyInfo?.companyName ?? copy.operatorFallback;
+      const refundLine =
+        booking.paymentModel === PaymentModel.OPERATOR_FULL
+          ? fillCopy(copy.operatorFullLine, {
+              operatorName: operatorRefundName,
+            })
+          : refund === CancellationRefund.FULL
+            ? booking.paymentModel === PaymentModel.PAID_IN_FULL
+              ? fillCopy(copy.refundPaidInFull, {
+                  totalAmount: formatMoney(
+                    booking.totalRetail.toString(),
+                    booking.currency,
+                    locale,
+                  ),
+                })
+              : fillCopy(
+                  booking.paymentModel === PaymentModel.OPERATOR_LINK
+                    ? copy.refundDepositSplit
+                    : copy.refundDeposit,
+                  {
+                    depositPct: depositPctOf(
+                      booking.depositAmount.toString(),
+                      booking.totalRetail.toString(),
+                    ),
+                  },
+                )
+            : refund === CancellationRefund.PARTIAL
+              ? copy.partial
+              : copy.noRefund;
+
       const ctx: EmailTemplateContext = {
         ...shared,
         dateLong: formatDateLong(
           booking.tourStartDateTime ?? booking.localDate,
           locale,
         ),
-        noticeTitle: 'Your booking is cancelled.',
+        noticeTitle: copy.title,
         noticeParagraphs: [
-          `We have processed your request and cancelled ${booking.displayRef} for ${tourName}. Your seats have been released.`,
+          fillCopy(copy.processed, {
+            bookingRef: booking.displayRef,
+            tourName,
+          }),
           refundLine,
-          'Nothing further is needed from you. Booked by mistake, or want to rebook for another date? Just reply to this email.',
+          copy.closing,
         ],
         ctaUrl: `${siteBase}/${booking.island}/thank-you/${booking.publicRef}`,
-        ctaLabel: 'View your booking',
+        ctaLabel: copy.cta,
       };
-      try {
-        await this.mail.sendBookingNoticeEmail(
-          booking.contactEmail,
-          `Your booking is cancelled - ${booking.displayRef}`,
-          ctx,
-          buildNoticeText(ctx),
-        );
-      } catch (err) {
+
+      // Send-once via the log (B-26): one CX-1 per booking, claim-first.
+      // claimAndSend never throws, so the cancel stays best-effort.
+      const result = await this.emailLog.claimAndSend({
+        templateKey: EmailTemplateKey.CX1_CANCELLATION,
+        scopeId: booking.id,
+        toEmail: travellerEmail,
+        stream: EmailStream.TRANSACTIONAL,
+        locale,
+        send: () =>
+          this.mail.sendBookingNoticeEmail(
+            travellerEmail,
+            fillCopy(copy.subject, { bookingRef: booking.displayRef }),
+            ctx,
+            buildNoticeText(ctx),
+          ),
+      });
+      if (result.outcome === 'failed') {
         this.logger.error(
-          `Cancellation confirmation to traveller failed for ${booking.displayRef}`,
-          err as Error,
+          `Cancellation confirmation to traveller failed for ${booking.displayRef}: ${result.error}`,
         );
       }
     }
@@ -3058,7 +3355,9 @@ export class BookingsService {
     // The traveller was told "cancellation confirmed" - the confirmation
     // email going out again is the counter-notice that their spot is back.
     // Best-effort like the confirm-time send: the restore itself committed.
-    await this.sendConfirmationEmail(updated);
+    // `resend`: the base (BK1, bookingId) slot is long claimed - without it
+    // the send log would silently swallow the counter-notice.
+    await this.sendConfirmationEmail(updated, { resend: true });
 
     this.inbox.notify({
       event: InboxEvent.BOOKING_RESTORED,

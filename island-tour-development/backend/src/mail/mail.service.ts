@@ -1,10 +1,13 @@
 import { redactEmail } from '@/common/utils/redact-email.util';
 import { authPrismaClient } from '@/auth/auth-prisma.client';
 import { Injectable, Logger } from '@nestjs/common';
+import { Locale } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Resend } from 'resend';
 import { emailSafeLogoUrl } from './email-logo.util';
+import { copyFor, fillCopy } from './templates/email-copy.util';
+import { REVIEW_REQUEST_COPY } from './templates/review-request-email.copy';
 import {
   changeEmailConfirmationTemplate,
   emailVerificationTemplate,
@@ -74,6 +77,12 @@ const BOOKING_CONFIRMATION_TEMPLATE = fs.readFileSync(
 /** Operator "Booking Received" notification (C7) - same shell, operator content. */
 const OPERATOR_BOOKING_RECEIVED_TEMPLATE = fs.readFileSync(
   path.join(TEMPLATE_DIR, 'operator-booking-received.template.html'),
+  'utf8',
+);
+
+/** BK-2 pre-tour reminder (master 6.7) - sibling of the confirmation template. */
+const PRE_TOUR_REMINDER_TEMPLATE = fs.readFileSync(
+  path.join(TEMPLATE_DIR, 'pre-tour-reminder-email.template.html'),
   'utf8',
 );
 
@@ -573,7 +582,7 @@ export class MailService {
     subject: string,
     context: EmailTemplateContext,
     text: string,
-  ): Promise<void> {
+  ): Promise<{ providerMessageId: string | null }> {
     const missing = findUnresolvedTokens(
       BOOKING_CONFIRMATION_TEMPLATE,
       context,
@@ -583,10 +592,39 @@ export class MailService {
         `Confirmation email context is missing tokens: ${missing.join(', ')}`,
       );
     }
-    await this.sendMail({
+    return this.sendMail({
       to,
       subject,
       html: renderEmailTemplate(BOOKING_CONFIRMATION_TEMPLATE, context),
+      text,
+    });
+  }
+
+  // ── BK-2 pre-tour reminder ──────────────────────────────────────────────────
+
+  /**
+   * Render + send the locked pre-tour reminder. Same contract as the
+   * confirmation facade: the caller owns the token context
+   * (`buildReminderEmailContext`) and the subject; missing tokens log loudly
+   * rather than emailing a literal `{whatToBring}`. Returns the provider id
+   * so `EmailLogService.claimAndSend` can record it.
+   */
+  async sendPreTourReminderEmail(
+    to: string,
+    subject: string,
+    context: EmailTemplateContext,
+    text: string,
+  ): Promise<{ providerMessageId: string | null }> {
+    const missing = findUnresolvedTokens(PRE_TOUR_REMINDER_TEMPLATE, context);
+    if (missing.length) {
+      this.logger.error(
+        `Pre-tour reminder context is missing tokens: ${missing.join(', ')}`,
+      );
+    }
+    return this.sendMail({
+      to,
+      subject,
+      html: renderEmailTemplate(PRE_TOUR_REMINDER_TEMPLATE, context),
       text,
     });
   }
@@ -597,14 +635,14 @@ export class MailService {
     subject: string,
     context: EmailTemplateContext,
     text: string,
-  ): Promise<void> {
+  ): Promise<{ providerMessageId: string | null }> {
     const missing = findUnresolvedTokens(BOOKING_NOTICE_TEMPLATE, context);
     if (missing.length) {
       this.logger.error(
         `Booking notice context is missing tokens: ${missing.join(', ')}`,
       );
     }
-    await this.sendMail({
+    return this.sendMail({
       to,
       subject,
       html: renderEmailTemplate(BOOKING_NOTICE_TEMPLATE, context),
@@ -640,25 +678,50 @@ export class MailService {
       siteLogoUrl?: string | null;
       emailIconBase: string;
       isReminder?: boolean;
+      /** Traveller's platform locale (§2.9); defaults to English. */
+      locale?: Locale;
+      /** Operator company name - BK-3R names the beneficiary (wireframe cue). */
+      operatorName?: string | null;
+      /**
+       * `reviewWhatsappOptIn` - BK-3R mentions the WhatsApp channel where the
+       * guest opted in. The WhatsApp SEND itself is not built; this only sets
+       * the expectation (checklist B-11 note).
+       */
+      whatsappOptIn?: boolean;
     },
-  ): Promise<void> {
-    const subject = context.isReminder
-      ? `Did you enjoy ${context.tourName}?`
-      : `How was ${context.tourName}?`;
+  ): Promise<{ providerMessageId: string | null }> {
+    const copy = copyFor(REVIEW_REQUEST_COPY, context.locale ?? Locale.en);
+    const vars = {
+      firstName: context.firstName,
+      tourName: context.tourName,
+      operatorTeam: context.operatorName?.trim() || copy.operatorFallback,
+    };
 
-    const paragraphs = context.isReminder
-      ? [
-          `Hi ${context.firstName}, we hope ${context.tourName} was everything you came for.`,
-          'A quick star rating helps the next traveller book with confidence, and it means a lot to the local team who ran your tour. It takes about thirty seconds.',
-        ]
-      : [
-          `Hi ${context.firstName},`,
-          `We hope ${context.tourName} was everything you came to the islands for.`,
-          'Travellers trust other travellers, so a quick word about your day helps the next guest book with confidence, and it means a lot to the local team who ran your tour.',
-          'It takes about thirty seconds.',
-        ];
+    // BK-3 and BK-3R are separate template keys with DISTINCT copy (B-10/11):
+    // the reminder is lighter, says it is the only one, and keeps the same
+    // "Rate your tour" CTA into the tokenized review page (which opens on the
+    // star row - the funnel wireframe's primary CTA).
+    const subject = fillCopy(
+      context.isReminder ? copy.reminderSubject : copy.subject,
+      vars,
+    );
+    const paragraphs = (
+      context.isReminder
+        ? [
+            ...copy.reminderParagraphs,
+            ...(context.whatsappOptIn ? [copy.reminderWhatsappLine] : []),
+          ]
+        : copy.paragraphs
+    ).map((p) => fillCopy(p, vars));
+    const signoff = context.isReminder
+      ? copy.reminderTextSignoff
+      : copy.textSignoff;
+    // The sign-off ("Masha danki...") is BODY copy per the wireframe and the
+    // founder draft - it renders in the HTML paragraphs, not only the
+    // plain-text part (review of #186, minor 8).
+    const bodyParagraphs = [...paragraphs, signoff];
 
-    await this.sendBookingNoticeEmail(
+    return this.sendBookingNoticeEmail(
       to,
       subject,
       {
@@ -667,13 +730,13 @@ export class MailService {
         tourName: context.tourName,
         dateLong: context.dateLong,
         startTime: context.startTime,
-        noticeParagraphs: paragraphs,
+        noticeParagraphs: bodyParagraphs,
         ctaUrl: context.reviewUrl,
-        ctaLabel: 'Rate your tour',
+        ctaLabel: copy.cta,
         siteLogoUrl: context.siteLogoUrl ?? '',
         emailIconBase: context.emailIconBase,
       },
-      `${paragraphs.join('\n\n')}\n\nRate your tour: ${context.reviewUrl}\n\nThank you for spending your day with us. Built by Islanders.`,
+      `${paragraphs.join('\n\n')}\n\n${copy.cta}: ${context.reviewUrl}\n\n${signoff}`,
     );
   }
 
