@@ -1,14 +1,16 @@
 import { redactEmail } from '@/common/utils/redact-email.util';
 import { authPrismaClient } from '@/auth/auth-prisma.client';
 import { Injectable, Logger, Optional } from '@nestjs/common';
-import { Locale } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Resend } from 'resend';
 import { emailSafeLogoUrl } from './email-logo.util';
 import { EmailSettingsService } from './email-settings.service';
-import { copyFor, fillCopy } from './templates/email-copy.util';
-import { REVIEW_REQUEST_COPY } from './templates/review-request-email.copy';
+import {
+  buildReviewRequestEmailContext,
+  buildReviewRequestEmailText,
+  type ReviewRequestEmailInput,
+} from './review-request-email.context';
 import {
   changeEmailConfirmationTemplate,
   emailVerificationTemplate,
@@ -98,6 +100,12 @@ const BOOKING_NOTICE_TEMPLATE = fs.readFileSync(
 /** MK-1 "Next adventure" (WP-G marketing rail) - sibling of the reminder. */
 const NEXT_ADVENTURE_TEMPLATE = fs.readFileSync(
   path.join(TEMPLATE_DIR, 'next-adventure-email.template.html'),
+  'utf8',
+);
+
+/** BK-3 / BK-3R post-tour review request - the funnel wireframe's tpl-review. */
+const REVIEW_REQUEST_TEMPLATE = fs.readFileSync(
+  path.join(TEMPLATE_DIR, 'review-request-email.template.html'),
   'utf8',
 );
 
@@ -728,87 +736,33 @@ export class MailService {
    * email family, after confirmation, operator balance, pre-tour reminder and
    * cancellation.
    *
-   * REUSES THE SHARED NOTICE SHELL rather than adding a fifth near-identical
-   * HTML file. The shell already carries exactly this shape (brand bar, headline,
-   * booking reference, tour line, paragraphs, one CTA, sign-off), and a copy of
-   * it would drift from the family the first time anyone restyled one of them.
+   * Renders the LOCKED BK-3 template. It used to funnel through the shared
+   * `booking-notice.template.html`, which is a four-block generic; the funnel
+   * wireframe's review email is a nine-block designed surface (hero band,
+   * booking card, five-star row, legal disclosure), so it now has its own file
+   * for the same reason BK-1, BK-2 and MK-1 do - see that file's head comment.
    *
-   * The CTA points at the tokenized review page, so the guest goes from inbox to
-   * a committed star rating in one tap with no login. Copy is deliberately about
-   * the guest's day and the local team, not about us needing content.
+   * BK-3R (the single reminder) rides the same template with the reminder's own
+   * copy. Both open the tokenized review page, so the guest goes from inbox to a
+   * committed star rating in one tap with no login.
    */
   async sendReviewRequestEmail(
     to: string,
-    context: {
-      firstName: string;
-      tourName: string;
-      bookingRef: string;
-      dateLong: string;
-      startTime: string;
-      reviewUrl: string;
-      siteLogoUrl?: string | null;
-      emailIconBase: string;
-      isReminder?: boolean;
-      /** Traveller's platform locale (§2.9); defaults to English. */
-      locale?: Locale;
-      /** Operator company name - BK-3R names the beneficiary (wireframe cue). */
-      operatorName?: string | null;
-      /**
-       * `reviewWhatsappOptIn` - BK-3R mentions the WhatsApp channel where the
-       * guest opted in. The WhatsApp SEND itself is not built; this only sets
-       * the expectation (checklist B-11 note).
-       */
-      whatsappOptIn?: boolean;
-    },
+    input: ReviewRequestEmailInput,
   ): Promise<{ providerMessageId: string | null }> {
-    const copy = copyFor(REVIEW_REQUEST_COPY, context.locale ?? Locale.en);
-    const vars = {
-      firstName: context.firstName,
-      tourName: context.tourName,
-      operatorTeam: context.operatorName?.trim() || copy.operatorFallback,
-    };
-
-    // BK-3 and BK-3R are separate template keys with DISTINCT copy (B-10/11):
-    // the reminder is lighter, says it is the only one, and keeps the same
-    // "Rate your tour" CTA into the tokenized review page (which opens on the
-    // star row - the funnel wireframe's primary CTA).
-    const subject = fillCopy(
-      context.isReminder ? copy.reminderSubject : copy.subject,
-      vars,
-    );
-    const paragraphs = (
-      context.isReminder
-        ? [
-            ...copy.reminderParagraphs,
-            ...(context.whatsappOptIn ? [copy.reminderWhatsappLine] : []),
-          ]
-        : copy.paragraphs
-    ).map((p) => fillCopy(p, vars));
-    const signoff = context.isReminder
-      ? copy.reminderTextSignoff
-      : copy.textSignoff;
-    // The sign-off ("Masha danki...") is BODY copy per the wireframe and the
-    // founder draft - it renders in the HTML paragraphs, not only the
-    // plain-text part (review of #186, minor 8).
-    const bodyParagraphs = [...paragraphs, signoff];
-
-    return this.sendBookingNoticeEmail(
+    const context = buildReviewRequestEmailContext(input);
+    const missing = findUnresolvedTokens(REVIEW_REQUEST_TEMPLATE, context);
+    if (missing.length) {
+      this.logger.error(
+        `Review request context is missing tokens: ${missing.join(', ')}`,
+      );
+    }
+    return this.sendMail({
       to,
-      subject,
-      {
-        noticeTitle: subject,
-        bookingRef: context.bookingRef,
-        tourName: context.tourName,
-        dateLong: context.dateLong,
-        startTime: context.startTime,
-        noticeParagraphs: bodyParagraphs,
-        ctaUrl: context.reviewUrl,
-        ctaLabel: copy.cta,
-        siteLogoUrl: context.siteLogoUrl ?? '',
-        emailIconBase: context.emailIconBase,
-      },
-      `${paragraphs.join('\n\n')}\n\n${copy.cta}: ${context.reviewUrl}\n\n${signoff}`,
-    );
+      subject: String(context.subjectLine),
+      html: renderEmailTemplate(REVIEW_REQUEST_TEMPLATE, context),
+      text: buildReviewRequestEmailText(context),
+    });
   }
 
   // ── Cancellation request → admin (B3) ──────────────────────────────────────

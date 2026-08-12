@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="{locale}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no">
+  <meta name="color-scheme" content="light">
+  <meta name="supported-color-schemes" content="light">
+  <title>{subjectLine}</title>
+  <!-- Plus Jakarta Sans, exactly as the wireframe loads it. Which clients render
+       it is a CLIENT capability, not something any sender can change - see the
+       note in booking-confirmation-email.template.html, the family this
+       template joins. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+    /* Lock the palette to the light design. Clients that honor color-scheme
+       (Apple Mail, iOS) stop inverting the card and logo in dark mode; Gmail
+       ignores it - the logo itself ships with a baked-in white chip for that. */
+    :root { color-scheme: light; supported-color-schemes: light; }
+
+    /* Founder-approved mobile refinement (same as the confirmation): tighten
+       the outer gutter and cell padding on phones. */
+    @media only screen and (max-width: 480px) {
+      .it-shell-pad { padding: 12px 6px !important; }
+      .it-cell { padding-left: 16px !important; padding-right: 16px !important; }
+    }
+  </style>
+  <!-- BK-3 post-tour review request (and BK-3R, its single reminder), locked to
+       the funnel wireframe's embedded template
+       (island-tours-email-funnel-wireframe.html, tpl-review).
+
+       WHY THIS IS ITS OWN FILE, and not a branch in booking-notice.template.html:
+       the shared notice shell is a FOUR-block generic (brand bar, headline +
+       reference, tour line + paragraphs + one CTA, sign-off) and ~13 other sends
+       depend on it - the cancellation ack, the operator notices, the settlement
+       notices. The wireframe's review email is a NINE-block designed surface
+       with a hero band, a 96px booking card, a five-star row and a legal
+       disclosure, none of which any of those other sends want. Branching the
+       shell on "is this the review email?" would have put half a second email
+       inside the first one, and every one of those 13 sends would carry the risk
+       of a BK-3 edit. A locked sibling file is the family's own pattern (BK-1,
+       BK-2, MK-1 each have one).
+
+       HERO OVERLAY - a deliberate deviation. The wireframe paints the tour title
+       over the image with `position:absolute`. Outlook (Word rendering engine)
+       ignores absolute positioning outright and Gmail strips `position` from
+       inline styles, so the overlay would collapse into the flow and land the
+       white title on a white background - unreadable in the two clients that
+       matter most. The alternative, a background-image cell with a VML
+       `<v:rect>` fallback, renders in Outlook but is precisely the construct
+       Gmail's webmail drops, and it cannot letterbox a photo of unknown aspect
+       ratio without cropping the operator's subject out of frame. So: the image
+       renders as a plain <img> and the two text lines sit in a dark band
+       immediately beneath it. Same information, same order, same type scale,
+       and it degrades correctly with images off (the band still reads).
+
+       Copy strings arrive as tokens from review-request-email.copy.ts (7
+       locales); this file owns only the design. Where the design bolds part of
+       a sentence the copy arrives pre-split (askBefore / askAfter), because the
+       renderer HTML-escapes every token and markup inside a copy string can
+       never render. -->
+</head>
+<body style="margin:0;padding:0;background:#EDEFF2;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#1F2937;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
+    {previewText}
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:#EDEFF2">
+    <tr><td align="center" class="it-shell-pad" style="padding:26px 16px">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#FFFFFF;border-radius:16px;overflow:hidden;border:1px solid #E8EAED;border-collapse:separate">
+
+        <!-- 1 · Brand bar -->
+        <tr><td class="it-cell" style="padding:18px 28px;border-bottom:1px solid #E8EAED">
+          [IF siteLogoUrl]<img src="{siteLogoUrl}" height="48" alt="Island Tours" style="display:block;border:0;height:48px;width:auto">[ELSE]<span style="font-family:'Plus Jakarta Sans',Arial,sans-serif;font-weight:800;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:#1F2937">ISLAND <span style="color:#E8611A">TOURS</span></span>[/IF]
+        </td></tr>
+
+        <!-- 2 · Hero: the tour they were on, title and supplier in the band
+             beneath it (see the head comment for why not an overlay). A tour
+             with no image on file skips the WHOLE block rather than rendering
+             an empty 190px band. -->
+        [IF heroImageUrl]<tr><td style="padding:0">
+          <img src="{heroImageUrl}" width="600" height="190" alt="{tourName}" style="display:block;width:100%;height:190px;object-fit:cover;border:0;background:#2C7A9B">
+          <div style="background:#1F2937;padding:16px 24px 18px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+            <div style="color:#fff;font-size:21px;font-weight:800;letter-spacing:-.01em">{tourName}</div>
+            <div style="color:#EDF2F5;font-size:13.5px;margin-top:3px">{heroSubline}</div>
+          </div>
+        </td></tr>[/IF]
+
+        <!-- 3 · Greeting + the neutral warm opener. Island Tours is the
+             platform, the operator ran the tour. BK-3R has no 22px greeting:
+             its founder-approved first paragraph opens with the name itself,
+             so a heading above it would say "Hi Denley" twice. -->
+        <tr><td class="it-cell" style="padding:26px 28px 4px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          [IF greeting]<div style="font-size:22px;font-weight:800;letter-spacing:-.02em;color:#1F2937">{greeting}</div>[/IF]
+          <div style="font-size:16px;color:#374151;line-height:1.6;margin-top:10px">{greetingLine}</div>
+        </td></tr>
+
+        <!-- 4 · The booking card, same 96px thumbnail pattern as the
+             confirmation and the reminder. The thumbnail cell drops with the
+             image so the card never shows a broken-image box. -->
+        <tr><td class="it-cell" style="padding:16px 28px 4px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#F7F8FA;border:1px solid #E8EAED;border-radius:12px"><tr>
+            [IF heroImageUrl]<td width="96" style="vertical-align:top;padding:14px 0 14px 14px">
+              <img src="{heroImageUrl}" width="96" height="96" alt="{tourName}" style="display:block;width:96px;height:96px;border-radius:10px;object-fit:cover;border:0;background:#1FB6C9">
+            </td>[/IF]
+            <td style="vertical-align:top;padding:14px 16px 14px 14px">
+              <div style="font-size:16px;font-weight:800;color:#1F2937;line-height:1.25;letter-spacing:-.01em">{tourName}</div>
+              [IF operatorName]<div style="font-size:13.5px;color:#6B7280;margin-top:5px">{operatorName}</div>[/IF]
+              <div style="font-size:13.5px;color:#6B7280;margin-top:5px">{dateLong}[IF partyBreakdown] &middot; {partyBreakdown}[/IF]</div>
+              <div style="font-size:13px;color:#9aa3b2;margin-top:5px">{refLabel} {bookingRef}</div>
+            </td>
+          </tr></table>
+        </td></tr>
+
+        <!-- 5 · The ask: autonomy cue, outward favor, the named operator as
+             beneficiary, ease last. ONE paragraph on BK-3. BK-3R supplies its
+             draft paragraphs instead (askBefore empty hides this one). -->
+        <tr><td class="it-cell" style="padding:18px 28px 0;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          [IF askBefore]<div style="font-size:16px;color:#374151;line-height:1.6">{askBefore}<b style="color:#1F2937">{operatorTeam}</b>{askAfter}</div>[/IF]
+          [EACH extraParagraphs]<div style="font-size:16px;color:#374151;line-height:1.6;margin-top:10px">{item}</div>[/EACH]
+        </td></tr>
+
+        <!-- 6 · One-tap stars, the primary CTA. A text glyph, never an image
+             asset - five images above the fold is what gets an email clipped or
+             flagged, and &#9733; renders everywhere.
+             FOUNDER DECISION 2026-08-12: all five link PLAINLY to the review
+             page. No `?rating=` pre-fill, and therefore no frontend change. -->
+        <tr><td class="it-cell" style="padding:22px 28px 0;font-family:'Plus Jakarta Sans',Arial,sans-serif" align="center">
+          <div style="font-size:13px;color:#6B7280;margin-bottom:8px">{tapAStar}</div>
+          <table role="presentation" cellpadding="0" cellspacing="0" align="center"><tr>
+            <td style="padding:0 5px"><a href="{reviewUrl}" style="font-size:36px;color:#f5b301;text-decoration:none">&#9733;</a></td>
+            <td style="padding:0 5px"><a href="{reviewUrl}" style="font-size:36px;color:#f5b301;text-decoration:none">&#9733;</a></td>
+            <td style="padding:0 5px"><a href="{reviewUrl}" style="font-size:36px;color:#f5b301;text-decoration:none">&#9733;</a></td>
+            <td style="padding:0 5px"><a href="{reviewUrl}" style="font-size:36px;color:#f5b301;text-decoration:none">&#9733;</a></td>
+            <td style="padding:0 5px"><a href="{reviewUrl}" style="font-size:36px;color:#f5b301;text-decoration:none">&#9733;</a></td>
+          </tr></table>
+        </td></tr>
+
+        <!-- 7 · Worded CTA + the verification disclosure (UCPD Art 7(6)).
+             Outlook drops padding on an inline <a>, which would leave the
+             wireframe's button as bare orange text, so the padding and the fill
+             live on a <td> (bgcolor for the clients that ignore the style
+             attribute) and the anchor only carries type and color. -->
+        <tr><td class="it-cell" style="padding:16px 28px 0;font-family:'Plus Jakarta Sans',Arial,sans-serif" align="center">
+          <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto"><tr>
+            <td bgcolor="#E8611A" style="background:#E8611A;border-radius:10px;padding:13px 26px">
+              <a href="{reviewUrl}" style="display:inline-block;font-family:'Plus Jakarta Sans',Arial,sans-serif;font-size:15px;font-weight:700;color:#fff;text-decoration:none">{cta}</a>
+            </td>
+          </tr></table>
+          <div style="font-size:12.5px;color:#9aa3b2;margin-top:12px;line-height:1.5">{disclosureVerified}<br>{disclosurePublishAll}</div>
+        </td></tr>
+
+        <!-- 8 · Sign-off -->
+        <tr><td class="it-cell" style="padding:22px 28px 0;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <div style="font-size:16px;color:#374151;line-height:1.6">{signoffThanks}</div>
+          <div style="font-size:15px;font-weight:800;color:#1F2937;margin-top:4px">{signoffTeam}</div>
+        </td></tr>
+
+        <!-- 9 · Footer. NO unsubscribe: BK-3 is TRANSACTIONAL (it is about a
+             booking the traveller made), and an opt-out here would both be
+             wrong and invite the recipient to leave the booking stream that
+             carries their confirmations. The provenance line does that job. -->
+        <tr><td class="it-cell" style="padding:22px 28px 26px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <div style="height:1px;background:#E8EAED;margin-bottom:14px"></div>
+          <div style="font-size:11.5px;color:#b6bcc7;line-height:1.6">ITG B.V. (Island Tours Group) &middot; KvK Curaçao 169950 &middot; Caracasbaaiweg 366, Willemstad, Curaçao<br>{footerLine}</div>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>

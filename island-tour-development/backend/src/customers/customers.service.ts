@@ -8,7 +8,11 @@ import {
 import { PrismaService } from '@/prisma/prisma.service';
 import { MailService } from '@/mail/mail.service';
 import { emailSafeLogoUrl } from '@/mail/email-logo.util';
-import { emailIconBase } from '@/bookings/booking-email.context';
+import {
+  buildPartyLines,
+  emailIconBase,
+  toLocale,
+} from '@/bookings/booking-email.context';
 import { islandToursBase } from '@/common/utils/app-urls.util';
 import { resolveOperatorId } from '@/common/utils/operator.util';
 import type {
@@ -327,7 +331,21 @@ export class CustomersService {
         contactEmail: true,
         contactFirstName: true,
         contactLocales: true,
-        tour: { select: { name: true } },
+        unitItems: { select: { ageBandId: true } },
+        tour: {
+          select: {
+            name: true,
+            ageBands: { select: { id: true, label: true } },
+            images: { where: { isHero: true }, select: { url: true }, take: 1 },
+          },
+        },
+        // BK-3 names the operator twice - the hero band credits them and the
+        // ask bolds them - so this path must resolve it exactly as the
+        // scheduled sender does. Passing null made the SAME booking read
+        // differently depending on which path sent it.
+        operator: {
+          select: { companyInfo: { select: { companyName: true } } },
+        },
         reviewInvitation: { select: { token: true } },
       },
       orderBy: { localDate: 'asc' },
@@ -355,12 +373,22 @@ export class CustomersService {
         firstName: booking.contactFirstName ?? 'there',
         tourName: booking.tour?.name ?? 'your tour',
         bookingRef: booking.displayRef,
-        dateLong: booking.localDate.toISOString().slice(0, 10),
-        startTime: booking.startTime ?? '',
+        // Raw date; the context builder formats it long-form for the locale.
+        // This path carried the same `toISOString().slice(0, 10)` bug.
+        tourDate: booking.localDate,
+        tourImageUrl: booking.tour?.images[0]?.url ?? null,
+        partyLines: buildPartyLines(
+          booking.unitItems,
+          new Map(
+            (booking.tour?.ageBands ?? []).map((band) => [band.id, band.label]),
+          ),
+        ),
         reviewUrl: `${islandToursBase()}/${locale}/review/${invitation.token}`,
-        emailIconBase: emailIconBase(),
         siteLogoUrl: await this.siteLogo(),
         isReminder: false,
+        whatsappOptIn: false,
+        locale: toLocale(locale),
+        operatorName: booking.operator?.companyInfo?.companyName ?? null,
       });
     } catch (err) {
       this.logger.error(

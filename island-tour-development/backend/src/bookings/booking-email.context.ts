@@ -79,8 +79,11 @@ export function formatDateLong(date: Date, locale: Locale | null): string {
   }).format(date);
 }
 
-/** "22 May 2026" - the subject line. */
-function formatDateShort(date: Date, locale: Locale | null): string {
+/**
+ * "22 May 2026" - the subject line, and BK-3's hero band, which deliberately
+ * drops the weekday because the booking card 100px below already carries it.
+ */
+export function formatDateShort(date: Date, locale: Locale | null): string {
   return new Intl.DateTimeFormat(intlLocale(locale), {
     day: 'numeric',
     month: 'short',

@@ -4,49 +4,104 @@ import { Locale } from '@prisma/client';
  * BK-3 review request + BK-3R review reminder copy, 7 locales
  * (EMAIL-IMPLEMENTATION-PLAN.md §2.9, checklist B-10/B-12).
  *
- * BK-3 English is the DECIDED copy carried over verbatim from
- * `MailService.sendReviewRequestEmail` (autonomy cue, outward favor, ease
- * last). BK-3R English is the WP-B DRAFT awaiting founder sign-off
- * (decision D1) - distinct from BK-3, deliberately lighter, and explicit
- * that it is the one and only reminder. The other six locales are
- * machine-first translations of both.
+ * BK-3 English is the DECIDED copy, word for word from the funnel wireframe
+ * (`technical-doc/emails/island-tours-email-funnel-wireframe.html`,
+ * `tpl-review`): autonomy cue, outward favor, the NAMED operator as
+ * beneficiary, ease last. It is deliberately a set of per-BLOCK strings rather
+ * than a paragraph array - the nine-block layout puts the greeting, the ask,
+ * the star prompt, the disclosure and the sign-off in different cells at
+ * different sizes, so a flat array could not address them.
  *
- * `{slots}`: firstName, tourName, operatorTeam (the operator's company name,
- * falling back to the locale's `operatorFallback` when none is on file).
+ * BK-3R English is the WP-B DRAFT awaiting founder sign-off (decision D1) -
+ * distinct from BK-3, deliberately lighter, and explicit that it is the one and
+ * only reminder. It stays a paragraph ARRAY on purpose: the draft is
+ * founder-approved as written and re-slotting it into per-block strings would
+ * be rewriting it. The context builder maps paragraph 1 into the greeting cell
+ * and the rest into the ask cell.
+ *
+ * The other six locales are machine-first translations of both (decision D5).
+ *
+ * `{slots}`: firstName, tourName, operatorName/operatorTeam (the operator's
+ * company name, falling back to the locale's `operatorFallback` when none is on
+ * file), dateLong, bookingRef.
+ *
+ * Strings NEVER carry markup: the template renderer HTML-escapes every token,
+ * so a `<b>` in a copy string would render as literal text. Wherever the design
+ * bolds part of a sentence, the copy is split into a Before/After pair around
+ * the bolded token (the MK-1 `introBeforeTourName` pattern).
  */
 export interface ReviewRequestCopy {
   /** "How was {tourName}?" */
   subject: string;
-  /** First-touch paragraphs, in order. */
-  paragraphs: string[];
+  /**
+   * Inbox preview line. Deliberately NOT the subject: the old notice shell
+   * used `{noticeTitle}` as its preheader, so the preview duplicated the
+   * subject in every inbox.
+   */
+  preview: string;
+  /** "Hi {firstName}," - the 22px greeting. */
+  greeting: string;
+  /** "We hope you had a great day." - the line under the greeting. */
+  greetingLine: string;
+  /** "Supplied by {operatorName} · your trip, {dateLong}" - the hero band. */
+  heroSubline: string;
+  /** "Booking reference:" - the booking card's label. */
+  refLabel: string;
+  /** The ask, up to (but excluding) the bolded operator name. */
+  askBefore: string;
+  /** The ask, from just after the bolded operator name. */
+  askAfter: string;
+  /** "Tap a star to start" - above the five stars. */
+  tapAStar: string;
+  /** "Rate your tour" - the CTA on both touches. */
+  cta: string;
+  /** UCPD Art 7(6) disclosure, line 1. */
+  disclosureVerified: string;
+  /** UCPD Art 7(6) disclosure, line 2. */
+  disclosurePublishAll: string;
+  /** "Masha danki, thank you from all of us." - both touches. */
+  signoffThanks: string;
+  /** "The Island Tours crew · Built by Islanders." */
+  signoffTeam: string;
+  /**
+   * The transactional footer line. BK-3 is TRANSACTIONAL, so there is
+   * deliberately no unsubscribe anywhere in this email - this line is the
+   * provenance statement that replaces it.
+   */
+  footerLine: string;
   /** "Did you enjoy {tourName}?" */
   reminderSubject: string;
-  /** Reminder paragraphs - the BK-3R draft. */
+  /** Reminder paragraphs - the BK-3R draft, unchanged. */
   reminderParagraphs: string[];
   /**
    * Appended to the reminder ONLY when `reviewWhatsappOptIn` is set. The
    * WhatsApp send channel itself is not built - this only sets expectation.
    */
   reminderWhatsappLine: string;
-  /** "Rate your tour" - the CTA on both touches. */
-  cta: string;
-  /** Plain-text sign-off, first touch. */
-  textSignoff: string;
-  /** Plain-text sign-off, reminder. */
-  reminderTextSignoff: string;
-  /** Stand-in for {operatorTeam} when no operator name is on file. */
+  /** Stand-in for the operator name when none is on file. */
   operatorFallback: string;
 }
 
 export const REVIEW_REQUEST_COPY: Record<Locale, ReviewRequestCopy> = {
   [Locale.en]: {
     subject: 'How was {tourName}?',
-    paragraphs: [
-      'Hi {firstName},',
-      'We hope {tourName} was everything you came to the islands for.',
-      'Travellers trust other travellers, so a quick word about your day helps the next guest book with confidence, and it means a lot to the local team who ran your tour.',
-      'It takes about thirty seconds.',
-    ],
+    preview: 'A few words help the next traveler pick their tour.',
+    greeting: 'Hi {firstName},',
+    greetingLine: 'We hope you had a great day.',
+    heroSubline: 'Supplied by {operatorName} · your trip, {dateShort}',
+    refLabel: 'Booking reference:',
+    askBefore:
+      'If you have a minute, a few words on how it went helps the next traveler know what to expect, and it means a lot to ',
+    askAfter: ' and the team. About thirty seconds is all it takes.',
+    tapAStar: 'Tap a star to start',
+    cta: 'Rate your tour',
+    disclosureVerified:
+      'Only guests who booked through Island Tours can review.',
+    disclosurePublishAll: 'We publish every review, good or bad.',
+    signoffThanks: 'Masha danki, thank you from all of us.',
+    signoffTeam: 'The Island Tours crew · Built by Islanders.',
+    footerLine:
+      'You are receiving this because you took a tour booked through Island Tours. Booking reference {bookingRef}.',
     reminderSubject: 'Did you enjoy {tourName}?',
     reminderParagraphs: [
       'Hi {firstName}, one small nudge from us - the only one, promise.',
@@ -55,19 +110,28 @@ export const REVIEW_REQUEST_COPY: Record<Locale, ReviewRequestCopy> = {
     ],
     reminderWhatsappLine:
       'You opted in to WhatsApp updates, so the same review link may also reach you there - whichever is easier for you.',
-    cta: 'Rate your tour',
-    textSignoff: 'Thank you for spending your day with us. Built by Islanders.',
-    reminderTextSignoff: 'Masha danki - thank you from all of us.',
     operatorFallback: 'the local crew who ran your day',
   },
   [Locale.nl]: {
     subject: 'Hoe was {tourName}?',
-    paragraphs: [
-      'Hoi {firstName},',
-      'We hopen dat {tourName} alles was waarvoor je naar de eilanden kwam.',
-      'Reizigers vertrouwen andere reizigers: een paar woorden over je dag helpen de volgende gast met vertrouwen te boeken, en het betekent veel voor het lokale team dat je tour draaide.',
-      'Het kost ongeveer dertig seconden.',
-    ],
+    preview:
+      'Een paar woorden helpen de volgende reiziger bij het kiezen van hun tour.',
+    greeting: 'Hoi {firstName},',
+    greetingLine: 'We hopen dat je een geweldige dag hebt gehad.',
+    heroSubline: 'Verzorgd door {operatorName} · je trip, {dateShort}',
+    refLabel: 'Boekingsreferentie:',
+    askBefore:
+      'Als je even tijd hebt: een paar woorden over hoe het ging helpen de volgende reiziger te weten wat hij kan verwachten, en het betekent veel voor ',
+    askAfter: ' en het team. Het kost ongeveer dertig seconden.',
+    tapAStar: 'Tik op een ster om te beginnen',
+    cta: 'Beoordeel je tour',
+    disclosureVerified:
+      'Alleen gasten die via Island Tours hebben geboekt, kunnen een review schrijven.',
+    disclosurePublishAll: 'We publiceren elke review, goed of slecht.',
+    signoffThanks: 'Masha danki, bedankt van ons allemaal.',
+    signoffTeam: 'Het Island Tours-team · Built by Islanders.',
+    footerLine:
+      'Je ontvangt dit omdat je een tour hebt gemaakt die via Island Tours is geboekt. Boekingsreferentie {bookingRef}.',
     reminderSubject: 'Heb je genoten van {tourName}?',
     reminderParagraphs: [
       'Hoi {firstName}, nog één klein duwtje van ons - het enige, beloofd.',
@@ -76,20 +140,29 @@ export const REVIEW_REQUEST_COPY: Record<Locale, ReviewRequestCopy> = {
     ],
     reminderWhatsappLine:
       'Je hebt je aangemeld voor WhatsApp-updates, dus dezelfde reviewlink kan je daar ook bereiken - wat voor jou het makkelijkst is.',
-    cta: 'Beoordeel je tour',
-    textSignoff:
-      'Bedankt dat je je dag met ons doorbracht. Built by Islanders.',
-    reminderTextSignoff: 'Masha danki - bedankt van ons allemaal.',
     operatorFallback: 'de lokale crew die je dag draaide',
   },
   [Locale.de]: {
     subject: 'Wie war {tourName}?',
-    paragraphs: [
-      'Hallo {firstName},',
-      'wir hoffen, {tourName} war alles, wofür du auf die Inseln gekommen bist.',
-      'Reisende vertrauen anderen Reisenden: ein paar Worte zu deinem Tag helfen dem nächsten Gast, mit gutem Gefühl zu buchen - und sie bedeuten dem lokalen Team, das deine Tour gefahren hat, sehr viel.',
-      'Es dauert etwa dreißig Sekunden.',
-    ],
+    preview:
+      'Ein paar Worte helfen dem nächsten Reisenden bei der Wahl seiner Tour.',
+    greeting: 'Hallo {firstName},',
+    greetingLine: 'wir hoffen, du hattest einen großartigen Tag.',
+    heroSubline: 'Durchgeführt von {operatorName} · deine Tour, {dateShort}',
+    refLabel: 'Buchungsreferenz:',
+    askBefore:
+      'Wenn du eine Minute hast: ein paar Worte dazu, wie es war, helfen dem nächsten Reisenden zu wissen, was ihn erwartet - und sie bedeuten ',
+    askAfter: ' und dem Team sehr viel. Es dauert etwa dreißig Sekunden.',
+    tapAStar: 'Tippe auf einen Stern, um zu starten',
+    cta: 'Tour bewerten',
+    disclosureVerified:
+      'Nur Gäste, die über Island Tours gebucht haben, können bewerten.',
+    disclosurePublishAll:
+      'Wir veröffentlichen jede Bewertung, gute wie schlechte.',
+    signoffThanks: 'Masha danki, danke von uns allen.',
+    signoffTeam: 'Das Island Tours Team · Built by Islanders.',
+    footerLine:
+      'Du erhältst diese E-Mail, weil du eine über Island Tours gebuchte Tour gemacht hast. Buchungsreferenz {bookingRef}.',
     reminderSubject: 'Hat dir {tourName} gefallen?',
     reminderParagraphs: [
       'Hallo {firstName}, ein kleiner Stups von uns - der einzige, versprochen.',
@@ -98,20 +171,27 @@ export const REVIEW_REQUEST_COPY: Record<Locale, ReviewRequestCopy> = {
     ],
     reminderWhatsappLine:
       'Du hast WhatsApp-Updates zugestimmt, daher kann dich derselbe Bewertungslink auch dort erreichen - was immer für dich einfacher ist.',
-    cta: 'Tour bewerten',
-    textSignoff:
-      'Danke, dass du deinen Tag mit uns verbracht hast. Built by Islanders.',
-    reminderTextSignoff: 'Masha danki - danke von uns allen.',
     operatorFallback: 'die lokale Crew, die deinen Tag gefahren hat',
   },
   [Locale.fr]: {
     subject: "C'était comment, {tourName} ?",
-    paragraphs: [
-      'Bonjour {firstName},',
-      'Nous espérons que {tourName} a été tout ce que vous étiez venu chercher sur les îles.',
-      "Les voyageurs font confiance aux voyageurs : quelques mots sur votre journée aident le prochain visiteur à réserver en confiance, et ils comptent beaucoup pour l'équipe locale qui a mené votre sortie.",
-      'Cela prend environ trente secondes.',
-    ],
+    preview: 'Quelques mots aident le prochain voyageur à choisir sa sortie.',
+    greeting: 'Bonjour {firstName},',
+    greetingLine: 'Nous espérons que vous avez passé une belle journée.',
+    heroSubline: 'Assurée par {operatorName} · votre sortie, {dateShort}',
+    refLabel: 'Référence de réservation :',
+    askBefore:
+      "Si vous avez une minute, quelques mots sur le déroulement aident le prochain voyageur à savoir à quoi s'attendre, et cela compte beaucoup pour ",
+    askAfter: ' et son équipe. Cela prend environ trente secondes.',
+    tapAStar: 'Touchez une étoile pour commencer',
+    cta: 'Notez votre sortie',
+    disclosureVerified:
+      'Seuls les clients ayant réservé via Island Tours peuvent laisser un avis.',
+    disclosurePublishAll: 'Nous publions tous les avis, bons ou mauvais.',
+    signoffThanks: 'Masha danki, merci de la part de nous tous.',
+    signoffTeam: "L'équipe Island Tours · Built by Islanders.",
+    footerLine:
+      'Vous recevez ce message parce que vous avez participé à une sortie réservée via Island Tours. Référence de réservation {bookingRef}.',
     reminderSubject: 'Avez-vous aimé {tourName} ?',
     reminderParagraphs: [
       'Bonjour {firstName}, un dernier petit rappel de notre part - le seul, promis.',
@@ -120,20 +200,27 @@ export const REVIEW_REQUEST_COPY: Record<Locale, ReviewRequestCopy> = {
     ],
     reminderWhatsappLine:
       'Vous avez accepté les mises à jour WhatsApp, le même lien peut donc aussi vous parvenir là-bas - selon ce qui est le plus simple pour vous.',
-    cta: 'Notez votre sortie',
-    textSignoff:
-      "Merci d'avoir passé votre journée avec nous. Built by Islanders.",
-    reminderTextSignoff: 'Masha danki - merci de la part de nous tous.',
     operatorFallback: "l'équipe locale qui a mené votre journée",
   },
   [Locale.es]: {
     subject: '¿Qué tal {tourName}?',
-    paragraphs: [
-      'Hola {firstName}:',
-      'Esperamos que {tourName} fuera todo lo que viniste a buscar a las islas.',
-      'Los viajeros confían en otros viajeros: unas palabras sobre tu día ayudan al próximo visitante a reservar con confianza, y significan mucho para el equipo local que llevó tu tour.',
-      'Lleva unos treinta segundos.',
-    ],
+    preview: 'Unas palabras ayudan al próximo viajero a elegir su tour.',
+    greeting: 'Hola {firstName}:',
+    greetingLine: 'Esperamos que hayas tenido un gran día.',
+    heroSubline: 'Operado por {operatorName} · tu tour, {dateShort}',
+    refLabel: 'Referencia de reserva:',
+    askBefore:
+      'Si tienes un minuto, unas palabras sobre cómo fue ayudan al próximo viajero a saber qué esperar, y significan mucho para ',
+    askAfter: ' y su equipo. Lleva unos treinta segundos.',
+    tapAStar: 'Toca una estrella para empezar',
+    cta: 'Valora tu tour',
+    disclosureVerified:
+      'Solo pueden opinar los clientes que reservaron a través de Island Tours.',
+    disclosurePublishAll: 'Publicamos todas las opiniones, buenas o malas.',
+    signoffThanks: 'Masha danki, gracias de parte de todos nosotros.',
+    signoffTeam: 'El equipo de Island Tours · Built by Islanders.',
+    footerLine:
+      'Recibes este mensaje porque hiciste un tour reservado a través de Island Tours. Referencia de reserva {bookingRef}.',
     reminderSubject: '¿Disfrutaste {tourName}?',
     reminderParagraphs: [
       'Hola {firstName}, un último empujoncito de nuestra parte - el único, prometido.',
@@ -142,19 +229,27 @@ export const REVIEW_REQUEST_COPY: Record<Locale, ReviewRequestCopy> = {
     ],
     reminderWhatsappLine:
       'Aceptaste recibir avisos por WhatsApp, así que el mismo enlace puede llegarte también por ahí - lo que te resulte más fácil.',
-    cta: 'Valora tu tour',
-    textSignoff: 'Gracias por pasar tu día con nosotros. Built by Islanders.',
-    reminderTextSignoff: 'Masha danki - gracias de parte de todos nosotros.',
     operatorFallback: 'el equipo local que llevó tu día',
   },
   [Locale.pt]: {
     subject: 'Como foi {tourName}?',
-    paragraphs: [
-      'Olá {firstName},',
-      'Esperamos que {tourName} tenha sido tudo o que veio procurar às ilhas.',
-      'Os viajantes confiam noutros viajantes: umas palavras sobre o seu dia ajudam o próximo visitante a reservar com confiança, e significam muito para a equipa local que fez o seu tour.',
-      'Demora cerca de trinta segundos.',
-    ],
+    preview: 'Umas palavras ajudam o próximo viajante a escolher o seu tour.',
+    greeting: 'Olá {firstName},',
+    greetingLine: 'Esperamos que tenha tido um ótimo dia.',
+    heroSubline: 'Operado por {operatorName} · o seu tour, {dateShort}',
+    refLabel: 'Referência da reserva:',
+    askBefore:
+      'Se tiver um minuto, umas palavras sobre como correu ajudam o próximo viajante a saber o que esperar, e significam muito para ',
+    askAfter: ' e para a equipa. Demora cerca de trinta segundos.',
+    tapAStar: 'Toque numa estrela para começar',
+    cta: 'Avalie o seu tour',
+    disclosureVerified:
+      'Só os clientes que reservaram através da Island Tours podem avaliar.',
+    disclosurePublishAll: 'Publicamos todas as avaliações, boas ou más.',
+    signoffThanks: 'Masha danki, obrigado de todos nós.',
+    signoffTeam: 'A equipa Island Tours · Built by Islanders.',
+    footerLine:
+      'Está a receber esta mensagem porque fez um tour reservado através da Island Tours. Referência da reserva {bookingRef}.',
     reminderSubject: 'Gostou de {tourName}?',
     reminderParagraphs: [
       'Olá {firstName}, um último toque da nossa parte - o único, prometido.',
@@ -163,19 +258,26 @@ export const REVIEW_REQUEST_COPY: Record<Locale, ReviewRequestCopy> = {
     ],
     reminderWhatsappLine:
       'Aceitou receber atualizações por WhatsApp, por isso o mesmo link de avaliação também pode chegar por lá - o que for mais fácil para si.',
-    cta: 'Avalie o seu tour',
-    textSignoff: 'Obrigado por passar o seu dia connosco. Built by Islanders.',
-    reminderTextSignoff: 'Masha danki - obrigado de todos nós.',
     operatorFallback: 'a equipa local que fez o seu dia',
   },
   [Locale.zh]: {
     subject: '{tourName} 体验如何?',
-    paragraphs: [
-      '{firstName},您好:',
-      '希望 {tourName} 不负您远道而来。',
-      '旅行者最信任旅行者:您对这一天的几句评价,能帮助下一位客人放心预订,也对带您出行的当地团队意义重大。',
-      '大约只需三十秒。',
-    ],
+    preview: '几句评价就能帮助下一位旅行者挑选行程。',
+    greeting: '{firstName},您好:',
+    greetingLine: '希望您度过了愉快的一天。',
+    heroSubline: '由 {operatorName} 提供 · 您的行程,{dateShort}',
+    refLabel: '预订编号:',
+    askBefore:
+      '如果您有一分钟,几句关于当天体验的评价能让下一位旅行者知道该期待什么,这对 ',
+    askAfter: ' 和团队也意义重大。大约只需三十秒。',
+    tapAStar: '点击星星开始评分',
+    cta: '评价您的行程',
+    disclosureVerified: '只有通过 Island Tours 预订的客人才能评价。',
+    disclosurePublishAll: '无论好评还是差评,我们都会发布。',
+    signoffThanks: 'Masha danki,我们全体感谢您。',
+    signoffTeam: 'Island Tours 团队 · Built by Islanders.',
+    footerLine:
+      '您收到此邮件,是因为您参加了通过 Island Tours 预订的行程。预订编号 {bookingRef}。',
     reminderSubject: '{tourName} 玩得开心吗?',
     reminderParagraphs: [
       '{firstName},这是我们最后一次小小的提醒 - 仅此一次,说到做到。',
@@ -184,9 +286,6 @@ export const REVIEW_REQUEST_COPY: Record<Locale, ReviewRequestCopy> = {
     ],
     reminderWhatsappLine:
       '您已同意接收 WhatsApp 消息,同样的评价链接也可能通过 WhatsApp 发送给您 - 用哪种方式都可以。',
-    cta: '评价您的行程',
-    textSignoff: '感谢您与我们共度这一天。Built by Islanders.',
-    reminderTextSignoff: 'Masha danki - 我们全体感谢您。',
     operatorFallback: '带您出行的当地团队',
   },
 };

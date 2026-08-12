@@ -9,7 +9,7 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { MailService } from '@/mail/mail.service';
 import { EmailLogService } from '@/mail/email-log.service';
 import { emailSafeLogoUrl } from '@/mail/email-logo.util';
-import { emailIconBase, toLocale } from '@/bookings/booking-email.context';
+import { buildPartyLines, toLocale } from '@/bookings/booking-email.context';
 import { islandToursBase } from '@/common/utils/app-urls.util';
 import { localNow } from '@/common/utils/timezone.util';
 
@@ -308,7 +308,26 @@ export class ReviewRequestsService {
           contactFirstName: true,
           customerLocale: true,
           reviewWhatsappOptIn: true,
-          tour: { select: { name: true, timeZone: true } },
+          // The party line ("2 adults, 1 child") on the email's booking card,
+          // built exactly the way BK-1 and BK-2 build theirs - the age-band
+          // LABELS are operator free text, so the counts have to be joined to
+          // them rather than pluralised from the enum.
+          unitItems: { select: { ageBandId: true } },
+          tour: {
+            select: {
+              name: true,
+              timeZone: true,
+              ageBands: { select: { id: true, label: true } },
+              // Hero band + the card's 96px thumbnail. Same `isHero` pick the
+              // confirmation and the reminder make, so all three emails show
+              // the traveller the same photo.
+              images: {
+                where: { isHero: true },
+                select: { url: true },
+                take: 1,
+              },
+            },
+          },
           operator: {
             select: { companyInfo: { select: { companyName: true } } },
           },
@@ -426,10 +445,18 @@ export class ReviewRequestsService {
           firstName: b.contactFirstName ?? 'there',
           tourName: b.tour?.name ?? 'your tour',
           bookingRef: b.displayRef,
-          dateLong: b.localDate.toISOString().slice(0, 10),
-          startTime: b.startTime ?? '',
+          // The RAW date. This used to be `toISOString().slice(0, 10)`, which
+          // emailed "2026-05-22" to every locale while the rest of the family
+          // read "Friday, 22 May 2026"; the context builder owns the format now.
+          tourDate: b.localDate,
+          tourImageUrl: b.tour?.images[0]?.url ?? null,
+          partyLines: buildPartyLines(
+            b.unitItems,
+            new Map(
+              (b.tour?.ageBands ?? []).map((band) => [band.id, band.label]),
+            ),
+          ),
           reviewUrl,
-          emailIconBase: emailIconBase(),
           siteLogoUrl,
           isReminder,
           locale,
@@ -457,6 +484,11 @@ type BookingForEmail = {
   contactFirstName: string | null;
   customerLocale: string | null;
   reviewWhatsappOptIn: boolean;
-  tour: { name: string } | null;
+  unitItems: { ageBandId: string | null }[];
+  tour: {
+    name: string;
+    ageBands: { id: string; label: string }[];
+    images: { url: string }[];
+  } | null;
   operator: { companyInfo: { companyName: string | null } | null } | null;
 };
