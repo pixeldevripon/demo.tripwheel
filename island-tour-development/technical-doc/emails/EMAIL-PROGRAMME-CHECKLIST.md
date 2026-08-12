@@ -21,7 +21,9 @@
 | 3 | WP-G consent + MK-1 | backend | `feat/email-mk1-marketing` | **merged** | #188 |
 | 4 | WP-H email centre (API) | backend | `feat/email-settings-api` | **merged** | #192 |
 | 4 | WP-H email centre (UI) | dashboard | `feat/email-centre-dashboard` | **merged** | #57 |
-| 5 | Settings reorg (H-20…H-23) | dashboard | `email-settings-into-settings` | open | #58 |
+| 5 | Settings reorg (H-20…H-24) | dashboard | `email-settings-into-settings` | **merged** | #58 |
+| 5 | Plain toggles (H-25) | dashboard | `email-settings-plain-toggles` | **merged** | #59 |
+| 5 | Switch placement (H-26, H-27) | dashboard | `hide-calendar-toggle` | open | #60 |
 
 Gates: WP-B/D/F start after WP-A merges · WP-D/E also need WP-C · WP-E's edit-form change merges
 AFTER WP-C (DTO strips `verificationStatus`) · **WP-G may not merge until WP-F is live in prod.**
@@ -609,6 +611,24 @@ Needs WP-A's two public endpoints. Must be **live in production before WP-G merg
       the multi-tab form (a browser silently refuses to submit an invalid control it cannot
       focus), `?section=` deep links, and `ReviewRequestsForm`'s zod schema finally reading
       `REVIEW_REQUEST_BOUNDS` (the #57 Low 5 follow-up)
+- [x] H-25 Plain toggles (dashboard #59): the "Set here" badge, default readout and "Use default"
+      link are gone — group switches are on/off toggles, text fields carry one line naming the
+      value that applies while they are empty. `groupToggle` clears the stored override when a
+      toggle returns to the platform value, so the invisible tri-state cannot silently pin a
+      value. New `components/ui/switch.tsx` + `SwitchField`, both on the `radix-ui` umbrella
+      package already in use (no new dependency)
+- [x] H-26 Calendar email removed from the UI (dashboard #60, founder decision after asking what
+      it is for): it offers the INBOUND calendar connection, which is not built — only the
+      outbound iCal feeds shipped — so its switch and its `ob7AfterLiveDays` field are gone.
+      Both settings still resolve server-side; the sweep's "not yet" semantics mean no operator
+      is permanently skipped when it is switched on later
+- [x] H-27 Review master switch moved to Email Groups (dashboard #60): `ReviewRequestSettings.
+      enabled` is written by the settings PATCH's `review` slice from the switchboard, and
+      `ReviewRequestsForm` STOPS sending it (two writers = the later save reverts the switch).
+      That form now uses `useSyncFormWhenPristine`, so the refetch triggered by flipping the
+      switch cannot wipe unsaved timings, and it resets itself on its own save per that hook's
+      contract. The ON/OFF confirmation toast moved with the switch
+
 
 ---
 
