@@ -10,9 +10,9 @@ import {
   useUpdateReviewRequests,
 } from '@/hooks/settings/use-settings';
 import {
-  CheckboxField,
   SettingsCard,
   SettingsCardSkeleton,
+  SwitchField,
   TextField,
 } from './settings-fields';
 
@@ -143,7 +143,7 @@ export function ReviewRequestsForm() {
       onSubmit={handleSubmit((v) => save(v))}
       isSaving={saving}
     >
-      <CheckboxField
+      <SwitchField
         id="review-requests-enabled"
         label="Send review request emails"
         description="Master switch. While off the hourly job runs and does nothing - it does not even create invitations, so switching it on later cannot fire a backlog of stale emails at once."
@@ -184,7 +184,7 @@ export function ReviewRequestsForm() {
         />
       </div>
 
-      <CheckboxField
+      <SwitchField
         id="review-requests-reminder"
         label="Send one reminder"
         description="A single follow-up to guests who did not respond. There is never a second reminder."

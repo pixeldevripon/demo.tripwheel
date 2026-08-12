@@ -18,11 +18,14 @@
  *   across several tabs land in one PATCH and the "N changes" counter is the
  *   truth for all of them.
  *
- * Tri-state semantics drive the switchboard. Each field is either NULL in
- * `stored` (the env/built-in default applies — the field shows "Using
- * default (X)" from the GET's `defaults`) or set explicitly ("Set here",
- * with a "Use default" action that PATCHes null to clear the override).
- * Submit sends ONLY the fields the admin changed.
+ * Storage is still tri-state underneath — a field is either NULL in `stored`
+ * (the env/built-in default applies) or set explicitly — but that is no
+ * longer on screen. The badge, the default readout and the "Use default"
+ * link were removed on founder feedback ("those raise confusions"): a group
+ * is now a plain on/off toggle, and a text field simply says which value
+ * applies while it is empty. `groupToggle` keeps the storage honest by
+ * clearing the row when a toggle returns to the platform's own value.
+ * Submit still sends ONLY the fields the admin changed.
  *
  * The Schedules tab additionally shows `ReviewRequestsForm` as a SECOND card
  * with its own Save (founder request 2026-08-12: the review invitation timing
@@ -53,9 +56,9 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useRole } from '@/contexts/role-context';
 import { ReviewRequestsForm } from './review-requests-form';
@@ -115,6 +118,16 @@ const NUMBER_BOUNDS: Partial<Record<ScalarKey, NumberBounds>> = {
 
 const ADDRESS_KEYS = ['salesEmail', 'mailReplyTo', 'ob6ReplyTo'] as const;
 
+/** The group toggles, in the order the Email Groups tab renders them. */
+const BOOLEAN_KEYS = [
+    'marketingEnabled',
+    'onboardingEnabled',
+    'calendarEmailEnabled',
+    'ob8PartnerOffer',
+] as const;
+
+type BooleanKey = (typeof BOOLEAN_KEYS)[number];
+
 function intError(value: number, { min, max }: NumberBounds): string | null {
     if (!Number.isInteger(value)) return 'Whole numbers only';
     if (value < min || value > max) return `Must be ${min}-${max}`;
@@ -122,10 +135,6 @@ function intError(value: number, { min, max }: NumberBounds): string | null {
 }
 
 // ── Display helpers ──────────────────────────────────────────────────────────
-
-function boolLabel(v: boolean): string {
-    return v ? 'On' : 'Off';
-}
 
 function weekdaysLabel(csv: string): string {
     return csv
@@ -150,44 +159,32 @@ const SUB_TABS: Array<{ value: SubTab; label: string }> = [
 // ── Shared field chrome ──────────────────────────────────────────────────────
 
 /**
- * The tri-state hint line every override field carries: "Using default (X)"
- * while stored is null, or a "Set here" marker plus the clear-to-default
- * action once the admin stored a value.
+ * The fallback line under a field that can be left empty: which value the
+ * platform applies while the box is blank, and how to get back to it.
+ *
+ * This replaced a tri-state widget - a "Set here" badge, the default beside
+ * it and a "Use default" link - that made an admin read the STORAGE model
+ * (stored value vs null vs env vs built-in) before they could read the
+ * setting. Founder feedback 2026-08-12: "those raise confusions". The
+ * storage model is unchanged; it is simply no longer the operator's problem.
  */
-function OverrideHint({
-    overridden,
-    defaultLabel,
-    onClear,
-}: {
-    overridden: boolean;
-    defaultLabel: string;
-    onClear: () => void;
-}) {
-    if (!overridden) {
-        return (
-            <p className='m-0 text-xs text-muted-foreground'>
-                Using default ({defaultLabel})
-            </p>
-        );
-    }
+function DefaultHint({ defaultLabel }: { defaultLabel: string }) {
     return (
-        <p className='m-0 flex flex-wrap items-center gap-2 text-xs'>
-            <span className='rounded-full bg-info-subtle px-2 py-0.5 font-medium text-info-fg'>
-                Set here
-            </span>
-            <span className='text-muted-foreground'>
-                Default: {defaultLabel}
-            </span>
-            <button
-                type='button'
-                onClick={onClear}
-                className='font-medium text-foreground underline underline-offset-4 hover:no-underline'>
-                Use default
-            </button>
+        <p className='m-0 text-xs text-muted-foreground'>
+            Leave empty to use the platform default ({defaultLabel}).
         </p>
     );
 }
 
+/**
+ * A switched-on/off email group. No default hint and no clear action: the
+ * toggle simply shows whether the group is running, which is the only
+ * question anyone opens this page with.
+ *
+ * `onChange` receives the new state; the caller decides whether that means
+ * storing an override or clearing back to the platform rule (see
+ * `groupToggle` in the switchboard).
+ */
 function SwitchSetting({
     id,
     label,
@@ -195,34 +192,30 @@ function SwitchSetting({
     value,
     defaultValue,
     onChange,
-    onClear,
 }: {
     id: string;
     label: string;
     description: string;
-    /** The draft's stored value — null means the default applies. */
+    /** The draft's stored value — null means the platform default applies. */
     value: boolean | null;
     defaultValue: boolean;
     onChange: (checked: boolean) => void;
-    onClear: () => void;
 }) {
     return (
-        <div className='space-y-1.5'>
-            <div className='flex items-center gap-2'>
-                <Checkbox
-                    id={id}
-                    checked={value ?? defaultValue}
-                    onCheckedChange={(c) => onChange(!!c)}
-                />
+        <div className='flex items-start justify-between gap-6'>
+            <div className='space-y-1'>
                 <Label htmlFor={id} className='cursor-pointer'>
                     {label}
                 </Label>
+                <p className='m-0 text-xs text-muted-foreground'>
+                    {description}
+                </p>
             </div>
-            <p className='m-0 text-xs text-muted-foreground'>{description}</p>
-            <OverrideHint
-                overridden={value !== null}
-                defaultLabel={boolLabel(defaultValue)}
-                onClear={onClear}
+            <Switch
+                id={id}
+                checked={value ?? defaultValue}
+                onCheckedChange={onChange}
+                className='mt-0.5 shrink-0'
             />
         </div>
     );
@@ -234,7 +227,6 @@ function NumberSetting({
     value,
     defaultValue,
     onChange,
-    onClear,
     error,
 }: {
     label: string;
@@ -242,7 +234,6 @@ function NumberSetting({
     value: number | null;
     defaultValue: number;
     onChange: (value: number | null) => void;
-    onClear: () => void;
     error?: string;
 }) {
     return (
@@ -255,7 +246,8 @@ function NumberSetting({
                 aria-invalid={!!error}
                 onChange={(e) => {
                     const raw = e.target.value;
-                    // Blank = back to the default (same as "Use default").
+                    // Blank IS the clear-to-default action; there is no
+                    // separate control for it.
                     onChange(raw === '' ? null : Number(raw));
                 }}
             />
@@ -265,11 +257,7 @@ function NumberSetting({
                 </p>
             )}
             {error && <p className='m-0 text-xs text-danger-fg'>{error}</p>}
-            <OverrideHint
-                overridden={value !== null}
-                defaultLabel={String(defaultValue)}
-                onClear={onClear}
-            />
+            <DefaultHint defaultLabel={String(defaultValue)} />
         </div>
     );
 }
@@ -280,7 +268,6 @@ function AddressSetting({
     value,
     defaultValue,
     onChange,
-    onClear,
     error,
 }: {
     label: string;
@@ -289,7 +276,6 @@ function AddressSetting({
     /** Addresses can have NO default at all (env unset). */
     defaultValue: string | null;
     onChange: (value: string | null) => void;
-    onClear: () => void;
     error?: string;
 }) {
     return (
@@ -308,11 +294,7 @@ function AddressSetting({
             />
             <p className='m-0 text-xs text-muted-foreground'>{description}</p>
             {error && <p className='m-0 text-xs text-danger-fg'>{error}</p>}
-            <OverrideHint
-                overridden={value !== null}
-                defaultLabel={defaultValue ?? 'not set'}
-                onClear={onClear}
-            />
+            <DefaultHint defaultLabel={defaultValue ?? 'none configured'} />
         </div>
     );
 }
@@ -321,13 +303,11 @@ function WeekdayPicker({
     value,
     defaultCsv,
     onChange,
-    onClear,
     error,
 }: {
     value: string | null;
     defaultCsv: string;
     onChange: (csv: string | null) => void;
-    onClear: () => void;
     error?: string;
 }) {
     const selected = new Set(
@@ -376,11 +356,9 @@ function WeekdayPicker({
                 weekday list.
             </p>
             {error && <p className='m-0 text-xs text-danger-fg'>{error}</p>}
-            <OverrideHint
-                overridden={value !== null}
-                defaultLabel={weekdaysLabel(defaultCsv)}
-                onClear={onClear}
-            />
+            <p className='m-0 text-xs text-muted-foreground'>
+                Platform default: {weekdaysLabel(defaultCsv)}.
+            </p>
         </div>
     );
 }
@@ -515,6 +493,21 @@ function SwitchboardCard({ activeTab }: { activeTab: SubTab }) {
         setDraft((d) => (d ? { ...d, [key]: value } : d));
     };
 
+    /**
+     * Flipping a group toggle back to the platform's own value CLEARS the
+     * override instead of pinning the same answer.
+     *
+     * The toggles show no storage state any more (founder feedback: it
+     * confused more than it explained), so the storage has to look after
+     * itself: without this, "on → off → on" would leave a stored `true`
+     * behind that silently outranks the platform rule the next time that
+     * rule changes. Now the row is only written while it actually disagrees
+     * with the default.
+     */
+    const groupToggle =
+        (key: BooleanKey, defaultValue: boolean) => (next: boolean) =>
+            set(key, next === defaultValue ? null : next);
+
     // ── Dirty diff: submit ONLY what changed ───────────────────────────────
     const { payload, dirtyCount } = useMemo(() => {
         const out: UpdateEmailSettingsPayload = {};
@@ -623,13 +616,11 @@ function SwitchboardCard({ activeTab }: { activeTab: SubTab }) {
                 <CardHeader className='border-b'>
                     <CardTitle>Email programme</CardTitle>
                     <p className='m-0 mt-1 text-sm font-light normal-case tracking-normal text-muted-foreground'>
-                        Every value falls back to its default until set here -
-                        &ldquo;Using default (…)&rdquo; means nothing is
-                        stored and the platform keeps its configured
-                        behaviour. Leaving a box blank, or &ldquo;Use
-                        default&rdquo;, clears an override. This Save covers
-                        all four tabs; the review-invitation card under
-                        Schedules saves on its own.
+                        Switch a group of emails on or off, or change an
+                        address, timing or send window. Leave a box empty and
+                        the platform default applies. This Save covers all
+                        four tabs; the review-invitation card under Schedules
+                        saves on its own.
                     </p>
                 </CardHeader>
                 <CardContent className='space-y-8 pt-8'>
@@ -647,8 +638,10 @@ function SwitchboardCard({ activeTab }: { activeTab: SubTab }) {
                             description='The post-tour marketing email to consented travellers. Off = nothing is queued; nobody is skipped permanently.'
                             value={draft.marketingEnabled}
                             defaultValue={defaults.marketingEnabled}
-                            onChange={(v) => set('marketingEnabled', v)}
-                            onClear={() => set('marketingEnabled', null)}
+                            onChange={groupToggle(
+                                'marketingEnabled',
+                                defaults.marketingEnabled,
+                            )}
                         />
                         <SwitchSetting
                             id='email-onboarding-enabled'
@@ -656,8 +649,10 @@ function SwitchboardCard({ activeTab }: { activeTab: SubTab }) {
                             description='The operator drip after approval and first tour live. Off = "not yet": the sweep skips everyone without burning their slot, so switching back on resumes cleanly.'
                             value={draft.onboardingEnabled}
                             defaultValue={defaults.onboardingEnabled}
-                            onChange={(v) => set('onboardingEnabled', v)}
-                            onClear={() => set('onboardingEnabled', null)}
+                            onChange={groupToggle(
+                                'onboardingEnabled',
+                                defaults.onboardingEnabled,
+                            )}
                         />
                         <SwitchSetting
                             id='email-calendar-enabled'
@@ -665,8 +660,10 @@ function SwitchboardCard({ activeTab }: { activeTab: SubTab }) {
                             description='Only sent while calendar sync is offered; suppressed for operators who already connected a feed.'
                             value={draft.calendarEmailEnabled}
                             defaultValue={defaults.calendarEmailEnabled}
-                            onChange={(v) => set('calendarEmailEnabled', v)}
-                            onClear={() => set('calendarEmailEnabled', null)}
+                            onChange={groupToggle(
+                                'calendarEmailEnabled',
+                                defaults.calendarEmailEnabled,
+                            )}
                         />
                         <SwitchSetting
                             id='email-ob8-partner'
@@ -674,8 +671,10 @@ function SwitchboardCard({ activeTab }: { activeTab: SubTab }) {
                             description='The Dronebaas partner block inside the "Make your page stronger" email. That email still sends when this is off - only the block is dropped.'
                             value={draft.ob8PartnerOffer}
                             defaultValue={defaults.ob8PartnerOffer}
-                            onChange={(v) => set('ob8PartnerOffer', v)}
-                            onClear={() => set('ob8PartnerOffer', null)}
+                            onChange={groupToggle(
+                                'ob8PartnerOffer',
+                                defaults.ob8PartnerOffer,
+                            )}
                         />
                     </div>
 
@@ -694,7 +693,6 @@ function SwitchboardCard({ activeTab }: { activeTab: SubTab }) {
                                 value={draft.salesEmail}
                                 defaultValue={defaults.salesEmail}
                                 onChange={(v) => set('salesEmail', v)}
-                                onClear={() => set('salesEmail', null)}
                                 error={errors.salesEmail}
                             />
                             <AddressSetting
@@ -703,7 +701,6 @@ function SwitchboardCard({ activeTab }: { activeTab: SubTab }) {
                                 value={draft.mailReplyTo}
                                 defaultValue={defaults.mailReplyTo}
                                 onChange={(v) => set('mailReplyTo', v)}
-                                onClear={() => set('mailReplyTo', null)}
                                 error={errors.mailReplyTo}
                             />
                             <AddressSetting
@@ -712,7 +709,6 @@ function SwitchboardCard({ activeTab }: { activeTab: SubTab }) {
                                 value={draft.ob6ReplyTo}
                                 defaultValue={defaults.ob6ReplyTo}
                                 onChange={(v) => set('ob6ReplyTo', v)}
-                                onClear={() => set('ob6ReplyTo', null)}
                                 error={errors.ob6ReplyTo}
                             />
                         </div>
@@ -734,7 +730,6 @@ function SwitchboardCard({ activeTab }: { activeTab: SubTab }) {
                                     value={draft.ob3DelayHours}
                                     defaultValue={defaults.ob3DelayHours}
                                     onChange={(v) => set('ob3DelayHours', v)}
-                                    onClear={() => set('ob3DelayHours', null)}
                                     error={errors.ob3DelayHours}
                                 />
                                 <NumberSetting
@@ -743,7 +738,6 @@ function SwitchboardCard({ activeTab }: { activeTab: SubTab }) {
                                     value={draft.ob4DelayDays}
                                     defaultValue={defaults.ob4DelayDays}
                                     onChange={(v) => set('ob4DelayDays', v)}
-                                    onClear={() => set('ob4DelayDays', null)}
                                     error={errors.ob4DelayDays}
                                 />
                                 <NumberSetting
@@ -752,7 +746,6 @@ function SwitchboardCard({ activeTab }: { activeTab: SubTab }) {
                                     value={draft.ob6DelayDays}
                                     defaultValue={defaults.ob6DelayDays}
                                     onChange={(v) => set('ob6DelayDays', v)}
-                                    onClear={() => set('ob6DelayDays', null)}
                                     error={errors.ob6DelayDays}
                                 />
                                 <NumberSetting
@@ -761,9 +754,6 @@ function SwitchboardCard({ activeTab }: { activeTab: SubTab }) {
                                     value={draft.ob7AfterLiveDays}
                                     defaultValue={defaults.ob7AfterLiveDays}
                                     onChange={(v) => set('ob7AfterLiveDays', v)}
-                                    onClear={() =>
-                                        set('ob7AfterLiveDays', null)
-                                    }
                                     error={errors.ob7AfterLiveDays}
                                 />
                                 <NumberSetting
@@ -772,9 +762,6 @@ function SwitchboardCard({ activeTab }: { activeTab: SubTab }) {
                                     value={draft.ob8AfterLiveDays}
                                     defaultValue={defaults.ob8AfterLiveDays}
                                     onChange={(v) => set('ob8AfterLiveDays', v)}
-                                    onClear={() =>
-                                        set('ob8AfterLiveDays', null)
-                                    }
                                     error={errors.ob8AfterLiveDays}
                                 />
                                 <NumberSetting
@@ -786,9 +773,6 @@ function SwitchboardCard({ activeTab }: { activeTab: SubTab }) {
                                     }
                                     onChange={(v) =>
                                         set('pendingReminderBusinessDays', v)
-                                    }
-                                    onClear={() =>
-                                        set('pendingReminderBusinessDays', null)
                                     }
                                     error={errors.pendingReminderBusinessDays}
                                 />
@@ -807,7 +791,6 @@ function SwitchboardCard({ activeTab }: { activeTab: SubTab }) {
                                     value={draft.mk1DelayHours}
                                     defaultValue={defaults.mk1DelayHours}
                                     onChange={(v) => set('mk1DelayHours', v)}
-                                    onClear={() => set('mk1DelayHours', null)}
                                     error={errors.mk1DelayHours}
                                 />
                             </div>
@@ -824,7 +807,6 @@ function SwitchboardCard({ activeTab }: { activeTab: SubTab }) {
                             value={draft.windowWeekdays}
                             defaultCsv={defaults.windowWeekdays}
                             onChange={(v) => set('windowWeekdays', v)}
-                            onClear={() => set('windowWeekdays', null)}
                             error={errors.windowWeekdays}
                         />
                         <div className='grid gap-6 sm:grid-cols-2'>
@@ -834,7 +816,6 @@ function SwitchboardCard({ activeTab }: { activeTab: SubTab }) {
                                 value={draft.windowStartHour}
                                 defaultValue={defaults.windowStartHour}
                                 onChange={(v) => set('windowStartHour', v)}
-                                onClear={() => set('windowStartHour', null)}
                                 error={errors.windowStartHour}
                             />
                             <NumberSetting
@@ -843,7 +824,6 @@ function SwitchboardCard({ activeTab }: { activeTab: SubTab }) {
                                 value={draft.windowEndHour}
                                 defaultValue={defaults.windowEndHour}
                                 onChange={(v) => set('windowEndHour', v)}
-                                onClear={() => set('windowEndHour', null)}
                                 error={errors.windowEndHour}
                             />
                         </div>

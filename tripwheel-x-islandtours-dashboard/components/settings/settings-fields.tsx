@@ -12,6 +12,7 @@ import { Field, FieldDescription, FieldError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { useState, type ReactNode } from 'react';
 import type { UseFormRegisterReturn } from 'react-hook-form';
@@ -308,6 +309,50 @@ export function CheckboxField({
                 </Label>
             </div>
             {description && <FieldDescription>{description}</FieldDescription>}
+        </Field>
+    );
+}
+
+/**
+ * `CheckboxField` for a setting that RUNS rather than one that is selected -
+ * "are review invitations being sent" reads as a switch, not as a tick in a
+ * list (founder feedback 2026-08-12). Same props, so swapping one for the
+ * other at a call site is a one-word change.
+ */
+export function SwitchField({
+    id,
+    label,
+    description,
+    checked,
+    onChange,
+    disabled,
+}: {
+    id: string;
+    label: string;
+    description?: string;
+    checked: boolean;
+    onChange: (checked: boolean) => void;
+    disabled?: boolean;
+}) {
+    return (
+        <Field>
+            <div className='flex items-start justify-between gap-6'>
+                <div className='space-y-1'>
+                    <Label htmlFor={id} className='cursor-pointer'>
+                        {label}
+                    </Label>
+                    {description && (
+                        <FieldDescription>{description}</FieldDescription>
+                    )}
+                </div>
+                <Switch
+                    id={id}
+                    checked={checked}
+                    onCheckedChange={onChange}
+                    disabled={disabled}
+                    className='mt-0.5 shrink-0'
+                />
+            </div>
         </Field>
     );
 }
