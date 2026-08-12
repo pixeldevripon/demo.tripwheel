@@ -14,8 +14,6 @@ import {
     Image02Icon,
     Layers01Icon,
     Mail01Icon,
-    MailAtSign01Icon,
-    MailSetting01Icon,
     MapsIcon,
     RouteIcon,
     Settings02Icon,
@@ -249,31 +247,19 @@ const dashboardNav: NavGroup[] = [
         ],
     },
     {
-        // Admin only (MANAGE_SYSTEM). The email centre (WP-H): everything
-        // email-related on one surface - the global send log, the settings
-        // switchboard and the opt-out/consent ledger. Its own group rather
-        // than three rows in Configure: these pages are one workflow
-        // ("what did we send, what is switched on, who said no"), and an
-        // operator holds MANAGE_SYSTEM never, so the whole group disappears
-        // for them - never greyed, absent.
+        // Admin only (MANAGE_SYSTEM). The email centre (WP-H), slimmed to the
+        // send log (founder request 2026-08-12): the settings switchboard now
+        // lives under Settings → Email (like every other config surface), and
+        // the People page (opt-outs/consents) is hidden from the nav — the
+        // route still exists at /email/people for direct visits. An operator
+        // never holds MANAGE_SYSTEM, so the group disappears for them -
+        // never greyed, absent.
         label: 'Email',
         items: [
             {
                 title: 'Activity',
                 url: 'email/activity',
                 icon: Mail01Icon,
-                permissions: [Permission.MANAGE_SYSTEM],
-            },
-            {
-                title: 'Email Settings',
-                url: 'email/settings',
-                icon: MailSetting01Icon,
-                permissions: [Permission.MANAGE_SYSTEM],
-            },
-            {
-                title: 'People',
-                url: 'email/people',
-                icon: MailAtSign01Icon,
                 permissions: [Permission.MANAGE_SYSTEM],
             },
         ],

@@ -1,5 +1,6 @@
 'use client';
 
+import { REVIEW_REQUEST_BOUNDS } from '@/lib/settings/review-request-bounds';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
@@ -16,9 +17,13 @@ import {
 } from './settings-fields';
 
 /**
- * Bounds mirror `UpdateReviewRequestsDto` on the backend. Kept in sync by hand:
- * the backend rejects out-of-range values regardless, this only moves the error
- * from a 400 toast to an inline message.
+ * Bounds mirror `UpdateReviewRequestsDto` on the backend. Four of the five
+ * come from `lib/settings/review-request-bounds.ts`, the single dashboard
+ * owner (review of #57, Low 5) — this form used to hardcode its own copy
+ * beside that module's, which is exactly the drift it exists to prevent.
+ * `batchSize` stays local: it is this endpoint's alone, never part of the
+ * email-settings payload. The backend rejects out-of-range values regardless;
+ * these only move the error from a 400 toast to an inline message.
  *
  * Plain `z.number()` rather than `z.coerce.number()` - zod 4 types a coerced
  * input as `unknown`, which no longer matches the form's number fields. The
@@ -32,13 +37,16 @@ const num = (min: number, max: number) =>
     .min(min)
     .max(max);
 
+const bounded = (key: keyof typeof REVIEW_REQUEST_BOUNDS) =>
+  num(REVIEW_REQUEST_BOUNDS[key].min, REVIEW_REQUEST_BOUNDS[key].max);
+
 const schema = z.object({
   enabled: z.boolean(),
-  firstSendLocalHour: num(0, 23),
-  firstSendDelayDays: num(0, 14),
+  firstSendLocalHour: bounded('firstSendLocalHour'),
+  firstSendDelayDays: bounded('firstSendDelayDays'),
   reminderEnabled: z.boolean(),
-  reminderAfterDays: num(1, 30),
-  giveUpAfterDays: num(1, 180),
+  reminderAfterDays: bounded('reminderAfterDays'),
+  giveUpAfterDays: bounded('giveUpAfterDays'),
   batchSize: num(1, 2000),
 });
 

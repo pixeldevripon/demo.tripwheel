@@ -11,6 +11,11 @@
  * - Social - the Instagram feed curation surface plus the footer's social
  *   profile URLs (the old Instagram tab + the SocialMediaForm that used to
  *   sit inside Site)
+ * - Reviews - the Trustpilot / Google platform-reviews hookup (founder reorg
+ *   2026-08-12). It is an API key plus a business id, so it belongs with the
+ *   other third-party hookups; the top-level Reviews tab it came from is gone,
+ *   its other half (when review INVITATION emails go out) having moved to
+ *   Settings > Email > Schedules.
  *
  * Sub-tabs mirror EntityTabs' mounting contract: visited panels stay MOUNTED
  * (hidden, not unmounted) so switching never discards unsaved form edits.
@@ -27,14 +32,16 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { InstagramForm } from './instagram-form';
 import { IntegrationsForm } from './integrations-form';
 import { PaymentsForm } from './payments-form';
+import { ReviewsForm } from './reviews-form';
 import { SocialMediaForm } from './social-media-form';
 
-type SubTab = 'tracking' | 'payment' | 'social';
+type SubTab = 'tracking' | 'payment' | 'social' | 'reviews';
 
 const SUB_TABS: Array<{ value: SubTab; label: string }> = [
     { value: 'tracking', label: 'Analytics and Tracking' },
     { value: 'payment', label: 'Payment' },
     { value: 'social', label: 'Social' },
+    { value: 'reviews', label: 'Reviews' },
 ];
 
 /** Legacy top-level `?tab=` values → the sub-tab that now owns their content. */
@@ -43,6 +50,7 @@ const LEGACY_SUB: Record<string, SubTab> = {
     payments: 'payment',
     instagram: 'social',
     social: 'social',
+    reviews: 'reviews',
 };
 
 export function IntegrationSettings() {
@@ -89,6 +97,11 @@ export function IntegrationSettings() {
                 <div hidden={active !== 'social'} className='space-y-6'>
                     <InstagramForm />
                     <SocialMediaForm />
+                </div>
+            )}
+            {visited.has('reviews') && (
+                <div hidden={active !== 'reviews'}>
+                    <ReviewsForm />
                 </div>
             )}
         </div>

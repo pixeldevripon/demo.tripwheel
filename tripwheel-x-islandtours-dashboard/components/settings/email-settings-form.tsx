@@ -1,27 +1,48 @@
 'use client';
 
 /**
- * The email switchboard (H-13): the FULL settings payload from
+ * The email switchboard (H-13): the settings payload from
  * `GET /email/settings` — four group switches, sales/reply-to addresses, all
- * six onboarding timings, the send window (weekdays + hours), the MK-1 delay
- * and the review-request slice — one form, one Save.
+ * six onboarding timings, the send window (weekdays + hours) and the
+ * marketing delay. Rendered as the Settings → Email tab (founder reorg
+ * 2026-08-12; it used to be its own /email/settings page), split into
+ * sub-tabs the way the Integration tab is.
  *
- * Tri-state semantics drive everything here. Each email-settings field is
- * either NULL in `stored` (the env/built-in default applies — the field
- * shows "Using default (X)" from the GET's `defaults`) or set explicitly
- * ("Set here", with a "Use default" action that PATCHes null to clear the
- * override). Submit sends ONLY the fields the admin changed.
+ * Two components live here:
  *
- * DELIBERATELY ABSENT: any switch for the booking emails (BK-1/BK-2/CX-1).
- * They are contractual and always-on (founder decision 2026-08-11) — the
- * backend 400s any attempt to invent one, and this form renders a note
- * saying so instead of a control.
+ * - `EmailSettingsForm` — the tab shell. Owns the sub-tab, decides which
+ *   cards the seat may see, and hosts the review-invitation card.
+ * - `SwitchboardCard` — the email settings themselves: one form, one Save.
+ *   The sub-tabs are presentation only; all four panels stay mounted (hidden,
+ *   not unmounted) and share a single draft + dirty diff, so edits made
+ *   across several tabs land in one PATCH and the "N changes" counter is the
+ *   truth for all of them.
+ *
+ * Tri-state semantics drive the switchboard. Each field is either NULL in
+ * `stored` (the env/built-in default applies — the field shows "Using
+ * default (X)" from the GET's `defaults`) or set explicitly ("Set here",
+ * with a "Use default" action that PATCHes null to clear the override).
+ * Submit sends ONLY the fields the admin changed.
+ *
+ * The Schedules tab additionally shows `ReviewRequestsForm` as a SECOND card
+ * with its own Save (founder request 2026-08-12: the review invitation timing
+ * belongs with the other send timings). It stays a separate component and a
+ * separate endpoint on purpose — it owns the whole review schedule including
+ * the reminder switch and batch size, which the email settings payload never
+ * carried, and it answers to a different permission (see the shell's note).
+ *
+ * DELIBERATELY ABSENT:
+ * - Any switch for the booking emails (confirmation, pre-tour reminder,
+ *   cancellation). They are contractual and always-on (founder decision
+ *   2026-08-11) — the backend 400s any attempt to invent one, and this form
+ *   renders a note saying so instead of a control.
+ * - The review slice of the settings payload. The backend PATCH still accepts
+ *   it, but writing the same rows from two forms on one screen is how they
+ *   drift; `ReviewRequestsForm` is the single writer.
  */
 
-import {
-    REVIEW_REQUEST_BOUNDS,
-    clockLabel,
-} from '@/lib/settings/review-request-bounds';
+import { clockLabel } from '@/lib/settings/review-request-bounds';
+import { useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -35,7 +56,10 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { SettingsCardSkeleton } from '@/components/settings/settings-fields';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useRole } from '@/contexts/role-context';
+import { ReviewRequestsForm } from './review-requests-form';
+import { SettingsCardSkeleton } from './settings-fields';
 import {
     useEmailSettings,
     useUpdateEmailSettings,
@@ -43,7 +67,6 @@ import {
 import type {
     EmailSettingsScalarKey,
     EmailSettingsStored,
-    ReviewRequestSettingsSlice,
     UpdateEmailSettingsPayload,
 } from '@/types/email-centre';
 
@@ -90,12 +113,6 @@ const NUMBER_BOUNDS: Partial<Record<ScalarKey, NumberBounds>> = {
     mk1DelayHours: { min: 1, max: 720 },
 };
 
-/** Review-slice bounds - the shared dashboard owner (review of #57, Low 5). */
-const REVIEW_BOUNDS: Record<
-    Exclude<keyof ReviewRequestSettingsSlice, 'enabled'>,
-    NumberBounds
-> = REVIEW_REQUEST_BOUNDS;
-
 const ADDRESS_KEYS = ['salesEmail', 'mailReplyTo', 'ob6ReplyTo'] as const;
 
 function intError(value: number, { min, max }: NumberBounds): string | null {
@@ -119,7 +136,16 @@ function weekdaysLabel(csv: string): string {
         .join(', ');
 }
 
+// ── Sub-tabs ─────────────────────────────────────────────────────────────────
 
+type SubTab = 'switches' | 'addresses' | 'schedules' | 'window';
+
+const SUB_TABS: Array<{ value: SubTab; label: string }> = [
+    { value: 'switches', label: 'Email Groups' },
+    { value: 'addresses', label: 'Addresses' },
+    { value: 'schedules', label: 'Schedules' },
+    { value: 'window', label: 'Send Window' },
+];
 
 // ── Shared field chrome ──────────────────────────────────────────────────────
 
@@ -345,9 +371,9 @@ function WeekdayPicker({
                 })}
             </div>
             <p className='m-0 text-xs text-muted-foreground'>
-                Days the lifecycle nudges (OB-3…OB-8, INT1R) may go out.
-                Marketing keeps the hour window below but ignores the weekday
-                list.
+                Days the operator lifecycle nudges and internal reminders may
+                go out. Marketing keeps the hour window but ignores the
+                weekday list.
             </p>
             {error && <p className='m-0 text-xs text-danger-fg'>{error}</p>}
             <OverrideHint
@@ -378,16 +404,101 @@ function SectionHeading({
     );
 }
 
-// ── The form ─────────────────────────────────────────────────────────────────
+// ── The tab shell ────────────────────────────────────────────────────────────
 
+/**
+ * Owns the sub-tab, and decides which of the two cards a seat may see.
+ *
+ * The permission split is the whole reason this is a shell rather than one
+ * component: the switchboard's API is `MANAGE_SYSTEM`, but the review
+ * schedule's is `VIEW_SETTINGS`/`MANAGE_SETTINGS`, and a platform-staff seat
+ * can hold the latter while `MANAGE_SYSTEM` is *permanently* out of reach
+ * (backend `staff.config.ts` lists it in `PLATFORM_STAFF_EXCLUDED`). Nesting
+ * the review card inside a MANAGE_SYSTEM-gated card would have orphaned a
+ * capability the backend still grants — no screen anywhere for it. So such a
+ * seat gets the review card alone, and `SwitchboardCard` never mounts, which
+ * also means its gated GET never fires.
+ */
 export function EmailSettingsForm() {
+    const { can } = useRole();
+    const searchParams = useSearchParams();
+
+    const [activeTab, setActiveTab] = useState<SubTab>(() => {
+        const requested = searchParams.get('section');
+        return SUB_TABS.some((t) => t.value === requested)
+            ? (requested as SubTab)
+            : 'switches';
+    });
+    // Mount the review card on first visit to Schedules, then keep it mounted
+    // so a half-typed cadence survives a trip to another tab. Without this it
+    // would fetch its schedule on every visit to Settings → Email, including
+    // the three tabs that have nothing to do with it.
+    const [reviewVisited, setReviewVisited] = useState(
+        () => activeTab === 'schedules',
+    );
+
+    function switchTab(next: string) {
+        const tab = next as SubTab;
+        setActiveTab(tab);
+        if (tab === 'schedules') setReviewVisited(true);
+        // Deep-linkable, the way EntityTabs does it one level up: update the
+        // URL without a navigation, preserving `?tab=email` beside it.
+        const params = new URLSearchParams(window.location.search);
+        params.set('section', tab);
+        window.history.replaceState(
+            null,
+            '',
+            `${window.location.pathname}?${params}`,
+        );
+    }
+
+    if (!can('MANAGE_SYSTEM')) return <ReviewRequestsForm />;
+
+    return (
+        <div>
+            <Tabs value={activeTab} onValueChange={switchTab}>
+                <div className='mb-6'>
+                    <TabsList>
+                        {SUB_TABS.map((t) => (
+                            <TabsTrigger key={t.value} value={t.value}>
+                                {t.label}
+                            </TabsTrigger>
+                        ))}
+                    </TabsList>
+                </div>
+            </Tabs>
+
+            <SwitchboardCard activeTab={activeTab} />
+
+            {/*
+              * The review-invitation schedule: its own endpoint, its own Save.
+              * It lives OUT here rather than in the Schedules panel because
+              * that panel is inside the switchboard's `<form>` — a nested form
+              * is invalid HTML whose submit never fires — and because a failed
+              * `GET /email/settings` must not take this card down with it.
+              *
+              * The gap rides on this element rather than a `space-y` on the
+              * wrapper: Tailwind v4 compiles space-y to `> :not(:last-child)`,
+              * which would leave a trailing gap under the card on the other
+              * three tabs. `hidden` is display:none, so `mt-6` renders only
+              * when the panel does.
+              */}
+            {reviewVisited && (
+                <div hidden={activeTab !== 'schedules'} className='mt-6'>
+                    <ReviewRequestsForm />
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ── The switchboard ──────────────────────────────────────────────────────────
+
+function SwitchboardCard({ activeTab }: { activeTab: SubTab }) {
     const { data, isLoading, isError } = useEmailSettings();
     const { mutate: save, isPending: saving } = useUpdateEmailSettings();
 
     const [draft, setDraft] = useState<Draft | null>(null);
-    const [review, setReview] = useState<ReviewRequestSettingsSlice | null>(
-        null,
-    );
     const [apiError, setApiError] = useState<string | null>(null);
 
     // Reset from the server whenever fresh data lands (the review-requests
@@ -395,20 +506,13 @@ export function EmailSettingsForm() {
     // fresh GET shape written back into the query cache.
     useEffect(() => {
         if (data) {
-            const { review: storedReview, ...scalars } = data.stored;
+            const { review: _review, ...scalars } = data.stored;
             setDraft(scalars);
-            setReview({ ...storedReview });
         }
     }, [data]);
 
     const set = <K extends ScalarKey>(key: K, value: Draft[K]) => {
         setDraft((d) => (d ? { ...d, [key]: value } : d));
-    };
-    const setReviewField = <K extends keyof ReviewRequestSettingsSlice>(
-        key: K,
-        value: ReviewRequestSettingsSlice[K],
-    ) => {
-        setReview((r) => (r ? { ...r, [key]: value } : r));
     };
 
     // ── Dirty diff: submit ONLY what changed ───────────────────────────────
@@ -416,7 +520,7 @@ export function EmailSettingsForm() {
         const out: UpdateEmailSettingsPayload = {};
         let count = 0;
         if (data && draft) {
-            const { review: storedReview, ...storedScalars } = data.stored;
+            const { review: _review, ...storedScalars } = data.stored;
             for (const key of Object.keys(storedScalars) as ScalarKey[]) {
                 if (draft[key] !== storedScalars[key]) {
                     // Tri-state: a value stores an override, null clears it.
@@ -424,29 +528,14 @@ export function EmailSettingsForm() {
                     count++;
                 }
             }
-            if (review) {
-                const reviewPatch: Partial<ReviewRequestSettingsSlice> = {};
-                for (const key of Object.keys(
-                    storedReview,
-                ) as (keyof ReviewRequestSettingsSlice)[]) {
-                    if (review[key] !== storedReview[key]) {
-                        (reviewPatch as Record<string, unknown>)[key] =
-                            review[key];
-                        count++;
-                    }
-                }
-                if (Object.keys(reviewPatch).length > 0) {
-                    out.review = reviewPatch;
-                }
-            }
         }
         return { payload: out, dirtyCount: count };
-    }, [data, draft, review]);
+    }, [data, draft]);
 
     // ── Client validation, mirroring the DTO bounds ────────────────────────
     const errors = useMemo(() => {
         const out: Partial<Record<string, string>> = {};
-        if (!data || !draft || !review) return out;
+        if (!data || !draft) return out;
 
         for (const [key, bounds] of Object.entries(NUMBER_BOUNDS) as [
             ScalarKey,
@@ -483,21 +572,8 @@ export function EmailSettingsForm() {
                 mergedStart,
             )}-${clockLabel(mergedEnd)})`;
         }
-
-        for (const [key, bounds] of Object.entries(REVIEW_BOUNDS) as [
-            Exclude<keyof ReviewRequestSettingsSlice, 'enabled'>,
-            NumberBounds,
-        ][]) {
-            const value = review[key];
-            if (Number.isNaN(value)) {
-                out[`review.${key}`] = 'Required';
-            } else {
-                const err = intError(value, bounds);
-                if (err) out[`review.${key}`] = err;
-            }
-        }
         return out;
-    }, [data, draft, review]);
+    }, [data, draft]);
 
     const hasErrors = Object.keys(errors).length > 0;
 
@@ -522,7 +598,7 @@ export function EmailSettingsForm() {
         });
     }
 
-    if (isLoading || !draft || !review || !data) {
+    if (isLoading || !draft || !data) {
         if (isError) {
             return (
                 <p className='text-sm text-danger-fg'>
@@ -536,7 +612,13 @@ export function EmailSettingsForm() {
     const { defaults } = data;
 
     return (
-        <form onSubmit={handleSubmit}>
+        // `noValidate`: the panels stay mounted while hidden, and a browser
+        // refuses to submit a form whose invalid control it cannot focus -
+        // silently, with nothing to click. A stray `12e` typed on one tab
+        // would deaden Save on all four. This form mirrors the DTO bounds
+        // itself and the API re-validates, so native validation only ever
+        // subtracts here.
+        <form onSubmit={handleSubmit} noValidate>
             <Card>
                 <CardHeader className='border-b'>
                     <CardTitle>Email programme</CardTitle>
@@ -545,19 +627,23 @@ export function EmailSettingsForm() {
                         &ldquo;Using default (…)&rdquo; means nothing is
                         stored and the platform keeps its configured
                         behaviour. Leaving a box blank, or &ldquo;Use
-                        default&rdquo;, clears an override.
+                        default&rdquo;, clears an override. This Save covers
+                        all four tabs; the review-invitation card under
+                        Schedules saves on its own.
                     </p>
                 </CardHeader>
                 <CardContent className='space-y-8 pt-8'>
                     {/* ── Group switches ─────────────────────────────── */}
-                    <div className='space-y-6'>
+                    <div
+                        hidden={activeTab !== 'switches'}
+                        className='space-y-6'>
                         <SectionHeading
                             title='Email groups'
                             description='Group switches only. Booking emails (confirmation, pre-tour reminder, cancellation) are contractual and always on - there is deliberately no switch for them.'
                         />
                         <SwitchSetting
                             id='email-marketing-enabled'
-                            label='Marketing emails (MK-1 next adventure)'
+                            label='Marketing emails ("Your next adventure")'
                             description='The post-tour marketing email to consented travellers. Off = nothing is queued; nobody is skipped permanently.'
                             value={draft.marketingEnabled}
                             defaultValue={defaults.marketingEnabled}
@@ -566,7 +652,7 @@ export function EmailSettingsForm() {
                         />
                         <SwitchSetting
                             id='email-onboarding-enabled'
-                            label='Onboarding nudges (OB-3 … OB-8)'
+                            label='Onboarding nudges'
                             description='The operator drip after approval and first tour live. Off = "not yet": the sweep skips everyone without burning their slot, so switching back on resumes cleanly.'
                             value={draft.onboardingEnabled}
                             defaultValue={defaults.onboardingEnabled}
@@ -575,7 +661,7 @@ export function EmailSettingsForm() {
                         />
                         <SwitchSetting
                             id='email-calendar-enabled'
-                            label='Calendar email (OB-7 connect your calendar)'
+                            label='Calendar email ("Connect your calendar")'
                             description='Only sent while calendar sync is offered; suppressed for operators who already connected a feed.'
                             value={draft.calendarEmailEnabled}
                             defaultValue={defaults.calendarEmailEnabled}
@@ -584,8 +670,8 @@ export function EmailSettingsForm() {
                         />
                         <SwitchSetting
                             id='email-ob8-partner'
-                            label='OB-8 photo-partner offer block'
-                            description='The Dronebaas partner block inside "Make your page stronger". The email itself still sends when this is off - only the block is dropped.'
+                            label='Photo-partner offer block'
+                            description='The Dronebaas partner block inside the "Make your page stronger" email. That email still sends when this is off - only the block is dropped.'
                             value={draft.ob8PartnerOffer}
                             defaultValue={defaults.ob8PartnerOffer}
                             onChange={(v) => set('ob8PartnerOffer', v)}
@@ -593,7 +679,10 @@ export function EmailSettingsForm() {
                         />
                     </div>
 
-                    <div className='border-t pt-8 space-y-6'>
+                    {/* ── Addresses ──────────────────────────────────── */}
+                    <div
+                        hidden={activeTab !== 'addresses'}
+                        className='space-y-6'>
                         <SectionHeading
                             title='Addresses'
                             description='One bare mailbox each - no display names, no comma lists. These become live Reply-To headers and internal-alert recipients.'
@@ -601,7 +690,7 @@ export function EmailSettingsForm() {
                         <div className='grid gap-6 sm:grid-cols-2'>
                             <AddressSetting
                                 label='Sales inbox'
-                                description='Where new-operator and new-tour alerts (INT-1, INT-2, INT1R) go.'
+                                description='Where new-operator and new-tour alerts go.'
                                 value={draft.salesEmail}
                                 defaultValue={defaults.salesEmail}
                                 onChange={(v) => set('salesEmail', v)}
@@ -618,7 +707,7 @@ export function EmailSettingsForm() {
                                 error={errors.mailReplyTo}
                             />
                             <AddressSetting
-                                label='OB-6 Reply-To (founder check-in)'
+                                label='Founder check-in Reply-To'
                                 description='Replies to the founder check-in email land here. Falls back to the default Reply-To.'
                                 value={draft.ob6ReplyTo}
                                 defaultValue={defaults.ob6ReplyTo}
@@ -629,76 +718,104 @@ export function EmailSettingsForm() {
                         </div>
                     </div>
 
-                    <div className='border-t pt-8 space-y-6'>
-                        <SectionHeading
-                            title='Onboarding schedule'
-                            description='When each nudge becomes due, anchored on approval or first tour live. Shortening a delay only makes not-yet-sent nudges due sooner; already-sent ones never repeat.'
-                        />
-                        <div className='grid gap-6 sm:grid-cols-2'>
-                            <NumberSetting
-                                label='OB-3 first-tour how-to - hours after approval'
-                                description='1-720 hours.'
-                                value={draft.ob3DelayHours}
-                                defaultValue={defaults.ob3DelayHours}
-                                onChange={(v) => set('ob3DelayHours', v)}
-                                onClear={() => set('ob3DelayHours', null)}
-                                error={errors.ob3DelayHours}
+                    {/* ── Schedules ──────────────────────────────────── */}
+                    <div
+                        hidden={activeTab !== 'schedules'}
+                        className='space-y-8'>
+                        <div className='space-y-6'>
+                            <SectionHeading
+                                title='Onboarding schedule'
+                                description='When each nudge becomes due, anchored on approval or first tour live. Shortening a delay only makes not-yet-sent nudges due sooner; already-sent ones never repeat.'
                             />
-                            <NumberSetting
-                                label="OB-4 we'll build it with you - days after approval"
-                                description='1-90 days.'
-                                value={draft.ob4DelayDays}
-                                defaultValue={defaults.ob4DelayDays}
-                                onChange={(v) => set('ob4DelayDays', v)}
-                                onClear={() => set('ob4DelayDays', null)}
-                                error={errors.ob4DelayDays}
+                            <div className='grid gap-6 sm:grid-cols-2'>
+                                <NumberSetting
+                                    label='First-tour how-to - hours after approval'
+                                    description='1-720 hours.'
+                                    value={draft.ob3DelayHours}
+                                    defaultValue={defaults.ob3DelayHours}
+                                    onChange={(v) => set('ob3DelayHours', v)}
+                                    onClear={() => set('ob3DelayHours', null)}
+                                    error={errors.ob3DelayHours}
+                                />
+                                <NumberSetting
+                                    label="We'll build it with you - days after approval"
+                                    description='1-90 days.'
+                                    value={draft.ob4DelayDays}
+                                    defaultValue={defaults.ob4DelayDays}
+                                    onChange={(v) => set('ob4DelayDays', v)}
+                                    onClear={() => set('ob4DelayDays', null)}
+                                    error={errors.ob4DelayDays}
+                                />
+                                <NumberSetting
+                                    label='Founder check-in - days after approval'
+                                    description='1-90 days.'
+                                    value={draft.ob6DelayDays}
+                                    defaultValue={defaults.ob6DelayDays}
+                                    onChange={(v) => set('ob6DelayDays', v)}
+                                    onClear={() => set('ob6DelayDays', null)}
+                                    error={errors.ob6DelayDays}
+                                />
+                                <NumberSetting
+                                    label='Connect calendar - days after first tour live'
+                                    description='1-90 days.'
+                                    value={draft.ob7AfterLiveDays}
+                                    defaultValue={defaults.ob7AfterLiveDays}
+                                    onChange={(v) => set('ob7AfterLiveDays', v)}
+                                    onClear={() =>
+                                        set('ob7AfterLiveDays', null)
+                                    }
+                                    error={errors.ob7AfterLiveDays}
+                                />
+                                <NumberSetting
+                                    label='Make your page stronger - days after first tour live'
+                                    description='1-90 days.'
+                                    value={draft.ob8AfterLiveDays}
+                                    defaultValue={defaults.ob8AfterLiveDays}
+                                    onChange={(v) => set('ob8AfterLiveDays', v)}
+                                    onClear={() =>
+                                        set('ob8AfterLiveDays', null)
+                                    }
+                                    error={errors.ob8AfterLiveDays}
+                                />
+                                <NumberSetting
+                                    label='Pending-operator reminder - business days'
+                                    description='How long an operator may sit pending review before sales is reminded. 1-90 business days.'
+                                    value={draft.pendingReminderBusinessDays}
+                                    defaultValue={
+                                        defaults.pendingReminderBusinessDays
+                                    }
+                                    onChange={(v) =>
+                                        set('pendingReminderBusinessDays', v)
+                                    }
+                                    onClear={() =>
+                                        set('pendingReminderBusinessDays', null)
+                                    }
+                                    error={errors.pendingReminderBusinessDays}
+                                />
+                            </div>
+                        </div>
+
+                        <div className='border-t pt-8 space-y-6'>
+                            <SectionHeading
+                                title='Marketing timing'
+                                description='The "next adventure" email fires this long after the tour ends, then waits for the next morning window (hours under Send Window; weekdays never apply to marketing).'
                             />
-                            <NumberSetting
-                                label='OB-6 founder check-in - days after approval'
-                                description='1-90 days.'
-                                value={draft.ob6DelayDays}
-                                defaultValue={defaults.ob6DelayDays}
-                                onChange={(v) => set('ob6DelayDays', v)}
-                                onClear={() => set('ob6DelayDays', null)}
-                                error={errors.ob6DelayDays}
-                            />
-                            <NumberSetting
-                                label='OB-7 connect calendar - days after first tour live'
-                                description='1-90 days.'
-                                value={draft.ob7AfterLiveDays}
-                                defaultValue={defaults.ob7AfterLiveDays}
-                                onChange={(v) => set('ob7AfterLiveDays', v)}
-                                onClear={() => set('ob7AfterLiveDays', null)}
-                                error={errors.ob7AfterLiveDays}
-                            />
-                            <NumberSetting
-                                label='OB-8 page stronger - days after first tour live'
-                                description='1-90 days.'
-                                value={draft.ob8AfterLiveDays}
-                                defaultValue={defaults.ob8AfterLiveDays}
-                                onChange={(v) => set('ob8AfterLiveDays', v)}
-                                onClear={() => set('ob8AfterLiveDays', null)}
-                                error={errors.ob8AfterLiveDays}
-                            />
-                            <NumberSetting
-                                label='INT1R pending reminder - business days'
-                                description='How long an operator may sit pending review before sales is reminded. 1-90 business days.'
-                                value={draft.pendingReminderBusinessDays}
-                                defaultValue={
-                                    defaults.pendingReminderBusinessDays
-                                }
-                                onChange={(v) =>
-                                    set('pendingReminderBusinessDays', v)
-                                }
-                                onClear={() =>
-                                    set('pendingReminderBusinessDays', null)
-                                }
-                                error={errors.pendingReminderBusinessDays}
-                            />
+                            <div className='grid gap-6 sm:grid-cols-2'>
+                                <NumberSetting
+                                    label='Marketing delay - hours after tour end'
+                                    description='1-720 hours.'
+                                    value={draft.mk1DelayHours}
+                                    defaultValue={defaults.mk1DelayHours}
+                                    onChange={(v) => set('mk1DelayHours', v)}
+                                    onClear={() => set('mk1DelayHours', null)}
+                                    error={errors.mk1DelayHours}
+                                />
+                            </div>
                         </div>
                     </div>
 
-                    <div className='border-t pt-8 space-y-6'>
+                    {/* ── Send window ────────────────────────────────── */}
+                    <div hidden={activeTab !== 'window'} className='space-y-6'>
                         <SectionHeading
                             title='Send window'
                             description='Lifecycle nudges only go out inside this window, America/Curacao time. The opening hour is inclusive, the closing hour exclusive.'
@@ -732,92 +849,12 @@ export function EmailSettingsForm() {
                         </div>
                     </div>
 
-                    <div className='border-t pt-8 space-y-6'>
-                        <SectionHeading
-                            title='Marketing timing'
-                            description='MK-1 fires this long after the tour ends, then waits for the next morning window (hours above; weekdays never apply to marketing).'
-                        />
-                        <div className='grid gap-6 sm:grid-cols-2'>
-                            <NumberSetting
-                                label='MK-1 delay - hours after tour end'
-                                description='1-720 hours.'
-                                value={draft.mk1DelayHours}
-                                defaultValue={defaults.mk1DelayHours}
-                                onChange={(v) => set('mk1DelayHours', v)}
-                                onClear={() => set('mk1DelayHours', null)}
-                                error={errors.mk1DelayHours}
-                            />
-                        </div>
-                    </div>
-
-                    {/* ── Review-request slice ───────────────────────── */}
-                    <div className='border-t pt-8 space-y-6'>
-                        <SectionHeading
-                            title='Review requests (BK-3 / BK-3R)'
-                            description='Written to the review-request schedule, not the email settings - these values are always explicit, so there is no "using default" state here. The reminder on/off switch and batch size live in Settings > Review Requests.'
-                        />
-                        <div className='space-y-1.5'>
-                            <div className='flex items-center gap-2'>
-                                <Checkbox
-                                    id='email-review-enabled'
-                                    checked={review.enabled}
-                                    onCheckedChange={(c) =>
-                                        setReviewField('enabled', !!c)
-                                    }
-                                />
-                                <Label
-                                    htmlFor='email-review-enabled'
-                                    className='cursor-pointer'>
-                                    Send review request emails
-                                </Label>
-                            </div>
-                            <p className='m-0 text-xs text-muted-foreground'>
-                                Master switch for the post-tour review
-                                invitations.
-                            </p>
-                        </div>
-                        <div className='grid gap-6 sm:grid-cols-2'>
-                            <ReviewNumberField
-                                label='First send - days after the tour (0-14)'
-                                value={review.firstSendDelayDays}
-                                onChange={(v) =>
-                                    setReviewField('firstSendDelayDays', v)
-                                }
-                                error={errors['review.firstSendDelayDays']}
-                            />
-                            <ReviewNumberField
-                                label="First send - local hour (0-23, tour's timezone)"
-                                value={review.firstSendLocalHour}
-                                onChange={(v) =>
-                                    setReviewField('firstSendLocalHour', v)
-                                }
-                                error={errors['review.firstSendLocalHour']}
-                            />
-                            <ReviewNumberField
-                                label='Reminder - days after the first send (1-30)'
-                                value={review.reminderAfterDays}
-                                onChange={(v) =>
-                                    setReviewField('reminderAfterDays', v)
-                                }
-                                error={errors['review.reminderAfterDays']}
-                            />
-                            <ReviewNumberField
-                                label='Give up after (days, 1-180)'
-                                value={review.giveUpAfterDays}
-                                onChange={(v) =>
-                                    setReviewField('giveUpAfterDays', v)
-                                }
-                                error={errors['review.giveUpAfterDays']}
-                            />
-                        </div>
-                    </div>
-
-                    {/* ── Save row ───────────────────────────────────── */}
+                    {/* ── Save row (always visible, spans all tabs) ──── */}
                     <div className='flex flex-wrap items-center justify-between gap-3 border-t pt-6'>
                         <p className='m-0 text-xs text-muted-foreground'>
                             {dirtyCount === 0
                                 ? 'No changes yet - only fields you touch are sent.'
-                                : `${dirtyCount} change${dirtyCount === 1 ? '' : 's'} to save.`}
+                                : `${dirtyCount} change${dirtyCount === 1 ? '' : 's'} to save (across all tabs).`}
                         </p>
                         <Button
                             type='submit'
@@ -833,36 +870,5 @@ export function EmailSettingsForm() {
                 </CardContent>
             </Card>
         </form>
-    );
-}
-
-/** Concrete (never-null) number field for the review slice. */
-function ReviewNumberField({
-    label,
-    value,
-    onChange,
-    error,
-}: {
-    label: string;
-    value: number;
-    onChange: (value: number) => void;
-    error?: string;
-}) {
-    return (
-        <div className='space-y-1.5'>
-            <Label>{label}</Label>
-            <Input
-                type='number'
-                value={Number.isNaN(value) ? '' : value}
-                aria-invalid={!!error}
-                onChange={(e) => {
-                    const raw = e.target.value;
-                    // NaN marks "emptied" - validation blocks the save until
-                    // a number is back (this slice has no null state).
-                    onChange(raw === '' ? Number.NaN : Number(raw));
-                }}
-            />
-            {error && <p className='m-0 text-xs text-danger-fg'>{error}</p>}
-        </div>
     );
 }

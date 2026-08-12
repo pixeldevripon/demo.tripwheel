@@ -1,6 +1,5 @@
 'use client';
 
-import { emailCentreKeys } from '@/lib/email-centre/query-keys';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { settingsApi } from '@/lib/api/settings';
@@ -290,9 +289,16 @@ export function useUpdateReviewRequests() {
       } else {
         toast.success('Review requests are OFF - no emails will be sent');
       }
-      // Symmetric coherence with the email centre's settings cache - both
-      // surfaces edit the same review_request_settings row (#57 Medium 2).
-      void qc.invalidateQueries({ queryKey: emailCentreKeys.settings() });
+      // DELIBERATELY NOT invalidating the email-centre settings cache, though
+      // its payload does carry a copy of these values (#57 Medium 2 added
+      // that invalidation when the two forms lived on different screens).
+      //
+      // They share a screen now: this form renders inside Settings → Email,
+      // whose switchboard resets its draft from every new settings response.
+      // Invalidating here would refetch, hand it a new object, and wipe an
+      // unsaved switchboard edit under a toast that says a save SUCCEEDED.
+      // Nothing renders the review slice of that payload any more, so there
+      // is no staleness to correct.
     },
     onError,
   });

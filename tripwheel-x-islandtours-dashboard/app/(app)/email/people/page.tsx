@@ -1,5 +1,12 @@
 import { EmailPeopleView } from '@/components/email-centre/email-people-view';
 
+/**
+ * UNLINKED BY DESIGN (founder request 2026-08-12): this page is no longer in
+ * the sidebar or the command palette, but the route stays live and
+ * MANAGE_SYSTEM-gated. It is the compliance ledger - the answer to "why did
+ * this person not get the email" - so it must remain reachable at
+ * /email/people even though nothing links to it day to day.
+ */
 export default function EmailPeoplePage() {
     return (
         <div>

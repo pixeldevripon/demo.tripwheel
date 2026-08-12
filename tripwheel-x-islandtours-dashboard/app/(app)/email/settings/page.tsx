@@ -1,21 +1,15 @@
-import { EmailSettingsForm } from '@/components/email-centre/email-settings-form';
+import { redirect } from 'next/navigation';
 
+/**
+ * The email switchboard moved into Settings → Email (founder request
+ * 2026-08-12) so every configuration surface sits under one roof. This route
+ * survives as a redirect for bookmarks and for the runbook's older
+ * "Email → Settings" wording.
+ *
+ * `redirect()`, not `permanentRedirect()`: a 308 is cached by the browser
+ * forever, and this path is one founder decision away from meaning something
+ * again.
+ */
 export default function EmailSettingsPage() {
-    return (
-        <div>
-            <div className='mb-6 flex flex-wrap items-center justify-between gap-4'>
-                <div>
-                    <h1 className='text-2xl font-medium'>Email Settings</h1>
-                    <p className='text-sm text-muted-foreground mt-1'>
-                        The switchboard: group switches, addresses, schedule
-                        timings and the send window. Booking emails are
-                        contractual and always on.
-                    </p>
-                </div>
-            </div>
-            <div className='max-w-3xl'>
-                <EmailSettingsForm />
-            </div>
-        </div>
-    );
+    redirect('/settings?tab=email');
 }
