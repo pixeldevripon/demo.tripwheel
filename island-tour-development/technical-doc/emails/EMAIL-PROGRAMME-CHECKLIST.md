@@ -21,6 +21,7 @@
 | 3 | WP-G consent + MK-1 | backend | `feat/email-mk1-marketing` | **merged** | #188 |
 | 4 | WP-H email centre (API) | backend | `feat/email-settings-api` | **merged** | #192 |
 | 4 | WP-H email centre (UI) | dashboard | `feat/email-centre-dashboard` | **merged** | #57 |
+| 5 | Settings reorg (H-20…H-23) | dashboard | `email-settings-into-settings` | open | #58 |
 
 Gates: WP-B/D/F start after WP-A merges · WP-D/E also need WP-C · WP-E's edit-form change merges
 AFTER WP-C (DTO strips `verificationStatus`) · **WP-G may not merge until WP-F is live in prod.**
@@ -561,11 +562,13 @@ Needs WP-A's two public endpoints. Must be **live in production before WP-G merg
 
 ## Dashboard — `feat/email-centre-dashboard`
 
-- [x] H-11 Nav group "Email" (MANAGE_SYSTEM): Activity / Settings / People
+- [x] H-11 Nav group "Email" (MANAGE_SYSTEM): Activity / Settings / People *(superseded by the
+      2026-08-12 reorg below — the group is Activity only)*
 - [x] H-12 Activity: global sends table (server filters mirroring H-05) + detail sheet + Resend
       where backend allows (OB set) + suppression-reason/error display
 - [x] H-13 Settings: switchboard for the FULL payload (4 group switches, addresses, all six
-      onboarding timings, window weekdays/hours, MK-1 delay, review-request slice) with
+      onboarding timings, window weekdays/hours, MK-1 delay, and — until H-22 gave the schedule
+      a single owner — the review-request slice) with
       effective-value hints ("using default (…)" when stored is null vs "set here") and a
       clear-to-default action (PATCH null); no booking-email switch exists to render
 - [x] H-14 People: Opt-outs and Consents tabs, searchable, with stream/audience badges
@@ -576,6 +579,37 @@ Needs WP-A's two public endpoints. Must be **live in production before WP-G merg
 - [x] H-18 Typecheck/build/lint clean + manual click-through list in PR body
 - [x] H-19 Reviewer pass · PR merged
 
+### Settings reorg (founder request 2026-08-12) — `email-settings-into-settings`
+
+- [x] H-20 Sidebar: "People" row removed (route stays live and MANAGE_SYSTEM-gated at
+      `/email/people`, unlinked by design); the Email group is Activity only
+- [x] H-21 Switchboard moved out of `/email/settings` into **Settings → Email** (component
+      moved to `components/settings/`, satisfying the D3 lint zone) and split into four
+      sub-tabs — Email Groups / Addresses / Schedules / Send Window — sharing ONE draft, one
+      dirty-diff and one Save; `/email/settings` now 307s to `/settings?tab=email`
+- [x] H-22 Top-level Settings → Reviews tab dissolved: platform-reviews (Trustpilot/Google)
+      hookup → **Settings → Integration → Reviews**; the review-invitation schedule
+      (`ReviewRequestsForm`, unchanged component + endpoint) → **Settings → Email → Schedules**
+      as its own card below the email form, outside its `<form>`; `?tab=reviews` aliases to
+      `integration`
+- [x] H-23 Task/version identifiers (MK-1, OB-3…OB-8, INT1R, BK-3/BK-3R) stripped from every
+      user-visible label and description in the switchboard — they name the emails in words now;
+      the IDs stay in code comments and these docs
+- [x] H-24 Reviewer pass (frontend code + security) and fixes. Two regressions the reorg itself
+      introduced, both fixed on-branch: (a) the review-invitation card was parked inside a
+      `MANAGE_SYSTEM`-gated tab although its API is `VIEW_SETTINGS`/`MANAGE_SETTINGS`, and
+      `MANAGE_SYSTEM` is in the backend's `PLATFORM_STAFF_EXCLUDED` — a `MANAGE_SETTINGS` staff
+      seat was left with no screen for a schedule the backend still lets it write; the tab is
+      now `canAny([MANAGE_SYSTEM, MANAGE_SETTINGS])` and the form decides per seat which cards
+      render (the switchboard never mounts without `MANAGE_SYSTEM`, so its gated GET never
+      fires). (b) Saving the review card invalidated the email-settings cache (#57 Medium 2,
+      written when the forms lived on separate screens), which reset the switchboard draft and
+      silently discarded unsaved edits under a success toast — invalidation removed both ways.
+      Plus: the email-settings failure state no longer hides the review card, `noValidate` on
+      the multi-tab form (a browser silently refuses to submit an invalid control it cannot
+      focus), `?section=` deep links, and `ReviewRequestsForm`'s zod schema finally reading
+      `REVIEW_REQUEST_BOUNDS` (the #57 Low 5 follow-up)
+
 ---
 
 ## Founder decisions (plan §5)
@@ -583,11 +617,12 @@ Needs WP-A's two public endpoints. Must be **live in production before WP-G merg
 - [x] D1 **Decided 2026-08-11**: BK-3R draft approved as written; CX-1 restored to the
       wireframe's LOCKED wording (conditional balance sentence for both deposit models, bare
       subject without the booking reference) — shipped with the Wave-4 close PR
-- [ ] D2 Sales mailbox — now a dashboard field (Email → Settings); falls back to
+- [ ] D2 Sales mailbox — now a dashboard field (Settings → Email → *Addresses*); falls back to
       `SALES_EMAIL`/`ADMIN_EMAIL` env until set
-- [ ] D3 Founder reply-to — now a dashboard field; falls back to `OB6_REPLY_TO` env
+- [ ] D3 Founder reply-to — now a dashboard field (same tab); falls back to `OB6_REPLY_TO` env
 - [ ] D4 Operator agreement v1.0 PDF supplied (else OB-2 ships hosted-link-only)
 - [x] D5 **Decided 2026-08-11**: machine-first translations ship; human edits welcome anytime
       (copy lives in versioned files, changes flow through normal review)
 - [x] D6 **Decided 2026-08-11**: Dronebaas block stays ON per the wireframe; the dashboard
-      switch (Email → Settings) is the instant off-button if counsel later objects
+      switch (Settings → Email → *Email Groups*) is the instant off-button if counsel later
+      objects

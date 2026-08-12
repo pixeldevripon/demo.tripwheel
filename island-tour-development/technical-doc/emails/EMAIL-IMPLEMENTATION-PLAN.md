@@ -565,7 +565,14 @@ values as fallback.
 4. Surface `ReviewRequestSettings.enabled` (and its timing fields) read/write on the same
    settings endpoint payload — one switchboard, no second screen.
 
-**Dashboard (`feat/email-centre-dashboard`):**
+   > **Superseded on the UI side (founder reorg 2026-08-12).** The endpoint still carries the
+   > slice, but the dashboard no longer writes it from two places: `ReviewRequestsForm` (which
+   > owns the full schedule, reminder switch and batch size included) is the single writer, and
+   > it now renders inside the Email settings tab. See the checklist's H-20…H-23.
+
+**Dashboard (`feat/email-centre-dashboard`, reorganized 2026-08-12 by
+`email-settings-into-settings` — the surfaces below are as first built; where they live now is
+the checklist's H-20…H-23 and the runbook §3):**
 
 5. New nav group **Email** (gate `MANAGE_SYSTEM`): **Activity** (global sends table + detail
    sheet + Resend where the backend allows), **Settings** (the switchboard — the FULL

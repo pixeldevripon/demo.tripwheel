@@ -6,8 +6,17 @@
 > (architecture + contracts), [`EMAIL-PROGRAMME-CHECKLIST.md`](./EMAIL-PROGRAMME-CHECKLIST.md)
 > (task-level build status).
 >
-> The dashboard **Email** section described throughout ships in dashboard PR #57
-> (`feat/email-centre-dashboard`); the API behind it is live in production.
+> The dashboard surfaces described throughout ship in dashboard PRs #57 (`feat/email-centre-dashboard`)
+> and #58 (`email-settings-into-settings`, the 2026-08-12 reorg below); the API behind them is
+> live in production.
+>
+> **Where things live (after the 2026-08-12 reorg):** the send log is **Email → Activity** in the
+> sidebar; every switch, address and timing — **including when review invitations go out** — is
+> **Settings → Email** (four tabs). The old top-level Settings → Reviews tab is gone: its
+> Trustpilot/Google hookup moved to **Settings → Integration → Reviews**, and its email schedule
+> moved into **Settings → Email → Schedules**. The compliance ledger (opt-outs and consents) is
+> still at `/email/people` but is deliberately no longer in the sidebar — type the address, or
+> reach it from a suppression reason you're investigating.
 
 ## 1. The big picture — three parts, one ledger
 
@@ -28,11 +37,15 @@ send is impossible — even if servers crash mid-way and retry.
 marketing email carries a personal link there; one click records the opt-out. Booking emails are
 never affected by opting out — they're part of the purchase.
 
-**The dashboard is your control room.** Two places matter:
+**The dashboard is your control room.** Three places matter:
+
 - **Configure → Operator Verification** — your Approve click is itself an email trigger (it sends
   "You're approved" and starts the onboarding sequence).
-- **Email** (the new section) — everything else: the global log, every switch and timing, the
-  opt-out/consent lists, and a test-send button. Section 3 walks through it.
+- **Email → Activity** — the global log of every send decision, plus the test-send button.
+- **Settings → Email** — every switch, address and timing, in four tabs (review invitations
+  included, at the bottom of *Schedules*).
+
+Section 3 walks through all of it.
 
 **The heartbeat:** a scheduler wakes **every 15 minutes**, asks "who is due right now?", checks
 every rule (right day and hour, switch on, not opted out, still eligible, not already decided),
@@ -69,7 +82,7 @@ email-provider day degrades gracefully; it can never snowball.
 | **Still pending → sales inbox** (INT1R) | Operator awaiting approval > 2 business days`*` | No sales/admin address |
 | **New tour → sales inbox** (INT-2) | Any tour submitted for review | Sales copy only when the sales address differs from the admin address |
 
-Every value marked with `*` is editable in **Email → Settings**; the shown number is the built-in
+Every value marked with `*` is editable in **Settings → Email**; the shown number is the built-in
 default that applies while the field is empty. Extra guardrails on the nudges: **max one
 lifecycle email per operator per 3 days`*`* (priority: check-in > calendar > photos), and
 everything stops instantly on suspension or opt-out.
@@ -77,7 +90,17 @@ everything stops instantly on suspension or opt-out.
 **Booking emails (confirmation, reminder, cancellation) have NO off switch anywhere — on
 purpose.** They're contractual; the API rejects any attempt to invent such a switch.
 
-## 3. The dashboard Email section — your control room
+## 3. The dashboard — your control room
+
+Two surfaces, one hidden third:
+
+| What you want | Where |
+| --- | --- |
+| See what was sent, skipped or failed · send yourself a test | **Email → Activity** (sidebar) |
+| Switch a group on/off · set addresses · change any timing · set the send window | **Settings → Email** |
+| Change when review invitations go out | **Settings → Email → Schedules** (bottom card) |
+| Connect Trustpilot / Google reviews | **Settings → Integration → Reviews** |
+| Check who unsubscribed or who consented to marketing | `/email/people` — live, but not in the sidebar |
 
 ### Email → Activity (the global log)
 
@@ -101,27 +124,45 @@ How to read a row:
 your own signed-in address** (it cannot be pointed anywhere else) → the row appears in the list.
 The fastest way to see any email in a real inbox.
 
-### Email → Settings (the switchboard)
+### Settings → Email (the switchboard)
 
-One form, everything configurable. Every field starts as **"Using default (X)"** — the built-in
-value keeps applying until you type something. Set a value and it takes effect within about a
-minute (and within 15 minutes for schedule timing, the sweep cadence). Every field has a **"Use
-default"** action to clear back. Only the fields you changed are saved.
+Four tabs, **one Save**. The tabs are only a way of reading the form — you can change something
+under *Email Groups*, something else under *Schedules*, and save both at once. The counter above
+the button says how many changes are pending across all four.
 
-| Group | Fields | Defaults |
+Every field starts as **"Using default (X)"** — the built-in value keeps applying until you type
+something. Set a value and it takes effect within about a minute (and within 15 minutes for
+schedule timing, the sweep cadence). Every field has a **"Use default"** action to clear back.
+Only the fields you changed are sent.
+
+| Tab | Fields | Defaults |
 | --- | --- | --- |
-| **Switches** | Marketing (MK-1) · Onboarding nudges · Calendar email · Photo-partner block in OB-8 | off · on · off · on |
-| **Review emails** | On/off + send hour + first-send delay + reminder delay + give-up window | off · 10:00 · 1 day · 5 days · 30 days |
+| **Email Groups** | Marketing ("Your next adventure") · Onboarding nudges · Calendar email · Photo-partner block | off · on · off · on |
 | **Addresses** | Sales inbox · Reply-to (all mail) · Reply-to for the founder check-in | env values, then admin address |
-| **Onboarding timings** | How-to delay · Rescue delay · Check-in delay · Calendar after-live · Photos after-live · Sales pending-reminder | 48h · 7d · 14d · 3d · 7d · 2 business days |
-| **Send window** | Weekday chips + start/end hours (Curaçao time) | Tue–Thu, 09:00–11:00 |
-| **Marketing timing** | Delay after tour end | 72h |
+| **Schedules** | How-to delay · Rescue delay · Check-in delay · Calendar after-live · Photos after-live · Sales pending-reminder · Marketing delay after tour end | 48h · 7d · 14d · 3d · 7d · 2 business days · 72h |
+| **Send Window** | Weekday chips + start/end hours (Curaçao time) | Tue–Thu, 09:00–11:00 |
 
 Safety built in: addresses must be a single plain email (nothing can be smuggled in), timings
 have sane bounds, the window can't be made empty, and every change is logged with **which admin
 made it**.
 
-### Email → People
+**Review invitations sit at the bottom of the Schedules tab**, in a card of their own:
+on/off, how many days after the tour the invitation goes out and at what local hour, how many
+days later the single reminder follows (with its own on/off), how old a booking may be before
+it is never chased, and the batch size. It has **its own Save button** — it writes the review
+schedule, not the email settings, which is why it is a separate card rather than more fields in
+the form above. Before 2026-08-12 it lived in a top-level Settings → Reviews tab; that tab is
+gone and this is now the only place those numbers exist.
+
+One access note, in case a colleague reports a different-looking screen: the switches, addresses
+and timings above need the admin-only system permission, while the review card needs only the
+ordinary settings permission. A staff seat holding the latter opens Settings → Email and sees the
+review card by itself — that is deliberate, not a broken page.
+
+### /email/people (the compliance ledger, unlinked)
+
+Not in the sidebar since 2026-08-12 — it answers a question you only ask while investigating, so
+type the address or come back to it when a suppression reason sends you looking:
 
 - **Opt-outs** — everyone who clicked unsubscribe, with which stream they left (onboarding
   nudges vs marketing). Searchable by email.
@@ -144,11 +185,11 @@ made it**.
 3. **Booking flow:** make a test booking → confirmation arrives, row on the booking sheet →
    the reminder fires T-24h (watch Activity).
 4. **Unsubscribe:** click the opt-out link in any nudge → public page confirms → the person
-   appears in Email → People → Opt-outs → their next nudge shows in Activity as
+   appears at `/email/people` → Opt-outs → their next nudge shows in Activity as
    `Suppressed: opted-out`.
-5. **Settings behave:** change a timing (e.g. how-to delay 48h → 1h) on a fresh approved test
-   operator → the nudge shows up within the next 15-minute sweep inside the window. Set it back
-   with "Use default".
+5. **Settings behave:** change a timing (e.g. how-to delay 48h → 1h) in Settings → Email →
+   *Schedules*, on a fresh approved test operator → the nudge shows up within the next
+   15-minute sweep inside the window. Set it back with "Use default".
 6. **On a dev machine with no `RESEND_API_KEY`:** everything still *decides* and logs — rows
    show as Failed ("service not configured"), which is exactly what you're verifying.
 
@@ -157,7 +198,7 @@ made it**.
 - A consent row is created when a traveller ticks the inspiration box **and completes the
   purchase**. Abandoned/unpaid checkouts record nothing — legally, the tick only counts "in the
   context of a sale". One row per address, first booking kept as provenance. Historical
-  completed bookings were backfilled (visible in People → Consents).
+  completed bookings were backfilled (visible at `/email/people` → Consents).
 - MK-1 sends **only** when: the marketing switch is on **and** the address has a consent row
   **and** no marketing opt-out — all checked at the moment of sending. It only recommends tours
   the site itself currently lists as bookable, with open departures in the next 7 days, counted
@@ -179,16 +220,18 @@ reply-to addresses are ordinary Settings fields.
 
 ## 7. Go-live sequence
 
-1. Sign off D1 (the only copy still awaiting your word).
-2. Email → Settings: set the **sales inbox** and **reply-to** addresses.
-3. Verify the Resend domain for the from-address (and decide D7 before real marketing volume).
-4. Flip **Review emails ON** → review requests + reminders go live (the sweeper deliberately
-   never blasts a backlog on enable).
-5. When calendar sync ships: flip **Calendar email ON** → OB-7 starts, including for every
-   operator who passed the 3-day mark while it was off (deliberately not skipped).
-6. Flip **Marketing ON** when ready → MK-1 reaches consented, not-opted-out travellers only.
-   Watch the first morning in Activity.
-7. After any deploy that adds email icons: `pnpm email:icons:upload` (current set already done).
+1. Settings → Email → *Addresses*: set the **sales inbox** and **reply-to** addresses (this is
+   D2/D3 — the last two open items that are yours to type rather than decide).
+2. Verify the Resend domain for the from-address (and decide D7 before real marketing volume).
+3. Settings → Email → *Schedules* → the review-invitation card: flip **Send review request
+   emails ON** → requests + reminders go live (the sweeper deliberately never blasts a backlog
+   on enable). Remember that card saves on its own button.
+4. When calendar sync ships: Settings → Email → *Email Groups* → flip **Calendar email ON** →
+   the connect-your-calendar nudge starts, including for every operator who passed the 3-day
+   mark while it was off (deliberately not skipped).
+5. Flip **Marketing emails ON** in the same tab when ready → the "next adventure" email reaches
+   consented, not-opted-out travellers only. Watch the first morning in Activity.
+6. After any deploy that adds email icons: `pnpm email:icons:upload` (current set already done).
 
 ## 8. If something looks wrong
 
@@ -201,9 +244,9 @@ reply-to addresses are ordinary Settings fields.
   someone clicked Resend, and Activity shows it.
 - **"Stop everything to one person"** → have them click their unsubscribe link (or ask us to add
   an opt-out row). Booking emails still send — contractual.
-- **"Stop a whole category platform-wide"** → Email → Settings: flip the group switch off.
-  It's "pause", not "cancel": nobody is skipped permanently; turning it back on resumes where
-  things left off.
+- **"Stop a whole category platform-wide"** → Settings → Email → *Email Groups*: flip the group
+  switch off (review invitations: the card under *Schedules*). It's "pause", not "cancel":
+  nobody is skipped permanently; turning it back on resumes where things left off.
 - **"A setting seems to have no effect"** → check the field actually shows "Set here" (not
   "Using default"); remember schedule changes surface at the next 15-minute sweep, inside the
   send window.
