@@ -147,6 +147,20 @@ export const auth = betterAuth({
 
   // ── Email Verification ─────────────────────────────────────────────────────
   emailVerification: {
+    /**
+     * 24 hours, because that is what the email SAYS.
+     *
+     * OB-1's copy is locked by the onboarding wireframe (stage m1): "The link
+     * works for 24 hours." Better Auth's default is 1 hour, so until now the
+     * link died 23 hours before the sentence promised — an operator opening
+     * the mail that evening got an expired token and no explanation. Founder
+     * decision 2026-08-12: move the config, not the copy.
+     *
+     * Raising this widens the window in which a leaked verification link is
+     * usable, which is the trade the copy already committed us to. It is a
+     * single-use token for proving inbox control, not a credential.
+     */
+    expiresIn: 60 * 60 * 24, // 24 hours — must match OB-1's locked copy
     sendVerificationEmail: async ({ user, url, token }) => {
       // The change-email flow reuses this hook for its second step: after the
       // OLD inbox approves, better-auth calls this with the NEW address and a
@@ -156,12 +170,33 @@ export const auth = betterAuth({
       const isEmailChange =
         decodeJwtPayloadUnsafe(token)?.requestType ===
         'change-email-verification';
-      const verificationSend = mailService.sendVerificationEmail(
-        user.email,
-        url,
-        user.name ?? undefined,
-        isEmailChange ? 'email-change' : 'account',
-      );
+
+      // OB-1: an operator verifying their address gets the OPERATOR family's
+      // email (wireframe stage m1), not the traveller/account one. The role is
+      // read fresh rather than taken from `user` because better-auth's user
+      // object is only guaranteed to carry its own core fields. A change-email
+      // verification always uses the account copy — it is about an address, not
+      // about joining as an operator, and the operator copy would be nonsense
+      // on the second step of that flow.
+      const verificationSend = (async () => {
+        const isOperator =
+          !isEmailChange &&
+          (
+            await authPrismaClient.user.findUnique({
+              where: { id: user.id },
+              select: { role: true },
+            })
+          )?.role === Role.TOUR_OPERATOR;
+        if (isOperator) {
+          return mailService.sendOperatorVerificationEmail(user.email, url);
+        }
+        return mailService.sendVerificationEmail(
+          user.email,
+          url,
+          user.name ?? undefined,
+          isEmailChange ? 'email-change' : 'account',
+        );
+      })();
       sendInBackground('verification', verificationSend);
       // WP-D (D-09): OB-1 send-log row so the account verification appears
       // on the email timeline. This hook runs pre-DI, so it uses the shared

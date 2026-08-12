@@ -13,7 +13,6 @@ describe('operatorPendingReminderTemplate', () => {
       phone: '+599 9 561 22 43',
       acceptedAt: new Date('2026-07-09T18:32:00.000Z'),
       reviewUrl: 'https://dash.example/tour-operators/op1/edit',
-      siteLogoUrl: null,
       ...over,
     });
 
@@ -26,6 +25,10 @@ describe('operatorPendingReminderTemplate', () => {
 
   it('says why it exists: pending more than 2 business days', () => {
     expect(render().html).toContain('more than 2 business days');
+  });
+
+  it('wears the internal wordmark suffix, like INT-1', () => {
+    expect(render().html).toContain('INTERNAL');
   });
 
   it('carries the facts table in Curaçao time', () => {
@@ -43,7 +46,7 @@ describe('operatorPendingReminderTemplate', () => {
   it('internal family: ONE dark Review button, never an approve action', () => {
     const { html } = render();
     expect(html).toContain('Review in admin');
-    expect(html).toContain('background:#1F2937');
+    expect(html).toContain('bgcolor="#1F2937"');
     expect(html).not.toMatch(/>\s*Approve/);
   });
 
@@ -53,7 +56,16 @@ describe('operatorPendingReminderTemplate', () => {
     expect(html).toContain('&lt;script&gt;');
   });
 
-  it('is internal: no opt-out line', () => {
-    expect(render().html).not.toContain('Opt out here');
+  it('has NO footer: no opt-out, no sender identity block', () => {
+    const { html } = render();
+    expect(html).not.toContain('Opt out here');
+    expect(html).not.toContain('ITG B.V.');
+    expect(html).not.toContain('border-top:1px solid #EAE7E1');
+  });
+
+  it('keeps its build-invented never-forward line (no wireframe card exists)', () => {
+    expect(render().html).toContain(
+      'Internal reminder · sent once per operator. Never forward - it contains contact details.',
+    );
   });
 });

@@ -24,11 +24,37 @@ describe('operatorCheckInTemplate', () => {
     );
   });
 
-  it('is near-plain: no buttons, no images, no logo bar', () => {
+  it('previews as the wireframe .pre line - the audit found it had none', () => {
+    expect(render().html).toContain('>One quick question.</div>');
+  });
+
+  it('is the only stage with NO logo and NO headline', () => {
+    const { html } = render();
+    expect(html).not.toContain('ISLAND');
+    expect(html).not.toContain('font-size:21px');
+  });
+
+  it('is near-plain: no buttons, no images', () => {
     const { html } = render();
     expect(html).not.toContain('<img');
-    expect(html).not.toMatch(/background:#E8611A/);
-    expect(html).not.toContain('ISLAND');
+    expect(html).not.toContain('bgcolor="#E8611A"');
+  });
+
+  it('rides the operator shell: same card, same 14.5px body as the family', () => {
+    const { html } = render();
+    expect(html).toContain('max-width:600px');
+    expect(html).toContain('padding:26px 30px');
+    expect(html).toContain('font-size:14.5px');
+    expect(html).not.toContain('font-size:15px');
+  });
+
+  it('tightens the paragraphs to the wireframe 12px, and zeroes the last', () => {
+    const { html } = render();
+    const spacers = [...html.matchAll(/<td height="(\d+)"/g)].map((m) =>
+      Number(m[1]),
+    );
+    // three 12px gaps between four paragraphs, then the footer's 22px.
+    expect(spacers).toEqual([12, 12, 12, 22]);
   });
 
   it('the only anchor is the opt-out link', () => {
@@ -38,10 +64,17 @@ describe('operatorCheckInTemplate', () => {
     expect(html).toContain('https://island.tours/unsubscribe/tok-1');
   });
 
-  it('the text part reads as a personal note and keeps the opt-out', () => {
+  it('the text part reads as a personal note and carries the full footer', () => {
     const { text } = render();
     expect(text).toContain('Hi Mayra,');
     expect(text).toContain('Denley');
+    expect(text).toContain(
+      "We'll never ask for your password, codes, or payment by email.",
+    );
+    expect(text).toContain(
+      'Island Tours is a service of ITG B.V. (Island Tours Group) · KvK Curaçao 169950',
+    );
+    expect(text).toContain('Willemstad, Curaçao · www.island.tours');
     expect(text).toContain('https://island.tours/unsubscribe/tok-1');
   });
 

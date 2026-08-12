@@ -37,6 +37,8 @@ import {
   operatorSignupInternalSubject,
   operatorSignupInternalTemplate,
   type OperatorSignupInternalTemplateProps,
+  OPERATOR_VERIFY_EMAIL_SUBJECT,
+  operatorVerifyEmailTemplate,
   tourSubmittedSalesSubject,
 } from './templates';
 import {
@@ -496,16 +498,16 @@ export class MailService {
    * INT-2 (sales-pipeline variant of the submission alert). Sent to
    * SALES_EMAIL only when it differs from ADMIN_EMAIL - the caller decides;
    * this facade only renders and sends.
+   *
+   * No `getSiteLogo()` here (nor in the two operator sends below): the OPERATOR
+   * design family's wordmark is TEXT. The wireframe's card has no brand bar and
+   * no dashboard-managed logo slot, so there is nothing to look up.
    */
   async sendTourSubmittedSalesEmail(
     to: string,
-    params: Omit<TourSubmittedSalesTemplateProps, 'siteLogoUrl'>,
+    params: TourSubmittedSalesTemplateProps,
   ): Promise<void> {
-    const siteLogoUrl = await this.getSiteLogo();
-    const { html, text } = tourSubmittedSalesTemplate({
-      ...params,
-      siteLogoUrl,
-    });
+    const { html, text } = tourSubmittedSalesTemplate(params);
     await this.sendMail({
       to,
       subject: tourSubmittedSalesSubject(params.tourName),
@@ -523,10 +525,9 @@ export class MailService {
    */
   async sendOperatorApprovedEmail(
     to: string,
-    params: Omit<OperatorApprovedTemplateProps, 'siteLogoUrl'>,
+    params: OperatorApprovedTemplateProps,
   ): Promise<void> {
-    const siteLogoUrl = await this.getSiteLogo();
-    const { html, text } = operatorApprovedTemplate({ ...params, siteLogoUrl });
+    const { html, text } = operatorApprovedTemplate(params);
     await this.sendMail({
       to,
       subject: OPERATOR_APPROVED_SUBJECT,
@@ -542,13 +543,9 @@ export class MailService {
    */
   async sendOperatorSignupInternalEmail(
     to: string,
-    params: Omit<OperatorSignupInternalTemplateProps, 'siteLogoUrl'>,
+    params: OperatorSignupInternalTemplateProps,
   ): Promise<void> {
-    const siteLogoUrl = await this.getSiteLogo();
-    const { html, text } = operatorSignupInternalTemplate({
-      ...params,
-      siteLogoUrl,
-    });
+    const { html, text } = operatorSignupInternalTemplate(params);
     await this.sendMail({
       to,
       subject: operatorSignupInternalSubject(params.operatorName),
@@ -558,6 +555,25 @@ export class MailService {
   }
 
   // ── Email verification ────────────────────────────────────────────────────────
+
+  /**
+   * OB-1 "Confirm your email" - the OPERATOR family's address verification.
+   * Separate from `sendVerificationEmail` below, which is the traveller/account
+   * family: the two wear different shells and say different things, and Better
+   * Auth's verification hook routes by role.
+   */
+  async sendOperatorVerificationEmail(
+    to: string,
+    verifyUrl: string,
+  ): Promise<void> {
+    const { html, text } = operatorVerifyEmailTemplate({ verifyUrl });
+    await this.sendMail({
+      to,
+      subject: OPERATOR_VERIFY_EMAIL_SUBJECT,
+      html,
+      text,
+    });
+  }
 
   /**
    * 'account' = ordinary verify-on-sign-in. 'email-change' = step 2 of the

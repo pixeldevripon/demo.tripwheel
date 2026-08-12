@@ -60,15 +60,15 @@ export interface AuthEmailShellProps {
  */
 export const EMAIL_EMPHASIS = 'font-weight:600;color:#1F2937';
 
-/** Escapes HTML-significant characters so user data cannot inject markup. */
-export function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
+/**
+ * Re-exported, not defined here: `escapeHtml` moved to `email-text.util.ts`
+ * when the operator family got its own shell, because a pure string utility
+ * named for one design family is a thread between two that are meant to be
+ * independent. The re-export keeps this module's public surface intact for the
+ * eleven templates that import it from here.
+ */
+export { escapeHtml } from './email-text.util';
+import { escapeHtml } from './email-text.util';
 
 export function authEmailShell({
   title,

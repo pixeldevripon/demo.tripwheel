@@ -1,4 +1,5 @@
-import { authEmailShell, EMAIL_EMPHASIS, escapeHtml } from './auth-email-shell';
+import { escapeHtml } from './auth-email-shell';
+import { operatorEmailShell, operatorInlineLink } from './operator-email-shell';
 
 /**
  * OB-2A "You're approved" - the transactional email an operator gets the
@@ -7,8 +8,12 @@ import { authEmailShell, EMAIL_EMPHASIS, escapeHtml } from './auth-email-shell';
  * (technical-doc/emails/island-tours-operator-onboarding-emails-wireframe.html,
  * stage m2a); this send anchors the OB-3/OB-4/OB-6 nudges that WP-D builds.
  *
- * Rides the shared auth shell: the wireframe's "Your dashboard, in short"
- * quiet block becomes the footnote slot (same copy, shell-native structure).
+ * Block order: logo · headline · paragraph · CTA · quiet panel. The quiet
+ * panel sits AFTER the button here (it does not in OB-8), which is why block
+ * order is a caller decision.
+ *
+ * The company name is PLAIN body text: the wireframe sets no emphasis on it,
+ * and bolding a merge variable is how a template starts drifting from a design.
  */
 
 export interface OperatorApprovedTemplateProps {
@@ -20,7 +25,6 @@ export interface OperatorApprovedTemplateProps {
   addTourUrl: string;
   /** Dashboard root - the "Open your dashboard" link. */
   dashboardUrl: string;
-  siteLogoUrl?: string | null;
 }
 
 export const OPERATOR_APPROVED_SUBJECT =
@@ -31,16 +35,31 @@ export function operatorApprovedTemplate({
   companyName,
   addTourUrl,
   dashboardUrl,
-  siteLogoUrl,
 }: OperatorApprovedTemplateProps) {
-  return authEmailShell({
-    siteLogoUrl,
-    title: firstName ? `Good news, ${escapeHtml(firstName)}.` : 'Good news.',
-    paragraphs: [
-      `<span style="${EMAIL_EMPHASIS}">${escapeHtml(companyName)}</span> is approved on Island Tours. Time for the fun part: your first tour page.`,
+  return operatorEmailShell({
+    title: OPERATOR_APPROVED_SUBJECT,
+    preheader: 'Your first tour page starts here.',
+    blocks: [
+      { kind: 'logo' },
+      {
+        kind: 'headline',
+        text: firstName ? `Good news, ${firstName}.` : 'Good news.',
+      },
+      {
+        kind: 'paragraph',
+        // `paragraph.html` carries markup by contract, so the operator-authored
+        // company name is escaped here.
+        html: `${escapeHtml(companyName)} is approved on Island Tours. Time for the fun part: your first tour page.`,
+      },
+      { kind: 'button', label: 'Add your first tour', url: addTourUrl },
+      {
+        kind: 'quiet',
+        heading: 'Your dashboard, in short',
+        // Wireframe: the link is on its own line after a <br>, with NO trailing
+        // period.
+        bodyHtml: `Bookings the moment they land, availability in one tap, your tour pages in one place.<br>${operatorInlineLink(dashboardUrl, 'Open your dashboard')}`,
+      },
     ],
-    ctaLabel: 'Add your first tour',
-    ctaUrl: addTourUrl,
-    footnote: `<span style="${EMAIL_EMPHASIS}">Your dashboard, in short</span><br>Bookings the moment they land, availability in one tap, your tour pages in one place. <a href="${dashboardUrl}" style="color:#4B5563">Open your dashboard</a>.`,
+    footer: { variant: 'transactional' },
   });
 }

@@ -10,7 +10,6 @@ describe('operatorTourLiveTemplate', () => {
       tourName: 'Sunset Cruise along Spanish Water',
       tourUrl: 'https://island.tours/en/curacao/sunset-cruise',
       availabilityUrl: 'https://dash.example/availability',
-      siteLogoUrl: null,
       ...over,
     });
 
@@ -25,11 +24,35 @@ describe('operatorTourLiveTemplate', () => {
     );
   });
 
+  it('previews as the wireframe .pre line, not as the headline', () => {
+    const { html } = render();
+    expect(html).toContain(
+      '>See your page, then keep your calendar current.</div>',
+    );
+    // The subject line is the <title>; it is NOT reused as the headline.
+    expect(html).toContain(
+      '<title>Your tour is live: Sunset Cruise along Spanish Water</title>',
+    );
+    expect(html).not.toContain(
+      'color:#1F2937">Your tour is live: Sunset Cruise',
+    );
+  });
+
   it('has ONE CTA to the live page', () => {
     const { html } = render();
     expect(html).toContain('See your live page');
     expect(html).toContain(
       'href="https://island.tours/en/curacao/sunset-cruise"',
+    );
+  });
+
+  it('the availability callout sits BELOW the CTA (the audit found it above)', () => {
+    const { html } = render();
+    expect(html.indexOf('See your live page')).toBeLessThan(
+      html.indexOf('Keep your availability current'),
+    );
+    expect(html.indexOf('Keep your availability current')).toBeLessThan(
+      html.indexOf('Open your availability'),
     );
   });
 
@@ -47,8 +70,9 @@ describe('operatorTourLiveTemplate', () => {
     expect(html).toContain('&lt;img');
   });
 
-  it('is transactional: no opt-out line', () => {
+  it('transactional footer: sign-off present, no opt-out', () => {
     const { html } = render();
+    expect(html).toContain('Island Tours. Built by Islanders.');
     expect(html).not.toContain('Opt out here');
   });
 });

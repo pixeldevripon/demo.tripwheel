@@ -13,7 +13,6 @@ import type { EmailTemplateContext } from './templates/email-template.renderer';
 import { copyFor, fillCopy } from './templates/email-copy.util';
 import { CANCELLATION_EMAIL_COPY } from './templates/cancellation-email.copy';
 import {
-  emailVerificationTemplate,
   OPERATOR_APPROVED_SUBJECT,
   operatorApprovedTemplate,
   OPERATOR_BUILD_WITH_YOU_SUBJECT,
@@ -32,6 +31,8 @@ import {
   operatorSignupInternalTemplate,
   operatorTourLiveSubject,
   operatorTourLiveTemplate,
+  OPERATOR_VERIFY_EMAIL_SUBJECT,
+  operatorVerifyEmailTemplate,
   OPERATOR_WELCOME_AGREEMENT_SUBJECT,
   operatorWelcomeAgreementTemplate,
   tourSubmittedSalesSubject,
@@ -345,7 +346,6 @@ export class EmailTestSendService {
       phone: '+599 9 561 22 43',
       acceptedAt,
       reviewUrl: 'https://example.com/tour-operators/sample/edit',
-      siteLogoUrl: logo,
     };
     const optOutUrl = 'https://example.com/unsubscribe/test-token';
 
@@ -373,7 +373,6 @@ export class EmailTestSendService {
           dateLong: SAMPLE.dateLong,
           startTime: SAMPLE.startTime,
           reviewUrl: 'https://example.com/review/test-token',
-          siteLogoUrl: logo,
           emailIconBase: iconBase,
           isReminder: key === EmailTemplateKey.BK3R_REVIEW_REMINDER,
           locale: Locale.en,
@@ -425,12 +424,13 @@ export class EmailTestSendService {
           paragraphs.join('\n\n'),
         );
       }
+      // OB-1 previews the OPERATOR variant, which is what this key logs in
+      // production. The traveller/account verification is a different design
+      // family and is not part of the operator email centre.
       case EmailTemplateKey.OB1_VERIFY_EMAIL:
-        return this.send(to, 'Verify your Island Tours email address', () =>
-          emailVerificationTemplate({
+        return this.send(to, OPERATOR_VERIFY_EMAIL_SUBJECT, () =>
+          operatorVerifyEmailTemplate({
             verifyUrl: 'https://example.com/verify/test-token',
-            siteLogoUrl: logo,
-            name: operatorProps.signatoryName,
           }),
         );
       case EmailTemplateKey.OB2_WELCOME_AGREEMENT:
@@ -442,7 +442,6 @@ export class EmailTestSendService {
             agreementUrl: null,
             supportEmail: 'hello@example.com',
             whatsappUrl: 'https://wa.me/59995601367',
-            siteLogoUrl: logo,
           }),
         );
       case EmailTemplateKey.OB2A_APPROVED:
@@ -452,7 +451,6 @@ export class EmailTestSendService {
             companyName: operatorProps.operatorName,
             addTourUrl: 'https://example.com/trips/new',
             dashboardUrl: 'https://example.com',
-            siteLogoUrl: logo,
           }),
         );
       case EmailTemplateKey.OB3_FIRST_TOUR_HOWTO:
@@ -461,8 +459,8 @@ export class EmailTestSendService {
             addTourUrl: 'https://example.com/trips/new',
             guideUrl: 'https://example.com/trips/new',
             walkthroughVideoUrl: null,
+            walkthroughDuration: null,
             optOutUrl,
-            siteLogoUrl: logo,
           }),
         );
       case EmailTemplateKey.OB4_BUILD_IT_WITH_YOU:
@@ -472,7 +470,6 @@ export class EmailTestSendService {
             salesEmail: 'sales@example.com',
             addTourUrl: 'https://example.com/trips/new',
             optOutUrl,
-            siteLogoUrl: logo,
           }),
         );
       case EmailTemplateKey.OB5_TOUR_LIVE:
@@ -481,7 +478,6 @@ export class EmailTestSendService {
             tourName: SAMPLE.tourName,
             tourUrl: 'https://example.com/en/curacao/klein-curacao-day-trip',
             availabilityUrl: 'https://example.com/availability',
-            siteLogoUrl: logo,
           }),
         );
       case EmailTemplateKey.OB6_CHECK_IN:
@@ -493,7 +489,6 @@ export class EmailTestSendService {
           operatorConnectCalendarTemplate({
             connectUrl: 'https://example.com/calendar',
             optOutUrl,
-            siteLogoUrl: logo,
           }),
         );
       case EmailTemplateKey.OB8_PAGE_STRONGER:
@@ -503,7 +498,6 @@ export class EmailTestSendService {
             photoShootContactUrl: 'https://wa.me/59995601367',
             toursUrl: 'https://example.com/trips',
             optOutUrl,
-            siteLogoUrl: logo,
           }),
         );
       case EmailTemplateKey.INT1_NEW_OPERATOR:
@@ -525,7 +519,6 @@ export class EmailTestSendService {
             operatorName: operatorProps.operatorName,
             submittedAt: acceptedAt,
             reviewUrl: operatorProps.reviewUrl,
-            siteLogoUrl: logo,
           }),
         );
       default: {

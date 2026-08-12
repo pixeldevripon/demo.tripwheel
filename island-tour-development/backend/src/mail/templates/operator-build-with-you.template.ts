@@ -1,4 +1,7 @@
-import { authEmailShell, escapeHtml } from './auth-email-shell';
+import {
+  operatorEmailShell,
+  type OperatorEmailBlock,
+} from './operator-email-shell';
 
 /**
  * OB-4 "We'll build it with you" - the day-7-after-approval rescue for
@@ -7,6 +10,10 @@ import { authEmailShell, escapeHtml } from './auth-email-shell';
  * family (design constants: WhatsApp green only on OB-4); when WhatsApp is
  * disabled in settings the email degrades to the email + self-serve links
  * rather than shipping a dead chat button.
+ *
+ * The two alternatives are SEPARATE `.e-sec` lines with 6px and 8px tops, not
+ * one line joined by a `<br>`: the wireframe stacks them as three descending
+ * offers, and the tightening gap is what makes them read that way.
  */
 
 export interface OperatorBuildWithYouTemplateProps {
@@ -18,7 +25,6 @@ export interface OperatorBuildWithYouTemplateProps {
   addTourUrl: string;
   /** WP-A unsubscribe token link - lifecycle footer (D-10). */
   optOutUrl: string;
-  siteLogoUrl?: string | null;
 }
 
 export const OPERATOR_BUILD_WITH_YOU_SUBJECT = "We'll build it with you";
@@ -28,31 +34,47 @@ export function operatorBuildWithYouTemplate({
   salesEmail,
   addTourUrl,
   optOutUrl,
-  siteLogoUrl,
 }: OperatorBuildWithYouTemplateProps) {
-  const alternatives = [
-    ...(salesEmail
-      ? [
-          `<a href="mailto:${escapeHtml(salesEmail)}" style="color:#4B5563;font-weight:600;text-decoration:underline">Or email everything to ${escapeHtml(salesEmail)}</a>`,
-        ]
-      : []),
-    `<a href="${addTourUrl}" style="color:#4B5563;font-weight:600;text-decoration:underline">Or add your tour yourself</a>`,
-  ].join('<br> ');
+  const cta: OperatorEmailBlock[] = whatsappUrl
+    ? [
+        {
+          kind: 'button',
+          label: 'Chat on WhatsApp',
+          url: whatsappUrl,
+          tone: 'green',
+        },
+      ]
+    : [];
+  const emailLine: OperatorEmailBlock[] = salesEmail
+    ? [
+        {
+          kind: 'secondary',
+          label: `Or email everything to ${salesEmail}`,
+          url: `mailto:${salesEmail}`,
+          marginTop: 6,
+        },
+      ]
+    : [];
 
-  return authEmailShell({
-    siteLogoUrl,
+  return operatorEmailShell({
     title: OPERATOR_BUILD_WITH_YOU_SUBJECT,
-    paragraphs: [
-      "A first tour page can fall to the bottom of the pile. We know how island days run. Send us your photos, prices, and departure times, WhatsApp or email, and we'll set up your page together: you check it, we make it live.",
+    preheader: 'Send your photos and prices on WhatsApp.',
+    blocks: [
+      { kind: 'logo' },
+      { kind: 'headline', text: OPERATOR_BUILD_WITH_YOU_SUBJECT },
+      {
+        kind: 'paragraph',
+        html: "A first tour page can fall to the bottom of the pile. We know how island days run. Send us your photos, prices, and departure times, WhatsApp or email, and we'll set up your page together: you check it, we make it live.",
+      },
+      ...cta,
+      ...emailLine,
+      {
+        kind: 'secondary',
+        label: 'Or add your tour yourself',
+        url: addTourUrl,
+        marginTop: 8,
+      },
     ],
-    ...(whatsappUrl
-      ? {
-          ctaLabel: 'Chat on WhatsApp',
-          ctaUrl: whatsappUrl,
-          ctaBackground: '#16A34A' as const,
-        }
-      : {}),
-    footnote: alternatives,
-    optOutUrl,
+    footer: { variant: 'lifecycle', optOutUrl },
   });
 }

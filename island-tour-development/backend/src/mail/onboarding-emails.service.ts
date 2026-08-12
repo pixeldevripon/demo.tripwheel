@@ -10,6 +10,7 @@ import {
   EmailStream,
   EmailTemplateKey,
   OperatorVerificationStatus,
+  PageStatus,
   Prisma,
   TourStatus,
 } from '@prisma/client';
@@ -27,7 +28,6 @@ import {
   TIMELINE_SELECT,
   KEY_STREAM,
 } from './email-log.service';
-import { emailSafeLogoUrl } from './email-logo.util';
 import { EmailPreferencesService } from './email-preferences.service';
 import {
   EmailSettingsService,
@@ -175,9 +175,25 @@ type OperatorRow = Prisma.OperatorGetPayload<{
 
 /** Per-tick shared context (one SiteInfo read per sweep, not per operator). */
 interface SiteContext {
-  siteLogoUrl: string | null;
   whatsappUrl: string | null;
+  /**
+   * OB-2's "Read your agreement" link, or null when no PUBLISHED page owns
+   * `OPERATOR_AGREEMENT_SLUG`. Resolved from the Pages table rather than
+   * hard-coded, so the email can never link to a 404: an unpublished or
+   * renamed page simply drops the sentence.
+   */
+  agreementUrl: string | null;
 }
+
+/**
+ * The permalink the Operator Agreement lives at — `/{locale}/{slug}` on the
+ * public site, one global Page row (see `prisma/pages.prisma`).
+ *
+ * Founder decision 2026-08-12 ("add the policy link instead"): OB-2 links to
+ * this page rather than promising the PDF attachment D4 never supplied.
+ * Publishing a page at this slug is what turns the link on.
+ */
+const OPERATOR_AGREEMENT_SLUG = 'operator-agreement';
 
 interface RenderedEmail {
   subject: string;
@@ -528,7 +544,6 @@ export class OnboardingEmailsService {
         phone: operator.contactPhone ?? operator.companyInfo?.companyPhone,
         acceptedAt: operator.createdAt,
         reviewUrl: `${dashboardAppBase()}/tour-operators/${operator.id}/edit`,
-        siteLogoUrl: site.siteLogoUrl,
       });
       const result = await this.emailLog.claimAndSend({
         templateKey: EmailTemplateKey.INT1R_PENDING_REMINDER,
@@ -758,11 +773,14 @@ export class OnboardingEmailsService {
         const { html, text } = operatorWelcomeAgreementTemplate({
           firstName: OnboardingEmailsService.firstNameOf(operator),
           acceptedAt: operator.createdAt,
+          // D4 never supplied a version-pinned PDF; the hosted policy page is
+          // the agreement of record (founder decision 2026-08-12). A version
+          // string would have to come from that page, so it stays null until
+          // the page carries one.
           agreementVersion: null,
-          agreementUrl: null,
+          agreementUrl: site.agreementUrl,
           supportEmail: cfg.mailReplyTo,
           whatsappUrl: site.whatsappUrl,
-          siteLogoUrl: site.siteLogoUrl,
         });
         return { subject: OPERATOR_WELCOME_AGREEMENT_SUBJECT, html, text };
       }
@@ -773,7 +791,6 @@ export class OnboardingEmailsService {
           companyName: operator.companyInfo?.companyName ?? operator.user.name,
           addTourUrl: `${dashboardUrl}/trips/new`,
           dashboardUrl,
-          siteLogoUrl: site.siteLogoUrl,
         });
         return { subject: OPERATOR_APPROVED_SUBJECT, html, text };
       }
@@ -817,8 +834,12 @@ export class OnboardingEmailsService {
           guideUrl: `${dash}/trips/new`,
           walkthroughVideoUrl:
             process.env.WALKTHROUGH_VIDEO_URL?.trim() || null,
+          // The wireframe's Loom caption is "Watch the walkthrough ·
+          // {duration}" — a merge variable, so it travels with the URL.
+          // Unset, the caption renders without the suffix.
+          walkthroughDuration:
+            process.env.WALKTHROUGH_VIDEO_DURATION?.trim() || null,
           optOutUrl,
-          siteLogoUrl: site.siteLogoUrl,
         });
         return {
           subject: OPERATOR_FIRST_TOUR_HOWTO_SUBJECT,
@@ -833,7 +854,6 @@ export class OnboardingEmailsService {
           salesEmail: cfg.salesEmail,
           addTourUrl: `${dash}/trips/new`,
           optOutUrl,
-          siteLogoUrl: site.siteLogoUrl,
         });
         return {
           subject: OPERATOR_BUILD_WITH_YOU_SUBJECT,
@@ -862,7 +882,6 @@ export class OnboardingEmailsService {
         const { html, text } = operatorConnectCalendarTemplate({
           connectUrl: `${dash}/calendar`,
           optOutUrl,
-          siteLogoUrl: site.siteLogoUrl,
         });
         return {
           subject: OPERATOR_CONNECT_CALENDAR_SUBJECT,
@@ -882,7 +901,6 @@ export class OnboardingEmailsService {
             site.whatsappUrl ?? (sales ? `mailto:${sales}` : null),
           toursUrl: `${dash}/trips`,
           optOutUrl,
-          siteLogoUrl: site.siteLogoUrl,
         });
         return { subject: OPERATOR_PAGE_STRONGER_SUBJECT, html, text, headers };
       }
@@ -912,7 +930,6 @@ export class OnboardingEmailsService {
       // emails are English (plan §2.9).
       tourUrl: `${islandToursBase()}/en/${tour.destination.slug}/${tour.slug}`,
       availabilityUrl: `${dashboardAppBase()}/availability`,
-      siteLogoUrl: site.siteLogoUrl,
     });
     return { subject: operatorTourLiveSubject(tour.name), html, text };
   }
@@ -931,26 +948,42 @@ export class OnboardingEmailsService {
     });
   }
 
-  /** One SiteInfo read per tick — logo chip + the wa.me deep link (OB-4/8, OB-2). */
+  /**
+   * One shared read per tick — the wa.me deep link (OB-4/8, OB-2) and OB-2's
+   * agreement link. Not per operator: this is sweep-wide context.
+   *
+   * There is no logo here. The operator wireframe's card has no brand bar and
+   * no image-logo variant at all, only the text wordmark, so the family has
+   * nothing to do with `SiteInfo.logo`.
+   */
   private async siteContext(): Promise<SiteContext> {
     try {
-      const info = await this.prisma.siteInfo.findFirst({
-        select: {
-          logo: true,
-          whatsappNumber: true,
-          enableWhatsappChat: true,
-        },
-      });
+      const [info, agreementPage] = await Promise.all([
+        this.prisma.siteInfo.findFirst({
+          select: { whatsappNumber: true, enableWhatsappChat: true },
+        }),
+        // PUBLISHED only: a draft or archived page 404s on the public site
+        // (pages.prisma), and an emailed link to a contract must resolve.
+        this.prisma.page.findFirst({
+          where: {
+            slug: OPERATOR_AGREEMENT_SLUG,
+            status: PageStatus.PUBLISHED,
+          },
+          select: { slug: true },
+        }),
+      ]);
       return {
-        siteLogoUrl: emailSafeLogoUrl(info?.logo),
         whatsappUrl: buildWhatsappUrl(
           info?.whatsappNumber,
           info?.enableWhatsappChat,
         ),
+        agreementUrl: agreementPage
+          ? `${islandToursBase()}/en/${agreementPage.slug}`
+          : null,
       };
     } catch {
       // An email must never fail over branding (the MailService rule).
-      return { siteLogoUrl: null, whatsappUrl: null };
+      return { whatsappUrl: null, agreementUrl: null };
     }
   }
 

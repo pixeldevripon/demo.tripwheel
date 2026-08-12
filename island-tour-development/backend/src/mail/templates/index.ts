@@ -5,6 +5,11 @@ export {
   type StaffInviteTemplateProps,
 } from './staff-invite.template';
 export { emailVerificationTemplate } from './email-verification.template';
+export {
+  OPERATOR_VERIFY_EMAIL_SUBJECT,
+  operatorVerifyEmailTemplate,
+  type OperatorVerifyEmailTemplateProps,
+} from './operator-verify-email.template';
 export { travellerLoginCodeTemplate } from './traveller-login-code.template';
 export { savedToursTemplate, type SavedTourCard } from './saved-tours.template';
 export { changeEmailConfirmationTemplate } from './change-email-confirmation.template';

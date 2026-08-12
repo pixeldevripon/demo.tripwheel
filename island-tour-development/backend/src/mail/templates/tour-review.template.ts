@@ -1,22 +1,24 @@
 import { authEmailShell, EMAIL_EMPHASIS, escapeHtml } from './auth-email-shell';
 import {
-  INTERNAL_CTA_BACKGROUND,
-  factRow,
-  formatInternalTimestamp,
-  internalFactsTable,
-} from './internal-email.util';
+  operatorEmailShell,
+  type OperatorFactRow,
+} from './operator-email-shell';
+import { formatInternalTimestamp } from './internal-email.util';
 
 /**
  * The two halves of the tour approval workflow (access-roles conflict #1:
  * publishing is always Island Tours').
  *
- * Both are one-decision emails, so both ride the shared auth shell rather than
- * inventing layout: the operator's mailbox already knows this shape from the
- * invite and hat-added mails.
+ * These are one-decision emails, so they ride a shell rather than inventing
+ * layout: the operator's mailbox already knows this shape from the invite and
+ * hat-added mails. They do NOT all ride the SAME shell, though. INT-2 below is
+ * drawn in the operator wireframe (stage mint) and uses `operatorEmailShell`;
+ * the other three belong to the account/auth family and stay on
+ * `authEmailShell`, which is correct for them and must not be retuned.
  *
  * Every interpolated value is escaped. A tour name is operator-authored and the
- * review note is admin-authored free text - the shell's `paragraphs` accept
- * inline markup by contract, so escaping is this file's job, not the shell's.
+ * review note is admin-authored free text - both shells accept inline markup in
+ * their copy fields by contract, so escaping is this file's job, not theirs.
  */
 
 export interface TourSubmittedForReviewTemplateProps {
@@ -63,21 +65,26 @@ export interface TourSubmittedSalesTemplateProps {
   submittedAt: Date;
   /** Dashboard link straight to the tour's review screen. */
   reviewUrl: string;
-  siteLogoUrl?: string | null;
 }
 
 /**
  * INT-2, the sales-pipeline variant of the submission alert. Sent to
  * SALES_EMAIL only when it differs from ADMIN_EMAIL (the same mailbox gets
  * ONE email - the reviewer variant above). Content is LOCKED by the
- * onboarding wireframe (stage mint, second card): operator + submitted-at
- * facts and a single dark "Review in admin" button - internal mail never
- * wears the brand orange, and never carries an approve action (link
- * scanners click).
+ * onboarding wireframe (stage mint, second card): the "· Internal" logo
+ * suffix, a 17px headline (a tour name is long enough that the family's 21px
+ * would wrap to three lines), operator + submitted-at facts, and a single dark
+ * "Review in admin" button - internal mail never wears the brand orange, and
+ * never carries an approve action (link scanners click).
  *
- * The trailing space in each label cell and the newline between rows feed
- * the shell's plain-text part (tags are stripped without spacing); both are
- * invisible in the rendered HTML.
+ * This is the ONE member of the operator family that does not live in an
+ * `operator-*.template.ts` file: it is the second half of the tour-review
+ * workflow, and splitting it from `tourSubmittedForReviewTemplate` would hide
+ * the fact that the two fire off the same event. It rides the OPERATOR shell
+ * while its sibling above rides the auth shell, because the wireframe draws
+ * them in different families.
+ *
+ * NO FOOTER, per the wireframe's internal cards.
  */
 /** INT-2 subject - single owner for the string the service sends with. */
 export function tourSubmittedSalesSubject(tourName: string): string {
@@ -89,25 +96,37 @@ export function tourSubmittedSalesTemplate({
   operatorName,
   submittedAt,
   reviewUrl,
-  siteLogoUrl,
 }: TourSubmittedSalesTemplateProps) {
-  const rows = [
-    factRow('Operator', escapeHtml(operatorName)),
-    factRow('Submitted', formatInternalTimestamp(submittedAt)),
-    factRow(
-      'Submission',
-      `<a href="${reviewUrl}" style="color:${INTERNAL_CTA_BACKGROUND}">Open the submission</a>`,
-    ),
+  const rows: OperatorFactRow[] = [
+    { label: 'Operator', valueHtml: escapeHtml(operatorName) },
+    { label: 'Submitted', valueHtml: formatInternalTimestamp(submittedAt) },
+    {
+      // Not `operatorInlineLink`: the wireframe styles this anchor with colour
+      // ALONE and lets it inherit the facts cell's 600 weight, so forcing the
+      // family's 700 would make it heavier than the value beside it.
+      label: 'Submission',
+      valueHtml: `<a href="${escapeHtml(reviewUrl)}" style="color:#1F2937">Open the submission</a>`,
+    },
   ];
-  return authEmailShell({
-    siteLogoUrl,
-    title: `New tour to review: ${escapeHtml(tourName)}`,
-    paragraphs: [internalFactsTable(rows)],
-    ctaLabel: 'Review in admin',
-    ctaUrl: reviewUrl,
-    ctaBackground: INTERNAL_CTA_BACKGROUND,
-    footnote:
-      'Internal alert · the review queue in the dashboard is the system of record.',
+  return operatorEmailShell({
+    title: tourSubmittedSalesSubject(tourName),
+    preheader: 'INT-2 · to sales@island.tours · Review in admin',
+    blocks: [
+      { kind: 'logo', variant: 'internal' },
+      {
+        kind: 'headline',
+        text: tourSubmittedSalesSubject(tourName),
+        size: 'compact',
+      },
+      { kind: 'facts', rows },
+      {
+        kind: 'button',
+        label: 'Review in admin',
+        url: reviewUrl,
+        tone: 'dark',
+      },
+    ],
+    footer: { variant: 'none' },
   });
 }
 
