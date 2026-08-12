@@ -118,11 +118,15 @@ const NUMBER_BOUNDS: Partial<Record<ScalarKey, NumberBounds>> = {
 
 const ADDRESS_KEYS = ['salesEmail', 'mailReplyTo', 'ob6ReplyTo'] as const;
 
-/** The group toggles, in the order the Email Groups tab renders them. */
+/**
+ * The group toggles, in the order the Email Groups tab renders them.
+ *
+ * `calendarEmailEnabled` is deliberately absent: the API still carries it,
+ * but the dashboard offers no switch (see the panel for why).
+ */
 const BOOLEAN_KEYS = [
     'marketingEnabled',
     'onboardingEnabled',
-    'calendarEmailEnabled',
     'ob8PartnerOffer',
 ] as const;
 
@@ -477,6 +481,16 @@ function SwitchboardCard({ activeTab }: { activeTab: SubTab }) {
     const { mutate: save, isPending: saving } = useUpdateEmailSettings();
 
     const [draft, setDraft] = useState<Draft | null>(null);
+    /**
+     * The review-request master switch, the one field of that schedule this
+     * form owns (founder decision 2026-08-12: it belongs with the other group
+     * switches, not buried above a page of timings). It rides the settings
+     * PATCH's `review` slice, which writes the review-request row rather than
+     * the email-settings row - hence its own bit of state instead of a key in
+     * `draft`. Everything else about the schedule stays in
+     * `ReviewRequestsForm`, still its single writer.
+     */
+    const [reviewEnabled, setReviewEnabled] = useState<boolean | null>(null);
     const [apiError, setApiError] = useState<string | null>(null);
 
     // Reset from the server whenever fresh data lands (the review-requests
@@ -484,8 +498,9 @@ function SwitchboardCard({ activeTab }: { activeTab: SubTab }) {
     // fresh GET shape written back into the query cache.
     useEffect(() => {
         if (data) {
-            const { review: _review, ...scalars } = data.stored;
+            const { review, ...scalars } = data.stored;
             setDraft(scalars);
+            setReviewEnabled(review.enabled);
         }
     }, [data]);
 
@@ -513,7 +528,14 @@ function SwitchboardCard({ activeTab }: { activeTab: SubTab }) {
         const out: UpdateEmailSettingsPayload = {};
         let count = 0;
         if (data && draft) {
-            const { review: _review, ...storedScalars } = data.stored;
+            const { review: storedReview, ...storedScalars } = data.stored;
+            if (
+                reviewEnabled !== null &&
+                reviewEnabled !== storedReview.enabled
+            ) {
+                out.review = { enabled: reviewEnabled };
+                count++;
+            }
             for (const key of Object.keys(storedScalars) as ScalarKey[]) {
                 if (draft[key] !== storedScalars[key]) {
                     // Tri-state: a value stores an override, null clears it.
@@ -523,7 +545,7 @@ function SwitchboardCard({ activeTab }: { activeTab: SubTab }) {
             }
         }
         return { payload: out, dirtyCount: count };
-    }, [data, draft]);
+    }, [data, draft, reviewEnabled]);
 
     // ── Client validation, mirroring the DTO bounds ────────────────────────
     const errors = useMemo(() => {
@@ -576,6 +598,17 @@ function SwitchboardCard({ activeTab }: { activeTab: SubTab }) {
         setApiError(null);
         save(payload, {
             onSuccess: () => {
+                // Flipping a switch that mails real customers is confirmed in
+                // words, not under a generic "saved" - the convention the
+                // review-request form set when it owned this switch.
+                if (payload.review?.enabled !== undefined) {
+                    toast.success(
+                        payload.review.enabled
+                            ? 'Saved - review request emails are ON, guests will be emailed'
+                            : 'Saved - review request emails are OFF, none will be sent',
+                    );
+                    return;
+                }
                 toast.success('Email settings saved');
             },
             onError: (err) => {
@@ -633,6 +666,14 @@ function SwitchboardCard({ activeTab }: { activeTab: SubTab }) {
                             description='Group switches only. Booking emails (confirmation, pre-tour reminder, cancellation) are contractual and always on - there is deliberately no switch for them.'
                         />
                         <SwitchSetting
+                            id='email-review-enabled'
+                            label='Review request emails'
+                            description='The post-tour invitation to review, plus its single reminder. Off = the hourly job runs and does nothing - it does not even create invitations, so switching it on later cannot fire a backlog of stale emails at once. Timings live under Schedules.'
+                            value={reviewEnabled}
+                            defaultValue={data.effective.review.enabled}
+                            onChange={setReviewEnabled}
+                        />
+                        <SwitchSetting
                             id='email-marketing-enabled'
                             label='Marketing emails ("Your next adventure")'
                             description='The post-tour marketing email to consented travellers. Off = nothing is queued; nobody is skipped permanently.'
@@ -654,17 +695,23 @@ function SwitchboardCard({ activeTab }: { activeTab: SubTab }) {
                                 defaults.onboardingEnabled,
                             )}
                         />
-                        <SwitchSetting
-                            id='email-calendar-enabled'
-                            label='Calendar email ("Connect your calendar")'
-                            description='Only sent while calendar sync is offered; suppressed for operators who already connected a feed.'
-                            value={draft.calendarEmailEnabled}
-                            defaultValue={defaults.calendarEmailEnabled}
-                            onChange={groupToggle(
-                                'calendarEmailEnabled',
-                                defaults.calendarEmailEnabled,
-                            )}
-                        />
+                        {/*
+                          * NO switch for the "Connect your calendar" email
+                          * (founder decision 2026-08-12). It invites an
+                          * operator to let their own booking system share
+                          * its closed dates with us — the INBOUND calendar
+                          * sync, which is not built: only the outbound iCal
+                          * feeds shipped (Settings → iCal). Offering an
+                          * on-switch for a connection nobody can make is
+                          * how a dashboard starts lying.
+                          *
+                          * The setting itself still exists and still
+                          * resolves (`CALENDAR_SYNC_AVAILABLE`, off): the
+                          * sweep treats off as "not yet" rather than "no",
+                          * so no operator is permanently skipped. When the
+                          * import ships, either flip that env var or bring
+                          * this switch back.
+                          */}
                         <SwitchSetting
                             id='email-ob8-partner'
                             label='Photo-partner offer block'
@@ -748,14 +795,14 @@ function SwitchboardCard({ activeTab }: { activeTab: SubTab }) {
                                     onChange={(v) => set('ob6DelayDays', v)}
                                     error={errors.ob6DelayDays}
                                 />
-                                <NumberSetting
-                                    label='Connect calendar - days after first tour live'
-                                    description='1-90 days.'
-                                    value={draft.ob7AfterLiveDays}
-                                    defaultValue={defaults.ob7AfterLiveDays}
-                                    onChange={(v) => set('ob7AfterLiveDays', v)}
-                                    error={errors.ob7AfterLiveDays}
-                                />
+                                {/*
+                                  * No timing field for the calendar email
+                                  * either: with no switch for it there is
+                                  * nothing to schedule. `ob7AfterLiveDays`
+                                  * still resolves server-side (3 days), so
+                                  * the moment the email is switched back on
+                                  * it keeps its wireframe cadence.
+                                  */}
                                 <NumberSetting
                                     label='Make your page stronger - days after first tour live'
                                     description='1-90 days.'

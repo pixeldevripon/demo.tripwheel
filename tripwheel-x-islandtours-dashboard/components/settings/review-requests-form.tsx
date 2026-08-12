@@ -2,13 +2,14 @@
 
 import { REVIEW_REQUEST_BOUNDS } from '@/lib/settings/review-request-bounds';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
+import { useSyncFormWhenPristine } from '@/hooks/use-sync-form-when-pristine';
 import {
   useReviewRequests,
   useUpdateReviewRequests,
 } from '@/hooks/settings/use-settings';
+import type { ReviewRequestSettings } from '@/types/settings';
 import {
   SettingsCard,
   SettingsCardSkeleton,
@@ -88,6 +89,20 @@ function summarise(v: FormValues): string {
   return `A guest who finished a tour is invited ${first} in the tour's own timezone.${reminder} Bookings older than ${v.giveUpAfterDays} days are never chased.`;
 }
 
+/** Server row → form values. */
+function toValues(data: ReviewRequestSettings | undefined): FormValues {
+  if (!data) return EMPTY;
+  return {
+    enabled: data.enabled,
+    firstSendLocalHour: data.firstSendLocalHour,
+    firstSendDelayDays: data.firstSendDelayDays,
+    reminderEnabled: data.reminderEnabled,
+    reminderAfterDays: data.reminderAfterDays,
+    giveUpAfterDays: data.giveUpAfterDays,
+    batchSize: data.batchSize,
+  };
+}
+
 /**
  * Post-tour review invitation cadence (master point: review collection).
  *
@@ -95,10 +110,17 @@ function summarise(v: FormValues): string {
  * decision, not an engineering one - the advisory is explicit that the
  * morning-after send is a launch default to A/B test, not a proven optimum.
  *
- * `enabled` ships FALSE. A job that mails real customers is switched on
+ * `enabled` ships FALSE - a job that mails real customers is switched on
  * deliberately by a person, never merely by deploying the code that contains
- * it, so the switch is prominent and its save confirmation states the resulting
- * state in words rather than a generic "saved".
+ * it - but the switch itself is NOT here any more (founder decision
+ * 2026-08-12). It sits with the other group switches in Settings → Email →
+ * Email Groups, which reads and writes it through the settings PATCH's
+ * `review` slice and states the resulting state in words when it saves.
+ *
+ * This form owns everything else about the schedule, and deliberately does
+ * not send `enabled` back: two writers for one field means the later save
+ * silently reverts the earlier switch flip. It still READS the value, to say
+ * whether the schedule below is live or dormant.
  */
 export function ReviewRequestsForm() {
   const { data, isLoading } = useReviewRequests();
@@ -110,25 +132,17 @@ export function ReviewRequestsForm() {
     reset,
     watch,
     setValue,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: EMPTY,
   });
 
-  useEffect(() => {
-    if (data) {
-      reset({
-        enabled: data.enabled,
-        firstSendLocalHour: data.firstSendLocalHour,
-        firstSendDelayDays: data.firstSendDelayDays,
-        reminderEnabled: data.reminderEnabled,
-        reminderAfterDays: data.reminderAfterDays,
-        giveUpAfterDays: data.giveUpAfterDays,
-        batchSize: data.batchSize,
-      });
-    }
-  }, [data, reset]);
+  // Re-sync from the server on a refetch, but NEVER over unsaved edits. The
+  // master switch lives in Settings → Email → Email Groups now, and saving it
+  // refetches this row - an unguarded reset would wipe a half-typed cadence
+  // the moment someone flipped that switch.
+  useSyncFormWhenPristine(reset, isDirty, () => toValues(data), data);
 
   if (isLoading) return <SettingsCardSkeleton />;
 
@@ -139,27 +153,25 @@ export function ReviewRequestsForm() {
   return (
     <SettingsCard
       title="Review Requests"
-      description="When the platform emails a guest to ask for a review after their tour. Two touches maximum, then silence."
-      onSubmit={handleSubmit((v) => save(v))}
+      description="When the platform emails a guest to ask for a review after their tour. Two touches maximum, then silence. The on/off switch is under Email Groups."
+      onSubmit={handleSubmit(({ enabled: _enabled, ...schedule }) =>
+        // `enabled` is owned by Settings → Email → Email Groups; sending it
+        // from here too would make the last save win over a switch the admin
+        // may have flipped in between. The DTO takes a partial payload.
+        save(schedule, { onSuccess: (result) => reset(toValues(result)) }),
+      )}
       isSaving={saving}
     >
-      <SwitchField
-        id="review-requests-enabled"
-        label="Send review request emails"
-        description="Master switch. While off the hourly job runs and does nothing - it does not even create invitations, so switching it on later cannot fire a backlog of stale emails at once."
-        checked={enabled}
-        onChange={(v) => setValue('enabled', v, { shouldDirty: true })}
-      />
-
-      {/* Reads back the seven numbers as one sentence. */}
+      {/* Reads back the numbers as one sentence. */}
       <div className="rounded-md border border-border/60 bg-muted/30 px-3 py-2.5">
         <p className="m-0 text-xs text-muted-foreground">
           {enabled ? (
             summarise(values)
           ) : (
             <span>
-              No emails are being sent. The schedule below is saved but dormant
-              until the switch above is on.
+              No emails are being sent. This schedule is saved but dormant
+              until <strong>Review request emails</strong> is switched on
+              under Email Groups.
             </span>
           )}
         </p>

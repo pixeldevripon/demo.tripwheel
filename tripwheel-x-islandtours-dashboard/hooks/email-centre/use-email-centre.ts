@@ -1,6 +1,7 @@
 'use client';
 
 import { emailCentreKeys } from '@/lib/email-centre/query-keys';
+import { settingsKeys } from '@/hooks/settings/use-settings';
 import {
     keepPreviousData,
     useMutation,
@@ -35,8 +36,18 @@ export function useUpdateEmailSettings() {
     return useMutation({
         mutationFn: (payload: UpdateEmailSettingsPayload) =>
             emailCentreApi.updateSettings(payload),
-        onSuccess: (result) => {
+        onSuccess: (result, payload) => {
             queryClient.setQueryData(emailCentreKeys.settings(), result);
+            if (payload.review) {
+                // The review slice writes the review-request row, which
+                // Settings → Email → Schedules reads. Safe to invalidate:
+                // that form re-syncs only while pristine
+                // (`useSyncFormWhenPristine`), so a refetch cannot land on
+                // top of a half-typed cadence.
+                void queryClient.invalidateQueries({
+                    queryKey: settingsKeys.reviewRequests(),
+                });
+            }
         },
     });
 }

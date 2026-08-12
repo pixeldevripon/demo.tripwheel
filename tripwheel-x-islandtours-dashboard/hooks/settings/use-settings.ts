@@ -280,15 +280,14 @@ export function useUpdateReviewRequests() {
   return useMutation({
     mutationFn: (payload: UpdateReviewRequestsPayload) =>
       settingsApi.updateReviewRequests(payload),
-    onSuccess: (result) => {
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: settingsKeys.reviewRequests() });
-      // The master switch mails real customers, so its state is confirmed
-      // explicitly rather than under a generic "Settings saved".
-      if (result.enabled) {
-        toast.success('Review requests are ON - customers will be emailed');
-      } else {
-        toast.success('Review requests are OFF - no emails will be sent');
-      }
+      // The ON/OFF wording moved with the master switch to Settings → Email →
+      // Email Groups (2026-08-12). This form no longer sends `enabled`, so
+      // announcing its state here would report a switch this save did not
+      // touch - and would read as a contradiction right after someone flipped
+      // it in the other card.
+      toast.success('Review request schedule saved');
       // DELIBERATELY NOT invalidating the email-centre settings cache, though
       // its payload does carry a copy of these values (#57 Medium 2 added
       // that invalidation when the two forms lived on different screens).
@@ -297,8 +296,8 @@ export function useUpdateReviewRequests() {
       // whose switchboard resets its draft from every new settings response.
       // Invalidating here would refetch, hand it a new object, and wipe an
       // unsaved switchboard edit under a toast that says a save SUCCEEDED.
-      // Nothing renders the review slice of that payload any more, so there
-      // is no staleness to correct.
+      // The switchboard reads `review.enabled`, which this form never writes,
+      // so there is no staleness to correct.
     },
     onError,
   });
