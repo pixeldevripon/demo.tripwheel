@@ -733,6 +733,26 @@ export function buildConfirmationEmailSubject(input: {
 
 // ── BK-2 pre-tour reminder (master 6.7, funnel wireframe tpl-remind) ─────────
 
+/**
+ * One "Islanders also love..." card on BK-2.
+ *
+ * Shaped after MK-1's `NextAdventureCardInput` rather than BK-1's
+ * `RelatedTourInput`, because the wireframe's card carries a REVIEW COUNT
+ * ("★ 4.8 (212)") which BK-1's shape has no room for. The loader guarantees an
+ * OPEN departure inside the send window, so the green "Open departures this
+ * week" line is true by construction and needs no per-card data.
+ */
+export type ReminderCrossSellInput = {
+  name: string;
+  imageUrl: string | null;
+  /** Null = cold start; the card shows no rating rather than inventing one (LD11). */
+  aggregateRating: number | null;
+  aggregateReviewCount: number;
+  /** Listing "From" anchor as a decimal string; null hides the price part. */
+  priceFrom: string | null;
+  currency: Currency;
+};
+
 export type ReminderEmailInput = {
   booking: {
     displayRef: string;
@@ -780,8 +800,27 @@ export type ReminderEmailInput = {
    * booking.tourTimeZone)` - this builder stays clock-free and pure.
    */
   isSameDay: boolean;
+  /**
+   * The "Islanders also love..." cards. EMPTY hides the rail AND the footer's
+   * unsubscribe line together - the caller passes nothing when the traveller
+   * has opted out of the MARKETING stream, or when fewer than two tours on the
+   * island qualify. Two cards is the wireframe's layout; extra entries are
+   * ignored.
+   */
+  crossSell: readonly ReminderCrossSellInput[];
+  /**
+   * `${islandToursBase()}/unsubscribe/{token}` for the MARKETING stream,
+   * server-minted by the caller (`unsubscribeWiring`). Empty when no rail is
+   * being sent, since nothing then links to it.
+   */
+  unsubscribeUrl: string;
+  destination: {
+    slug: string;
+  };
   config: {
     emailIconBase: string;
+    /** Public site base - the rail's single outbound link is built off it. */
+    frontendUrl: string;
   };
 };
 
@@ -799,7 +838,17 @@ export type ReminderEmailInput = {
 export function buildReminderEmailContext(
   input: ReminderEmailInput,
 ): EmailTemplateContext {
-  const { booking, tour, operator, site, isSameDay, config } = input;
+  const {
+    booking,
+    tour,
+    operator,
+    site,
+    isSameDay,
+    crossSell,
+    unsubscribeUrl,
+    destination,
+    config,
+  } = input;
 
   const locale = toLocale(booking.customerLocale);
   const copy = copyFor(PRE_TOUR_REMINDER_COPY, locale);
@@ -836,16 +885,20 @@ export function buildReminderEmailContext(
   // The single allowed balance mention (B-02): operator_link only, hidden at
   // zero, phrased exactly as the wireframe's note - never a link, and never a
   // claim of "all paid" (the platform cannot see the operator's ledger).
+  //
+  // Emitted as prefix / amount / suffix so the template can bold the amount as
+  // the wireframe does: the renderer HTML-escapes every {token}, so a <b>
+  // carried inside the copy string could never render (see the copy module).
   const balance = Number(booking.balanceAmount);
-  const balanceNote =
+  const showBalance =
     booking.paymentModel === PaymentModel.OPERATOR_LINK &&
     Number.isFinite(balance) &&
-    balance > 0
-      ? fillCopy(copy.balanceNote, {
-          balance: formatMoney(booking.balanceAmount, booking.currency, locale),
-          operator: operatorName,
-        })
-      : '';
+    balance > 0;
+
+  // The cross-sell rail. Empty `crossSell` hides the rail AND the footer's
+  // unsubscribe line - both are gated on `crossSellOneName` in the template.
+  const [pickOne, pickTwo] = crossSell;
+  const base = config.frontendUrl.replace(/\/$/, '');
 
   return {
     // Chrome + head
@@ -901,9 +954,15 @@ export function buildReminderEmailContext(
     whatToBring: bullets(tour.whatToBring),
     whatToBringTitle: copy.whatToBringTitle,
 
-    // Balance note (operator_link only; empty string hides the block)
+    // Balance note (operator_link only; an empty prefix hides the block)
     balanceTitle: copy.balanceTitle,
-    balanceNote,
+    balanceNotePrefix: showBalance ? copy.balanceNotePrefix : '',
+    balanceAmount: showBalance
+      ? formatMoney(booking.balanceAmount, booking.currency, locale)
+      : '',
+    balanceNoteSuffix: showBalance
+      ? fillCopy(copy.balanceNoteSuffix, { operator: operatorName })
+      : '',
 
     // Weather (weather_dependent tours only)
     weatherDependent: tour.weatherDependent,
@@ -921,7 +980,72 @@ export function buildReminderEmailContext(
     supportHours: copy.supportHours,
     whatsappUrl:
       buildWhatsappUrl(site.whatsappNumber, site.whatsappEnabled) ?? '',
+
+    // "Islanders also love..." rail (fixed One/Two slots, the relatedTour
+    // pattern - [EACH] repeats one escaped string per entry, so a multi-field
+    // card cannot be list-driven without assembling HTML in TypeScript).
+    railTitle: copy.railTitle,
+    railSubhead: copy.railSubhead,
+    railOpenThisWeek: copy.railOpenThisWeek,
+    railCta: copy.railCta,
+    railCtaUrl: `${base}/${locale}/${destination.slug}/tours/`,
+    crossSellOneName: pickOne?.name ?? '',
+    crossSellOneImageUrl: pickOne?.imageUrl ?? '',
+    crossSellOneMetaPrefix: crossSellMetaPrefix(
+      pickOne,
+      copy.railFromLabel,
+      locale,
+    ),
+    crossSellOnePrice: crossSellPrice(pickOne, locale),
+    crossSellTwoName: pickTwo?.name ?? '',
+    crossSellTwoImageUrl: pickTwo?.imageUrl ?? '',
+    crossSellTwoMetaPrefix: crossSellMetaPrefix(
+      pickTwo,
+      copy.railFromLabel,
+      locale,
+    ),
+    crossSellTwoPrice: crossSellPrice(pickTwo, locale),
+
+    // Marketing footer - ships with the rail, hides with it.
+    picksNotePrefix: copy.picksNotePrefix,
+    unsubscribeLabel: copy.unsubscribeLabel,
+    unsubscribeUrl,
+    picksNoteSuffix: copy.picksNoteSuffix,
   };
+}
+
+/**
+ * "★ 4.8 (212) · from " - everything before the bold price, exactly as MK-1
+ * builds its card meta. The rating renders only when one exists (LD11
+ * cold-start: never a fabricated number) and the trailing from-label only when
+ * there is a price to follow. BK-2's wireframe card carries no duration.
+ */
+function crossSellMetaPrefix(
+  card: ReminderCrossSellInput | undefined,
+  fromLabel: string,
+  locale: Locale,
+): string {
+  if (!card) return '';
+  const rating =
+    card.aggregateRating != null
+      ? `★ ${card.aggregateRating.toFixed(1)}${
+          card.aggregateReviewCount > 0 ? ` (${card.aggregateReviewCount})` : ''
+        }`
+      : '';
+  if (!crossSellPrice(card, locale)) return rating;
+  return rating ? `${rating} · ${fromLabel} ` : `${fromLabel} `;
+}
+
+/** "$89" - MK-1's whole-amount rule, through the shared money formatter. */
+function crossSellPrice(
+  card: ReminderCrossSellInput | undefined,
+  locale: Locale,
+): string {
+  if (!card?.priceFrom) return '';
+  return formatMoney(card.priceFrom, card.currency, locale).replace(
+    /([.,])00(?=\D|$)/,
+    '',
+  );
 }
 
 /**
@@ -956,7 +1080,11 @@ export function buildReminderEmailText(ctx: EmailTemplateContext): string {
           '',
         ]
       : []),
-    optional(get('balanceNote'), (v) => `${get('balanceTitle')}: ${v}`),
+    optional(
+      get('balanceNotePrefix'),
+      () =>
+        `${get('balanceTitle')}: ${get('balanceNotePrefix')} ${get('balanceAmount')} ${get('balanceNoteSuffix')}`,
+    ),
     ctx.weatherDependent ? get('weatherNote') : null,
     '',
     get('questionsTitle'),
@@ -970,11 +1098,46 @@ export function buildReminderEmailText(ctx: EmailTemplateContext): string {
       (v) =>
         `${get('platformIssue')} ${get('whatsappUs')}: ${v}${get('supportHours')}`,
     ),
+    // The rail + its unsubscribe, or neither - the text part must make the
+    // same promise the HTML does, or the opt-out is only half-offered.
+    ...(get('crossSellOneName')
+      ? [
+          '',
+          get('railTitle'),
+          get('railSubhead'),
+          crossSellTextLine(ctx, 'crossSellOne', get('railOpenThisWeek')),
+          ...(get('crossSellTwoName')
+            ? [crossSellTextLine(ctx, 'crossSellTwo', get('railOpenThisWeek'))]
+            : []),
+          `${get('railCta')}: ${get('railCtaUrl')}`,
+        ]
+      : []),
     '',
-    'Island Tours. Built by Islanders.',
-    'This is a transactional booking email.',
+    'Island Tours · www.island.tours · Willemstad, Curaçao',
+    ...(get('crossSellOneName')
+      ? [
+          `${get('picksNotePrefix')} ${get('unsubscribeLabel')}: ${get('unsubscribeUrl')} ${get('picksNoteSuffix')}`,
+        ]
+      : []),
+    'Built by Islanders.',
   ];
   return lines.filter((line): line is string => line !== null).join('\n');
+}
+
+/** "West Coast Buggy Adventure - ★ 4.8 (212) · from $89 - Open departures this week" */
+function crossSellTextLine(
+  ctx: EmailTemplateContext,
+  prefix: string,
+  openLine: string,
+): string {
+  // The meta prefix ends in a deliberate trailing space ("… · from ") because
+  // the HTML bolds the price right after it - so the two halves are joined
+  // RAW and trimmed once, never trimmed apart ("from$89").
+  const raw = (key: string): string => String(ctx[key] ?? '');
+  const meta = `${raw(`${prefix}MetaPrefix`)}${raw(`${prefix}Price`)}`.trim();
+  return [raw(`${prefix}Name`).trim(), meta, openLine]
+    .filter(Boolean)
+    .join(' - ');
 }
 
 /** "17:00" from a Z-labelled local wall-clock instant; '' when absent. */

@@ -38,6 +38,10 @@
            (operator_link only, hidden when the amount is zero)
          - weather block only on weather_dependent tours
          - subject and greeting switch to "today" for same-day starts
+       The cross-sell rail below is the one MARKETING block in an
+       otherwise transactional email (founder decision 2026-08-12). It is
+       gated on its own first card, and the footer's unsubscribe line is
+       gated with it - see both blocks below.
        Copy strings arrive as tokens from pre-tour-reminder-email.copy.ts
        (7 locales); this file owns only the design. -->
 </head>
@@ -107,11 +111,15 @@
           </table>
         </td></tr>[/IF]
 
-        <!-- Balance note: operator_link only, hidden at zero, never a link -->
-        [IF balanceNote]<tr><td class="it-cell" style="padding:18px 28px 0;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+        <!-- Balance note: operator_link only, hidden at zero, never a link.
+             The amount is BOLD in the wireframe, so the sentence arrives split
+             around it: every placeholder is HTML-escaped by the renderer, so
+             a bold tag carried inside a copy string could only ever print as
+             escaped literal text. Markup belongs here, in the design file. -->
+        [IF balanceNotePrefix]<tr><td class="it-cell" style="padding:18px 28px 0;font-family:'Plus Jakarta Sans',Arial,sans-serif">
           <div style="background:#F7F7F5;border:1px solid #E8EAED;border-radius:12px;padding:14px 16px">
             <div style="font-size:13px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.04em">{balanceTitle}</div>
-            <div style="font-size:14.5px;color:#1F2937;margin-top:5px;line-height:1.5">{balanceNote}</div>
+            <div style="font-size:14.5px;color:#1F2937;margin-top:5px;line-height:1.5">{balanceNotePrefix} <b>{balanceAmount}</b> {balanceNoteSuffix}</div>
           </div>
         </td></tr>[/IF]
 
@@ -136,13 +144,67 @@
           [IF whatsappUrl]<div style="font-size:12.5px;color:#6B7280;margin-top:8px">{platformIssue} <a href="{whatsappUrl}" style="color:#E8611A;font-weight:600;text-decoration:underline">{whatsappUs}</a>{supportHours}</div>[/IF]
         </td></tr>
 
-        <!-- Sign-off (transactional footer, same as the confirmation) -->
-        <tr><td class="it-cell" style="padding:24px 28px 24px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
-          <div style="border-top:1px solid #E8EAED;padding-top:18px">
-            <div style="font-size:13px;font-weight:800;color:#1F2937">Island Tours. Built by Islanders.</div>
-            <div style="font-size:12.5px;color:#9aa3b2;margin-top:4px">www.island.tours</div>
-            <div style="font-size:11.5px;color:#b6bcc7;margin-top:10px;line-height:1.6">ITG B.V. (Island Tours Group) · KvK Curaçao 169950<br>Caracasbaaiweg 366, Willemstad, Curaçao<br>This is a transactional booking email.</div>
+        <!-- Cross-sell rail (the wireframe's second-to-last block).
+             GATED on the first card, for two reasons that are both real:
+               1. an empty rail would still print its divider + heading, so a
+                  booking with no qualifying picks would ship an orphan block;
+               2. the rail is soft-opt-in MARKETING inventory riding inside a
+                  TRANSACTIONAL email - the sender withholds the cards for
+                  anyone opted out of the marketing stream, and the gate is
+                  what makes that withholding visible in the design.
+             The cards are deliberately NOT individually linked: BK-1's rail
+             sets the family precedent (static cards, one link out), and the
+             wireframe draws them the same way. -->
+        [IF crossSellOneName]<tr><td class="it-cell" style="padding:24px 28px 0;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <div style="height:1px;background:#E8EAED;margin-bottom:18px"></div>
+          <div style="font-size:18px;font-weight:800;letter-spacing:-.02em;color:#1F2937">{railTitle}</div>
+          <div style="font-size:13px;color:#6B7280;margin-top:3px">{railSubhead}</div>
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-top:14px"><tr>
+            <td width="50%" style="padding-right:7px;vertical-align:top">
+              <div style="border:1px solid #E8EAED;border-radius:12px;overflow:hidden">
+                <img src="{crossSellOneImageUrl}" width="100%" height="92" alt="{crossSellOneName}" style="display:block;width:100%;height:92px;object-fit:cover;border:0;background:#1FB6C9">
+                <div style="padding:10px 12px">
+                  <div style="font-size:13.5px;font-weight:700;color:#1F2937;line-height:1.3">{crossSellOneName}</div>
+                  <div style="font-size:12.5px;color:#6B7280;margin-top:4px">{crossSellOneMetaPrefix}<b style="color:#1F2937">{crossSellOnePrice}</b></div>
+                  <div style="font-size:11.5px;color:#16A34A;margin-top:3px">{railOpenThisWeek}</div>
+                </div>
+              </div>
+            </td>
+            <td width="50%" style="padding-left:7px;vertical-align:top">
+              [IF crossSellTwoName]<div style="border:1px solid #E8EAED;border-radius:12px;overflow:hidden">
+                <img src="{crossSellTwoImageUrl}" width="100%" height="92" alt="{crossSellTwoName}" style="display:block;width:100%;height:92px;object-fit:cover;border:0;background:#1FB6C9">
+                <div style="padding:10px 12px">
+                  <div style="font-size:13.5px;font-weight:700;color:#1F2937;line-height:1.3">{crossSellTwoName}</div>
+                  <div style="font-size:12.5px;color:#6B7280;margin-top:4px">{crossSellTwoMetaPrefix}<b style="color:#1F2937">{crossSellTwoPrice}</b></div>
+                  <div style="font-size:11.5px;color:#16A34A;margin-top:3px">{railOpenThisWeek}</div>
+                </div>
+              </div>[/IF]
+            </td>
+          </tr></table>
+          <div style="text-align:center;margin-top:14px"><a href="{railCtaUrl}" style="font-size:13.5px;color:#E8611A;font-weight:700;text-decoration:underline">{railCta}</a></div>
+        </td></tr>[/IF]
+
+        <!-- Footer. BK-2 has its OWN, marketing-aware footer (wireframe): the
+             picks line and its unsubscribe ship with the rail and hide with
+             it, because the sentence they carry ("you get these picks…") is
+             only true when picks were sent. The unsubscribe href is a
+             server-minted token URL (email-preferences.service.ts,
+             `unsubscribeWiring`) acting on the MARKETING stream only - which
+             is exactly what the copy promises. -->
+        <tr><td class="it-cell" style="padding:24px 28px 26px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <div style="height:1px;background:#E8EAED;margin-bottom:16px"></div>
+          <div style="font-size:12px;color:#6B7280;line-height:1.6">
+            Island Tours · www.island.tours · Willemstad, Curaçao[IF crossSellOneName]<br>
+            {picksNotePrefix} <a href="{unsubscribeUrl}" style="color:#6B7280;text-decoration:underline">{unsubscribeLabel}</a> {picksNoteSuffix}<br>
+            <!-- The postal address rides the RAIL, not the email. The wireframe's
+                 three-line footer has no legal block, and a transactional
+                 reminder does not need one - but the moment this send carries a
+                 commercial block it is commercial email, and CAN-SPAM wants a
+                 physical address on it. Gated with the rail so the plain
+                 reminder still matches the wireframe exactly. -->
+            ITG B.V. (Island Tours Group) · Caracasbaaiweg 366, Willemstad, Curaçao[/IF]
           </div>
+          <div style="font-size:15px;font-weight:800;letter-spacing:-.01em;color:#1F2937;margin-top:14px">Built by Islanders.</div>
         </td></tr>
 
       </table>

@@ -18,9 +18,37 @@ import { Locale } from '@prisma/client';
 export interface CancellationEmailCopy {
   /** "Your booking is cancelled - {bookingRef}" */
   subject: string;
-  /** "Your booking is cancelled." - the headline. */
+  /**
+   * "Your booking is cancelled" - the headline, wireframe-exact. It carried a
+   * trailing full stop until the mock was matched (2026-08-12); the subject
+   * has always been the bare wording (founder decision D1b).
+   */
   title: string;
-  /** "We have processed your request and cancelled {bookingRef} for {tourName}…" */
+  /** Inbox preview. Its own line - the shared notice shell used to repeat the subject here. */
+  preheader: string;
+  /**
+   * Inbox preview for the branches where NO money comes back: a cancellation
+   * outside the free window, and `operator_full`, where Island Tours never
+   * took a payment to return. `preheader` promises a refund, and a promise in
+   * the preview pane is read before the body that would correct it.
+   */
+  preheaderNoRefund: string;
+  /** "{tourName} · {dateLong} · Booking reference:" - the label before the bold ref. */
+  refLabel: string;
+  /** "Plans change. No problem." - the lead line under the sub-line. */
+  lead: string;
+  /** "Your refund" - the titled panel's label. */
+  refundTitle: string;
+  /**
+   * "We have processed your request and cancelled {bookingRef} for {tourName}…"
+   *
+   * RETAINED, DELIBERATELY UNRENDERED. The mock has no `processed` and no
+   * `closing` paragraph, so neither the HTML nor the text part emits them
+   * (2026-08-12). They stay here rather than being deleted: they are seven
+   * locales of reviewed copy, and the decision that dropped them was a layout
+   * decision, not a translation one - reinstating a block should not mean
+   * re-translating it.
+   */
   processed: string;
   /**
    * FULL refund, `operator_link`: deposit back from us + the operator refunds
@@ -35,9 +63,13 @@ export interface CancellationEmailCopy {
   partial: string;
   /** NONE verdict (non-operator_full models). */
   noRefund: string;
-  /** The closing paragraph. */
+  /** The closing paragraph. RETAINED, DELIBERATELY UNRENDERED - see `processed`. */
   closing: string;
-  /** "View your booking" */
+  /**
+   * "View your booking". RETAINED, DELIBERATELY UNRENDERED: the mock has NO
+   * CTA. A cancellation ends the relationship with that booking, so an orange
+   * primary button pointing back at it is the wrong last word.
+   */
   cta: string;
   /** Stand-in for {operatorName} when none is on file. */
   operatorFallback: string;
@@ -46,7 +78,12 @@ export interface CancellationEmailCopy {
 export const CANCELLATION_EMAIL_COPY: Record<Locale, CancellationEmailCopy> = {
   [Locale.en]: {
     subject: 'Your booking is cancelled',
-    title: 'Your booking is cancelled.',
+    title: 'Your booking is cancelled',
+    preheader: 'Refund on its way. No forms, no questions asked.',
+    preheaderNoRefund: 'Your booking is cancelled. Here is where things stand.',
+    refLabel: 'Booking reference:',
+    lead: 'Plans change. No problem.',
+    refundTitle: 'Your refund',
     processed:
       'We have processed your request and cancelled {bookingRef} for {tourName}. Your seats have been released.',
     refundDepositSplit:
@@ -66,7 +103,12 @@ export const CANCELLATION_EMAIL_COPY: Record<Locale, CancellationEmailCopy> = {
   },
   [Locale.nl]: {
     subject: 'Je boeking is geannuleerd',
-    title: 'Je boeking is geannuleerd.',
+    title: 'Je boeking is geannuleerd',
+    preheader: 'Terugbetaling is onderweg. Geen formulieren, geen vragen.',
+    preheaderNoRefund: 'Je boeking is geannuleerd. Dit is de stand van zaken.',
+    refLabel: 'Boekingsreferentie:',
+    lead: 'Plannen veranderen. Geen probleem.',
+    refundTitle: 'Je terugbetaling',
     processed:
       'We hebben je verzoek verwerkt en {bookingRef} voor {tourName} geannuleerd. Je plaatsen zijn vrijgegeven.',
     refundDepositSplit:
@@ -86,7 +128,12 @@ export const CANCELLATION_EMAIL_COPY: Record<Locale, CancellationEmailCopy> = {
   },
   [Locale.de]: {
     subject: 'Deine Buchung ist storniert',
-    title: 'Deine Buchung ist storniert.',
+    title: 'Deine Buchung ist storniert',
+    preheader: 'Erstattung ist unterwegs. Keine Formulare, keine Rückfragen.',
+    preheaderNoRefund: 'Deine Buchung ist storniert. Hier der aktuelle Stand.',
+    refLabel: 'Buchungsreferenz:',
+    lead: 'Pläne ändern sich. Kein Problem.',
+    refundTitle: 'Deine Erstattung',
     processed:
       'Wir haben deine Anfrage bearbeitet und {bookingRef} für {tourName} storniert. Deine Plätze wurden freigegeben.',
     refundDepositSplit:
@@ -106,7 +153,13 @@ export const CANCELLATION_EMAIL_COPY: Record<Locale, CancellationEmailCopy> = {
   },
   [Locale.fr]: {
     subject: 'Votre réservation est annulée',
-    title: 'Votre réservation est annulée.',
+    title: 'Votre réservation est annulée',
+    preheader: 'Remboursement en route. Aucun formulaire, aucune question.',
+    preheaderNoRefund:
+      'Votre réservation est annulée. Voici où en sont les choses.',
+    refLabel: 'Référence de réservation :',
+    lead: 'Les plans changent. Pas de souci.',
+    refundTitle: 'Votre remboursement',
     processed:
       'Nous avons traité votre demande et annulé {bookingRef} pour {tourName}. Vos places ont été libérées.',
     refundDepositSplit:
@@ -126,7 +179,12 @@ export const CANCELLATION_EMAIL_COPY: Record<Locale, CancellationEmailCopy> = {
   },
   [Locale.es]: {
     subject: 'Tu reserva está cancelada',
-    title: 'Tu reserva está cancelada.',
+    title: 'Tu reserva está cancelada',
+    preheader: 'Reembolso en camino. Sin formularios, sin preguntas.',
+    preheaderNoRefund: 'Tu reserva está cancelada. Esta es la situación.',
+    refLabel: 'Referencia de la reserva:',
+    lead: 'Los planes cambian. No pasa nada.',
+    refundTitle: 'Tu reembolso',
     processed:
       'Hemos procesado tu solicitud y cancelado {bookingRef} para {tourName}. Tus plazas han quedado liberadas.',
     refundDepositSplit:
@@ -146,7 +204,12 @@ export const CANCELLATION_EMAIL_COPY: Record<Locale, CancellationEmailCopy> = {
   },
   [Locale.pt]: {
     subject: 'A sua reserva foi cancelada',
-    title: 'A sua reserva foi cancelada.',
+    title: 'A sua reserva foi cancelada',
+    preheader: 'Reembolso a caminho. Sem formulários, sem perguntas.',
+    preheaderNoRefund: 'A sua reserva foi cancelada. Eis a situação.',
+    refLabel: 'Referência da reserva:',
+    lead: 'Os planos mudam. Sem problema.',
+    refundTitle: 'O seu reembolso',
     processed:
       'Processámos o seu pedido e cancelámos {bookingRef} para {tourName}. Os seus lugares foram libertados.',
     refundDepositSplit:
@@ -166,7 +229,12 @@ export const CANCELLATION_EMAIL_COPY: Record<Locale, CancellationEmailCopy> = {
   },
   [Locale.zh]: {
     subject: '您的预订已取消',
-    title: '您的预订已取消。',
+    title: '您的预订已取消',
+    preheader: '退款正在路上。无需表格,不问缘由。',
+    preheaderNoRefund: '您的预订已取消。以下是目前的情况。',
+    refLabel: '预订编号:',
+    lead: '计划有变,没关系。',
+    refundTitle: '您的退款',
     processed:
       '我们已处理您的请求并取消了 {tourName} 的预订 {bookingRef}。您的名额已释放。',
     refundDepositSplit:

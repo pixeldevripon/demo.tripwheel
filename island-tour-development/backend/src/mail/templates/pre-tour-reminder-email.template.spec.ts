@@ -22,11 +22,14 @@ const TEMPLATE = fs.readFileSync(
 );
 
 /**
- * The design source: `tpl-remind` inside the funnel wireframe, CUT before the
- * "Islanders also love" cross-sell rail. That rail is soft-opt-in MARKETING
- * inventory inside a transactional email - it needs the consent gate and the
- * unsubscribe surface that WP-G owns, so WP-B ships the reminder without it
- * (deviation declared in the PR). Everything above the cut is locked here.
+ * The design source: `tpl-remind` inside the funnel wireframe, WHOLE.
+ *
+ * It used to be cut before the "Islanders also love" cross-sell rail: that
+ * rail is soft-opt-in MARKETING inventory inside a transactional email, so it
+ * needed the consent gate and the unsubscribe surface that WP-F/WP-G own, and
+ * WP-B shipped without it as a declared deviation. Those surfaces shipped, the
+ * founder asked for the rail (2026-08-12), and the template now carries the
+ * whole wireframe - rail, marketing footer and all. No cut remains.
  */
 const WIREFRAME_EMAIL = (() => {
   const wireframe = fs.readFileSync(
@@ -46,11 +49,7 @@ const WIREFRAME_EMAIL = (() => {
     /<template id="tpl-remind">([\s\S]*?)<\/template>/,
   );
   if (!match) throw new Error('tpl-remind template not found in the wireframe');
-  const cut = match[1].indexOf('Islanders also love');
-  if (cut === -1) throw new Error('cross-sell rail marker not found');
-  // Back up to the start of the rail's own <tr> so no rail styles leak in.
-  const trStart = match[1].lastIndexOf('<tr>', cut);
-  return match[1].slice(0, trStart);
+  return match[1];
 })();
 
 const ICON_BASE =
@@ -96,8 +95,10 @@ function ctx(overrides: EmailTemplateContext = {}): EmailTemplateContext {
       'A light jacket for the crossing',
     ],
     balanceTitle: 'Remaining balance',
-    balanceNote:
-      "Your remaining balance of $160.00 runs through Miss Ann Boat Trips's payment link. Already paid? You're all set. Not yet? Find the link in their email, or contact them below.",
+    balanceNotePrefix: 'Your remaining balance of',
+    balanceAmount: '$160.00',
+    balanceNoteSuffix:
+      "runs through Miss Ann Boat Trips's payment link. Already paid? You're all set. Not yet? Find the link in their email, or contact them below.",
     weatherDependent: true,
     weatherNote:
       'Miss Ann Boat Trips watches the weather and contacts you directly if conditions force a change. If the operator cancels: a full refund or a free reschedule, always.',
@@ -109,12 +110,52 @@ function ctx(overrides: EmailTemplateContext = {}): EmailTemplateContext {
     whatsappUrl: 'https://wa.me/59995601367',
     whatsappUs: 'WhatsApp us',
     supportHours: ', daily 08:00 to 20:00.',
+
+    // Cross-sell rail + the marketing footer it ships with.
+    railTitle: 'Islanders also love...',
+    railSubhead: 'Picked to pair with your booking',
+    railOpenThisWeek: 'Open departures this week',
+    railCta: 'Browse the Islanders top picks',
+    railCtaUrl: 'https://island.tours/en/curacao/tours/',
+    crossSellOneName: 'West Coast Buggy Adventure',
+    crossSellOneImageUrl: 'https://cdn.test/buggy.jpg',
+    crossSellOneMetaPrefix: '★ 4.8 (212) · from ',
+    crossSellOnePrice: '$89',
+    crossSellTwoName: 'Sunset Sailing Cruise',
+    crossSellTwoImageUrl: 'https://cdn.test/sail.jpg',
+    crossSellTwoMetaPrefix: '★ 4.7 (138) · from ',
+    crossSellTwoPrice: '$65',
+    picksNotePrefix: 'You get these picks as an Island Tours guest.',
+    unsubscribeLabel: 'Unsubscribe from offers',
+    unsubscribeUrl: 'https://island.tours/unsubscribe/tok_test',
+    picksNoteSuffix: '(your booking emails always arrive).',
     ...overrides,
   };
 }
 
 /** The non-operator_link models: the balance note must vanish (builder rule). */
-const NO_BALANCE = { balanceNote: '' };
+const NO_BALANCE = {
+  balanceNotePrefix: '',
+  balanceAmount: '',
+  balanceNoteSuffix: '',
+};
+
+/**
+ * Opted out of MARKETING, or fewer than two qualifying tours on the island:
+ * the builder sends no cards, and the rail AND the footer's picks line both
+ * disappear together.
+ */
+const NO_RAIL = {
+  crossSellOneName: '',
+  crossSellOneImageUrl: '',
+  crossSellOneMetaPrefix: '',
+  crossSellOnePrice: '',
+  crossSellTwoName: '',
+  crossSellTwoImageUrl: '',
+  crossSellTwoMetaPrefix: '',
+  crossSellTwoPrice: '',
+  unsubscribeUrl: '',
+};
 
 describe('pre-tour-reminder-email.template.html', () => {
   describe('style parity with the funnel wireframe (locked design)', () => {
@@ -165,6 +206,7 @@ describe('pre-tour-reminder-email.template.html', () => {
       { whatToBring: [] }, // nothing to bring
       { operatorPhone: '', operatorEmail: '' }, // no operator contact on file
       { whatsappUrl: '' }, // WhatsApp support off
+      NO_RAIL, // opted out of marketing / thin island
     ];
     for (const v of variants) {
       expect(findUnresolvedTokens(TEMPLATE, ctx(v))).toEqual([]);
@@ -185,16 +227,16 @@ describe('pre-tour-reminder-email.template.html', () => {
 
   describe('the hard negative rules (B-02)', () => {
     it('carries NO payment link and NO cancellation CTA in any variant', () => {
-      for (const v of [{}, NO_BALANCE, { hasPickup: false }]) {
+      for (const v of [{}, NO_BALANCE, { hasPickup: false }, NO_RAIL]) {
         const html = renderEmailTemplate(TEMPLATE, ctx(v));
-        // Every href is logistics or contact - nothing else.
-        // (head font links aside) every href is logistics or contact.
+        // Every href is logistics, contact, the rail's listing link or the
+        // unsubscribe token page - nothing else. (Head font links aside.)
         const hrefs = [...html.matchAll(/href="([^"]*)"/g)]
           .map((m) => m[1])
           .filter((h) => !h.startsWith('https://fonts.'));
         for (const href of hrefs) {
           expect(href).toMatch(
-            /^(https:\/\/maps\.test|https:\/\/wa\.me|tel:|mailto:)/,
+            /^(https:\/\/maps\.test|https:\/\/wa\.me|https:\/\/island\.tours\/(en\/curacao\/tours\/|unsubscribe\/)|tel:|mailto:)/,
           );
         }
         // No cancellation CTA. (The word "cancels" legitimately appears in
@@ -275,6 +317,65 @@ describe('pre-tour-reminder-email.template.html', () => {
       expect(html).toContain('Meeting point: Sint Annabaai Pier');
       expect(html).toContain('Please arrive 15 minutes early.');
       expect(html).not.toContain('be ready at');
+    });
+  });
+
+  describe('the cross-sell rail and the marketing footer it ships with', () => {
+    it('renders both wireframe cards, the bold price and the one link out', () => {
+      const html = renderEmailTemplate(TEMPLATE, ctx());
+      expect(html).toContain('Islanders also love...');
+      expect(html).toContain('Picked to pair with your booking');
+      expect(html).toContain('West Coast Buggy Adventure');
+      expect(html).toContain('Sunset Sailing Cruise');
+      expect(html).toContain(
+        '★ 4.8 (212) · from <b style="color:#1F2937">$89</b>',
+      );
+      expect(html.match(/Open departures this week/g)).toHaveLength(2);
+      // BK-1's rail sets the precedent: static cards, ONE link out.
+      expect(html).toContain('href="https://island.tours/en/curacao/tours/"');
+    });
+
+    it('an empty rail hides the block, its divider and the picks line together', () => {
+      const html = renderEmailTemplate(TEMPLATE, ctx(NO_RAIL));
+      expect(html).not.toContain('Islanders also love');
+      expect(html).not.toContain('Picked to pair with your booking');
+      expect(html).not.toContain('Open departures this week');
+      // The promise and the link that honours it disappear as one.
+      expect(html).not.toContain('You get these picks');
+      expect(html).not.toContain('Unsubscribe from offers');
+      expect(html).not.toContain('/unsubscribe/');
+    });
+
+    it('the footer is the wireframe footer, not the transactional sign-off', () => {
+      const html = renderEmailTemplate(TEMPLATE, ctx());
+      expect(html).toContain(
+        'Island Tours · www.island.tours · Willemstad, Curaçao',
+      );
+      expect(html).toContain(
+        '<a href="https://island.tours/unsubscribe/tok_test" style="color:#6B7280;text-decoration:underline">Unsubscribe from offers</a>',
+      );
+      expect(html).toContain('(your booking emails always arrive).');
+      // The wireframe's sign-off carries NO "Island Tours." prefix.
+      expect(html).toContain(
+        'color:#1F2937;margin-top:14px">Built by Islanders.</div>',
+      );
+      expect(html).not.toContain('Island Tours. Built by Islanders.');
+      expect(html).not.toContain('This is a transactional booking email.');
+    });
+
+    it('a one-card island still renders a single valid card, never half a row', () => {
+      const html = renderEmailTemplate(
+        TEMPLATE,
+        ctx({
+          crossSellTwoName: '',
+          crossSellTwoImageUrl: '',
+          crossSellTwoMetaPrefix: '',
+          crossSellTwoPrice: '',
+        }),
+      );
+      expect(html).toContain('West Coast Buggy Adventure');
+      expect(html).not.toContain('Sunset Sailing Cruise');
+      expect(html).not.toContain('src=""');
     });
   });
 

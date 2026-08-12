@@ -103,6 +103,15 @@ const NEXT_ADVENTURE_TEMPLATE = fs.readFileSync(
   'utf8',
 );
 
+/**
+ * CX-1 cancellation confirmation (master 6.4). Its OWN file rather than a
+ * branch in the shared notice shell - see the rationale in the template head.
+ */
+const CANCELLATION_TEMPLATE = fs.readFileSync(
+  path.join(TEMPLATE_DIR, 'cancellation-email.template.html'),
+  'utf8',
+);
+
 /** BK-3 / BK-3R post-tour review request - the funnel wireframe's tpl-review. */
 const REVIEW_REQUEST_TEMPLATE = fs.readFileSync(
   path.join(TEMPLATE_DIR, 'review-request-email.template.html'),
@@ -661,6 +670,15 @@ export class MailService {
     subject: string,
     context: EmailTemplateContext,
     text: string,
+    /**
+     * One-click unsubscribe headers, and EMPTY when the cross-sell rail is
+     * absent. BK-2 is transactional mail that OPTIONALLY carries a marketing
+     * rail; on the sends that carry it, the visible "Unsubscribe from offers"
+     * link must be backed by RFC 8058 headers or the mailbox provider sees a
+     * marketing block with no machine-readable way out. `unsubscribeWiring`
+     * returns the URL and these headers as a pair for exactly this reason.
+     */
+    headers: Record<string, string> = {},
   ): Promise<{ providerMessageId: string | null }> {
     const missing = findUnresolvedTokens(PRE_TOUR_REMINDER_TEMPLATE, context);
     if (missing.length) {
@@ -673,6 +691,7 @@ export class MailService {
       subject,
       html: renderEmailTemplate(PRE_TOUR_REMINDER_TEMPLATE, context),
       text,
+      ...(Object.keys(headers).length ? { headers } : {}),
     });
   }
 
@@ -705,6 +724,34 @@ export class MailService {
       html: renderEmailTemplate(NEXT_ADVENTURE_TEMPLATE, context),
       text,
       headers,
+    });
+  }
+
+  // ── CX-1 cancellation confirmation ────────────────────────────────────────
+
+  /**
+   * Render + send the locked CX-1 template. Same facade contract as the rest
+   * of the family: the caller owns the token context
+   * (`buildCancellationEmailContext`) and the subject. Missing tokens log
+   * loudly rather than emailing a literal placeholder.
+   */
+  async sendCancellationEmail(
+    to: string,
+    subject: string,
+    context: EmailTemplateContext,
+    text: string,
+  ): Promise<{ providerMessageId: string | null }> {
+    const missing = findUnresolvedTokens(CANCELLATION_TEMPLATE, context);
+    if (missing.length) {
+      this.logger.error(
+        `Cancellation email context is missing tokens: ${missing.join(', ')}`,
+      );
+    }
+    return this.sendMail({
+      to,
+      subject,
+      html: renderEmailTemplate(CANCELLATION_TEMPLATE, context),
+      text,
     });
   }
 

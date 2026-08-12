@@ -19,6 +19,7 @@ import {
   CancelledBy,
   Currency,
   DepartureStatus,
+  EmailAudience,
   EmailStream,
   EmailTemplateKey,
   InboxEvent,
@@ -46,9 +47,13 @@ import { UnrecoverableError } from 'bullmq';
 import { PrismaService } from '@/prisma/prisma.service';
 import { MailService } from '@/mail/mail.service';
 import { EmailLogService } from '@/mail/email-log.service';
+import { EmailPreferencesService } from '@/mail/email-preferences.service';
 import { emailSafeLogoUrl } from '@/mail/email-logo.util';
 import { copyFor, fillCopy } from '@/mail/templates/email-copy.util';
-import { CANCELLATION_EMAIL_COPY } from '@/mail/templates/cancellation-email.copy';
+import {
+  buildCancellationEmailContext,
+  buildCancellationEmailText,
+} from '@/mail/cancellation-email.context';
 import {
   hashLoginCode,
   issueBookingSession,
@@ -124,6 +129,7 @@ import {
   preferLocale,
   toLocale,
   type RelatedTourInput,
+  type ReminderCrossSellInput,
 } from './booking-email.context';
 import { buildBookingIcs } from './booking-ics.util';
 import type {
@@ -411,6 +417,9 @@ export class BookingsService {
     private readonly inbox: InboxService,
     private readonly recommendations: RecommendationsService,
     private readonly emailLog: EmailLogService,
+    // BK-2's cross-sell rail is MARKETING inventory: it needs the opt-out
+    // check and the server-minted unsubscribe token, never a hand-built URL.
+    private readonly emailPreferences: EmailPreferencesService,
   ) {}
 
   /**
@@ -1636,7 +1645,10 @@ export class BookingsService {
       return;
     }
 
-    const context = await this.assembleReminderContext(booking);
+    const { context, headers } = await this.assembleReminderContext(
+      booking,
+      to,
+    );
     const result = await this.emailLog.claimAndSend({
       templateKey: EmailTemplateKey.BK2_PRE_TOUR_REMINDER,
       scopeId: booking.id,
@@ -1649,6 +1661,7 @@ export class BookingsService {
           String(context.subjectLine ?? `Reminder: ${booking.displayRef}`),
           context,
           buildReminderEmailText(context),
+          headers,
         ),
     });
 
@@ -1675,9 +1688,19 @@ export class BookingsService {
    * token context - the I/O around the pure {@link buildReminderEmailContext},
    * mirroring {@link assembleConfirmationContext}.
    */
+  /**
+   * Returns the token context AND the one-click unsubscribe headers, because
+   * they are one decision: the rail, its visible "Unsubscribe from offers"
+   * link and the RFC 8058 headers either all ship or none do. Splitting them
+   * is how the headers went missing.
+   */
   private async assembleReminderContext(
     booking: BookingWithItems,
-  ): Promise<EmailTemplateContext> {
+    toEmail: string,
+  ): Promise<{
+    context: EmailTemplateContext;
+    headers: Record<string, string>;
+  }> {
     const locale = toLocale(booking.customerLocale);
 
     const [tour, operator, site] = await Promise.all([
@@ -1690,6 +1713,8 @@ export class BookingsService {
           weatherDependent: true,
           meetingPointLat: true,
           meetingPointLng: true,
+          destinationId: true,
+          destination: { select: { slug: true } },
           ageBands: { select: { id: true, label: true } },
           images: {
             where: { isHero: true },
@@ -1755,7 +1780,36 @@ export class BookingsService {
         .toISOString()
         .slice(0, 10);
 
-    return buildReminderEmailContext({
+    // The "Islanders also love..." rail. MARKETING inventory inside a
+    // TRANSACTIONAL send, so the opt-out gate runs FIRST and independently of
+    // the reminder itself: someone who unsubscribed from offers still gets
+    // their reminder (the footer copy promises exactly that) - they just get
+    // it without the rail and without the picks line. No cards => no rail, no
+    // unsubscribe link, and nothing minted.
+    const optedOut = await this.emailLog.isOptedOut(
+      toEmail,
+      EmailAudience.TRAVELLER,
+      EmailStream.MARKETING,
+    );
+    const crossSell = optedOut
+      ? []
+      : await this.loadReminderCrossSell(
+          tour.destinationId,
+          booking.tourId,
+          booking.tourTimeZone ?? 'UTC',
+        );
+    // G-14's rule, reused: env-derived base + a server-minted token, never a
+    // hand-built string. Nothing is minted when no rail will be shown.
+    const wiring = crossSell.length
+      ? await this.emailPreferences.unsubscribeWiring(
+          toEmail,
+          EmailAudience.TRAVELLER,
+          EmailStream.MARKETING,
+        )
+      : null;
+    const unsubscribeUrl = wiring?.optOutUrl ?? '';
+
+    const context = buildReminderEmailContext({
       booking: {
         displayRef: booking.displayRef,
         currency: booking.currency,
@@ -1801,8 +1855,96 @@ export class BookingsService {
         whatsappEnabled: site?.enableWhatsappChat ?? false,
       },
       isSameDay,
-      config: { emailIconBase: emailIconBase() },
+      crossSell,
+      unsubscribeUrl,
+      destination: { slug: tour.destination.slug },
+      config: {
+        emailIconBase: emailIconBase(),
+        frontendUrl: islandToursBase(),
+      },
     });
+
+    return { context, headers: wiring?.headers ?? {} };
+  }
+
+  /**
+   * The two "Islanders also love..." cards (funnel wireframe, tpl-remind).
+   *
+   * Mirrors MK-1's `loadCards` rather than BK-1's `loadRelatedTours`, because
+   * the wireframe's card makes an AVAILABILITY claim ("Open departures this
+   * week"): only a live departure query can make that line true, and MK-1 is
+   * where that query already lives. Same listing parity as MK-1 - LIVE +
+   * isActive + isBookable, sponsored-first canonical order - so the email can
+   * never feature a tour the site itself has delisted or reordered.
+   *
+   * Fewer than two qualifying tours returns an empty array: the template hides
+   * the rail (and the footer's picks line) rather than shipping a lone card
+   * under a two-column heading.
+   */
+  private async loadReminderCrossSell(
+    destinationId: string,
+    excludeTourId: string,
+    timeZone: string,
+  ): Promise<ReminderCrossSellInput[]> {
+    // Departure.date is @db.Date (UTC-midnight instants) and "this week" must
+    // be the ISLAND's week, so the window starts from the zone's local date.
+    //
+    // TOMORROW, not today - the same start MK-1 uses, and for the same reason
+    // it documents (`next-adventure-emails.service.ts`, review of #188): a
+    // departure still stored OPEN on the island's today is mostly already at
+    // sea or past its booking cutoff, so a card whose ONLY qualifying date is
+    // today advertises a boat the traveller cannot board. "Open departures
+    // this week" is a promise; starting today also cost a day at the far end.
+    const local = localNow(timeZone);
+    const windowStart = new Date(
+      Date.UTC(
+        local.getUTCFullYear(),
+        local.getUTCMonth(),
+        local.getUTCDate() + 1,
+      ),
+    );
+    const windowEnd = new Date(windowStart.getTime() + 7 * 24 * 3_600_000);
+
+    const rows = await this.prisma.tour.findMany({
+      where: {
+        destinationId,
+        id: { not: excludeTourId },
+        status: TourStatus.LIVE,
+        isActive: true,
+        isBookable: true,
+        departures: {
+          some: {
+            status: DepartureStatus.OPEN,
+            date: { gte: windowStart, lt: windowEnd },
+          },
+        },
+      },
+      orderBy: [
+        { isSponsored: 'desc' },
+        { tierRank: 'asc' },
+        { qualityScore: 'desc' },
+        { id: 'asc' },
+      ],
+      take: 2,
+      select: {
+        name: true,
+        priceFrom: true,
+        defaultCurrency: true,
+        aggregateRating: true,
+        aggregateReviewCount: true,
+        images: { where: { isHero: true }, select: { url: true }, take: 1 },
+      },
+    });
+    if (rows.length < 2) return [];
+
+    return rows.map((row) => ({
+      name: row.name,
+      imageUrl: row.images[0]?.url ?? null,
+      aggregateRating: row.aggregateRating,
+      aggregateReviewCount: row.aggregateReviewCount,
+      priceFrom: row.priceFrom?.toString() ?? null,
+      currency: row.defaultCurrency,
+    }));
   }
 
   /**
@@ -2863,68 +3005,29 @@ export class BookingsService {
     const travellerEmail = booking.contactEmail;
     if (travellerEmail) {
       const locale = toLocale(booking.customerLocale);
-      const copy = copyFor(CANCELLATION_EMAIL_COPY, locale);
 
-      // What the traveller is told about their money: a MATRIX of the master
-      // 6.4 payment-model copy × the CancellationRefund verdict (B-23/B-24).
-      // `cancellationRefund` is the POLICY verdict, not proof a refund has
-      // settled, so every line speaks to what happens next.
-      //  - operator_full: Island Tours never held money - no refund-from-us
-      //    line under ANY verdict; the operator refunds directly.
-      //  - FULL: paid_in_full gets "your payment is on its way back from us";
-      //    operator_link gets the deposit-back + operator-balance split;
-      //    on_arrival gets deposit-back only (no balance was payable before
-      //    arrival, so the split sentence would describe money that cannot
-      //    exist).
-      //  - PARTIAL / NONE: the existing verdict overlay, unchanged.
-      const operatorRefundName =
-        operator?.companyInfo?.companyName ?? copy.operatorFallback;
-      const refundLine =
-        booking.paymentModel === PaymentModel.OPERATOR_FULL
-          ? fillCopy(copy.operatorFullLine, {
-              operatorName: operatorRefundName,
-            })
-          : refund === CancellationRefund.FULL
-            ? booking.paymentModel === PaymentModel.PAID_IN_FULL
-              ? fillCopy(copy.refundPaidInFull, {
-                  totalAmount: formatMoney(
-                    booking.totalRetail.toString(),
-                    booking.currency,
-                    locale,
-                  ),
-                })
-              : // Both deposit models render the wireframe's LOCKED text
-                // (founder decision 2026-08-11, D1b): its balance sentence is
-                // CONDITIONAL ("If you've already paid the balance...") so it
-                // is never false for pay-on-arrival travellers either.
-                fillCopy(copy.refundDepositSplit, {
-                  depositPct: depositPctOf(
-                    booking.depositAmount.toString(),
-                    booking.totalRetail.toString(),
-                  ),
-                })
-            : refund === CancellationRefund.PARTIAL
-              ? copy.partial
-              : copy.noRefund;
-
-      const ctx: EmailTemplateContext = {
-        ...shared,
-        dateLong: formatDateLong(
-          booking.tourStartDateTime ?? booking.localDate,
-          locale,
-        ),
-        noticeTitle: copy.title,
-        noticeParagraphs: [
-          fillCopy(copy.processed, {
-            bookingRef: booking.displayRef,
-            tourName,
-          }),
-          refundLine,
-          copy.closing,
-        ],
-        ctaUrl: `${siteBase}/${booking.island}/thank-you/${booking.publicRef}`,
-        ctaLabel: copy.cta,
-      };
+      // CX-1 renders through its OWN locked template, not the shared notice
+      // shell - the shell is used by ~13 other sends and CX-1 wants none of
+      // its shape (see cancellation-email.template.html for the full why).
+      // The payment-model × verdict refund matrix moved into the pure builder
+      // with it, where all four branches are unit-testable.
+      const ctx = buildCancellationEmailContext({
+        booking: {
+          displayRef: booking.displayRef,
+          customerLocale: locale,
+          currency: booking.currency,
+          paymentModel: booking.paymentModel,
+          cancellationRefund: refund,
+          depositAmount: booking.depositAmount.toString(),
+          totalAmount: booking.totalRetail.toString(),
+          tourStartDateTime: booking.tourStartDateTime,
+          localDate: booking.localDate,
+        },
+        tourName,
+        operatorName: operator?.companyInfo?.companyName ?? null,
+        site: { logoUrl: site?.logo ?? null },
+        config: { emailIconBase: emailIconBase() },
+      });
 
       // Send-once via the log (B-26): one CX-1 per booking, claim-first.
       // claimAndSend never throws, so the cancel stays best-effort.
@@ -2935,11 +3038,11 @@ export class BookingsService {
         stream: EmailStream.TRANSACTIONAL,
         locale,
         send: () =>
-          this.mail.sendBookingNoticeEmail(
+          this.mail.sendCancellationEmail(
             travellerEmail,
-            fillCopy(copy.subject, { bookingRef: booking.displayRef }),
+            String(ctx.subjectLine),
             ctx,
-            buildNoticeText(ctx),
+            buildCancellationEmailText(ctx),
           ),
       });
       if (result.outcome === 'failed') {

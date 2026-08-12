@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="{locale}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no">
+  <meta name="color-scheme" content="light">
+  <meta name="supported-color-schemes" content="light">
+  <title>{subjectLine}</title>
+  <!-- Plus Jakarta Sans, exactly as the wireframe loads it. Which clients render
+       it is a CLIENT capability, not something any sender can change - see the
+       note in booking-confirmation-email.template.html, the sibling this
+       template mirrors block for block. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+    /* Lock the palette to the light design. Clients that honor color-scheme
+       (Apple Mail, iOS) stop inverting the card and logo in dark mode; Gmail
+       ignores it - the logo itself ships with a baked-in white chip for that. */
+    :root { color-scheme: light; supported-color-schemes: light; }
+
+    /* Founder-approved mobile refinement (same as the confirmation): tighten
+       the outer gutter and cell padding on phones. */
+    @media only screen and (max-width: 480px) {
+      .it-shell-pad { padding: 12px 6px !important; }
+      .it-cell { padding-left: 16px !important; padding-right: 16px !important; }
+    }
+  </style>
+  <!-- CX-1 cancellation confirmation (master 6.4), locked to the funnel
+       wireframe's embedded template (island-tours-email-funnel-wireframe.html,
+       tpl-cancel).
+
+       WHY ITS OWN FILE rather than a branch inside booking-notice.template.html:
+       that shell is shared with ~13 other sends (bookings, customers and
+       settlements notices), and every one of them wants the generic shape it
+       has - green check chip, tour block, paragraph list, one orange CTA.
+       CX-1 wants none of those. Branching the shared shell on "am I the
+       cancellation?" would put CX-1's whole layout inside conditionals that
+       the other thirteen sends must carry and step around forever; the first
+       restyle of the notice shell would then silently restyle CX-1 too. A
+       locked, single-purpose file is how the rest of this family is built
+       (BK-1, BK-2, MK-1), and it is the reason those three can be diffed
+       against their wireframes at all.
+
+       HARD RULES this template carries:
+         - NO green check chip: a cancellation is not a success confirmation,
+           and the chip reads as one
+         - NO CTA. A cancellation ends the relationship with that booking; an
+           orange primary button back into it is the wrong last word
+         - ONE sub-line (tour · date · reference), not a tour block
+         - the refund panel body is the payment-model matrix, composed by the
+           context builder - all four models, wireframe wording
+       Copy strings arrive as tokens from cancellation-email.copy.ts
+       (7 locales); this file owns only the design. -->
+</head>
+<body style="margin:0;padding:0;background:#EDEFF2;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#1F2937;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
+    {previewText}
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:#EDEFF2">
+    <tr><td align="center" class="it-shell-pad" style="padding:26px 16px">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#FFFFFF;border-radius:16px;overflow:hidden;border:1px solid #E8EAED;border-collapse:separate">
+
+        <!-- Brand bar -->
+        <tr><td class="it-cell" style="padding:18px 28px;border-bottom:1px solid #E8EAED">
+          [IF siteLogoUrl]<img src="{siteLogoUrl}" height="48" alt="Island Tours" style="display:block;border:0;height:48px;width:auto">[ELSE]<span style="font-family:'Plus Jakarta Sans',Arial,sans-serif;font-weight:800;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:#1F2937">ISLAND <span style="color:#E8611A">TOURS</span></span>[/IF]
+        </td></tr>
+
+        <!-- Headline, one sub-line, lead. No chip, no tour block, no divider. -->
+        <tr><td class="it-cell" style="padding:26px 28px 6px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <div style="font-size:22px;font-weight:800;letter-spacing:-.02em;color:#1F2937">{noticeTitle}</div>
+          <div style="font-size:13.5px;color:#6B7280;margin-top:10px">{tourName} · {dateLong} · {refLabel} <b style="color:#1F2937">{bookingRef}</b></div>
+          <div style="font-size:16px;color:#374151;line-height:1.6;margin-top:14px">{lead}</div>
+        </td></tr>
+
+        <!-- Titled refund panel. The body is the payment-model matrix
+             (operator_full / paid_in_full / the two deposit models) crossed
+             with the CancellationRefund verdict - all four branches ship the
+             same panel; the mock only draws the deposit one. -->
+        <tr><td class="it-cell" style="padding:18px 28px 0;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <div style="background:#F7F8FA;border:1px solid #E8EAED;border-radius:12px;padding:16px 18px">
+            <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9aa3b2;margin-bottom:8px">{refundTitle}</div>
+            <div style="font-size:14.5px;color:#374151;line-height:1.6">{refundLine}</div>
+          </div>
+        </td></tr>
+
+        <!-- Sign-off. The transactional footer, as BK-1 carries it, in the
+             mock's cell padding and separator shape. CX-1 is TRANSACTIONAL:
+             no unsubscribe, no marketing line. -->
+        <tr><td class="it-cell" style="padding:24px 28px 26px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <div style="height:1px;background:#E8EAED;margin-bottom:16px"></div>
+          <div style="font-size:13px;font-weight:800;color:#1F2937">Island Tours. Built by Islanders.</div>
+          <div style="font-size:12.5px;color:#9aa3b2;margin-top:4px">www.island.tours</div>
+          <div style="font-size:11.5px;color:#b6bcc7;margin-top:10px;line-height:1.6">ITG B.V. (Island Tours Group) · KvK Curaçao 169950<br>Caracasbaaiweg 366, Willemstad, Curaçao<br>This is a transactional booking email.</div>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>

@@ -766,7 +766,34 @@ describe('buildReminderEmailContext', () => {
         ...over.site,
       },
       isSameDay: over.isSameDay ?? false,
-      config: { emailIconBase: 'https://cdn.test/icons', ...over.config },
+      // The rail is present by default so the token sweep covers it; the
+      // opted-out / thin-island case passes `crossSell: []`.
+      crossSell: over.crossSell ?? [
+        {
+          name: 'West Coast Buggy Adventure',
+          imageUrl: 'https://cdn.test/buggy.jpg',
+          aggregateRating: 4.8,
+          aggregateReviewCount: 212,
+          priceFrom: '89.00',
+          currency: Currency.USD,
+        },
+        {
+          name: 'Sunset Sailing Cruise',
+          imageUrl: 'https://cdn.test/sail.jpg',
+          aggregateRating: 4.7,
+          aggregateReviewCount: 138,
+          priceFrom: '65.00',
+          currency: Currency.USD,
+        },
+      ],
+      unsubscribeUrl:
+        over.unsubscribeUrl ?? 'https://island.tours/unsubscribe/tok_test',
+      destination: { slug: 'curacao', ...over.destination },
+      config: {
+        emailIconBase: 'https://cdn.test/icons',
+        frontendUrl: 'https://island.tours',
+        ...over.config,
+      },
     };
   }
 
@@ -799,10 +826,22 @@ describe('buildReminderEmailContext', () => {
   describe('the balance note (the ONLY money mention, B-02)', () => {
     it('operator_link with a real balance gets the wireframe note - amount, no link', () => {
       const ctx = buildReminderEmailContext(reminderInput());
-      expect(ctx.balanceNote).toContain('$160.00');
-      expect(ctx.balanceNote).toContain('Miss Ann Boat Trips');
-      expect(ctx.balanceNote).toContain('Already paid?');
-      expect(String(ctx.balanceNote)).not.toMatch(/https?:\/\//);
+      expect(ctx.balanceNotePrefix).toBe('Your remaining balance of');
+      expect(ctx.balanceAmount).toBe('$160.00');
+      expect(ctx.balanceNoteSuffix).toContain('Miss Ann Boat Trips');
+      expect(ctx.balanceNoteSuffix).toContain('Already paid?');
+      expect(String(ctx.balanceNoteSuffix)).not.toMatch(/https?:\/\//);
+    });
+
+    it('the amount arrives as its OWN token so the template can bold it', () => {
+      // The renderer escapes every {token}, so a <b> inside a copy string can
+      // only print as &lt;b&gt; - this is why the sentence is split at all.
+      const ctx = buildReminderEmailContext(reminderInput());
+      const html = renderEmailTemplate(REMINDER_TEMPLATE, ctx);
+      expect(html).toContain(
+        'Your remaining balance of <b>$160.00</b> runs through',
+      );
+      expect(html).not.toContain('&lt;b&gt;');
     });
 
     it.each([
@@ -815,7 +854,9 @@ describe('buildReminderEmailContext', () => {
           booking: { ...reminderInput().booking, paymentModel },
         }),
       );
-      expect(ctx.balanceNote).toBe('');
+      expect(ctx.balanceNotePrefix).toBe('');
+      expect(ctx.balanceAmount).toBe('');
+      expect(ctx.balanceNoteSuffix).toBe('');
     });
 
     it('a zero balance hides the note even on operator_link', () => {
@@ -824,7 +865,91 @@ describe('buildReminderEmailContext', () => {
           booking: { ...reminderInput().booking, balanceAmount: '0.00' },
         }),
       );
-      expect(ctx.balanceNote).toBe('');
+      expect(ctx.balanceNotePrefix).toBe('');
+      expect(renderEmailTemplate(REMINDER_TEMPLATE, ctx)).not.toContain(
+        'Remaining balance',
+      );
+    });
+  });
+
+  describe('the "Islanders also love..." cross-sell rail', () => {
+    it('renders two cards with the wireframe meta, bolding the price', () => {
+      const html = renderEmailTemplate(
+        REMINDER_TEMPLATE,
+        buildReminderEmailContext(reminderInput()),
+      );
+      expect(html).toContain('Islanders also love...');
+      expect(html).toContain('Picked to pair with your booking');
+      expect(html).toContain(
+        '★ 4.8 (212) · from <b style="color:#1F2937">$89</b>',
+      );
+      expect(html).toContain(
+        '★ 4.7 (138) · from <b style="color:#1F2937">$65</b>',
+      );
+      // The availability line is true by construction (the loader only ever
+      // hands over tours with an OPEN departure inside the window).
+      expect(html.match(/Open departures this week/g)).toHaveLength(2);
+      expect(html).toContain('https://island.tours/en/curacao/tours/');
+      // The apostrophe arrives HTML-escaped, as every copy token does.
+      expect(html).toContain('Browse the Islanders&#39; top picks');
+    });
+
+    it('an empty rail hides the block, its divider AND the unsubscribe line', () => {
+      const ctx = buildReminderEmailContext(
+        reminderInput({ crossSell: [], unsubscribeUrl: '' }),
+      );
+      const html = renderEmailTemplate(REMINDER_TEMPLATE, ctx);
+      expect(html).not.toContain('Islanders also love');
+      expect(html).not.toContain('Open departures this week');
+      expect(html).not.toContain('Unsubscribe from offers');
+      expect(html).not.toContain('/unsubscribe/');
+      // The footer itself survives, minus the picks promise.
+      expect(html).toContain(
+        'Island Tours · www.island.tours · Willemstad, Curaçao',
+      );
+      expect(html).toContain('Built by Islanders.');
+    });
+
+    it('the footer unsubscribe is the server-minted token URL, verbatim', () => {
+      const html = renderEmailTemplate(
+        REMINDER_TEMPLATE,
+        buildReminderEmailContext(reminderInput()),
+      );
+      expect(html).toContain(
+        '<a href="https://island.tours/unsubscribe/tok_test"',
+      );
+      expect(html).toContain('You get these picks as an Island Tours guest.');
+      expect(html).toContain('(your booking emails always arrive).');
+    });
+
+    it('a card with no rating yet shows no fabricated number (LD11)', () => {
+      const ctx = buildReminderEmailContext(
+        reminderInput({
+          crossSell: [
+            {
+              name: 'Brand New Tour',
+              imageUrl: null,
+              aggregateRating: null,
+              aggregateReviewCount: 0,
+              priceFrom: '40.00',
+              currency: Currency.USD,
+            },
+            {
+              name: 'Unpriced Tour',
+              imageUrl: null,
+              aggregateRating: 4.9,
+              aggregateReviewCount: 0,
+              priceFrom: null,
+              currency: Currency.USD,
+            },
+          ],
+        }),
+      );
+      expect(ctx.crossSellOneMetaPrefix).toBe('from ');
+      expect(ctx.crossSellOnePrice).toBe('$40');
+      // No price to follow => no dangling "from", and no review count in ().
+      expect(ctx.crossSellTwoMetaPrefix).toBe('★ 4.9');
+      expect(ctx.crossSellTwoPrice).toBe('');
     });
   });
 
@@ -863,7 +988,9 @@ describe('buildReminderEmailContext', () => {
     expect(ctx.headline).toBe('Morgen geht es los, Denley.');
     expect(ctx.whatToBringTitle).toBe('Was du mitbringst');
     // Money still formats for the reader's locale, in the charged currency.
-    expect(ctx.balanceNote).toContain('160,00');
+    expect(ctx.balanceAmount).toContain('160,00');
+    expect(ctx.balanceNotePrefix).toBe('Dein Restbetrag von');
+    expect(ctx.railTitle).toBe('Locals lieben außerdem...');
     // The German template renders with zero unresolved tokens too.
     expect(findUnresolvedTokens(REMINDER_TEMPLATE, ctx)).toEqual([]);
   });
@@ -875,6 +1002,32 @@ describe('buildReminderEmailContext', () => {
     expect(text).toContain('Pickup: Hotel Brion');
     expect(text).toContain('- Towel');
     expect(text).not.toContain('<');
+    // The balance sentence reassembles around the amount.
+    expect(text).toContain(
+      'Remaining balance: Your remaining balance of $160.00 runs through',
+    );
+    // The rail and its opt-out both reach the text part - a half-offered
+    // unsubscribe is worse than none.
+    expect(text).toContain(
+      'West Coast Buggy Adventure - ★ 4.8 (212) · from $89 - Open departures this week',
+    );
+    expect(text).toContain(
+      "Browse the Islanders' top picks: https://island.tours/en/curacao/tours/",
+    );
+    expect(text).toContain(
+      'Unsubscribe from offers: https://island.tours/unsubscribe/tok_test',
+    );
+  });
+
+  it('the text part drops the rail and the opt-out together', () => {
+    const text = buildReminderEmailText(
+      buildReminderEmailContext(
+        reminderInput({ crossSell: [], unsubscribeUrl: '' }),
+      ),
+    );
+    expect(text).not.toContain('Islanders also love');
+    expect(text).not.toContain('Unsubscribe from offers');
+    expect(text).toContain('Built by Islanders.');
   });
 });
 

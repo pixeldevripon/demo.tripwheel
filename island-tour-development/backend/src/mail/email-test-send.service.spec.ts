@@ -46,6 +46,9 @@ describe('EmailTestSendService', () => {
       sendBookingNoticeEmail: jest
         .fn()
         .mockResolvedValue({ providerMessageId: 'resend-1' }),
+      sendCancellationEmail: jest
+        .fn()
+        .mockResolvedValue({ providerMessageId: 'resend-1' }),
       sendReviewRequestEmail: jest
         .fn()
         .mockResolvedValue({ providerMessageId: 'resend-1' }),

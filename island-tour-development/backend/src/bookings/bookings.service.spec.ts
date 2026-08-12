@@ -392,6 +392,7 @@ describe('BookingsService', () => {
   let inbox: any;
   let recommendations: any;
   let emailLog: any;
+  let emailPreferences: any;
   let svc: BookingsService;
 
   beforeEach(() => {
@@ -409,6 +410,10 @@ describe('BookingsService', () => {
       sendBookingNoticeEmail: jest
         .fn()
         .mockResolvedValue({ providerMessageId: 'resend-3' }),
+      // CX-1 has its own locked template, not the shared notice shell.
+      sendCancellationEmail: jest
+        .fn()
+        .mockResolvedValue({ providerMessageId: 'resend-4' }),
       sendTravellerLoginCodeEmail: jest.fn().mockResolvedValue(undefined),
     };
     // Send-log stub honouring the claim-first contract: runs the closure,
@@ -427,6 +432,14 @@ describe('BookingsService', () => {
       }),
       recordSuppressed: jest.fn().mockResolvedValue({ recorded: true }),
       nextResendScopeId: jest.fn().mockResolvedValue('b1#resend-1'),
+      // BK-2's cross-sell rail asks this before loading any cards.
+      isOptedOut: jest.fn().mockResolvedValue(false),
+    };
+    emailPreferences = {
+      unsubscribeWiring: jest.fn().mockResolvedValue({
+        optOutUrl: 'https://island.tours/unsubscribe/tok_test',
+        headers: {},
+      }),
     };
     tracking = { fireBookingComplete: jest.fn().mockResolvedValue(undefined) };
     notifications = {
@@ -501,6 +514,7 @@ describe('BookingsService', () => {
       inbox,
       recommendations,
       emailLog,
+      emailPreferences,
     );
   });
 
@@ -1685,13 +1699,20 @@ describe('BookingsService', () => {
           ...over,
         });
 
-      /** The reminder assembly is I/O; stub it so these tests see the JOB. */
+      /**
+       * The reminder assembly is I/O; stub it so these tests see the JOB.
+       * It returns the context AND the one-click unsubscribe headers as a
+       * pair - they ship together with the cross-sell rail or not at all.
+       */
       const stubContext = () =>
         jest
           .spyOn(svc as never, 'assembleReminderContext' as never)
           .mockResolvedValue({
-            subjectLine: 'Tomorrow: Tour · 09:00',
-            headline: "You're set for tomorrow, Ada.",
+            context: {
+              subjectLine: 'Tomorrow: Tour · 09:00',
+              headline: "You're set for tomorrow, Ada.",
+            },
+            headers: {},
           } as never);
 
       it('happy path: claims (BK2, bookingId), sends, stamps the guard', async () => {
@@ -1714,6 +1735,11 @@ describe('BookingsService', () => {
           'Tomorrow: Tour · 09:00',
           expect.anything(),
           expect.any(String),
+          // The one-click unsubscribe headers - empty here because the stub
+          // ships no cross-sell rail, but PASSED, which is the point: a send
+          // carrying a visible "Unsubscribe from offers" link must carry the
+          // RFC 8058 headers with it.
+          {},
         );
         expect(m.booking.updateMany).toHaveBeenCalledWith(
           expect.objectContaining({
@@ -1950,12 +1976,13 @@ describe('BookingsService', () => {
     const send = (booking: any, refund: CancellationRefund) =>
       (svc as any).sendCancellationConfirmedNotices(booking, refund);
 
-    const travellerParagraphs = (): string[] => {
-      const call = mail.sendBookingNoticeEmail.mock.calls.find(
+    /** The one sentence the traveller reads about their money. */
+    const travellerRefundLine = (): string => {
+      const call = mail.sendCancellationEmail.mock.calls.find(
         (c: any[]) => c[0] === 'guest@example.test',
       );
       expect(call).toBeDefined();
-      return call![2].noticeParagraphs as string[];
+      return call![2].refundLine as string;
     };
 
     it('operator_link × FULL: deposit back from us + the operator refunds the balance part', async () => {
@@ -1964,7 +1991,7 @@ describe('BookingsService', () => {
         'FULL',
       );
 
-      const [, refundLine] = travellerParagraphs();
+      const refundLine = travellerRefundLine();
       // fakeBooking: 31.99 / 159.98 -> a 20% deposit.
       expect(refundLine).toContain('Your 20% deposit is on its way back');
       expect(refundLine).toContain('the tour operator refunds that part');
@@ -1975,7 +2002,7 @@ describe('BookingsService', () => {
       // paid the balance...") - never false pre-arrival, so both deposit
       // models share the locked wording verbatim.
       await send(cxBooking({ paymentModel: PaymentModel.ON_ARRIVAL }), 'FULL');
-      const [, refundLine] = travellerParagraphs();
+      const refundLine = travellerRefundLine();
       expect(refundLine).toContain('deposit is on its way back');
       expect(refundLine).toContain("If you've already paid the balance");
     });
@@ -1986,7 +2013,7 @@ describe('BookingsService', () => {
         'FULL',
       );
 
-      const [, refundLine] = travellerParagraphs();
+      const refundLine = travellerRefundLine();
       expect(refundLine).toContain('is on its way back from us');
       expect(refundLine).toContain('€159.98');
       expect(refundLine).not.toContain('deposit');
@@ -1999,7 +2026,7 @@ describe('BookingsService', () => {
           cxBooking({ paymentModel: PaymentModel.OPERATOR_FULL }),
           refund,
         );
-        const [, refundLine] = travellerParagraphs();
+        const refundLine = travellerRefundLine();
         expect(refundLine).toContain('Nothing was paid to Island Tours');
         expect(refundLine).toContain(
           'Miss Ann Boat Trips refunds you directly',
@@ -2013,7 +2040,7 @@ describe('BookingsService', () => {
         cxBooking({ paymentModel: PaymentModel.OPERATOR_LINK }),
         'PARTIAL',
       );
-      const [, refundLine] = travellerParagraphs();
+      const refundLine = travellerRefundLine();
       expect(refundLine).toContain('A partial refund applies');
     });
 
@@ -2022,7 +2049,7 @@ describe('BookingsService', () => {
         cxBooking({ paymentModel: PaymentModel.PAID_IN_FULL }),
         'NONE',
       );
-      const [, refundLine] = travellerParagraphs();
+      const refundLine = travellerRefundLine();
       expect(refundLine).toContain('no refund is due');
     });
 
@@ -2042,13 +2069,15 @@ describe('BookingsService', () => {
     it('traveller copy localises; the operator notice stays English (B-25)', async () => {
       await send(cxBooking({ customerLocale: 'de' }), 'FULL');
 
-      const calls = mail.sendBookingNoticeEmail.mock.calls;
-      const traveller = calls.find(
+      const traveller = mail.sendCancellationEmail.mock.calls.find(
         (c: any[]) => c[0] === 'guest@example.test',
       )!;
-      const operatorCall = calls.find((c: any[]) => c[0] === 'office@op.test')!;
+      const operatorCall = mail.sendBookingNoticeEmail.mock.calls.find(
+        (c: any[]) => c[0] === 'office@op.test',
+      )!;
       expect(traveller[1]).toContain('Deine Buchung ist storniert');
-      expect(traveller[2].noticeTitle).toBe('Deine Buchung ist storniert.');
+      // The trailing full stop went with the wireframe match (2026-08-12).
+      expect(traveller[2].noticeTitle).toBe('Deine Buchung ist storniert');
       expect(operatorCall[2].noticeTitle).toBe('Cancellation confirmed.');
     });
   });
@@ -2577,9 +2606,12 @@ describe('BookingsService', () => {
 
       await svc.cancel('b1', {}, { id: 'admin-1', role: Role.ADMIN });
 
-      expect(mail.sendBookingNoticeEmail).toHaveBeenCalledTimes(2);
-      const [travellerCall, operatorCall] =
-        mail.sendBookingNoticeEmail.mock.calls;
+      // The traveller gets CX-1's own locked template; the operator keeps the
+      // shared notice shell.
+      expect(mail.sendCancellationEmail).toHaveBeenCalledTimes(1);
+      expect(mail.sendBookingNoticeEmail).toHaveBeenCalledTimes(1);
+      const [travellerCall] = mail.sendCancellationEmail.mock.calls;
+      const [operatorCall] = mail.sendBookingNoticeEmail.mock.calls;
       expect(travellerCall[0]).toBe('guest@example.test');
       expect(travellerCall[2].noticeTitle).toContain(
         'Your booking is cancelled',

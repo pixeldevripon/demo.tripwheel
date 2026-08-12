@@ -56,10 +56,23 @@ export interface PreTourReminderCopy {
   /** "Remaining balance" - operator_link only, hidden at zero. */
   balanceTitle: string;
   /**
-   * The full balance note ({balance}, {operator}). NEVER a link and never a
-   * nudge beyond this wording - the wireframe's anti-phishing rule.
+   * The balance note, SPLIT around the amount so the template can bold it:
+   * `{balanceNotePrefix} <b>{balanceAmount}</b> {balanceNoteSuffix}`.
+   *
+   * It is split rather than interpolated because the renderer HTML-escapes
+   * every `{token}` (email-template.renderer.ts) - a `<b>` inside a copy
+   * string can only ever render as literal `&lt;b&gt;`, which is how the
+   * wireframe's bold amount went missing. Markup lives in the template.
+   *
+   * Locales place the amount differently, so each one carries its own
+   * natural split point rather than the English shape.
+   *
+   * NEVER a link and never a nudge beyond this wording - the wireframe's
+   * anti-phishing rule.
    */
-  balanceNote: string;
+  balanceNotePrefix: string;
+  /** The rest of the sentence after the amount ({operator}). */
+  balanceNoteSuffix: string;
   /** Weather-dependent tours only ({operator}). */
   weatherNote: string;
   /** "Questions about tomorrow?" */
@@ -73,6 +86,29 @@ export interface PreTourReminderCopy {
   whatsappUs: string;
   /** ", daily 08:00 to 20:00." - follows the WhatsApp link. */
   supportHours: string;
+
+  // ── "Islanders also love..." cross-sell rail + its marketing footer ────────
+  // Soft-opt-in MARKETING inventory inside a transactional email, so the rail
+  // and the unsubscribe footer line SHIP TOGETHER: the copy promises an
+  // opt-out, and an opt-out with no way to act on it is the compliance
+  // failure. Both hide together when there are no picks.
+
+  /** "Islanders also love..." - the rail heading. */
+  railTitle: string;
+  /** "Picked to pair with your booking" */
+  railSubhead: string;
+  /** "from" - precedes the bold card price. */
+  railFromLabel: string;
+  /** "Open departures this week" - true by construction (see the loader). */
+  railOpenThisWeek: string;
+  /** "Browse the Islanders' top picks" - the rail's single link. */
+  railCta: string;
+  /** "You get these picks as an Island Tours guest." */
+  picksNotePrefix: string;
+  /** "Unsubscribe from offers" - the MARKETING-stream opt-out link label. */
+  unsubscribeLabel: string;
+  /** "(your booking emails always arrive)." */
+  picksNoteSuffix: string;
 }
 
 export const PRE_TOUR_REMINDER_COPY: Record<Locale, PreTourReminderCopy> = {
@@ -99,8 +135,9 @@ export const PRE_TOUR_REMINDER_COPY: Record<Locale, PreTourReminderCopy> = {
     durationLineWithReturn: 'Duration: {duration}, back around {endTime}',
     whatToBringTitle: 'What to bring',
     balanceTitle: 'Remaining balance',
-    balanceNote:
-      "Your remaining balance of {balance} runs through {operator}'s payment link. Already paid? You're all set. Not yet? Find the link in their email, or contact them below.",
+    balanceNotePrefix: 'Your remaining balance of',
+    balanceNoteSuffix:
+      "runs through {operator}'s payment link. Already paid? You're all set. Not yet? Find the link in their email, or contact them below.",
     weatherNote:
       '{operator} watches the weather and contacts you directly if conditions force a change. If the operator cancels: a full refund or a free reschedule, always.',
     questionsTitleTomorrow: 'Questions about tomorrow?',
@@ -109,6 +146,14 @@ export const PRE_TOUR_REMINDER_COPY: Record<Locale, PreTourReminderCopy> = {
     platformIssue: 'Booking or platform issue?',
     whatsappUs: 'WhatsApp us',
     supportHours: ', daily 08:00 to 20:00.',
+    railTitle: 'Islanders also love...',
+    railSubhead: 'Picked to pair with your booking',
+    railFromLabel: 'from',
+    railOpenThisWeek: 'Open departures this week',
+    railCta: "Browse the Islanders' top picks",
+    picksNotePrefix: 'You get these picks as an Island Tours guest.',
+    unsubscribeLabel: 'Unsubscribe from offers',
+    picksNoteSuffix: '(your booking emails always arrive).',
   },
   [Locale.nl]: {
     subjectTomorrow: 'Morgen: {tourName} · {startTime}',
@@ -133,8 +178,9 @@ export const PRE_TOUR_REMINDER_COPY: Record<Locale, PreTourReminderCopy> = {
     durationLineWithReturn: 'Duur: {duration}, rond {endTime} terug',
     whatToBringTitle: 'Wat neem je mee',
     balanceTitle: 'Openstaand saldo',
-    balanceNote:
-      'Je resterende saldo van {balance} loopt via de betaallink van {operator}. Al betaald? Dan ben je klaar. Nog niet? Je vindt de link in hun e-mail, of neem hieronder contact met ze op.',
+    balanceNotePrefix: 'Je resterende saldo van',
+    balanceNoteSuffix:
+      'loopt via de betaallink van {operator}. Al betaald? Dan ben je klaar. Nog niet? Je vindt de link in hun e-mail, of neem hieronder contact met ze op.',
     weatherNote:
       '{operator} houdt het weer in de gaten en neemt direct contact met je op als de omstandigheden een wijziging afdwingen. Annuleert de operator? Dan altijd een volledige terugbetaling of gratis omboeken.',
     questionsTitleTomorrow: 'Vragen over morgen?',
@@ -143,6 +189,14 @@ export const PRE_TOUR_REMINDER_COPY: Record<Locale, PreTourReminderCopy> = {
     platformIssue: 'Vraag over je boeking of het platform?',
     whatsappUs: 'Stuur ons een WhatsApp',
     supportHours: ', dagelijks 08:00 tot 20:00.',
+    railTitle: 'Locals houden ook van...',
+    railSubhead: 'Gekozen om bij je boeking te passen',
+    railFromLabel: 'vanaf',
+    railOpenThisWeek: 'Deze week open vertrektijden',
+    railCta: 'Bekijk de topkeuzes van de locals',
+    picksNotePrefix: 'Je krijgt deze tips als gast van Island Tours.',
+    unsubscribeLabel: 'Afmelden voor aanbiedingen',
+    picksNoteSuffix: '(je boekingsmails komen altijd aan).',
   },
   [Locale.de]: {
     subjectTomorrow: 'Morgen: {tourName} · {startTime}',
@@ -167,8 +221,9 @@ export const PRE_TOUR_REMINDER_COPY: Record<Locale, PreTourReminderCopy> = {
     durationLineWithReturn: 'Dauer: {duration}, zurück gegen {endTime}',
     whatToBringTitle: 'Was du mitbringst',
     balanceTitle: 'Offener Restbetrag',
-    balanceNote:
-      'Dein Restbetrag von {balance} läuft über den Zahlungslink von {operator}. Schon bezahlt? Dann ist alles erledigt. Noch nicht? Den Link findest du in deren E-Mail, oder melde dich unten direkt.',
+    balanceNotePrefix: 'Dein Restbetrag von',
+    balanceNoteSuffix:
+      'läuft über den Zahlungslink von {operator}. Schon bezahlt? Dann ist alles erledigt. Noch nicht? Den Link findest du in deren E-Mail, oder melde dich unten direkt.',
     weatherNote:
       '{operator} behält das Wetter im Blick und meldet sich direkt bei dir, wenn die Bedingungen eine Änderung erzwingen. Sagt der Veranstalter ab: immer volle Rückerstattung oder kostenloses Umbuchen.',
     questionsTitleTomorrow: 'Fragen zu morgen?',
@@ -177,6 +232,14 @@ export const PRE_TOUR_REMINDER_COPY: Record<Locale, PreTourReminderCopy> = {
     platformIssue: 'Frage zur Buchung oder zur Plattform?',
     whatsappUs: 'Schreib uns auf WhatsApp',
     supportHours: ', täglich 08:00 bis 20:00.',
+    railTitle: 'Locals lieben außerdem...',
+    railSubhead: 'Passend zu deiner Buchung ausgewählt',
+    railFromLabel: 'ab',
+    railOpenThisWeek: 'Diese Woche freie Abfahrten',
+    railCta: 'Die Top-Tipps der Locals ansehen',
+    picksNotePrefix: 'Du bekommst diese Tipps als Gast von Island Tours.',
+    unsubscribeLabel: 'Angebote abbestellen',
+    picksNoteSuffix: '(deine Buchungs-E-Mails kommen immer an).',
   },
   [Locale.fr]: {
     subjectTomorrow: 'Demain : {tourName} · {startTime}',
@@ -201,8 +264,9 @@ export const PRE_TOUR_REMINDER_COPY: Record<Locale, PreTourReminderCopy> = {
     durationLineWithReturn: 'Durée : {duration}, retour vers {endTime}',
     whatToBringTitle: 'À apporter',
     balanceTitle: 'Solde restant',
-    balanceNote:
-      'Votre solde restant de {balance} passe par le lien de paiement de {operator}. Déjà réglé ? Tout est en ordre. Pas encore ? Le lien est dans leur e-mail, ou contactez-les ci-dessous.',
+    balanceNotePrefix: 'Votre solde restant de',
+    balanceNoteSuffix:
+      'passe par le lien de paiement de {operator}. Déjà réglé ? Tout est en ordre. Pas encore ? Le lien est dans leur e-mail, ou contactez-les ci-dessous.',
     weatherNote:
       "{operator} surveille la météo et vous contacte directement si les conditions imposent un changement. Si l'opérateur annule : remboursement intégral ou report gratuit, toujours.",
     questionsTitleTomorrow: 'Des questions pour demain ?',
@@ -211,6 +275,15 @@ export const PRE_TOUR_REMINDER_COPY: Record<Locale, PreTourReminderCopy> = {
     platformIssue: 'Question sur la réservation ou la plateforme ?',
     whatsappUs: 'Écrivez-nous sur WhatsApp',
     supportHours: ', tous les jours de 08:00 à 20:00.',
+    railTitle: 'Les locaux aiment aussi...',
+    railSubhead: 'Choisis pour compléter votre réservation',
+    railFromLabel: 'dès',
+    railOpenThisWeek: 'Départs ouverts cette semaine',
+    railCta: 'Voir les coups de cœur des locaux',
+    picksNotePrefix:
+      'Vous recevez ces suggestions en tant que client Island Tours.',
+    unsubscribeLabel: 'Se désabonner des offres',
+    picksNoteSuffix: '(vos e-mails de réservation arrivent toujours).',
   },
   [Locale.es]: {
     subjectTomorrow: 'Mañana: {tourName} · {startTime}',
@@ -235,8 +308,9 @@ export const PRE_TOUR_REMINDER_COPY: Record<Locale, PreTourReminderCopy> = {
     durationLineWithReturn: 'Duración: {duration}, vuelta hacia las {endTime}',
     whatToBringTitle: 'Qué llevar',
     balanceTitle: 'Saldo pendiente',
-    balanceNote:
-      'Tu saldo pendiente de {balance} se paga a través del enlace de pago de {operator}. ¿Ya pagaste? Todo listo. ¿Todavía no? Encuentra el enlace en su correo o contáctalos abajo.',
+    balanceNotePrefix: 'Tu saldo pendiente de',
+    balanceNoteSuffix:
+      'se paga a través del enlace de pago de {operator}. ¿Ya pagaste? Todo listo. ¿Todavía no? Encuentra el enlace en su correo o contáctalos abajo.',
     weatherNote:
       '{operator} vigila el tiempo y te contacta directamente si las condiciones obligan a un cambio. Si el operador cancela: siempre reembolso completo o cambio de fecha gratis.',
     questionsTitleTomorrow: '¿Preguntas sobre mañana?',
@@ -245,6 +319,15 @@ export const PRE_TOUR_REMINDER_COPY: Record<Locale, PreTourReminderCopy> = {
     platformIssue: '¿Algo de la reserva o de la plataforma?',
     whatsappUs: 'Escríbenos por WhatsApp',
     supportHours: ', todos los días de 08:00 a 20:00.',
+    railTitle: 'A los locales también les encanta...',
+    railSubhead: 'Elegidos para combinar con tu reserva',
+    railFromLabel: 'desde',
+    railOpenThisWeek: 'Salidas abiertas esta semana',
+    railCta: 'Ver las recomendaciones de los locales',
+    picksNotePrefix:
+      'Recibes estas recomendaciones como huésped de Island Tours.',
+    unsubscribeLabel: 'Darse de baja de las ofertas',
+    picksNoteSuffix: '(tus correos de reserva siempre llegan).',
   },
   [Locale.pt]: {
     subjectTomorrow: 'Amanhã: {tourName} · {startTime}',
@@ -270,8 +353,9 @@ export const PRE_TOUR_REMINDER_COPY: Record<Locale, PreTourReminderCopy> = {
       'Duração: {duration}, regresso por volta das {endTime}',
     whatToBringTitle: 'O que levar',
     balanceTitle: 'Saldo por pagar',
-    balanceNote:
-      'O seu saldo restante de {balance} é pago através do link de pagamento de {operator}. Já pagou? Está tudo tratado. Ainda não? Encontre o link no e-mail deles ou contacte-os abaixo.',
+    balanceNotePrefix: 'O seu saldo restante de',
+    balanceNoteSuffix:
+      'é pago através do link de pagamento de {operator}. Já pagou? Está tudo tratado. Ainda não? Encontre o link no e-mail deles ou contacte-os abaixo.',
     weatherNote:
       '{operator} acompanha o tempo e contacta-o diretamente se as condições obrigarem a uma alteração. Se o operador cancelar: reembolso total ou remarcação gratuita, sempre.',
     questionsTitleTomorrow: 'Dúvidas sobre amanhã?',
@@ -280,6 +364,14 @@ export const PRE_TOUR_REMINDER_COPY: Record<Locale, PreTourReminderCopy> = {
     platformIssue: 'Questões sobre a reserva ou a plataforma?',
     whatsappUs: 'Fale connosco no WhatsApp',
     supportHours: ', todos os dias das 08:00 às 20:00.',
+    railTitle: 'Os locais também adoram...',
+    railSubhead: 'Escolhidos para combinar com a sua reserva',
+    railFromLabel: 'desde',
+    railOpenThisWeek: 'Partidas abertas esta semana',
+    railCta: 'Ver as escolhas dos locais',
+    picksNotePrefix: 'Recebe estas sugestões como cliente da Island Tours.',
+    unsubscribeLabel: 'Cancelar a subscrição das ofertas',
+    picksNoteSuffix: '(os seus e-mails de reserva chegam sempre).',
   },
   [Locale.zh]: {
     subjectTomorrow: '明天:{tourName} · {startTime}',
@@ -304,8 +396,9 @@ export const PRE_TOUR_REMINDER_COPY: Record<Locale, PreTourReminderCopy> = {
     durationLineWithReturn: '时长:{duration},约 {endTime} 返回',
     whatToBringTitle: '需要携带',
     balanceTitle: '待付余款',
-    balanceNote:
-      '您的余款 {balance} 通过 {operator} 的付款链接支付。已付款?一切就绪。还没有?请在他们的邮件中查找链接,或通过下方方式联系他们。',
+    balanceNotePrefix: '您的余款',
+    balanceNoteSuffix:
+      '通过 {operator} 的付款链接支付。已付款?一切就绪。还没有?请在他们的邮件中查找链接,或通过下方方式联系他们。',
     weatherNote:
       '{operator} 会关注天气情况,如条件迫使行程变更,他们会直接联系您。如运营方取消:一律全额退款或免费改期。',
     questionsTitleTomorrow: '对明天的行程有疑问?',
@@ -314,5 +407,13 @@ export const PRE_TOUR_REMINDER_COPY: Record<Locale, PreTourReminderCopy> = {
     platformIssue: '预订或平台问题?',
     whatsappUs: '通过 WhatsApp 联系我们',
     supportHours: ',每天 08:00 至 20:00。',
+    railTitle: '当地人也喜欢...',
+    railSubhead: '为搭配您的预订而精选',
+    railFromLabel: '低至',
+    railOpenThisWeek: '本周有开放的出发班次',
+    railCta: '浏览当地人的精选推荐',
+    picksNotePrefix: '您作为 Island Tours 的客人收到这些推荐。',
+    unsubscribeLabel: '退订推荐邮件',
+    picksNoteSuffix: '(您的预订邮件始终都会送达。)',
   },
 };

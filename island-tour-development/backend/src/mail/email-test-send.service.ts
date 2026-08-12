@@ -1,5 +1,12 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
-import { EmailStream, EmailTemplateKey, Locale } from '@prisma/client';
+import {
+  CancellationRefund,
+  Currency,
+  EmailStream,
+  EmailTemplateKey,
+  Locale,
+  PaymentModel,
+} from '@prisma/client';
 import { emailIconBase } from '@/bookings/booking-email.context';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
@@ -7,6 +14,10 @@ import {
   TIMELINE_SELECT,
   KEY_STREAM,
 } from './email-log.service';
+import {
+  buildCancellationEmailContext,
+  buildCancellationEmailText,
+} from './cancellation-email.context';
 import { emailSafeLogoUrl } from './email-logo.util';
 import { MailService } from './mail.service';
 import type { EmailTemplateContext } from './templates/email-template.renderer';
@@ -180,9 +191,12 @@ function reminderSample(iconBase: string, logo: string | null) {
       'A light jacket for the crossing',
     ],
     balanceTitle: 'Remaining balance',
-    balanceNote:
-      `Your remaining balance of $160.00 runs through ${SAMPLE.operatorName}'s payment link. ` +
-      "Already paid? You're all set.",
+    // Split around the amount so the template can bold it: `{token}` values are
+    // HTML-escaped by the renderer, so markup inside a copy string never
+    // survives. The old single `balanceNote` key is gone from the template.
+    balanceNotePrefix: 'Your remaining balance of',
+    balanceAmount: '$160.00',
+    balanceNoteSuffix: `runs through ${SAMPLE.operatorName}'s payment link. Already paid? You're all set.`,
     weatherDependent: true,
     weatherNote:
       `${SAMPLE.operatorName} watches the weather and contacts you directly if conditions ` +
@@ -195,6 +209,30 @@ function reminderSample(iconBase: string, logo: string | null) {
     whatsappUrl: 'https://wa.me/59995601367',
     whatsappUs: 'WhatsApp us',
     supportHours: ', daily 08:00 to 20:00.',
+
+    // The "Islanders also love..." rail. The preview shows it populated: an
+    // admin checking the template needs to SEE the block that only ships to
+    // travellers who have not opted out of marketing.
+    railTitle: 'Islanders also love...',
+    railSubhead: 'Picked to pair with your booking',
+    railOpenThisWeek: 'Open departures this week',
+    railCta: "Browse the Islanders' top picks",
+    railCtaUrl: 'https://example.com/en/curacao/tours/',
+    crossSellOneName: 'Christoffel Sunrise Hike',
+    crossSellOneImageUrl: SAMPLE.heroImage,
+    crossSellOneMetaPrefix: '★ 4.8 (212) · from ',
+    crossSellOnePrice: '$89',
+    crossSellTwoName: 'Spanish Water Kayak Tour',
+    crossSellTwoImageUrl: SAMPLE.heroImage,
+    crossSellTwoMetaPrefix: '★ 4.9 (167) · from ',
+    crossSellTwoPrice: '$65',
+    // The rail is soft-opt-in marketing inside a transactional send, so the
+    // footer promises a way out. The preview uses a dead link: minting a real
+    // token for a test render would let a click unsubscribe the admin.
+    picksNotePrefix: 'You get these picks as an Island Tours guest.',
+    picksNoteSuffix: '(your booking emails always arrive).',
+    unsubscribeLabel: 'Unsubscribe from offers',
+    unsubscribeUrl: 'https://example.com/unsubscribe/test-token',
   };
   return ctx;
 }
@@ -393,38 +431,35 @@ export class EmailTestSendService {
         );
       }
       case EmailTemplateKey.CX1_CANCELLATION: {
-        // The locked CX-1 copy through the shared notice shell — the same
-        // route sendCancellationConfirmedNotices takes (deposit-split
-        // variant, the richest branch).
-        const copy = copyFor(CANCELLATION_EMAIL_COPY, Locale.en);
-        const vars = {
-          bookingRef: SAMPLE.bookingRef,
-          tourName: SAMPLE.tourName,
-          depositPct: '30',
-          totalAmount: '$220.00',
-          operatorName: SAMPLE.operatorName,
-        };
-        const paragraphs = [
-          fillCopy(copy.processed, vars),
-          fillCopy(copy.refundDepositSplit, vars),
-          fillCopy(copy.closing, vars),
-        ];
-        return this.mail.sendBookingNoticeEmail(
-          to,
-          fillCopy(copy.subject, vars),
-          {
-            noticeTitle: copy.title,
-            bookingRef: SAMPLE.bookingRef,
-            tourName: SAMPLE.tourName,
-            dateLong: SAMPLE.dateLong,
-            startTime: SAMPLE.startTime,
-            noticeParagraphs: paragraphs,
-            ctaUrl: 'https://example.com/bookings',
-            ctaLabel: copy.cta,
-            siteLogoUrl: logo ?? '',
-            emailIconBase: iconBase,
+        // Through CX-1's OWN template and context builder — the same route
+        // sendCancellationConfirmedNotices takes. It used to render the shared
+        // notice shell, so the preview showed a green success chip and an
+        // orange CTA that the real email no longer has.
+        //
+        // operator_link + FULL is the richest branch: the deposit-split copy,
+        // which names both what we return and what the operator owes.
+        const ctx = buildCancellationEmailContext({
+          booking: {
+            displayRef: SAMPLE.bookingRef,
+            customerLocale: Locale.en,
+            currency: Currency.USD,
+            paymentModel: PaymentModel.OPERATOR_LINK,
+            cancellationRefund: CancellationRefund.FULL,
+            depositAmount: '44.00',
+            totalAmount: '220.00',
+            tourStartDateTime: null,
+            localDate: new Date('2026-05-22T00:00:00.000Z'),
           },
-          paragraphs.join('\n\n'),
+          tourName: SAMPLE.tourName,
+          operatorName: SAMPLE.operatorName,
+          site: { logoUrl: logo },
+          config: { emailIconBase: iconBase },
+        });
+        return this.mail.sendCancellationEmail(
+          to,
+          String(ctx.subjectLine),
+          ctx,
+          buildCancellationEmailText(ctx),
         );
       }
       // OB-1 previews the OPERATOR variant, which is what this key logs in
