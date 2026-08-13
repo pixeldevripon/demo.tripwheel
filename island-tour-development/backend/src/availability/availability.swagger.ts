@@ -185,9 +185,12 @@ export const ApiCloseRangeDocs = () =>
     ApiOperation({
       summary: 'Close a date range (bulk blackout)',
       description:
-        'One CLOSE_DATE per date in [from, to], one transaction, skipping ' +
-        'dates already closed. Stops new sales only - existing bookings are ' +
-        'kept. Undo with POST exceptions/reopen-range over the same bounds.',
+        'One CLOSE_DATE per date in [from, to] - for one tour (tourId), or ' +
+        'for EVERY active tour of the operator when tourId is omitted (the ' +
+        'weather-day scope; admins must pass operatorId instead). One ' +
+        'transaction, one closureBatchId, skipping dates already closed. ' +
+        'Stops new sales only - existing bookings are kept. Undo with POST ' +
+        'exceptions/reopen-range over the same bounds.',
     }),
     ApiOkResponse({ type: CloseRangeResultDto }),
     ApiNotFoundResponse({ type: NotFoundErrorDto }),

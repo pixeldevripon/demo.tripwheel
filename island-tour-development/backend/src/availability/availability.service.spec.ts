@@ -696,19 +696,41 @@ describe('AvailabilityService', () => {
 
       // Matrix v1.7 stop-sell split: the narrow seat may close/reopen but
       // never shape inventory - the SERVICE enforces the type half.
-      it('rejects ADD_SLOT / SET_CAPACITY from a stop-sell-only seat', async () => {
+      it('the stop-sell seat may add a PLAIN one-off but never name a seat count', async () => {
         staffPermissions.hasPermissions.mockResolvedValue({
           granted: false,
           missing: ['MANAGE_AVAILABILITY'],
         });
+        // Naming a capacity is a capacity change - manager+ (founder Aug 11).
         await expect(
           svc.createException('u1', Role.TOUR_OPERATOR, {
             tourId: 't1',
             date: '2030-06-05',
             type: 'ADD_SLOT',
             startTime: '18:00',
+            capacity: 12,
           }),
-        ).rejects.toThrow(/close and reopen only/);
+        ).rejects.toThrow(/capacity change/);
+        // SET_CAPACITY stays manager+ outright.
+        await expect(
+          svc.createException('u1', Role.TOUR_OPERATOR, {
+            tourId: 't1',
+            date: '2030-06-05',
+            type: 'SET_CAPACITY',
+            capacity: 12,
+          }),
+        ).rejects.toThrow(/Manage availability permission/);
+        // A plain one-off (tour's own capacity) is a date-scoped act, like a
+        // close - the narrow seat may write it.
+        prisma.availabilityException.create.mockResolvedValue(
+          exceptionRow({ type: 'ADD_SLOT', startTime: time('18:00') }),
+        );
+        await svc.createException('u1', Role.TOUR_OPERATOR, {
+          tourId: 't1',
+          date: '2030-06-05',
+          type: 'ADD_SLOT',
+          startTime: '18:00',
+        });
         // Closing stays allowed for the same seat.
         prisma.availabilityException.create.mockResolvedValue(
           exceptionRow({ type: 'CLOSE_DATE' }),
@@ -718,13 +740,13 @@ describe('AvailabilityService', () => {
           date: '2030-06-05',
           type: 'CLOSE_DATE',
         });
-        expect(prisma.availabilityException.create).toHaveBeenCalled();
+        expect(prisma.availabilityException.create).toHaveBeenCalledTimes(2);
       });
 
       // Security review 2026-07-30: the split cuts BOTH ways. Deleting an
       // ADD_SLOT/SET_CAPACITY row shapes inventory just as much as writing
       // one, so the delete path re-checks the same permission.
-      it('rejects DELETING an inventory-shaping exception from a stop-sell-only seat', async () => {
+      it('rejects UNDOING a capacity decision from a stop-sell-only seat', async () => {
         staffPermissions.hasPermissions.mockResolvedValue({
           granted: false,
           missing: ['MANAGE_AVAILABILITY'],
@@ -736,17 +758,27 @@ describe('AvailabilityService', () => {
         });
         await expect(
           svc.deleteException('u1', Role.TOUR_OPERATOR, 'x1'),
-        ).rejects.toThrow(/close and reopen only/);
+        ).rejects.toThrow(/Manage availability permission/);
         expect(prisma.availabilityException.updateMany).not.toHaveBeenCalled();
+        prisma.availabilityException.updateMany.mockResolvedValue({ count: 1 });
+        // Undoing their own one-off is within the narrow seat's reach
+        // (founder Aug 11) - otherwise the Add toast's Undo would 403.
+        prisma.availabilityException.findUnique.mockResolvedValue({
+          tourId: 't1',
+          date: day('2030-06-05'),
+          type: 'ADD_SLOT',
+        });
+        await svc.deleteException('u1', Role.TOUR_OPERATOR, 'x1');
         // Reopening a closure stays allowed for the same seat.
         prisma.availabilityException.findUnique.mockResolvedValue({
           tourId: 't1',
           date: day('2030-06-05'),
           type: 'CLOSE_DATE',
         });
-        prisma.availabilityException.updateMany.mockResolvedValue({ count: 1 });
         await svc.deleteException('u1', Role.TOUR_OPERATOR, 'x1');
-        expect(prisma.availabilityException.updateMany).toHaveBeenCalled();
+        expect(prisma.availabilityException.updateMany).toHaveBeenCalledTimes(
+          2,
+        );
       });
 
       it('applies the merged-shape floor on updateException too', async () => {
@@ -1054,7 +1086,9 @@ describe('AvailabilityService', () => {
 
     it('writes one CLOSE_DATE per day, skipping already-closed dates', async () => {
       prisma.availabilityException.findMany.mockResolvedValueOnce([
-        { date: day('2030-06-11') }, // already closed - must be skipped
+        // already closed - must be skipped (dedupe keys on tourId|date now
+        // that a range can span tours)
+        { tourId: 't1', date: day('2030-06-11') },
       ]);
       const res = await svc.closeRange('u1', Role.TOUR_OPERATOR, {
         tourId: 't1',
@@ -1093,7 +1127,7 @@ describe('AvailabilityService', () => {
 
     it('writes nothing when every date is already closed', async () => {
       prisma.availabilityException.findMany.mockResolvedValueOnce([
-        { date: day('2030-06-10') },
+        { tourId: 't1', date: day('2030-06-10') },
       ]);
       const res = await svc.closeRange('u1', Role.TOUR_OPERATOR, {
         tourId: 't1',
@@ -1116,7 +1150,7 @@ describe('AvailabilityService', () => {
       expect(prisma.availabilityException.deleteMany).not.toHaveBeenCalled();
       expect(prisma.availabilityException.updateMany).toHaveBeenCalledWith({
         where: {
-          tourId: 't1',
+          tourId: { in: ['t1'] },
           type: 'CLOSE_DATE',
           date: {
             gte: day('2030-06-10'),
@@ -1135,6 +1169,155 @@ describe('AvailabilityService', () => {
         '2030-06-10',
         '2030-06-12',
       );
+    });
+  });
+
+  // MCK-16 §4: the range tool doubles as the weather-day action, so it takes
+  // an all-tours scope - and an admin can never express a platform-wide
+  // blackout by accident.
+  describe('range scope (all tours)', () => {
+    beforeEach(() => {
+      prisma.tour.findUnique.mockResolvedValue(TOUR);
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
+      prisma.availabilityException.createMany = jest
+        .fn()
+        .mockResolvedValue({ count: 0 });
+      prisma.availabilityException.updateMany = jest
+        .fn()
+        .mockResolvedValue({ count: 2 });
+    });
+
+    it('closeRange without a tourId fans out over the operator´s tours under ONE batch id', async () => {
+      prisma.tour.findMany.mockResolvedValue([{ id: 't1' }, { id: 't2' }]);
+      prisma.availabilityException.findMany.mockResolvedValueOnce([
+        { tourId: 't2', date: day('2030-06-10') }, // t2 already closed that day
+      ]);
+      const res = await svc.closeRange('u1', Role.TOUR_OPERATOR, {
+        from: '2030-06-10',
+        to: '2030-06-11',
+        closureReason: 'NOT_RUNNING',
+      } as never);
+      expect(res).toEqual({ closed: 3, tourCount: 2 });
+      const args = prisma.availabilityException.createMany.mock.calls[0][0];
+      expect(
+        args.data.map(
+          (r: { tourId: string; date: Date }) =>
+            `${r.tourId}|${r.date.toISOString().slice(0, 10)}`,
+        ),
+      ).toEqual(['t1|2030-06-10', 't1|2030-06-11', 't2|2030-06-11']);
+      const batchIds = new Set(
+        args.data.map((r: { closureBatchId: string }) => r.closureBatchId),
+      );
+      expect(batchIds.size).toBe(1);
+      // Both tours re-projected.
+      expect(materializer.materializeTour).toHaveBeenCalledWith(
+        't1',
+        '2030-06-10',
+        '2030-06-11',
+      );
+      expect(materializer.materializeTour).toHaveBeenCalledWith(
+        't2',
+        '2030-06-10',
+        '2030-06-11',
+      );
+    });
+
+    it('an ADMIN without a tourId must name an operatorId', async () => {
+      await expect(
+        svc.closeRange('admin1', Role.ADMIN, {
+          from: '2030-06-10',
+          to: '2030-06-11',
+        }),
+      ).rejects.toThrow(/operatorId/);
+      expect(prisma.availabilityException.createMany).not.toHaveBeenCalled();
+    });
+
+    it('reopenRange without a tourId retires across the operator´s tours', async () => {
+      prisma.tour.findMany.mockResolvedValue([{ id: 't1' }, { id: 't2' }]);
+      const res = await svc.reopenRange('u1', Role.TOUR_OPERATOR, {
+        from: '2030-06-10',
+        to: '2030-06-11',
+      });
+      expect(res.reopened).toBe(2);
+      expect(prisma.availabilityException.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ tourId: { in: ['t1', 't2'] } }),
+        }),
+      );
+    });
+  });
+
+  // MCK-16 change 8: the two-flavour empty-horizon signal.
+  describe('horizonBuckets', () => {
+    const liveTour = (id: string, name: string) => ({
+      id,
+      name,
+      status: 'LIVE',
+      timeZone: 'America/Curacao',
+      bookingCutoffMinutes: 60,
+    });
+
+    it('splits dry (nothing to sell) from full (everything sold out)', async () => {
+      // The buckets reason over [today, today+30] on the island clock, so the
+      // fixture dates must sit inside the REAL horizon (a few days out keeps
+      // every cutoff comfortably in the future).
+      const soon = (offsetDays: number) =>
+        day(
+          new Date(Date.now() + offsetDays * 86_400_000)
+            .toISOString()
+            .slice(0, 10),
+        );
+      prisma.departure.findMany.mockResolvedValueOnce([
+        // t-full: two departures, both sold out (one stored, one marked).
+        departureRow({
+          id: 'f1',
+          tourId: 't-full',
+          date: soon(5),
+          status: 'SOLD_OUT',
+          // Genuinely full - a stored SOLD_OUT with free seats self-heals at
+          // read time and would count as bookable.
+          bookedCount: 10,
+          capacity: 10,
+        }),
+        departureRow({
+          id: 'f2',
+          tourId: 't-full',
+          date: soon(6),
+          status: 'CLOSED',
+          closureReason: 'SOLD_OUT',
+        }),
+        // t-dry: one departure, closed as Not running.
+        departureRow({
+          id: 'd1',
+          tourId: 't-dry',
+          date: soon(5),
+          status: 'CLOSED',
+          closureReason: 'NOT_RUNNING',
+        }),
+        // t-open: sells fine - must appear in NEITHER bucket.
+        departureRow({
+          id: 'o1',
+          tourId: 't-open',
+          date: soon(5),
+          status: 'OPEN',
+          bookedCount: 0,
+        }),
+      ]);
+      const res = await svc['horizonBuckets']([
+        liveTour('t-full', 'Full Tour'),
+        liveTour('t-dry', 'Dry Tour'),
+        liveTour('t-open', 'Open Tour'),
+        liveTour('t-empty', 'Empty Tour'), // no departures at all -> dry
+        {
+          ...liveTour('t-draft', 'Draft Tour'),
+          status: 'DRAFT',
+        }, // not LIVE -> ignored
+      ] as never);
+      expect(res.full).toEqual([{ id: 't-full', name: 'Full Tour' }]);
+      expect(res.dry.map((t: { id: string }) => t.id).sort()).toEqual([
+        't-dry',
+        't-empty',
+      ]);
     });
   });
 
