@@ -40,9 +40,14 @@ import {
     useRemoveException,
     useReopenRange,
 } from '@/hooks/trips/use-trips';
+import {
+    CLOSURE_REASON_LABEL,
+    ClosureReasonPanel,
+    ClosureReasonTabs,
+} from '@/components/common/closure-reason-panel';
 import { springPop } from '@/lib/motion';
 import { cn } from '@/lib/utils';
-import type { AgendaDeparture } from '@/types/trip';
+import type { AgendaDeparture, TourClosureReason } from '@/types/trip';
 
 /**
  * Surface B (availability review §3.3, matrix v1.6): the daily habit. One
@@ -163,6 +168,18 @@ export function AvailabilityAgenda() {
 
     const [closeDayOpen, setCloseDayOpen] = useState(false);
     const [closeDayNote, setCloseDayNote] = useState('');
+    // Default Not running: closing a whole day is almost always a not-running
+    // act; weather is Not running plus a note (MCK-15 reason map).
+    const [closeDayReason, setCloseDayReason] =
+        useState<TourClosureReason>('NOT_RUNNING');
+    // The one row a Close tap is asking the reason question about (MCK-16
+    // change 1: the reason IS the commit, on every surface that closes).
+    // Only the ID is stored - the row itself is re-derived from live data
+    // each render, so a background refetch that closes/sells the departure
+    // under the open dialog dismisses it instead of committing against
+    // vanished state (the DayPopover panelStale convention).
+    const [closeSlotId, setCloseSlotId] = useState<string | null>(null);
+    const [closeSlotNote, setCloseSlotNote] = useState('');
 
     // Week-strip selection + collapsible day groups (both default to open /
     // today). Selecting a day scrolls to its group and force-opens it.
@@ -173,6 +190,14 @@ export function AvailabilityAgenda() {
     const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
 
     const busy = isWriting || isRemoving || isClosingDay;
+    // Re-derived from live data each render: a refetch that closed, filled or
+    // dropped the row while the reason dialog was open makes the target null
+    // and the dialog dismisses, instead of committing against vanished state.
+    const closeSlotTarget = closeSlotId
+        ? (data?.days
+              .flatMap(d => d.departures)
+              .find(r => r.id === closeSlotId && r.status === 'OPEN') ?? null)
+        : null;
     // The island's REAL today - captured from the default (from=null) window,
     // whose first day the backend anchors on the island clock. It must
     // survive the rail moving the window into the future, or "Today"/"Close
@@ -248,14 +273,16 @@ export function AvailabilityAgenda() {
                 date,
                 tourId: tourFilter ?? undefined,
                 note: closeDayNote.trim() || undefined,
+                closureReason: closeDayReason,
             },
             {
                 onSuccess: ({ closed, tourIds }) => {
                     setCloseDayOpen(false);
                     setCloseDayNote('');
+                    setCloseDayReason('NOT_RUNNING');
                     toast.success(
                         closed > 0
-                            ? `Closed today across ${closed} tour${closed === 1 ? '' : 's'}. New sales stopped; booked guests keep their bookings.`
+                            ? `Closed today across ${closed} tour${closed === 1 ? '' : 's'} · ${CLOSURE_REASON_LABEL[closeDayReason]}. New sales stopped; booked guests keep their bookings.`
                             : 'Today was already closed.',
                         closed > 0
                             ? {
@@ -306,7 +333,7 @@ export function AvailabilityAgenda() {
         );
     }
 
-    function closeRow(row: AgendaDeparture) {
+    function closeRow(row: AgendaDeparture, closureReason: TourClosureReason) {
         createException(
             {
                 tripId: row.tourId,
@@ -314,13 +341,18 @@ export function AvailabilityAgenda() {
                     date: row.date,
                     type: 'CLOSE_SLOT',
                     startTime: row.startTime,
+                    closureReason,
+                    note: closeSlotNote.trim() || undefined,
                 },
             },
             {
-                onSuccess: () =>
+                onSuccess: () => {
+                    setCloseSlotId(null);
+                    setCloseSlotNote('');
                     toast.success(
-                        `Closed the ${row.startTime} ${row.tourName} departure. New sales stopped; booked guests keep their bookings.`
-                    ),
+                        `Closed the ${row.startTime} ${row.tourName} departure · ${CLOSURE_REASON_LABEL[closureReason]}. New sales stopped; booked guests keep their bookings.`
+                    );
+                },
                 onError: err =>
                     toast.error(
                         err instanceof Error
@@ -610,7 +642,9 @@ export function AvailabilityAgenda() {
                                                 key={row.id}
                                                 row={row}
                                                 busy={busy}
-                                                onClose={() => closeRow(row)}
+                                                onClose={() =>
+                                                    setCloseSlotId(row.id)
+                                                }
                                                 onReopen={() =>
                                                     reopenRow(row)
                                                 }
@@ -634,7 +668,17 @@ export function AvailabilityAgenda() {
                 </Button>
             )}
 
-            <Dialog open={closeDayOpen} onOpenChange={setCloseDayOpen}>
+            <Dialog
+                open={closeDayOpen}
+                onOpenChange={open => {
+                    setCloseDayOpen(open);
+                    // A note or reason abandoned on Cancel must never ride
+                    // along with the NEXT close (the openPanel convention).
+                    if (!open) {
+                        setCloseDayNote('');
+                        setCloseDayReason('NOT_RUNNING');
+                    }
+                }}>
                 <DialogContent className='sm:max-w-md'>
                     <DialogHeader>
                         <DialogTitle>
@@ -653,10 +697,16 @@ export function AvailabilityAgenda() {
                                 `${todayBooked} booked guest${todayBooked === 1 ? '' : 's'} keep their bookings. Guests are not notified - contact booked guests yourself if the day will not run.`}
                         </DialogDescription>
                     </DialogHeader>
+                    {/* The same two answers as every other close (MCK-16
+                        change 1). Weather is Not running plus a note. */}
+                    <ClosureReasonTabs
+                        value={closeDayReason}
+                        onValueChange={setCloseDayReason}
+                    />
                     <Input
                         value={closeDayNote}
                         onChange={e => setCloseDayNote(e.target.value)}
-                        placeholder='Reason (optional), e.g. Weather'
+                        placeholder='Note (optional), e.g. Weather'
                         maxLength={500}
                     />
                     <DialogFooter>
@@ -679,6 +729,48 @@ export function AvailabilityAgenda() {
                             Close today
                         </Button>
                     </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* The close question for a single row (MCK-16 change 1): the
+                reason IS the commit - same shared panel as every close. */}
+            <Dialog
+                open={closeSlotTarget !== null}
+                onOpenChange={open => {
+                    if (!open) {
+                        setCloseSlotId(null);
+                        setCloseSlotNote('');
+                    }
+                }}>
+                <DialogContent className='sm:max-w-sm'>
+                    <DialogHeader>
+                        <DialogTitle>
+                            {closeSlotTarget
+                                ? `Close ${closeSlotTarget.startTime} · ${closeSlotTarget.tourName}?`
+                                : 'Close departure?'}
+                        </DialogTitle>
+                    </DialogHeader>
+                    {closeSlotTarget && (
+                        <ClosureReasonPanel
+                            question={`Why are you closing the ${closeSlotTarget.startTime} departure?`}
+                            reassurance={
+                                closeSlotTarget.bookedCount > 0
+                                    ? `${closeSlotTarget.bookedCount} booked guest${closeSlotTarget.bookedCount === 1 ? '' : 's'} keep their booking${closeSlotTarget.bookedCount === 1 ? '' : 's'}. Closing only stops new sales.`
+                                    : 'This only stops new sales. Existing bookings are always kept.'
+                            }
+                            note={closeSlotNote}
+                            onNoteChange={setCloseSlotNote}
+                            busy={busy}
+                            pending={isWriting}
+                            onCommit={reason =>
+                                closeRow(closeSlotTarget, reason)
+                            }
+                            onCancel={() => {
+                                setCloseSlotId(null);
+                                setCloseSlotNote('');
+                            }}
+                        />
+                    )}
                 </DialogContent>
             </Dialog>
         </div>
@@ -783,7 +875,19 @@ function AgendaRow({ row, busy, onClose, onReopen }: AgendaRowProps) {
                 <>
                     <span className='text-xs text-muted-foreground'>
                         {row.closure
-                            ? `Closed by ${row.closure.createdByName ?? 'your team'}, ${format(new Date(row.closure.createdAt), 'HH:mm')}${row.closure.note ? ` · ${row.closure.note}` : ''}`
+                            ? // The reason leads (MCK-16 change 5); the side
+                              // labels a platform closure (change 10).
+                              `${row.closure.closureReason ? `${CLOSURE_REASON_LABEL[row.closure.closureReason]} · ` : ''}Closed by ${
+                                  row.closure.createdByName ??
+                                  (row.closure.createdBySide === 'PLATFORM'
+                                      ? 'Island Tours'
+                                      : 'your team')
+                              }${
+                                  row.closure.createdBySide === 'PLATFORM' &&
+                                  row.closure.createdByName
+                                      ? ' (Island Tours)'
+                                      : ''
+                              }, ${format(new Date(row.closure.createdAt), 'HH:mm')}${row.closure.note ? ` · ${row.closure.note}` : ''}`
                             : 'Closed'}
                     </span>
                     {row.closure && (
