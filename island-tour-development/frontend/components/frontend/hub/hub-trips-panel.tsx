@@ -11,7 +11,7 @@ import { crossFade, springPop } from '@/lib/motion';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Reveal } from '../reveal';
 import { useOptionalHubDate } from './hub-date-context';
 import { HubPicks, type HubPicksData } from './hub-picks';
@@ -222,10 +222,10 @@ export function HubTripsPanel({
                 )}
             </Reveal>
 
-            {/* Card groups - single ungrouped grid, or titled groups separated by
-                dividers (Figma "Private charters"). Narrowed to `filteredGroups`
-                when a date is picked; dimmed while a check is in flight; replaced
-                by an empty state when nothing runs on the chosen day. */}
+            {/* Card groups - single ungrouped grid, or titled groups ("Private
+                charters"). Narrowed to `filteredGroups` when a date is picked;
+                dimmed while a check is in flight; replaced by an empty state
+                when nothing runs on the chosen day. */}
             {isEmpty ? (
                 <motion.div
                     initial={{ opacity: 0, y: 8 }}
@@ -249,36 +249,32 @@ export function HubTripsPanel({
                     className={`flex flex-col transition-opacity duration-300 ${grouped ? 'gap-8 md:gap-12' : ''} ${checking ? 'opacity-60' : ''}`}>
                     {grouped
                         ? filteredGroups.map((group, gi) => (
-                              <Fragment key={group.title ?? gi}>
-                                  <div
-                                      className='h-px w-full bg-it-heading/10'
-                                      aria-hidden='true'
-                                  />
-                                  <div className='flex flex-col gap-6'>
-                                      {group.title && (
-                                          <Reveal>
-                                              <h3 className='m-0 mt-4 border-t border-it-divider pt-[22px] text-[13px] font-bold uppercase tracking-[0.06em] text-it-ink'>
-                                                  {group.title}
-                                              </h3>
+                              <div
+                                  key={group.title ?? gi}
+                                  className='flex flex-col gap-6'>
+                                  {group.title && (
+                                      <Reveal>
+                                          <h3 className='m-0 text-[13px] font-bold uppercase tracking-[0.06em] text-it-ink'>
+                                              {group.title}
+                                          </h3>
+                                      </Reveal>
+                                  )}
+                                  <div className={GRID}>
+                                      {group.tours.map((tour, i) => (
+                                          <Reveal key={tour.id} listItem>
+                                              <HubTourCard
+                                                  tour={tour}
+                                                  dict={card}
+                                                  // First card of the panel
+                                                  // (first group only).
+                                                  highlighted={
+                                                      gi === 0 && i === 0
+                                                  }
+                                              />
                                           </Reveal>
-                                      )}
-                                      <div className={GRID}>
-                                          {group.tours.map((tour, i) => (
-                                              <Reveal key={tour.id} listItem>
-                                                  <HubTourCard
-                                                      tour={tour}
-                                                      dict={card}
-                                                      // First card of the panel
-                                                      // (first group only).
-                                                      highlighted={
-                                                          gi === 0 && i === 0
-                                                      }
-                                                  />
-                                              </Reveal>
-                                          ))}
-                                      </div>
+                                      ))}
                                   </div>
-                              </Fragment>
+                              </div>
                           ))
                         : filteredGroups[0] && (
                               <div className={GRID}>
