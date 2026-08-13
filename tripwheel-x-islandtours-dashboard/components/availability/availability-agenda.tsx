@@ -3,11 +3,21 @@
 import { ArrowDown01Icon, Loading03Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { format } from 'date-fns';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
+import {
+    CLOSURE_REASON_LABEL,
+    ClosureReasonPanel,
+    ClosureReasonTabs,
+} from '@/components/common/closure-reason-panel';
+import {
+    DEPARTURE_DOT_CLASS,
+    DEPARTURE_STATE_LABEL,
+    departureState,
+} from '@/components/common/departure-states';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import {
@@ -40,18 +50,8 @@ import {
     useRemoveException,
     useReopenRange,
 } from '@/hooks/trips/use-trips';
-import {
-    CLOSURE_REASON_LABEL,
-    ClosureReasonPanel,
-    ClosureReasonTabs,
-} from '@/components/common/closure-reason-panel';
-import {
-    DEPARTURE_DOT_CLASS,
-    DEPARTURE_STATE_LABEL,
-    departureState,
-} from '@/components/common/departure-states';
-import { springPop } from '@/lib/motion';
 import { islandTime } from '@/lib/island-time';
+import { springPop } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import type { AgendaDeparture, TourClosureReason } from '@/types/trip';
 
@@ -209,7 +209,7 @@ export function AvailabilityAgenda() {
     const tourZoneById = new Map(
         (data?.tours ?? [])
             .filter(t => !!t.timeZone)
-            .map(t => [t.id, t.timeZone as string]),
+            .map(t => [t.id, t.timeZone as string])
     );
     // The island's REAL today - captured from the default (from=null) window,
     // whose first day the backend anchors on the island clock. It must
@@ -318,8 +318,7 @@ export function AvailabilityAgenda() {
                                               )
                                           ).then(results => {
                                               const failed = results.filter(
-                                                  r =>
-                                                      r.status === 'rejected'
+                                                  r => r.status === 'rejected'
                                               ).length;
                                               if (failed === 0) {
                                                   toast.success(
@@ -368,9 +367,7 @@ export function AvailabilityAgenda() {
                 },
                 onError: err =>
                     toast.error(
-                        err instanceof Error
-                            ? err.message
-                            : 'Failed to close.'
+                        err instanceof Error ? err.message : 'Failed to close.'
                     ),
             }
         );
@@ -387,9 +384,7 @@ export function AvailabilityAgenda() {
                     ),
                 onError: err =>
                     toast.error(
-                        err instanceof Error
-                            ? err.message
-                            : 'Failed to reopen.'
+                        err instanceof Error ? err.message : 'Failed to reopen.'
                     ),
             }
         );
@@ -407,8 +402,8 @@ export function AvailabilityAgenda() {
     if (!data || data.tours.length === 0) {
         return (
             <p className='py-12 text-center text-sm text-muted-foreground'>
-                No tours yet. Availability appears here once your first tour
-                has a schedule.
+                No tours yet. Availability appears here once your first tour has
+                a schedule.
             </p>
         );
     }
@@ -427,7 +422,7 @@ export function AvailabilityAgenda() {
             <div className='flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3'>
                 <div className='min-w-0'>
                     <p className='text-sm font-medium'>
-                        Confirm today&apos;s availability
+                        Confirm today's availability
                     </p>
                     <p className='text-xs text-muted-foreground'>
                         Checked the list and it matches reality? Confirm to
@@ -449,8 +444,7 @@ export function AvailabilityAgenda() {
                     disabled={isConfirming || !!confirmedNow}
                     onClick={() =>
                         confirmAvailability(undefined, {
-                            onSuccess: res =>
-                                setConfirmedNow(res.confirmedAt),
+                            onSuccess: res => setConfirmedNow(res.confirmedAt),
                         })
                     }>
                     {isConfirming && (
@@ -534,26 +528,21 @@ export function AvailabilityAgenda() {
                 <div className='ml-auto flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground'>
                     {/* The SHARED four-state vocabulary (MCK-16 change 9) -
                         the legend must teach exactly what the rows render. */}
-                    {(
-                        [
-                            'open',
-                            'soldOut',
-                            'closed',
-                            'cancelled',
-                        ] as const
-                    ).map(state => (
-                        <span
-                            key={state}
-                            className='flex items-center gap-1.5'>
+                    {(['open', 'soldOut', 'closed', 'cancelled'] as const).map(
+                        state => (
                             <span
-                                className={cn(
-                                    'size-2 rounded-full',
-                                    DEPARTURE_DOT_CLASS[state],
-                                )}
-                            />
-                            {DEPARTURE_STATE_LABEL[state]}
-                        </span>
-                    ))}
+                                key={state}
+                                className='flex items-center gap-1.5'>
+                                <span
+                                    className={cn(
+                                        'size-2 rounded-full',
+                                        DEPARTURE_DOT_CLASS[state]
+                                    )}
+                                />
+                                {DEPARTURE_STATE_LABEL[state]}
+                            </span>
+                        )
+                    )}
                 </div>
             </div>
 
@@ -580,9 +569,7 @@ export function AvailabilityAgenda() {
                                         {dayHeading(d.date, todayKey)}
                                         <span className='text-xs font-normal text-muted-foreground'>
                                             {format(
-                                                new Date(
-                                                    `${d.date}T00:00:00`
-                                                ),
+                                                new Date(`${d.date}T00:00:00`),
                                                 'd MMM'
                                             )}
                                         </span>
@@ -595,11 +582,11 @@ export function AvailabilityAgenda() {
                                     </h2>
                                     {isFetching &&
                                         d.date === data.days[0]?.date && (
-                                        <HugeiconsIcon
-                                            icon={Loading03Icon}
-                                            className='size-3 animate-spin text-muted-foreground'
-                                        />
-                                    )}
+                                            <HugeiconsIcon
+                                                icon={Loading03Icon}
+                                                className='size-3 animate-spin text-muted-foreground'
+                                            />
+                                        )}
                                     <motion.span
                                         animate={{ rotate: open ? 180 : 0 }}
                                         transition={
@@ -664,16 +651,14 @@ export function AvailabilityAgenda() {
                                                 row={row}
                                                 timeZone={
                                                     tourZoneById.get(
-                                                        row.tourId,
+                                                        row.tourId
                                                     ) ?? undefined
                                                 }
                                                 busy={busy}
                                                 onClose={() =>
                                                     setCloseSlotId(row.id)
                                                 }
-                                                onReopen={() =>
-                                                    reopenRow(row)
-                                                }
+                                                onReopen={() => reopenRow(row)}
                                             />
                                         ))}
                                     </div>
@@ -946,3 +931,4 @@ function AgendaRow({ row, timeZone, busy, onClose, onReopen }: AgendaRowProps) {
         </div>
     );
 }
+

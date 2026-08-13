@@ -26,15 +26,27 @@ interface Positioned {
     top: number;
     lane: number;
     lanes: number;
+    /** Final geometry (percent of the column) - lane/lanes resolved against
+     *  the item's own VISUAL overlap component, so a two-departure band
+     *  stretches to full width even when the 07:00 rush needed three lanes. */
+    leftPct: number;
+    widthPct: number;
 }
 
 /** A same-time cluster's hidden tail, rendered as one "+N" chip. */
 interface OverflowGroup {
     key: string;
     top: number;
+    lane: number;
     lanes: number;
+    leftPct: number;
+    widthPct: number;
     deps: OverviewDeparture[];
 }
+
+/** Rendered chip height (h-12). Two items overlap VISUALLY when their tops
+ *  are closer than this - the test the width post-pass uses. */
+const CHIP_PX = 48;
 
 function minutesOf(dep: OverviewDeparture): number {
     const [h, m] = dep.startTime.split(':').map(Number);
@@ -59,7 +71,9 @@ function layoutDay(
     );
     const chips: Positioned[] = [];
     const overflows: OverflowGroup[] = [];
-    let cluster: (Omit<Positioned, 'lanes'> & { start: number })[] = [];
+    let cluster: (Omit<Positioned, 'lanes' | 'leftPct' | 'widthPct'> & {
+        start: number;
+    })[] = [];
     let laneEnds: number[] = [];
     let clusterEnd = -1;
     const flush = () => {
@@ -71,14 +85,24 @@ function layoutDay(
         const hidden = cluster.filter((c) => c.lane >= laneCutoff);
         for (const c of cluster) {
             if (c.lane < laneCutoff) {
-                chips.push({ dep: c.dep, lane: c.lane, top: c.top, lanes });
+                chips.push({
+                    dep: c.dep,
+                    lane: c.lane,
+                    top: c.top,
+                    lanes,
+                    leftPct: (c.lane / lanes) * 100,
+                    widthPct: 100 / lanes,
+                });
             }
         }
         if (hidden.length > 0) {
             overflows.push({
                 key: `${hidden[0].dep.id}-overflow`,
                 top: Math.min(...hidden.map((c) => c.top)),
+                lane: lanes - 1,
                 lanes,
+                leftPct: ((lanes - 1) / lanes) * 100,
+                widthPct: 100 / lanes,
                 deps: hidden.map((c) => c.dep),
             });
         }
@@ -104,6 +128,59 @@ function layoutDay(
         });
     }
     flush();
+
+    // Width post-pass (founder feedback 2026-08-13): a band with free space
+    // stretches its chips into it. The 60-minute occupancy above chains a
+    // whole morning into one cluster, so a two-departure 08:00 band was stuck
+    // at third-width because the 07:00 rush needed three lanes. Here every
+    // VISUAL overlap component (rendered chips + "+N" chips whose tops sit
+    // within one chip height) re-derives geometry from the DISTINCT lanes it
+    // actually uses. Safe by construction: pass one never gives two
+    // overlapping rendered items the same lane, so the compact remap keeps
+    // them apart.
+    const items: { top: number; lane: number; set: (l: number, w: number) => void }[] = [
+        ...chips.map((c) => ({
+            top: c.top,
+            lane: c.lane,
+            set: (l: number, w: number) => {
+                c.leftPct = l;
+                c.widthPct = w;
+            },
+        })),
+        ...overflows.map((o) => ({
+            top: o.top,
+            lane: o.lane,
+            set: (l: number, w: number) => {
+                o.leftPct = l;
+                o.widthPct = w;
+            },
+        })),
+    ];
+    // Connected components over visual overlap, via index-sorted sweep.
+    const order = items.map((_, i) => i).sort((a, b) => items[a].top - items[b].top);
+    let component: number[] = [];
+    let componentEnd = -Infinity;
+    const finishComponent = () => {
+        if (component.length === 0) return;
+        const laneSet = [...new Set(component.map((i) => items[i].lane))].sort(
+            (a, b) => a - b,
+        );
+        const width = 100 / laneSet.length;
+        for (const i of component) {
+            items[i].set(laneSet.indexOf(items[i].lane) * width, width);
+        }
+        component = [];
+        componentEnd = -Infinity;
+    };
+    for (const i of order) {
+        if (component.length > 0 && items[i].top >= componentEnd) {
+            finishComponent();
+        }
+        component.push(i);
+        componentEnd = Math.max(componentEnd, items[i].top + CHIP_PX);
+    }
+    finishComponent();
+
     return { chips, overflows };
 }
 
@@ -374,18 +451,26 @@ export function CalendarTimeGrid({
                                     />
                                 ))}
 
-                                {/* 03 §8.3: runtime geometry travels through
+                                {/* Chips live in an inset layer so the
+                                    column's left/right breathing room matches
+                                    the month view's cell padding (founder
+                                    feedback 2026-08-13). pointer-events-none
+                                    keeps empty-space clicks landing on the
+                                    hour cells; each chip re-enables its own.
+
+                                    03 §8.3: runtime geometry travels through
                                     CSS custom properties; the spread keeps a
                                     literal `style` attribute out of the JSX. */}
-                                {chips.map(({ dep, top, lane, lanes }) => (
+                                <div className='pointer-events-none absolute inset-y-0 left-1 right-1'>
+                                {chips.map(({ dep, top, leftPct, widthPct }) => (
                                     <div
                                         key={dep.id}
-                                        className='absolute h-12 overflow-hidden px-0.5 top-(--dep-top) left-(--dep-left) w-(--dep-w)'
+                                        className='pointer-events-auto absolute h-12 overflow-hidden px-0.5 top-(--dep-top) left-(--dep-left) w-(--dep-w)'
                                         {...{
                                             style: {
                                                 '--dep-top': `${top + 1}px`,
-                                                '--dep-left': `${(lane / lanes) * 100}%`,
-                                                '--dep-w': `${100 / lanes}%`,
+                                                '--dep-left': `${leftPct}%`,
+                                                '--dep-w': `${widthPct}%`,
                                             } as React.CSSProperties,
                                         }}>
                                         <DepartureChip
@@ -409,12 +494,12 @@ export function CalendarTimeGrid({
                                 {overflows.map((group) => (
                                     <div
                                         key={group.key}
-                                        className='absolute h-12 px-0.5 top-(--dep-top) left-(--dep-left) w-(--dep-w)'
+                                        className='pointer-events-auto absolute h-12 px-0.5 top-(--dep-top) left-(--dep-left) w-(--dep-w)'
                                         {...{
                                             style: {
                                                 '--dep-top': `${group.top + 1}px`,
-                                                '--dep-left': `${((group.lanes - 1) / group.lanes) * 100}%`,
-                                                '--dep-w': `${100 / group.lanes}%`,
+                                                '--dep-left': `${group.leftPct}%`,
+                                                '--dep-w': `${group.widthPct}%`,
                                             } as React.CSSProperties,
                                         }}>
                                         <button
@@ -427,6 +512,7 @@ export function CalendarTimeGrid({
                                         </button>
                                     </div>
                                 ))}
+                                </div>
 
                                 {day.date === today && nowTop !== null && (
                                     <div

@@ -48,7 +48,7 @@ import {
     DEPARTURE_STATE_LABEL,
     type CalendarDepartureState,
 } from '@/components/common/departure-states';
-import { islandTime } from '@/lib/island-time';
+import { PLATFORM_HOME_TIMEZONE, islandTime } from '@/lib/island-time';
 import {
     CalendarTourMetaProvider,
     type CalendarTourMeta,
@@ -175,6 +175,25 @@ export function GlobalCalendar() {
         if (!isAdmin) confirmMutate(undefined);
     }, [isAdmin, confirmMutate]);
     const [confirmedNow, setConfirmedNow] = useState<string | null>(null);
+    // The confirmed state must survive a reload (founder feedback
+    // 2026-08-13): the visit already stamped every tour, so when the STALEST
+    // stamp is on the island's today the card says so instead of asking
+    // again. `confirmedNow` only bridges the moment before the refetch.
+    const lastConfirmedAt = data?.lastConfirmedAt ?? null;
+    const islandZone = data?.tours?.[0]?.timeZone;
+    const confirmedToday = useMemo(() => {
+        if (!lastConfirmedAt || !data?.today) return false;
+        try {
+            return (
+                new Intl.DateTimeFormat('en-CA', {
+                    timeZone: islandZone ?? PLATFORM_HOME_TIMEZONE,
+                }).format(new Date(lastConfirmedAt)) === data.today
+            );
+        } catch {
+            return false;
+        }
+    }, [lastConfirmedAt, data?.today, islandZone]);
+    const confirmed = !!confirmedNow || confirmedToday;
 
     const tours = useMemo(() => data?.tours ?? [], [data]);
     const operatorNameById = useMemo(
@@ -495,24 +514,27 @@ export function GlobalCalendar() {
                     ) : (
                         <div className='rounded-lg border border-border/70 p-3'>
                             <p className='text-xs font-medium'>
-                                {confirmedNow
-                                    ? 'Confirmed just now'
-                                    : 'Confirm today&apos;s availability'}
+                                {confirmed
+                                    ? 'Confirmed today'
+                                    : `Confirm today's availability`}
                             </p>
                             <p className='mt-1 text-2xs leading-relaxed text-muted-foreground'>
-                                {confirmedNow
-                                    ? 'All your tours are stamped. The nudge email will not fire.'
-                                    : data?.lastConfirmedAt
-                                      ? `Last confirmed ${islandTime(data.lastConfirmedAt, tours[0]?.timeZone)}. Tell us the day is right, or close what is not.`
+                                {confirmed
+                                    ? `All your tours are stamped${
+                                          confirmedNow || lastConfirmedAt
+                                              ? ` (${islandTime(confirmedNow ?? (lastConfirmedAt as string), islandZone, { day: false })})`
+                                              : ''
+                                      }. The nudge email will not fire.`
+                                    : lastConfirmedAt
+                                      ? `Last confirmed ${islandTime(lastConfirmedAt, islandZone)}. Tell us the day is right, or close what is not.`
                                       : 'Tell us the day is right, or close what is not.'}
                             </p>
                             <Button
                                 size='sm'
-                                variant={confirmedNow ? 'outline' : 'default'}
+                                variant={confirmed ? 'outline' : 'default'}
                                 className='mt-2 h-8 w-full'
                                 disabled={
-                                    confirmAvailability.isPending ||
-                                    !!confirmedNow
+                                    confirmAvailability.isPending || confirmed
                                 }
                                 onClick={() =>
                                     confirmAvailability.mutate(undefined, {
@@ -520,7 +542,7 @@ export function GlobalCalendar() {
                                             setConfirmedNow(res.confirmedAt),
                                     })
                                 }>
-                                {confirmedNow
+                                {confirmed
                                     ? 'Confirmed ✓'
                                     : 'Yes, today is right'}
                             </Button>
