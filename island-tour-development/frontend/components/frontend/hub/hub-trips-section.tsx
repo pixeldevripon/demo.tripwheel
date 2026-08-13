@@ -1,6 +1,12 @@
 'use client';
 
-import { useEffect, useRef, useState, type ReactElement } from 'react';
+import {
+    useEffect,
+    useRef,
+    useState,
+    type ReactElement,
+    type ReactNode,
+} from 'react';
 import type { HubTourCardDict } from './hub-tour-card';
 import {
     HubTripsPanel,
@@ -33,32 +39,42 @@ export type { HubTripsPanelData, HubCardGroup } from './hub-trips-panel';
  * of the section currently under the bar (scrollspy). Tabs without a designed
  * panel are inert. The bar sticks below the fixed navbar (h-18/20).
  *
- * The sticky tab bar is scoped to every section up to (but not including) the
- * "discover" tab: its containing block ends where Discover begins, so the bar
- * releases and scrolls away once the reader reaches Discover. Clicking the
- * Discover tab still scrolls there (it targets the section ref directly).
+ * The bar stays stuck all the way to the footer: the trailing page sections
+ * (First timers / FAQ / Also worth) render as `children` inside the sticky
+ * scope, so a reader deep in the page always has a way back to Trips. Those
+ * sections are not tabs - past the end of the last panel (Discover) no tab
+ * is highlighted.
  */
-export function HubTripsSection({ dict }: { dict: HubTripsDict }) {
-    const [active, setActive] = useState(0);
+export function HubTripsSection({
+    dict,
+    children,
+}: {
+    dict: HubTripsDict;
+    /** Page sections below the panels that the bar should keep sticking over. */
+    children?: ReactNode;
+}) {
+    const [active, setActive] = useState<number | null>(0);
     const tabBarRef = useRef<HTMLDivElement>(null);
     const sectionRefs = useRef<(HTMLElement | null)[]>([]);
 
-    // Index where the sticky scope ends - the "discover" tab and everything
-    // after it render outside the sticky containing block. Falls back to the
-    // full list when there is no Discover tab (bar sticks through every section).
-    const discoverIndex = dict.tabs.findIndex((t) => t.key === 'discover');
-    const stickyEnd = discoverIndex === -1 ? dict.panels.length : discoverIndex;
-
     // Scrollspy - the active tab is the last section whose top has scrolled
-    // above the bottom edge of the sticky bar.
+    // above the bottom edge of the sticky bar. Once the bottom of the last
+    // section (Discover) passes that line, no section is current, so nothing
+    // is highlighted (the trailing children are not tabs).
     useEffect(() => {
         const onScroll = () => {
             const line = (tabBarRef.current?.getBoundingClientRect().bottom ?? 0) + 8;
-            let current = 0;
-            dict.panels.forEach((panel, i) => {
+            let current: number | null = 0;
+            let lastEl: HTMLElement | null = null;
+            for (let i = 0; i < dict.panels.length; i++) {
                 const el = sectionRefs.current[i];
-                if (panel && el && el.getBoundingClientRect().top <= line) current = i;
-            });
+                if (!dict.panels[i] || !el) continue;
+                if (el.getBoundingClientRect().top <= line) current = i;
+                lastEl = el;
+            }
+            if (lastEl && lastEl.getBoundingClientRect().bottom < line) {
+                current = null;
+            }
             setActive(current);
         };
         window.addEventListener('scroll', onScroll, { passive: true });
@@ -70,15 +86,14 @@ export function HubTripsSection({ dict }: { dict: HubTripsDict }) {
 
     const goTo = (i: number) => {
         // Resolve by id (DOM lookup) rather than the ref array, so navigation
-        // works regardless of which scope a section renders in (the sticky scope
-        // or the trailing Discover block) and is immune to ref-attachment timing.
+        // is immune to ref-attachment timing.
         const el =
             document.getElementById(sectionId(i)) ?? sectionRefs.current[i];
         if (!el) return;
         // Manual offset scroll (not scrollIntoView): lands the section just below
-        // the fixed navbar + sticky bar, and is reliable when the bar releases at
-        // the trailing (Discover) section and during the scrollspy re-renders that
-        // fire mid-animation. Matches the sections' scroll-mt (130 / 152px).
+        // the fixed navbar + sticky bar, and is reliable during the scrollspy
+        // re-renders that fire mid-animation. Matches the sections' scroll-mt
+        // (130 / 152px).
         const offset = window.innerWidth >= 768 ? 152 : 130;
         const top = el.getBoundingClientRect().top + window.scrollY - offset;
         window.scrollTo({ top, behavior: 'smooth' });
@@ -114,43 +129,45 @@ export function HubTripsSection({ dict }: { dict: HubTripsDict }) {
     };
 
     return (
-        <section className='bg-it-white pt-7 pb-16'>
-            <div className='it-container'>
-                {/* Sticky scope: the bar's containing block ends here, so it
-                    releases when the trailing (Discover) sections begin. */}
-                <div>
-                    {/* Sticky scroll-nav - sits below the fixed navbar. */}
-                    <div
-                        ref={tabBarRef}
-                        className='sticky top-16 z-40 bg-(--it-frow-bg) backdrop-blur-[8px]'>
-                        <HubTripsTabs
-                            tabs={dict.tabs}
-                            active={active}
-                            onChange={goTo}
-                        />
-                    </div>
+        // Sticky scope: the bar's containing block spans the panels AND the
+        // trailing page sections (children), so the bar only releases at the
+        // very bottom of the page content, right before the footer.
+        <div>
+            {/* The trips section's old pt-7, kept outside the sticky strip so
+                the bar's natural resting position is unchanged. */}
+            <div className='h-7 bg-it-white' />
 
-                    {/* Sticky-scoped sections - each is a scroll target. */}
+            {/* Sticky scroll-nav - a full-bleed frosted strip below the fixed
+                navbar (it also rides over the surface-tinted trailing sections,
+                so it bleeds edge to edge like the navbar). The baseline hairline
+                lives on the strip so it spans the full band, not just the
+                container. (No position:fixed children may live in here -
+                backdrop-filter creates a containing block.) */}
+            <div
+                ref={tabBarRef}
+                className='sticky top-16 z-40 border-b border-it-divider bg-(--it-frow-bg) backdrop-blur-[8px]'>
+                <div className='it-container'>
+                    <HubTripsTabs
+                        tabs={dict.tabs}
+                        active={active}
+                        onChange={goTo}
+                    />
+                </div>
+            </div>
+
+            <section className='bg-it-white pb-16'>
+                <div className='it-container'>
+                    {/* Stacked sections - each is a scroll target. The gap also
+                        covers the old trailing block's leading padding. */}
                     <div className='flex flex-col gap-12 pt-6 md:gap-[72px] md:pt-9'>
-                        {dict.panels
-                            .slice(0, stickyEnd)
-                            .map((panel, i) => renderPanel(panel, i))}
+                        {dict.panels.map((panel, i) => renderPanel(panel, i))}
                     </div>
                 </div>
+            </section>
 
-                {/* Trailing sections (Discover) - outside the sticky scope, so the
-                    tab bar is no longer sticky here. The leading spacing matches
-                    the inter-section gap above. */}
-                {stickyEnd < dict.panels.length && (
-                    <div className='flex flex-col gap-12 pt-12 md:gap-[72px] md:pt-[72px]'>
-                        {dict.panels
-                            .slice(stickyEnd)
-                            .map((panel, offset) =>
-                                renderPanel(panel, stickyEnd + offset),
-                            )}
-                    </div>
-                )}
-            </div>
-        </section>
+            {/* Trailing page sections (First timers / FAQ / Also worth) - inside
+                the sticky scope so the bar keeps showing over them. */}
+            {children}
+        </div>
     );
 }

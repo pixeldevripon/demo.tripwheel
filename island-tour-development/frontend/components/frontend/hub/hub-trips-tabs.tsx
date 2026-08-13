@@ -15,7 +15,8 @@ export type HubTripsTab = { key: string; label: string };
  * Horizontal-scroll on mobile with a full-width baseline hairline; the active
  * tab carries the orange underline (a shared-layoutId span that slides between
  * tabs) + dark medium text. 16px mobile / 20px desktop. Controlled by the
- * parent (`active` index + `onChange`).
+ * parent (`active` index + `onChange`; `null` = no section is current, e.g.
+ * scrolled past the last tabbed section, so no tab is highlighted).
  *
  * Carries the same follow-the-active-tab scrolling and right-edge fade as the
  * tour page's section tabs (Pastel #56 asks for the two to stay consistent).
@@ -29,19 +30,23 @@ export function HubTripsTabs({
     onChange,
 }: {
     tabs: HubTripsTab[];
-    active: number;
+    active: number | null;
     onChange: (index: number) => void;
 }) {
     const scrollRef = useDragScroll<HTMLDivElement>();
     const { left, right } = useScrollOverflow(scrollRef);
     const reduce = useReducedMotion();
-    useTabAutoScroll(scrollRef, tabs[active]?.key ?? '', !!reduce);
+    useTabAutoScroll(
+        scrollRef,
+        active == null ? '' : (tabs[active]?.key ?? ''),
+        !!reduce
+    );
 
     return (
         <Reveal>
-            {/* The hairline belongs to the wrapper, not the scroller: the mask
+            {/* The baseline hairline lives on the sticky strip in
+                hub-trips-section (full-bleed), not on the scroller: the mask
                 would otherwise fade the rule away along with the tabs. */}
-            <div className='border-b border-it-divider'>
             <div
                 ref={scrollRef}
                 className={`flex gap-[26px] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${edgeFadeMask(left, right)}`}>
@@ -73,7 +78,6 @@ export function HubTripsTabs({
                         </motion.button>
                     );
                 })}
-            </div>
             </div>
         </Reveal>
     );

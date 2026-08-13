@@ -711,7 +711,12 @@ export async function HubPage({
                 hole): this route already sits behind the entity loading.tsx
                 skeleton, and a second streamed skeleton here made the load read
                 as "skeleton twice" + a flash when the cached listing resolved
-                instantly. One cached fetch is not worth that. */}
+                instantly. One cached fetch is not worth that.
+
+                The sections below the trips block render as ITS children so
+                they sit inside the tab bar's sticky scope - the bar stays stuck
+                all the way down to the footer (they are not tabs; past Discover
+                no tab is highlighted). */}
             <HubTripsData
                 render={render}
                 destinationId={destination.id}
@@ -720,22 +725,22 @@ export async function HubPage({
                 locale={locale}
                 currency={currency}
                 dict={dict}
-            />
-
-            <HubFirstTimersSection
-                dict={{
-                    title: firstTimersTitle,
-                    highlights: render.highlights,
-                    tips: render.localTips.map(sectionToTip),
-                }}
-            />
-            <FaqSection dict={faqDict} minimal />
-            <HubAlsoWorthSection
-                title={alsoWorthTitle}
-                items={alsoWorthItems}
-                locale={locale}
-                destinationSlug={destinationSlug}
-            />
+            >
+                <HubFirstTimersSection
+                    dict={{
+                        title: firstTimersTitle,
+                        highlights: render.highlights,
+                        tips: render.localTips.map(sectionToTip),
+                    }}
+                />
+                <FaqSection dict={faqDict} minimal />
+                <HubAlsoWorthSection
+                    title={alsoWorthTitle}
+                    items={alsoWorthItems}
+                    locale={locale}
+                    destinationSlug={destinationSlug}
+                />
+            </HubTripsData>
             </MountReveal>
         </HubDateProvider>
     );
@@ -756,6 +761,7 @@ async function HubTripsData({
     locale,
     currency,
     dict,
+    children,
 }: {
     render: HubRender;
     destinationId: string;
@@ -766,6 +772,8 @@ async function HubTripsData({
     /** Shopper currency, already resolved by HubPage - no second await here. */
     currency: Currency;
     dict: Dictionary;
+    /** Trailing page sections rendered inside the tab bar's sticky scope. */
+    children?: React.ReactNode;
 }) {
     const toursRes = await getDestinationTours({
         destinationId,
@@ -979,7 +987,9 @@ async function HubTripsData({
                     fullDetails: listingsDict.fullDetails,
                 },
             }}
-        />
+        >
+            {children}
+        </HubTripsSection>
     );
 }
 
