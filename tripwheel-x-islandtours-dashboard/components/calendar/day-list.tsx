@@ -161,11 +161,8 @@ export function CalendarDayList({
                     />
                 ))}
             </div>
-            <p className='shrink-0 border-t border-border/50 bg-muted/30 px-4 py-2 text-xs text-muted-foreground'>
-                All times are local to each tour&apos;s island. Counts show
-                Island Tours bookings only - closing never touches booked
-                guests.
-            </p>
+            {/* No footer of its own - the page renders the one-clock/counts
+                sentence right below this frame already. */}
         </div>
     );
 }
@@ -250,9 +247,12 @@ function DayListRow({
                     />
                     {DEPARTURE_STATE_LABEL[state]}
                 </span>
-                {past ? (
+                {past || state === 'past' ? (
+                    // A past day, a departed boat, or a cancelled run - no
+                    // action either way. Closing a departure whose cutoff
+                    // passed would stop sales that already stopped.
                     <Button size='sm' variant='outline' className='h-8' disabled>
-                        Past
+                        {past ? 'Past' : 'Departed'}
                     </Button>
                 ) : derivedSoldOut ? (
                     <Button
