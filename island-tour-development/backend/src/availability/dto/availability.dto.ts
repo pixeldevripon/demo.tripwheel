@@ -357,9 +357,12 @@ export class AgendaResponseDto {
   @ApiProperty({ type: [AgendaDayDto] }) days!: AgendaDayDto[];
   @ApiProperty({
     type: [Object],
-    description: 'The operator´s tours, for the filter chips (id + name).',
+    description:
+      'The operator´s tours, for the filter chips (id + name) - plus each ' +
+      'tour´s IANA timeZone so audit timestamps render on the island´s ' +
+      'clock (E.9 one-clock rule).',
   })
-  tours!: { id: string; name: string }[];
+  tours!: { id: string; name: string; timeZone: string }[];
   @ApiPropertyOptional({
     nullable: true,
     description:
@@ -422,6 +425,15 @@ export class OverviewTourDto {
   @ApiProperty({ example: 'America/Curacao' }) timeZone!: string;
   @ApiProperty({ enum: ['PER_PERSON', 'UNIT'] })
   pricingModel!: string;
+  @ApiPropertyOptional({
+    nullable: true,
+    enum: ['GROUP', 'BOAT', 'VEHICLE', 'AIRCRAFT', 'PACKAGE'],
+    description:
+      'What one UNIT booking takes whole - drives the pill noun ("Whole ' +
+      'boat"), because a private charter must never read "Free" (MCK-16 ' +
+      'change 11). Null on PER_PERSON tours.',
+  })
+  wholeUnitType!: string | null;
   @ApiProperty({
     example: 10,
     description: 'Default departure capacity (no schedule override).',
@@ -435,6 +447,39 @@ export class OverviewTourDto {
       'of these.',
   })
   startTimes!: string[];
+  @ApiPropertyOptional({
+    nullable: true,
+    example: '2026-08-13T09:12:00.000Z',
+    description:
+      'This tour´s own availability_confirmed_at. Per tour because the ' +
+      'field IS per tour - an admin grid spanning operators cannot read one ' +
+      'global stamp (MCK-16 change 12).',
+  })
+  availabilityConfirmedAt!: string | null;
+}
+
+export class HorizonTourDto {
+  @ApiProperty() id!: string;
+  @ApiProperty({ example: 'Klein Curacao Full-Day Catamaran' }) name!: string;
+}
+
+export class OverviewHorizonDto {
+  @ApiProperty({
+    type: [HorizonTourDto],
+    description:
+      'LIVE tours with no open departure in the next 30 days because the ' +
+      'timetable ran out or closures emptied it - out of every ranked list ' +
+      'until a date opens. The fix is opening timetables.',
+  })
+  dry!: HorizonTourDto[];
+  @ApiProperty({
+    type: [HorizonTourDto],
+    description:
+      'LIVE tours whose next 30 days exist but are ENTIRELY sold out - the ' +
+      'same ranked-list consequence arriving as good news. Never styled as ' +
+      'an error; the fix is adding departures (or capacity, on Details).',
+  })
+  full!: HorizonTourDto[];
 }
 
 export class OverviewDepartureDto extends AgendaDepartureDto {
@@ -467,6 +512,15 @@ export class AvailabilityOverviewResponseDto {
       'when any tour was never confirmed.',
   })
   lastConfirmedAt!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    type: OverviewHorizonDto,
+    description:
+      'The two-flavour empty-horizon signal (MCK-16 change 8), computed ' +
+      'when the scope resolves to one operator. Null on the platform-wide ' +
+      'admin read.',
+  })
+  horizon!: OverviewHorizonDto | null;
 }
 
 export class CloseAgendaDayDto {
@@ -538,9 +592,26 @@ export class ConfirmAvailabilityResultDto {
 // ── Bulk blackout (dev spec §6.2: "blackout ranges") ─────────────────────────
 
 export class CloseRangeDto {
-  @ApiProperty({ example: 'tour-uuid' })
+  @ApiPropertyOptional({
+    example: 'tour-uuid',
+    description:
+      'One tour. Omit to close the range on EVERY active tour of the ' +
+      'caller´s operator - the "All tours" weather-day scope (an admin ' +
+      'omitting it must pass operatorId instead).',
+  })
+  @IsOptional()
   @IsString()
-  tourId!: string;
+  tourId?: string;
+
+  @ApiPropertyOptional({
+    example: 'operator-uuid',
+    description:
+      'Scope for an admin acting without a tourId. Honoured for ADMIN only; ' +
+      'every other caller is pinned to their own operator.',
+  })
+  @IsOptional()
+  @IsString()
+  operatorId?: string;
 
   @ApiPropertyOptional({
     enum: ClosureReason,
@@ -569,9 +640,23 @@ export class CloseRangeDto {
 }
 
 export class ReopenRangeDto {
-  @ApiProperty({ example: 'tour-uuid' })
+  @ApiPropertyOptional({
+    example: 'tour-uuid',
+    description:
+      'One tour. Omit to reopen across every active tour of the caller´s ' +
+      'operator (admins must pass operatorId instead).',
+  })
+  @IsOptional()
   @IsString()
-  tourId!: string;
+  tourId?: string;
+
+  @ApiPropertyOptional({
+    example: 'operator-uuid',
+    description: 'Scope for an admin acting without a tourId (ADMIN only).',
+  })
+  @IsOptional()
+  @IsString()
+  operatorId?: string;
 
   @ApiProperty({ example: '2026-09-01' })
   @IsLocalDate()
@@ -588,14 +673,24 @@ export class CloseRangeResultDto {
     description: 'Whole-day closures written (already-closed dates skipped).',
   })
   closed!: number;
+  @ApiProperty({
+    example: 3,
+    description: 'Distinct tours the closures landed on.',
+  })
+  tourCount!: number;
 }
 
 export class ReopenRangeResultDto {
   @ApiProperty({
     example: 14,
-    description: 'Whole-day closures removed in the range.',
+    description: 'Whole-day closures retired (reopened) in the range.',
   })
   reopened!: number;
+  @ApiProperty({
+    example: 3,
+    description: 'Distinct tours that held closures in the range.',
+  })
+  tourCount!: number;
 }
 
 export class ListSchedulesQueryDto {

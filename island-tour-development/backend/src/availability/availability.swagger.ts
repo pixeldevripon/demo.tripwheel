@@ -185,9 +185,12 @@ export const ApiCloseRangeDocs = () =>
     ApiOperation({
       summary: 'Close a date range (bulk blackout)',
       description:
-        'One CLOSE_DATE per date in [from, to], one transaction, skipping ' +
-        'dates already closed. Stops new sales only - existing bookings are ' +
-        'kept. Undo with POST exceptions/reopen-range over the same bounds.',
+        'One CLOSE_DATE per date in [from, to] - for one tour (tourId), or ' +
+        'for EVERY active tour of the operator when tourId is omitted (the ' +
+        'weather-day scope; admins must pass operatorId instead). One ' +
+        'transaction, one closureBatchId, skipping dates already closed. ' +
+        'Stops new sales only - existing bookings are kept. Undo with POST ' +
+        'exceptions/reopen-range over the same bounds.',
     }),
     ApiOkResponse({ type: CloseRangeResultDto }),
     ApiNotFoundResponse({ type: NotFoundErrorDto }),
@@ -201,7 +204,9 @@ export const ApiReopenRangeDocs = () =>
       description:
         'Retires every whole-day closure in [from, to] - the one-unit Undo ' +
         'of close-range (also reopens individually closed days in the ' +
-        'range). Retired closures stay in the Date changes register.',
+        'range). Scoped like close-range: one tour with tourId, or every ' +
+        'active tour of the operator without (admins pass operatorId). ' +
+        'Retired closures stay in the Date changes register.',
     }),
     ApiOkResponse({ type: ReopenRangeResultDto }),
     ApiNotFoundResponse({ type: NotFoundErrorDto }),
