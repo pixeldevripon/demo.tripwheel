@@ -93,10 +93,7 @@ export function SavedUnbookableCard({
                     onClick={() => onHeart(tour.id)}
                     whileTap={{ scale: 0.9 }}
                     transition={springPop}
-                    className={cn(
-                        'absolute right-2 top-2 @[220px]:right-2.5 @[220px]:top-2.5 z-10 flex size-6 @[220px]:size-[34px] cursor-pointer items-center justify-center rounded-full border-none bg-it-white/92 shadow-it-sm transition-transform duration-(--it-duration-xs) ease-(--it-ease) hover:scale-[1.08]',
-                        mobileRow && 'max-sm:top-auto max-sm:bottom-2'
-                    )}>
+                    className='absolute right-2 top-2 @[220px]:right-2.5 @[220px]:top-2.5 z-10 flex size-6 @[220px]:size-[34px] cursor-pointer items-center justify-center rounded-full border-none bg-it-white/92 shadow-it-sm transition-transform duration-(--it-duration-xs) ease-(--it-ease) hover:scale-[1.08]'>
                     <Image
                         src={saved ? '/icons/heart-filled.svg' : '/icons/heart-outline.svg'}
                         alt=''

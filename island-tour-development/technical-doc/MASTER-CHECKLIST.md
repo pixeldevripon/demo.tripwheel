@@ -939,7 +939,7 @@ its endpoints. Nothing a visitor reads says it, the URL included.
 - [x] H1 "Saved tours", the locked subline, the `{n} tours · {Island}` meta row and the device line
 - [x] Share pill (`SharePill`, extracted from `CollectionShareButton` so one implementation serves both) producing a `?list=` link
 - [x] Remove is the FILLED HEART, not an X - collapse out plus a snackbar with Undo that restores the tour to its original position
-- [x] Heart moved bottom-right on the horizontal mobile card (master §3.5 "avoids badge collision"), so the demand badge gets the full thumbnail width
+- [x] Heart is top-right on EVERY card, the horizontal mobile card included (founder decision 2026-08-13, reversing the earlier bottom-right move and overriding master §3.5 "mobile: bottom-right overlay"); the badge keeps its right-padding reservation for the heart's corner
 - [x] Heart `aria-label` localized in all 7 locales (`listings.saveAria` / `removeAria`) - it was hardcoded English on every card on every surface
 - [x] **No Sponsored badge on this grid** - `WishlistService.dropSponsoredBadge` runs after `applyMostPopularCap`, which can itself hand out a 'sponsored' fallback
 - [x] Price integrity line: "Was {price} when you saved it", both directions, muted, suppressed across a currency switch (an FX move is not a price change). Cookie v2 carries the snapshot

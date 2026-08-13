@@ -319,22 +319,14 @@ function DefaultTourCard({
                     10px of inset either side is a big share of a ~144px photo,
                     and it was the last few pixels that forced "Likely to sell
                     out" onto a second line. The right padding reserves the
-                    heart's corner - except on the mobile row card, where the
-                    heart has moved to the bottom and the badge gets the full
-                    width of the thumbnail to wrap into. */}
-                <div
-                    className={cn(
-                        'absolute inset-x-2 top-2 @[220px]:inset-x-2.5 @[220px]:top-2.5 z-10 flex items-start pr-7 @[220px]:pr-10',
-                        mobileRow && 'max-sm:pr-0'
-                    )}>
+                    heart's corner. */}
+                <div className='absolute inset-x-2 top-2 @[220px]:inset-x-2.5 @[220px]:top-2.5 z-10 flex items-start pr-7 @[220px]:pr-10'>
                     <BadgeChip type={tour.badge} dict={dict} />
                 </div>
 
-                {/* Wishlist heart. Top-right normally; BOTTOM-right on the
-                    horizontal mobile card, per master §3.5 ("mobile:
-                    bottom-right overlay, avoids badge collision") - on a 40%
-                    thumbnail the badge and the heart were fighting over the
-                    same corner. */}
+                {/* Wishlist heart - top-right on EVERY card variant, including
+                    the horizontal mobile card (founder decision 2026-08-13,
+                    overriding master §3.5's "mobile: bottom-right overlay"). */}
                 <motion.button
                     type='button'
                     aria-label={(wishlisted ? dict.removeAria : dict.saveAria).replace(
@@ -364,10 +356,7 @@ function DefaultTourCard({
                        it, so the control shrinks visually without becoming
                        harder to hit - the disc is decoration, the hit area
                        is what a thumb aims at. */
-                    className={cn(
-                        'absolute right-2 top-2 @[220px]:right-2.5 @[220px]:top-2.5 z-10 flex size-6 @[220px]:size-[34px] shrink-0 items-center justify-center rounded-full bg-it-white/92 shadow-it-sm border-none cursor-pointer transition-transform duration-(--it-duration-xs) ease-(--it-ease) hover:scale-[1.08] before:absolute before:left-1/2 before:top-1/2 before:size-10 before:-translate-x-1/2 before:-translate-y-1/2 before:content-[""] @[220px]:before:hidden',
-                        mobileRow && 'max-sm:top-auto max-sm:bottom-2'
-                    )}>
+                    className='absolute right-2 top-2 @[220px]:right-2.5 @[220px]:top-2.5 z-10 flex size-6 @[220px]:size-[34px] shrink-0 items-center justify-center rounded-full bg-it-white/92 shadow-it-sm border-none cursor-pointer transition-transform duration-(--it-duration-xs) ease-(--it-ease) hover:scale-[1.08] before:absolute before:left-1/2 before:top-1/2 before:size-10 before:-translate-x-1/2 before:-translate-y-1/2 before:content-[""] @[220px]:before:hidden'>
                     <Image
                         src={
                             wishlisted
