@@ -661,20 +661,10 @@ export function useAvailabilityOverview(params: AvailabilityOverviewParams) {
   });
 }
 
-// Per-departure edit (capacity / manual status) from the calendar. The backend
-// clamps capacity at bookedCount and 409s on a concurrent booking race.
-export const useUpdateDeparture = () =>
-  useTripMutation(
-    ({ departureId, payload }: { tripId: string; departureId: string; payload: { capacity?: number; status?: DepartureStatus } }) =>
-      tripsApi.updateDeparture(departureId, payload),
-    ({ tripId }) => [
-      tripKeys.detail(tripId),
-      tripKeys.manageCalendarAll(tripId),
-      tripKeys.availabilitySummary(tripId),
-      tripKeys.agendaAll(),
-      tripKeys.overviewAll(),
-    ],
-  );
+// The per-departure capacity/status edit hook was removed with the departure
+// card's capacity editor (MCK-16 change 3): capacity is a set-once Details
+// property, and no dashboard surface edits departures directly any more. The
+// backend PATCH /availability/departures/:id remains for support tooling.
 
 // Surface B: the cross-tour daily agenda.
 export function useAgenda(from: string | undefined, days: number) {
@@ -690,7 +680,7 @@ export function useAgenda(from: string | undefined, days: number) {
 // exact Undo set (reopenRange over the same date, per tour).
 export const useCloseAgendaDay = () =>
   useTripMutation(
-    (payload: { date: string; tourId?: string; note?: string }) =>
+    (payload: Parameters<typeof tripsApi.closeAgendaDay>[0]) =>
       tripsApi.closeAgendaDay(payload),
     // Cross-tour blast radius: agenda + every per-tour surface.
     () => [tripKeys.all],
@@ -705,8 +695,13 @@ export const useConfirmAvailability = () =>
 // exception write: register, detail (isBookable), month grid, status line.
 export const useCloseRange = () =>
   useTripMutation(
-    ({ tripId, payload }: { tripId: string; payload: { from: string; to: string; note?: string } }) =>
-      tripsApi.closeRange(tripId, payload),
+    ({
+      tripId,
+      payload,
+    }: {
+      tripId: string;
+      payload: Parameters<typeof tripsApi.closeRange>[1];
+    }) => tripsApi.closeRange(tripId, payload),
     ({ tripId }) => exceptionKeys(tripId),
   );
 

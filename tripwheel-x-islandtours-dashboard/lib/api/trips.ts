@@ -34,6 +34,7 @@ import type {
   TourLanguage,
   TourSchedule,
   TourException,
+  TourClosureReason,
   TripListItem,
   TripTranslation,
   TripUpdateResponse,
@@ -569,33 +570,44 @@ export const tripsApi = {
     );
   },
 
-  // Per-departure edit (capacity / manual status). The backend refuses a
-  // capacity below bookedCount and 409s on a concurrent booking race.
-  updateDeparture(
-    departureId: string,
-    payload: { capacity?: number; status?: DepartureStatus }
-  ): Promise<TourDeparture> {
-    return apiFetch<TourDeparture>(`/availability/departures/${departureId}`, {
-      method: 'PATCH',
-      body: JSON.stringify(payload),
-    });
-  },
-
   // Daily agenda (Surface B): every departure across the operator's tours.
   getAgenda(params?: { from?: string; days?: number }): Promise<AgendaResponse> {
     return apiFetch<AgendaResponse>(`/availability/agenda${buildQuery(params ?? {})}`);
   },
 
-  // "Close all of today" - one CLOSE_DATE per open tour on the date.
-  closeAgendaDay(payload: {
+  // "Close all of today" - one CLOSE_DATE per open tour on the date. The
+  // reason rides the write (MCK-16 change 1) so the register and traveller
+  // calendar read the right word on every affected tour.
+  async closeAgendaDay(payload: {
     date: string;
     tourId?: string;
     note?: string;
+    closureReason?: TourClosureReason;
   }): Promise<{ closed: number; tourIds: string[] }> {
-    return apiFetch<{ closed: number; tourIds: string[] }>(
-      `/availability/agenda/close-day`,
-      { method: 'POST', body: JSON.stringify(payload) }
-    );
+    try {
+      return await apiFetch<{ closed: number; tourIds: string[] }>(
+        `/availability/agenda/close-day`,
+        { method: 'POST', body: JSON.stringify(payload) }
+      );
+    } catch (err) {
+      // Deploy window: an older backend whitelists no closureReason on this
+      // route and forbidNonWhitelisted 400s the WHOLE write (the isActive
+      // postmortem). The close must still land - retry once without the
+      // reason; those closures read as a plain "Closed" until the backend
+      // ships. Safe to retry: the 400 was rejected before any write.
+      if (
+        payload.closureReason !== undefined &&
+        err instanceof Error &&
+        err.message.includes('closureReason')
+      ) {
+        const { closureReason: _dropped, ...legacy } = payload;
+        return apiFetch<{ closed: number; tourIds: string[] }>(
+          `/availability/agenda/close-day`,
+          { method: 'POST', body: JSON.stringify(legacy) }
+        );
+      }
+      throw err;
+    }
   },
 
   // Freshness confirm (F14): stamps availability_confirmed_at - one tour with
@@ -613,9 +625,16 @@ export const tripsApi = {
   },
 
   // Bulk blackout (F8): one CLOSE_DATE per date in [from, to], one call.
+  // closureReason rides every close (MCK-16 change 1) so the register and the
+  // traveller calendar read the right word on every date in the range.
   closeRange(
     tripId: string,
-    payload: { from: string; to: string; note?: string }
+    payload: {
+      from: string;
+      to: string;
+      note?: string;
+      closureReason?: TourClosureReason;
+    }
   ): Promise<{ closed: number }> {
     return apiFetch<{ closed: number }>(`/availability/exceptions/close-range`, {
       method: 'POST',

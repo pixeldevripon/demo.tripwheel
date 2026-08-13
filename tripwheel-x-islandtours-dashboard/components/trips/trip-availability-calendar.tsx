@@ -50,6 +50,11 @@ import {
     useRemoveException,
     useReopenRange,
 } from '@/hooks/trips/use-trips';
+import {
+    CLOSURE_REASON_LABEL,
+    ClosureReasonPanel,
+    ClosureReasonTabs,
+} from '@/components/common/closure-reason-panel';
 import { settleAll } from '@/lib/async/settle-all';
 import { crossFade, swapFade } from '@/lib/motion';
 import { cn } from '@/lib/utils';
@@ -57,6 +62,7 @@ import type {
     ManageCalendarDay,
     ManageCalendarDayStatus,
     PricingModel,
+    TourClosureReason,
     TourDeparture,
 } from '@/types/trip';
 import { addMonths, format, startOfMonth } from 'date-fns';
@@ -66,22 +72,6 @@ import { toast } from 'sonner';
 
 const WEEKDAY_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-/**
- * The two reasons an operator can give for closing (mck-15 §4), in the order
- * the mockup puts them. One word per idea: "Sold out" here, on the state pill,
- * on the traveller calendar and on the time chips - never "Fully booked".
- *
- * They are not cosmetic. Sold out shows a traveller a struck-through "Sold out"
- * and only the operator reopens it; Not running shows "No departure", plain,
- * because nothing was ever on sale that day. Only Sold out counts toward the
- * §3.7 demand signal.
- */
-const CLOSURE_REASONS = ['SOLD_OUT', 'NOT_RUNNING'] as const;
-type ClosureReason = (typeof CLOSURE_REASONS)[number];
-const CLOSURE_REASON_LABEL: Record<ClosureReason, string> = {
-    SOLD_OUT: 'Sold out',
-    NOT_RUNNING: 'Not running',
-};
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 const STATUS_LABEL: Record<ManageCalendarDayStatus, string> = {
@@ -194,6 +184,10 @@ export function TripAvailabilityCalendar({
     const [rangeFrom, setRangeFrom] = useState('');
     const [rangeTo, setRangeTo] = useState('');
     const [rangeNote, setRangeNote] = useState('');
+    // Default Not running - a blackout is almost always a not-running act;
+    // weather is Not running plus a note (MCK-15 reason map).
+    const [rangeReason, setRangeReason] =
+        useState<TourClosureReason>('NOT_RUNNING');
     const [rangeError, setRangeError] = useState<string | null>(null);
     const [resetOpen, setResetOpen] = useState(false);
     const [isResetting, setIsResetting] = useState(false);
@@ -245,7 +239,12 @@ export function TripAvailabilityCalendar({
         closeRange(
             {
                 tripId,
-                payload: { from, to, note: rangeNote.trim() || undefined },
+                payload: {
+                    from,
+                    to,
+                    note: rangeNote.trim() || undefined,
+                    closureReason: rangeReason,
+                },
             },
             {
                 onSuccess: ({ closed }) => {
@@ -253,9 +252,10 @@ export function TripAvailabilityCalendar({
                     setRangeFrom('');
                     setRangeTo('');
                     setRangeNote('');
+                    setRangeReason('NOT_RUNNING');
                     toast.success(
                         closed > 0
-                            ? `Closed ${closed} day${closed === 1 ? '' : 's'}. New sales stopped; existing bookings are kept.`
+                            ? `Closed ${closed} day${closed === 1 ? '' : 's'} · ${CLOSURE_REASON_LABEL[rangeReason]}. New sales stopped; existing bookings are kept.`
                             : 'Those days were already closed.',
                         closed > 0
                             ? {
@@ -695,15 +695,27 @@ export function TripAvailabilityCalendar({
                         </Field>
                     </div>
                     {rangeMode === 'close' && (
-                        <Field>
-                            <Label>Reason (optional)</Label>
-                            <Input
-                                value={rangeNote}
-                                onChange={e => setRangeNote(e.target.value)}
-                                placeholder='e.g. Maintenance haul-out'
-                                maxLength={500}
-                            />
-                        </Field>
+                        <>
+                            <Field>
+                                <Label>Why</Label>
+                                {/* Same two answers as every other close - the
+                                    word decides what the register and the
+                                    traveller calendar say on every date. */}
+                                <ClosureReasonTabs
+                                    value={rangeReason}
+                                    onValueChange={setRangeReason}
+                                />
+                            </Field>
+                            <Field>
+                                <Label>Note (optional)</Label>
+                                <Input
+                                    value={rangeNote}
+                                    onChange={e => setRangeNote(e.target.value)}
+                                    placeholder='e.g. Maintenance haul-out'
+                                    maxLength={500}
+                                />
+                            </Field>
+                        </>
                     )}
                     {rangeError && (
                         <p className='text-xs text-destructive'>{rangeError}</p>
@@ -1171,7 +1183,7 @@ function DayPopover({
         );
     }
 
-    function submitPanel(closureReason?: ClosureReason) {
+    function submitPanel(closureReason?: TourClosureReason) {
         setError(null);
         if (panel.kind === 'close-slot') {
             if (!closureReason) return; // the reason IS the commit
@@ -1357,25 +1369,58 @@ function DayPopover({
             <div className='border-t px-4 py-3 space-y-2'>
                 {closeDateException ? (
                     <>
-                        {closeDateException.note && (
-                            <p className='text-xs text-muted-foreground truncate'>
-                                {closeDateException.note}
-                            </p>
-                        )}
+                        {/* The reason leads (MCK-16 change 5): it is what a
+                            traveller is being told about this date. */}
+                        <p className='text-xs'>
+                            {/* Quietly, not red: every closure from before the
+                                reason question shipped lacks one. */}
+                            <span
+                                className={cn(
+                                    'font-medium',
+                                    !closeDateException.closureReason &&
+                                        'text-muted-foreground'
+                                )}>
+                                {closeDateException.closureReason
+                                    ? CLOSURE_REASON_LABEL[
+                                          closeDateException.closureReason
+                                      ]
+                                    : 'No reason recorded'}
+                            </span>
+                            {closeDateException.note && (
+                                <span className='text-muted-foreground'>
+                                    {' '}
+                                    · {closeDateException.note}
+                                </span>
+                            )}
+                        </p>
                         {/* Manual close wins: no nightly job, republish or (later)
                             API sync ever reopens this silently. Saying so is what
-                            makes the one-tap trustworthy - and the who/when line
-                            is the §6.5 audit surface. */}
+                            makes the one-tap trustworthy - and the who/when/side
+                            line is the §6.5 audit surface. */}
                         <p className='text-xs text-muted-foreground'>
                             Closed by{' '}
-                            {closeDateException.createdByName ?? 'your team'} ·{' '}
+                            {closeDateException.createdByName ??
+                                (closeDateException.createdBySide === 'PLATFORM'
+                                    ? 'Island Tours'
+                                    : 'your team')}
+                            {closeDateException.createdBySide === 'PLATFORM' &&
+                            closeDateException.createdByName
+                                ? ' (Island Tours)'
+                                : ''}{' '}
+                            ·{' '}
                             {format(
                                 new Date(closeDateException.createdAt),
                                 'MMM d, HH:mm'
                             )}
-                            . Nothing reopens it automatically, only you or your
-                            team can.
+                            . Nothing reopens it automatically.
                         </p>
+                        {closeDateException.createdBySide === 'PLATFORM' && (
+                            <p className='text-xs text-muted-foreground'>
+                                Island Tours closed this day, and you can
+                                reopen it - a close is an availability action,
+                                not an enforcement one.
+                            </p>
+                        )}
                         <Button
                             size='sm'
                             className='w-full'
@@ -1521,93 +1566,66 @@ function DayPopover({
                                 )}
                             </>
                         )}
-                        <Input
-                            value={note}
-                            onChange={e => setNote(e.target.value)}
-                            placeholder='Note (optional), e.g. bad weather'
-                            maxLength={500}
-                            className='h-8 text-xs'
-                        />
-                        {error && (
-                            <p className='text-xs text-destructive'>{error}</p>
-                        )}
                         {panel.kind === 'close-day' ||
                         panel.kind === 'close-slot' ? (
-                            // The reason IS the commit (mck-15 §4). Two buttons,
-                            // not a dropdown plus a Close: the operator is
-                            // answering one question, and the answer decides
-                            // what a traveller is told - "Sold out" with the
-                            // date struck through, or "No departure" as if it
-                            // never ran.
-                            <>
-                                <p className='text-xs font-medium'>
-                                    {panel.kind === 'close-slot'
+                            // The reason IS the commit (mck-15 §4) - the shared
+                            // panel, so this surface and the global calendar
+                            // ask the same question with the same words.
+                            <ClosureReasonPanel
+                                question={
+                                    panel.kind === 'close-slot'
                                         ? `Why are you closing the ${panel.startTime} departure?`
-                                        : 'Why are you closing this day?'}
-                                </p>
-                                <div className='flex gap-2'>
-                                    {CLOSURE_REASONS.map(reason => (
-                                        <Button
-                                            key={reason}
-                                            size='sm'
-                                            variant='outline'
-                                            className='flex-1'
-                                            disabled={busy}
-                                            onClick={() => submitPanel(reason)}>
-                                            {isWriting && (
-                                                <HugeiconsIcon
-                                                    icon={Loading03Icon}
-                                                    className='size-4 animate-spin'
-                                                />
-                                            )}
-                                            {CLOSURE_REASON_LABEL[reason]}
-                                        </Button>
-                                    ))}
-                                </div>
-                                <p className='text-xs text-muted-foreground'>
-                                    Sold out means the trip is full, however it
-                                    filled. Not running covers weather,
-                                    maintenance, a day off, anything else.
-                                </p>
-                                <p className='text-xs text-muted-foreground'>
-                                    {closeReassurance}
-                                </p>
-                                {/* Tapping Close by accident must never force a
-                                    choice, so the way out is a full-width
-                                    control rather than a small × somewhere. */}
-                                <Button
-                                    size='sm'
-                                    variant='ghost'
-                                    className='w-full'
-                                    disabled={busy}
-                                    onClick={() => openPanel({ kind: 'none' })}>
-                                    Cancel, leave it open
-                                </Button>
-                            </>
+                                        : 'Why are you closing this day?'
+                                }
+                                reassurance={closeReassurance}
+                                note={note}
+                                onNoteChange={setNote}
+                                busy={busy}
+                                pending={isWriting}
+                                error={error}
+                                onCommit={submitPanel}
+                                onCancel={() => openPanel({ kind: 'none' })}
+                            />
                         ) : (
-                            <div className='flex gap-2'>
-                                <Button
-                                    size='sm'
-                                    variant='ghost'
-                                    className='flex-1'
-                                    disabled={busy}
-                                    onClick={() => openPanel({ kind: 'none' })}>
-                                    Cancel
-                                </Button>
-                                <Button
-                                    size='sm'
-                                    className='flex-1'
-                                    disabled={busy}
-                                    onClick={() => submitPanel()}>
-                                    {isWriting && (
-                                        <HugeiconsIcon
-                                            icon={Loading03Icon}
-                                            className='size-4 animate-spin'
-                                        />
-                                    )}
-                                    Add
-                                </Button>
-                            </div>
+                            <>
+                                <Input
+                                    value={note}
+                                    onChange={e => setNote(e.target.value)}
+                                    placeholder='Note (optional), e.g. bad weather'
+                                    maxLength={500}
+                                    className='h-8 text-xs'
+                                />
+                                {error && (
+                                    <p className='text-xs text-destructive'>
+                                        {error}
+                                    </p>
+                                )}
+                                <div className='flex gap-2'>
+                                    <Button
+                                        size='sm'
+                                        variant='ghost'
+                                        className='flex-1'
+                                        disabled={busy}
+                                        onClick={() =>
+                                            openPanel({ kind: 'none' })
+                                        }>
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        size='sm'
+                                        className='flex-1'
+                                        disabled={busy}
+                                        onClick={() => submitPanel()}>
+                                        {isWriting && (
+                                            <HugeiconsIcon
+                                                icon={Loading03Icon}
+                                                className='size-4 animate-spin'
+                                            />
+                                        )}
+                                        Add
+                                    </Button>
+                                </div>
+                            </>
                         )}
                     </div>
                 )}

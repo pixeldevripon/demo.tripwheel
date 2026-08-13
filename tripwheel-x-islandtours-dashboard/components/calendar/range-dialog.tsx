@@ -26,7 +26,11 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCloseRange, useReopenRange } from '@/hooks/trips/use-trips';
-import type { OverviewTour } from '@/types/trip';
+import type { OverviewTour, TourClosureReason } from '@/types/trip';
+import {
+    CLOSURE_REASON_LABEL,
+    ClosureReasonTabs,
+} from '@/components/common/closure-reason-panel';
 
 /**
  * The global calendar's bulk blackout tool - the per-tour calendar's
@@ -54,6 +58,10 @@ export function RangeDialog({
     const [from, setFrom] = useState('');
     const [to, setTo] = useState('');
     const [note, setNote] = useState('');
+    // Default Not running: a blackout is almost always a not-running act
+    // (weather is Not running plus a note); Sold out stays one tap away for
+    // the operator whose own channels filled the dates (MCK-15 reason map).
+    const [reason, setReason] = useState<TourClosureReason>('NOT_RUNNING');
     const [error, setError] = useState<string | null>(null);
     const { mutate: closeRange, isPending: isClosing } = useCloseRange();
     const { mutate: reopenRange, isPending: isReopening } = useReopenRange();
@@ -67,6 +75,7 @@ export function RangeDialog({
         setFrom('');
         setTo('');
         setNote('');
+        setReason('NOT_RUNNING');
         setError(null);
     }
 
@@ -112,14 +121,21 @@ export function RangeDialog({
             return;
         }
         closeRange(
-            { tripId, payload: { ...bounds, note: note.trim() || undefined } },
+            {
+                tripId,
+                payload: {
+                    ...bounds,
+                    note: note.trim() || undefined,
+                    closureReason: reason,
+                },
+            },
             {
                 onSuccess: ({ closed }) => {
                     onOpenChange(false);
                     reset();
                     toast.success(
                         closed > 0
-                            ? `Closed ${closed} day${closed === 1 ? '' : 's'}. New sales stopped; existing bookings are kept.`
+                            ? `Closed ${closed} day${closed === 1 ? '' : 's'} · ${CLOSURE_REASON_LABEL[reason]}. New sales stopped; existing bookings are kept.`
                             : 'Those days were already closed.',
                         closed > 0
                             ? {
@@ -219,15 +235,28 @@ export function RangeDialog({
                     </Field>
                 </div>
                 {mode === 'close' && (
-                    <Field>
-                        <Label>Reason (optional)</Label>
-                        <Input
-                            value={note}
-                            onChange={(e) => setNote(e.target.value)}
-                            placeholder='e.g. Maintenance haul-out'
-                            maxLength={500}
-                        />
-                    </Field>
+                    <>
+                        <Field>
+                            <Label>Why</Label>
+                            {/* Same two answers as every other close (MCK-16
+                                change 1): the word decides what the register
+                                and the traveller calendar say on every date
+                                in the range. */}
+                            <ClosureReasonTabs
+                                value={reason}
+                                onValueChange={setReason}
+                            />
+                        </Field>
+                        <Field>
+                            <Label>Note (optional)</Label>
+                            <Input
+                                value={note}
+                                onChange={(e) => setNote(e.target.value)}
+                                placeholder='e.g. Maintenance haul-out'
+                                maxLength={500}
+                            />
+                        </Field>
+                    </>
                 )}
                 {error && <p className='text-xs text-destructive'>{error}</p>}
                 <DialogFooter>

@@ -6,7 +6,6 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
     Popover,
     PopoverContent,
@@ -16,11 +15,10 @@ import { useRole } from '@/contexts/role-context';
 import {
     useCreateException,
     useRemoveException,
-    useUpdateDeparture,
 } from '@/hooks/trips/use-trips';
 import { springPop } from '@/lib/motion';
 import { cn } from '@/lib/utils';
-import type { OverviewDeparture } from '@/types/trip';
+import type { OverviewDeparture, TourClosureReason } from '@/types/trip';
 import {
     CHIP_CLASS,
     DOT_CLASS,
@@ -29,15 +27,21 @@ import {
     keyToDate,
     seatsLabel,
 } from './calendar-utils';
+import {
+    CLOSURE_REASON_LABEL,
+    ClosureReasonPanel,
+} from '@/components/common/closure-reason-panel';
 
 /**
  * One departure as a calendar event chip. Click opens the management card:
- * status + seats + audit line, stop-sell/reopen, capacity edit, and the two
- * deep links (bookings pre-filtered to this tour + day, the tour timetable).
+ * status + seats + audit line (reason, who, which side), stop-sell/reopen,
+ * and the two deep links (bookings pre-filtered to this tour + day, the tour
+ * timetable).
  *
- * The stop-sell rules mirror the backend split: close/reopen ride
- * MANAGE_AVAILABILITY OR STOP_SELL (the route guard), capacity edits are
- * MANAGE_AVAILABILITY only (assertCanShapeInventory) - the card hides what
+ * No capacity control here, deliberately (MCK-16 change 3, review §5.5):
+ * capacity is a set-once property on the Details tab, and the wizard's day
+ * panel carries none either. The stop-sell rules mirror the backend split:
+ * close/reopen ride MANAGE_AVAILABILITY OR STOP_SELL - the card hides what
  * the seat cannot do rather than serving a 403.
  */
 export function DepartureChip({
@@ -112,25 +116,25 @@ function DepartureCard({
     dep: OverviewDeparture;
     operatorName?: string;
 }) {
-    const { can, canAny } = useRole();
+    const { canAny } = useRole();
     const canStopSell = canAny(['MANAGE_AVAILABILITY', 'STOP_SELL']);
-    const canShape = can('MANAGE_AVAILABILITY');
     const state = chipState(dep);
 
     const createException = useCreateException();
     const removeException = useRemoveException();
-    const updateDeparture = useUpdateDeparture();
 
-    const [capacity, setCapacity] = useState(String(dep.capacity));
-    const capacityValue = Number(capacity);
-    const capacityChanged =
-        Number.isInteger(capacityValue) && capacityValue !== dep.capacity;
-    const capacityTooLow =
-        Number.isInteger(capacityValue) && capacityValue < dep.bookedCount;
+    const [reasonOpen, setReasonOpen] = useState(false);
+    const [note, setNote] = useState('');
+    const [error, setError] = useState<string | null>(null);
 
     const dayLabel = format(keyToDate(dep.date), 'EEE d MMM yyyy');
+    const closure = dep.closure;
+    // A sold-out with no closure row filled through bookings: it reopens by
+    // itself when a spot frees up, so the card offers no action for it.
+    const derivedSoldOut = state === 'soldOut' && !closure;
 
-    function handleClose() {
+    function handleClose(closureReason: TourClosureReason) {
+        setError(null);
         createException.mutate(
             {
                 tripId: dep.tourId,
@@ -138,12 +142,16 @@ function DepartureCard({
                     date: dep.date,
                     type: 'CLOSE_SLOT',
                     startTime: dep.startTime,
+                    closureReason,
+                    note: note.trim() || undefined,
                 },
             },
             {
                 onSuccess: (row) => {
+                    setReasonOpen(false);
+                    setNote('');
                     toast.success(
-                        `Closed ${dep.tourName} · ${dep.startTime}. Booked guests keep their bookings.`,
+                        `Closed ${dep.tourName} · ${dep.startTime} · ${CLOSURE_REASON_LABEL[closureReason]}. Booked guests keep their bookings.`,
                         {
                             action: {
                                 label: 'Undo',
@@ -157,7 +165,7 @@ function DepartureCard({
                     );
                 },
                 onError: (e) =>
-                    toast.error(
+                    setError(
                         e instanceof Error ? e.message : 'Could not close the departure.',
                     ),
             },
@@ -165,13 +173,13 @@ function DepartureCard({
     }
 
     function handleReopen() {
-        if (!dep.closure) return;
+        if (!closure) return;
         removeException.mutate(
-            { tripId: dep.tourId, exceptionId: dep.closure.id },
+            { tripId: dep.tourId, exceptionId: closure.id },
             {
                 onSuccess: () =>
                     toast.success(
-                        `Reopened ${dep.tourName} · ${dep.startTime}. New sales are running again.`,
+                        `Reopened ${dep.tourName} · ${dep.startTime}. New sales are running again. Reopening is logged too.`,
                     ),
                 onError: (e) =>
                     toast.error(
@@ -181,31 +189,11 @@ function DepartureCard({
         );
     }
 
-    function handleCapacitySave() {
-        if (!capacityChanged || capacityTooLow) return;
-        updateDeparture.mutate(
-            {
-                tripId: dep.tourId,
-                departureId: dep.id,
-                payload: { capacity: capacityValue },
-            },
-            {
-                onSuccess: () =>
-                    toast.success(`Capacity set to ${capacityValue} seats.`),
-                onError: (e) =>
-                    toast.error(
-                        e instanceof Error
-                            ? e.message
-                            : 'Could not change the capacity.',
-                    ),
-            },
-        );
-    }
-
-    const busy =
-        createException.isPending ||
-        removeException.isPending ||
-        updateDeparture.isPending;
+    const busy = createException.isPending || removeException.isPending;
+    const closedByPlatform = closure?.createdBySide === 'PLATFORM';
+    const closerName =
+        closure?.createdByName ??
+        (closedByPlatform ? 'Island Tours' : 'your team');
 
     return (
         <div className='p-4'>
@@ -227,7 +215,7 @@ function DepartureCard({
                     />
                     {/* Neutral badge - the closer might be a teammate or (for
                         admins) another operator; the audit line below names
-                        them. "Closed by you" stays a legend-only phrase. */}
+                        them. */}
                     {state === 'closed' ? 'Closed' : STATE_LABEL[state]}
                 </span>
             </div>
@@ -240,45 +228,52 @@ function DepartureCard({
                     : `${dep.bookedCount} of ${dep.capacity} seats booked`}
             </p>
 
-            {dep.closure && (
+            {derivedSoldOut && (
                 <p className='mt-1.5 text-xs text-muted-foreground'>
-                    Closed
-                    {dep.closure.createdByName
-                        ? ` by ${dep.closure.createdByName}`
-                        : ''}{' '}
-                    · {format(new Date(dep.closure.createdAt), 'd MMM, HH:mm')}
-                    {dep.closure.note ? ` · "${dep.closure.note}"` : ''}
+                    Sold out from bookings. It reopens by itself if a spot
+                    frees up, through a cancellation or a capacity raise. No
+                    action needed.
                 </p>
             )}
 
-            {/* Capacity edit - inventory shaping, so MANAGE_AVAILABILITY only.
-                Unit charters have no seat math to edit. */}
-            {canShape && dep.pricingModel !== 'UNIT' && state !== 'past' && (
-                <div className='mt-3 flex items-center gap-2'>
-                    <Input
-                        type='number'
-                        min={dep.bookedCount}
-                        value={capacity}
-                        onChange={(e) => setCapacity(e.target.value)}
-                        aria-label='Capacity'
-                        aria-invalid={capacityTooLow || undefined}
-                        className='h-8 w-20 text-sm'
-                    />
-                    <span className='text-xs text-muted-foreground'>seats</span>
-                    {capacityChanged && (
-                        <Button
-                            size='sm'
-                            variant='outline'
-                            className='h-8'
-                            disabled={busy || capacityTooLow}
-                            onClick={handleCapacitySave}>
-                            Save
-                        </Button>
-                    )}
-                    {capacityTooLow && (
-                        <span className='text-xs text-destructive'>
-                            {dep.bookedCount} already booked
+            {closure && (
+                <div className='mt-1.5 space-y-1 text-xs text-muted-foreground'>
+                    <p>
+                        {/* The reason leads: it is what a traveller is being
+                            told. A row without one says so - quietly, because
+                            every closure written before the reason question
+                            shipped lacks one, and a wall of red on day one
+                            would read as breakage rather than old data. */}
+                        <span
+                            className={cn(
+                                'font-medium',
+                                closure.closureReason && 'text-foreground',
+                            )}>
+                            {closure.closureReason
+                                ? CLOSURE_REASON_LABEL[closure.closureReason]
+                                : 'No reason recorded'}
                         </span>
+                        {closure.note ? ` · "${closure.note}"` : ''}
+                    </p>
+                    <p>
+                        By {closerName}
+                        {closedByPlatform && closure.createdByName
+                            ? ' (Island Tours)'
+                            : ''}{' '}
+                        · {format(new Date(closure.createdAt), 'd MMM, HH:mm')}
+                    </p>
+                    {closedByPlatform && (
+                        <p>
+                            Island Tours closed this departure, and you can
+                            reopen it - a close is an availability action, not
+                            an enforcement one.
+                        </p>
+                    )}
+                    {!closure.closureReason && (
+                        <p>
+                            Closed before the reason question existed, so
+                            travellers see a plain &quot;Closed&quot;.
+                        </p>
                     )}
                 </div>
             )}
@@ -298,7 +293,9 @@ function DepartureCard({
                 </div>
                 {canStopSell &&
                     state !== 'past' &&
-                    (dep.closure ? (
+                    !derivedSoldOut &&
+                    !reasonOpen &&
+                    (closure ? (
                         <Button
                             size='sm'
                             className='h-8'
@@ -313,11 +310,43 @@ function DepartureCard({
                             className='h-8 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive'
                             title='Stops new sales for this departure only - booked guests keep their bookings'
                             disabled={busy}
-                            onClick={handleClose}>
+                            onClick={() => {
+                                // Fresh panel every time - a note abandoned on
+                                // an earlier Cancel must never ride along.
+                                setNote('');
+                                setError(null);
+                                setReasonOpen(true);
+                            }}>
                             Close
                         </Button>
                     ))}
             </div>
+
+            {/* The close question (MCK-16 change 1): the reason IS the commit,
+                same panel, same words as the wizard's Schedule calendar. */}
+            {reasonOpen && (
+                <div className='mt-3'>
+                    <ClosureReasonPanel
+                        question={`Why are you closing the ${dep.startTime} departure?`}
+                        reassurance={
+                            dep.bookedCount > 0
+                                ? `${dep.bookedCount} booked guest${dep.bookedCount === 1 ? '' : 's'} keep their booking${dep.bookedCount === 1 ? '' : 's'}. Closing only stops new sales.`
+                                : 'This only stops new sales. Existing bookings are always kept.'
+                        }
+                        note={note}
+                        onNoteChange={setNote}
+                        busy={busy}
+                        pending={createException.isPending}
+                        error={error}
+                        onCommit={handleClose}
+                        onCancel={() => {
+                            setReasonOpen(false);
+                            setNote('');
+                            setError(null);
+                        }}
+                    />
+                </div>
+            )}
         </div>
     );
 }

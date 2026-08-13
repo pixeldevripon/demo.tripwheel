@@ -412,6 +412,14 @@ export interface TourSchedule {
  */
 export type TourClosureReason = 'SOLD_OUT' | 'NOT_RUNNING';
 
+/**
+ * Which side of the marketplace performed an availability act (MCK-16 change
+ * 10). Mirrors the backend `ActorSide`. PLATFORM = Island Tours; OPERATOR =
+ * the tour's own operator seat (owner, manager or staff). An operator undoing
+ * a platform closure should know what they are undoing.
+ */
+export type TourActorSide = 'OPERATOR' | 'PLATFORM';
+
 export type TourExceptionType =
   | 'CLOSE_DATE' // stop-sell the whole date
   | 'CLOSE_SLOT' // stop-sell one slot on a date
@@ -432,6 +440,15 @@ export interface TourException {
   // Audit surface (dev spec §6.5): who made the change, and when.
   createdAt: string; // ISO
   createdByName: string | null;
+  // Which side made it. Optional while the backend deploy catches up - render
+  // nothing rather than guessing when the key is absent.
+  createdBySide?: TourActorSide | null;
+  // Soft retirement: a reopen/undo RETIRES the row instead of deleting it, so
+  // the Date changes register shows both the closure and its reopening. A
+  // retired row is history - it is no longer in force and cannot be undone.
+  retiredAt?: string | null;
+  retiredByName?: string | null;
+  retiredBySide?: TourActorSide | null;
 }
 
 // ── Management calendar (operator month grid) ───────────────────────────────────
@@ -484,11 +501,16 @@ export interface AgendaDeparture
   // that already left is not a problem to fix.
   cutoffPassed: boolean;
   // The CLOSE_DATE/CLOSE_SLOT row stopping this departure, when one exists -
-  // its id feeds Reopen, the rest is the audit line.
+  // its id feeds Reopen, the rest is the audit line: who, when, which side
+  // (MCK-16 change 10), and the reason the traveller calendar is rendering
+  // (change 5). The two new keys are optional while the backend deploy
+  // catches up.
   closure: {
     id: string;
     createdAt: string;
     createdByName: string | null;
+    createdBySide?: TourActorSide | null;
+    closureReason?: TourClosureReason | null;
     note: string | null;
   } | null;
 }
