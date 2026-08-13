@@ -288,14 +288,12 @@ export async function SearchResultsSection({
     // carry no `publishedTourCount`, so a tile there could not honestly print
     // "15 tours". A category with no count is dropped rather than shown as 0.
     const exploreTypes: ExploreType[] = [
-        // A hub tile is a PLACE, not a category (MCK-19): the rail drops its
-        // tour count and shows the pinned place tag + count-less line instead
-        // - the hub's `description` (listings blurb), not the hero tagline.
+        // Hub tiles lead the rail and render exactly like the category tiles
+        // - name + tour count (client, Aug 13 2026: the mck-19 place tag and
+        // count-less tagline are reverted).
         ...hubs.map(hub => ({
             name: hub.name,
             slug: hub.slug,
-            kind: 'hub' as const,
-            tagline: hub.description || null,
             tours: hub.publishedTourCount,
             image: hub.heroImage ?? undefined,
         })),
@@ -331,7 +329,6 @@ export async function SearchResultsSection({
             localsDict={cardDict}
             cardDict={cardDict}
             toursLabel={dict.destination.exploreTypes.tours}
-            placeLabel={dict.destination.exploreTypes.place}
             query={query}
             dateLabel={dateLabel}
             dateParam={filters.date ?? null}

@@ -11,15 +11,16 @@ export type Category = {
 };
 
 /**
- * A place row in the categories dropdown (MCK-19). Deliberately count-less: a
- * hub is a place, not a slice of the catalogue, and its number depends on what
- * you count - the subtitle says what is there instead.
+ * A hub row pinned above the categories in the dropdown. Rendered exactly
+ * like a category row - photo, name, tour count (client, Aug 13 2026: the
+ * mck-19 place dressing is reverted); only its position above the rule marks
+ * it as a place.
  */
 export type NavHub = {
     name: string;
     slug: string;
-    /** Short line under the name - the hub's `description` (listings blurb). */
-    tagline?: string | null;
+    /** Bookable tour count - the same "N tours" line the category rows carry. */
+    tours?: number;
     /** Hub thumbnail for the dropdown row; null keeps the fallback surface. */
     image?: string | null;
 };

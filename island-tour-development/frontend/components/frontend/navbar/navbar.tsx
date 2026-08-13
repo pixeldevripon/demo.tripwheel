@@ -145,12 +145,12 @@ export function Navbar({
     }, [currentIsland?.slug, locale]);
 
     /*
-     * The island's activity hubs - the categories dropdown's PLACE row (MCK-19:
-     * the dropdown was the one surface in the chrome with no route to a hub).
-     * Same client-side resolution, cache and fail-to-empty as the categories
-     * above. Gated at >= 3 bookable tours - the same shape of gate master 2.4
-     * applies to categories - so Klein Curacao qualifies and a two-tour hub
-     * does not.
+     * The island's activity hubs - pinned above the categories in the
+     * dropdown (the dropdown was the one surface in the chrome with no route
+     * to a hub). Same client-side resolution, cache and fail-to-empty as the
+     * categories above. Gated at >= 3 bookable tours - the same shape of gate
+     * master 2.4 applies to categories - so Klein Curacao qualifies and a
+     * two-tour hub does not.
      */
     const [hubs, setHubs] = useState<NavHub[]>([]);
     const hubCache = useRef<Map<string, NavHub[]>>(new Map());
@@ -176,10 +176,7 @@ export function Navbar({
                     .map(h => ({
                         name: h.name,
                         slug: h.slug,
-                        // The count-less subtitle: what is there, not how many.
-                        // `description` is the listings blurb (master E.4);
-                        // heroTagline belongs to the hub page hero only.
-                        tagline: h.description || null,
+                        tours: h.publishedTourCount,
                         image: h.heroImage ?? null,
                     }));
                 hubCache.current.set(cacheKey, mapped);

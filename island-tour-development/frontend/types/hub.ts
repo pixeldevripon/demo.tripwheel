@@ -29,10 +29,11 @@ export interface HubLocalized extends Hub {
 }
 
 /**
- * Returned by the destination-scoped, tour-gated public endpoint. The place
- * row's subtitle in the nav dropdown and "Explore by type" (MCK-19) is the
- * inherited `description` (the listings blurb) - it replaces the tour count a
- * hub must not carry. `heroTagline` is the hub PAGE's hero subtitle and is
+ * Returned by the destination-scoped, tour-gated public endpoint.
+ * `publishedTourCount` both gates the hub (≥3 bookable tours) and feeds the
+ * "N tours" line on the discovery surfaces - hub rows and tiles render
+ * exactly like category ones (client, Aug 13 2026: the mck-19 place dressing
+ * is reverted). `heroTagline` is the hub PAGE's hero subtitle and is
  * deliberately absent here.
  */
 export interface HubByDestination extends HubLocalized {

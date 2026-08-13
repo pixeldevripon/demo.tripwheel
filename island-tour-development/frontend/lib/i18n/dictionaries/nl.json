@@ -320,7 +320,6 @@
         "exploreTypes": {
             "title": "Verken op type",
             "tours": "tours",
-            "place": "Locatie",
             "allTours": "Alle tours op {destination}"
         },
         "youMightLike": "Misschien vind je dit ook leuk",

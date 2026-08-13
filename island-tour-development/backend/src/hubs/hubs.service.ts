@@ -537,8 +537,6 @@ export class HubService {
       select: {
         ...this.hubSelect,
         // Both locales: the translated name needs English to fall back to.
-        // The place row's subtitle is the base `description` (already in
-        // hubSelect) - the listings blurb, not the hub-page heroTagline.
         translations: {
           where: { locale: { in: [locale, Locale.en] } },
           select: {

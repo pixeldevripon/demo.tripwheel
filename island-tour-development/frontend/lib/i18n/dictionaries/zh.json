@@ -320,7 +320,6 @@
         "exploreTypes": {
             "title": "按类型探索",
             "tours": "个项目",
-            "place": "地点",
             "allTours": "{destination}全部行程"
         },
         "youMightLike": "您可能也喜欢",

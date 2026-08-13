@@ -1,9 +1,10 @@
 /**
- * Client-side public hubs fetch - backs the navbar categories dropdown's place
- * row (MCK-19: the dropdown was the one surface in the chrome with no route to
- * a hub). Mirrors `lib/api/categories-public.ts`: a public GET that runs in the
- * browser because the selected island is a client-side choice. The
- * server-cached equivalent is `getDestinationHubs` in `lib/api/public/hubs.ts`.
+ * Client-side public hubs fetch - backs the hub rows pinned above the
+ * categories in the navbar dropdown (the dropdown was the one surface in the
+ * chrome with no route to a hub). Mirrors `lib/api/categories-public.ts`: a
+ * public GET that runs in the browser because the selected island is a
+ * client-side choice. The server-cached equivalent is `getDestinationHubs` in
+ * `lib/api/public/hubs.ts`.
  */
 import type { Locale } from '@/lib/constants/locales';
 import type { HubByDestination } from '@/types/hub';

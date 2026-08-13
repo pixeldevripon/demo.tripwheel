@@ -1,7 +1,6 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { MapPin } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRef, useState } from 'react';
@@ -24,13 +23,15 @@ import { useClickOutside } from './lib/use-click-outside';
  * leading spacing lives inside the collapsing wrapper so it animates to true
  * zero width.
  *
- * The island's qualifying hubs sit ABOVE the categories as tinted place rows
- * (MCK-19, decided Aug 9 2026): pin + name + a count-less subtitle, then a
- * rule, then the categories exactly as they are. Above rather than inside the
- * list because master 2.4 defines the list as drawn from the 19 global
- * categories and the sets overlap - the same boats sit in Klein Curacao, Day
- * Trips and Boat Tours at once. No group headings: the trigger already says
- * Categories.
+ * The island's qualifying hubs sit ABOVE the categories, then a rule, then
+ * the categories exactly as they are. Above rather than inside the list
+ * because master 2.4 defines the list as drawn from the 19 global categories
+ * and the sets overlap - the same boats sit in Klein Curacao, Day Trips and
+ * Boat Tours at once. No group headings: the trigger already says Categories.
+ * The hub rows are deliberately IDENTICAL to the category rows - photo, name,
+ * tour count (client, Aug 13 2026: the mck-19 place dressing - pin, tint,
+ * count-less tagline - is reverted); the rule under them is the only thing
+ * that marks them as places, so it stays.
  */
 export function CategoriesMenu({
     locale,
@@ -112,7 +113,7 @@ export function CategoriesMenu({
                                                     onClick={() =>
                                                         setOpen(false)
                                                     }
-                                                    className='flex items-center gap-3 rounded-it-md bg-linear-to-r from-it-primary-subtle/55 to-transparent px-2.5 py-2 no-underline transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:bg-it-bg'>
+                                                    className='flex items-center gap-3 rounded-it-md px-2.5 py-2 no-underline transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:bg-it-bg'>
                                                     {hub.image ? (
                                                         // eslint-disable-next-line @next/next/no-img-element
                                                         <img
@@ -124,28 +125,14 @@ export function CategoriesMenu({
                                                         <span className='size-11 shrink-0 rounded-it-md bg-it-bg' />
                                                     )}
                                                     <span className='min-w-0'>
-                                                        <b className='flex items-center gap-1.5 text-sm font-bold text-it-ink'>
-                                                            {/* The same pin the
-                                                                tour card eyebrow
-                                                                uses - a place
-                                                                reads as a place
-                                                                everywhere. */}
-                                                            <MapPin
-                                                                className='size-3 shrink-0 text-it-primary'
-                                                                strokeWidth={2}
-                                                                aria-hidden='true'
-                                                            />
-                                                            <span className='truncate'>
-                                                                {hub.name}
-                                                            </span>
+                                                        <b className='block truncate text-sm font-bold text-it-ink'>
+                                                            {hub.name}
                                                         </b>
-                                                        {/* No tour count on a
-                                                            place row - what is
-                                                            there, not how many
-                                                            (MCK-19). */}
-                                                        {hub.tagline && (
-                                                            <span className='block truncate text-xs text-it-text-muted'>
-                                                                {hub.tagline}
+                                                        {hub.tours !==
+                                                            undefined && (
+                                                            <span className='text-xs text-it-text-muted tabular-nums'>
+                                                                {hub.tours}{' '}
+                                                                {dict.tours}
                                                             </span>
                                                         )}
                                                     </span>

@@ -3,7 +3,7 @@
 import Autoplay from 'embla-carousel-autoplay';
 import useEmblaCarousel from 'embla-carousel-react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, MapPin } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -17,14 +17,6 @@ export type ExploreType = {
     slug: string;
     tours: number;
     image?: string;
-    /**
-     * A hub tile is a PLACE, not a category (MCK-19): it renders the pinned
-     * place tag on its image and `tagline` under its name instead of the tour
-     * count - a place's number depends on what you count, so it carries none.
-     */
-    kind?: 'hub';
-    /** Count-less subtitle for a place tile - what is there, not how many. */
-    tagline?: string | null;
 };
 
 /** Auto-advance interval for the card slider (ms). Tune here. */
@@ -54,7 +46,6 @@ export function ExploreTypesRail({
     destinationSlug,
     categories,
     toursLabel,
-    placeLabel = 'Place',
     tileFallbackClassName = 'bg-it-bg',
     linkQuery,
 }: {
@@ -63,8 +54,6 @@ export function ExploreTypesRail({
     categories: ExploreType[];
     /** Plural noun after the count - e.g. "tours". */
     toursLabel: string;
-    /** The place tag on a hub tile's image - e.g. "Place" (MCK-19). */
-    placeLabel?: string;
     /**
      * Background of a tile whose target has no hero image yet. It has to
      * CONTRAST WITH WHAT THE RAIL IS SITTING ON: the default `bg-it-bg` reads
@@ -159,39 +148,13 @@ export function ExploreTypesRail({
                                             className='object-cover transition-transform duration-(--it-duration-md) ease-(--it-ease) group-hover:scale-[1.03]'
                                         />
                                     )}
-                                    {cat.kind === 'hub' && (
-                                        <span className='absolute left-[7px] top-[7px] inline-flex items-center gap-[5px] rounded-it-full bg-it-white/95 py-[3px] pl-[7px] pr-[9px] text-[10.5px] font-extrabold leading-none text-it-primary-hover'>
-                                            {/* The same pin the tour card
-                                                eyebrow uses - a place reads as
-                                                a place everywhere. */}
-                                            <MapPin
-                                                className='size-3 shrink-0 text-it-primary'
-                                                strokeWidth={2}
-                                                aria-hidden='true'
-                                            />
-                                            {placeLabel}
-                                        </span>
-                                    )}
                                 </div>
                                 <b className='mt-2.5 block text-[14.5px] font-bold tracking-[-0.005em] text-it-ink'>
                                     {cat.name}
                                 </b>
-                                {/* A place tile carries no tour count (MCK-19):
-                                    its number depends on what you count, and it
-                                    printed next to the category counts as one
-                                    more category. The tagline says what is
-                                    there instead. */}
-                                {cat.kind === 'hub' ? (
-                                    cat.tagline && (
-                                        <span className='block truncate text-[12.5px] leading-[1.6] text-it-text-muted'>
-                                            {cat.tagline}
-                                        </span>
-                                    )
-                                ) : (
-                                    <span className='text-[12.5px] leading-[1.6] text-it-text-muted tabular-nums'>
-                                        {cat.tours} {toursLabel}
-                                    </span>
-                                )}
+                                <span className='text-[12.5px] leading-[1.6] text-it-text-muted tabular-nums'>
+                                    {cat.tours} {toursLabel}
+                                </span>
                             </MotionLink>
                         </Reveal>
                     ))}

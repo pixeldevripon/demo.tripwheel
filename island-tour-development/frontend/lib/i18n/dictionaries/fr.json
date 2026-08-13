@@ -320,7 +320,6 @@
         "exploreTypes": {
             "title": "Explorer par type",
             "tours": "circuits",
-            "place": "Lieu",
             "allTours": "Toutes les excursions à {destination}"
         },
         "youMightLike": "Vous aimerez aussi",

@@ -116,8 +116,6 @@ export function SearchRecovery({
     cardDict,
     /** Plural noun after a tile's tour count - the rail's own label ("tours"). */
     toursLabel,
-    /** The place tag on a hub tile's image - e.g. "Place" (MCK-19). */
-    placeLabel,
     query,
     /** Formatted date currently filtering the search (e.g. "6 Aug"); null if none. */
     dateLabel,
@@ -144,7 +142,6 @@ export function SearchRecovery({
     localsDict: LocalsFavouritesDict;
     cardDict: TourCardDict;
     toursLabel: string;
-    placeLabel?: string;
     query: string;
     dateLabel: string | null;
     dateParam: string | null;
@@ -336,7 +333,6 @@ export function SearchRecovery({
                         destinationSlug={destinationSlug}
                         categories={exploreTypes}
                         toursLabel={toursLabel}
-                        placeLabel={placeLabel}
                         // The band is `bg-it-surface`; the rail's default
                         // fallback is the same grey, so an image-less tile
                         // would disappear into it entirely.

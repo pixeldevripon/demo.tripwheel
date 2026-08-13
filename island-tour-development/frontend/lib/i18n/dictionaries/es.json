@@ -320,7 +320,6 @@
         "exploreTypes": {
             "title": "Explora por tipo",
             "tours": "tours",
-            "place": "Lugar",
             "allTours": "Todos los tours en {destination}"
         },
         "youMightLike": "También te puede gustar",

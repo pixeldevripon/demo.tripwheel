@@ -1,7 +1,6 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { MapPin } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -15,10 +14,11 @@ import type { Category, Island, NavDict, NavHub } from './lib/navbar.types';
  * link with a live saved-count. Pure presentation - open state is owned by
  * the navbar (the toggle lives in the action cluster).
  *
- * The island's qualifying hubs sit ABOVE the categories (MCK-19), same order
- * as the desktop dropdown, distinguished by the pin - a place reads as a
- * place everywhere. They render before the "Categories" heading (rule
- * between), so a hub never reads as a member of the categories group.
+ * The island's qualifying hubs sit ABOVE the categories, same order as the
+ * desktop dropdown, and render exactly like the category rows (client,
+ * Aug 13 2026: the mck-19 pin is reverted). They render before the
+ * "Categories" heading (rule between), so a hub never reads as a member of
+ * the categories group - the rule is the only separator, so it stays.
  *
  * Islands deliberately do NOT appear here: the bar's own island pill opens the
  * same list a couple of inches away (client, 2026-08-05).
@@ -81,12 +81,7 @@ export function MobileMenu({
                                         <Link
                                             href={categoryHref(hub.slug)}
                                             onClick={onClose}
-                                            className='flex items-center gap-1.5 text-it-ink text-base no-underline py-2'>
-                                            <MapPin
-                                                className='size-3.5 shrink-0 text-it-primary'
-                                                strokeWidth={2}
-                                                aria-hidden='true'
-                                            />
+                                            className='block text-it-ink text-base no-underline py-2'>
                                             {hub.name}
                                         </Link>
                                     </motion.div>
