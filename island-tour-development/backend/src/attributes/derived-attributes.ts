@@ -1,5 +1,7 @@
 import { Prisma, PickupModel, TourBookingType } from '@prisma/client';
 
+import { isOvernightCharter, OVERNIGHT_MIN_MINUTES } from '@/tours/overnight';
+
 /**
  * Single-source-of-truth for tour attributes that DUPLICATE a first-class Tour
  * column. These are NEVER stored in `tour_attributes` and NEVER editable in the
@@ -16,6 +18,7 @@ import { Prisma, PickupModel, TourBookingType } from '@prisma/client';
 export const DERIVED_ATTRIBUTE_KEYS: ReadonlySet<string> = new Set([
   'booking_type',
   'duration_minutes',
+  'sleep_aboard',
   'pickup_available',
   'instant_confirmation',
   'free_cancellation',
@@ -52,6 +55,7 @@ const GUIDE_LANG_TO_ISO: Record<string, string> = Object.fromEntries(
 export const derivedAttributeTourSelect = {
   cancellationHours: true,
   durationMinutesFrom: true,
+  sleepAboard: true,
   pickupModel: true,
   instantConfirmation: true,
   bookingType: true,
@@ -97,6 +101,10 @@ export function deriveTourAttributes(
   // Free cancellation is a listing requirement (master 6.2), so it is always true.
   bool('free_cancellation', true);
   num('duration_minutes', tour.durationMinutesFrom);
+  // The VERDICT (flag OR >=16h), not the raw column: a 3-day charter must
+  // match the "Sleep aboard" filter even when the operator never touched the
+  // toggle (which the dashboard only shows below the 16h auto-line).
+  bool('sleep_aboard', isOvernightCharter(tour));
   bool('pickup_available', tour.pickupModel !== PickupModel.NONE);
   bool('instant_confirmation', tour.instantConfirmation);
   if (tour.bookingType) {
@@ -159,6 +167,26 @@ export function buildDerivedAttributeWhere(
       return boolField('familyFriendly');
     case 'suitable_for_beginners':
       return boolField('suitableForBeginners');
+    // Mirrors the derive above: overnight verdict, not the raw column.
+    case 'sleep_aboard': {
+      const wantTrue = values.includes('true');
+      const wantFalse = values.includes('false');
+      if (wantTrue === wantFalse) return null;
+      return wantTrue
+        ? {
+            OR: [
+              { sleepAboard: true },
+              { durationMinutesFrom: { gte: OVERNIGHT_MIN_MINUTES } },
+            ],
+          }
+        : {
+            sleepAboard: false,
+            OR: [
+              { durationMinutesFrom: null },
+              { durationMinutesFrom: { lt: OVERNIGHT_MIN_MINUTES } },
+            ],
+          };
+    }
     // Free cancellation is always true (listing requirement) - filtering is a no-op.
     case 'free_cancellation':
       return null;

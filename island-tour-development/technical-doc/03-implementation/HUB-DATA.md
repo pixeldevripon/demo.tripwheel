@@ -197,8 +197,9 @@ many rows are derived-from-tour-attributes vs curated, then model only the curat
 - `HubAllowedCategory(hubId, categoryId)` gates which category of tours an operator may attach to the
   hub. ✓ The operator tour-create hub selector checks this.
 - **Shared vs private split** (Figma sections 4 vs 5) is **derived** from the hub's tours by
-  `bookingType` (SHARED grid vs PRIVATE charters), and charters sub-split day vs overnight by duration.
-  No hub schema field needed.
+  `bookingType` (SHARED grid vs PRIVATE charters), and charters sub-split day vs overnight by the
+  backend-served `isOvernight` verdict: operator `sleepAboard` flag OR duration >= 16h
+  (`backend/src/tours/overnight.ts` - the frontend never re-derives it). No hub schema field needed.
 - **Sponsored badge** shows on the hub shared grid (tier/spotlight driven) - derived, no field.
 
 ---
@@ -262,7 +263,8 @@ GET /{locale}/{destination}/{hub-slug}/
   4. Editorial lead = overview.
   5. Shared grid: tours via TourHub (category in allowedCategories), bookingType=SHARED,
      ranked tier_rank ASC, quality_score DESC, id ASC; Sponsored badge per tier/spotlight; date filter.
-  6. Private charters: same membership, bookingType=PRIVATE, split day/overnight by duration.
+  6. Private charters: same membership, bookingType=PRIVATE, split day/overnight by the served
+     `isOvernight` (sleepAboard OR >= 16h).
   7. Our Pick: HubOurPick ordered by displayOrder, blurb in locale, tour titles.
   8. Comparison: HubComparisonGroup -> HubComparisonTour columns; cells = derived (tour/attributes) + curated.
   9. Discover + Local Tips: HubContentSection by sectionType, ordered.

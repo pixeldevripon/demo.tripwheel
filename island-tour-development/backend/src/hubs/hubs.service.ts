@@ -53,6 +53,7 @@ import {
   TourStatus,
 } from '@prisma/client';
 import { FxRatesService } from '@/fx/fx-rates.service';
+import { isOvernightCharter, overnightSelect } from '@/tours/overnight';
 import {
   ActiveHubsQueryDto,
   AddAllowedCategoryDto,
@@ -2234,9 +2235,10 @@ export class HubService {
    * `/tours?hubId=` filter exactly (`status=LIVE`, `isActive`, `isBookable`) so the
    * pills always agree with the trips grid below:
    *  - duration : min..max across the DAY-TRIP tours only. Overnight charters
-   *    (>= 24h, the same threshold the frontend partitions charters on) are
-   *    excluded: the hero describes the day trip, and one 48h charter in the
-   *    set otherwise stretches the pill to "Full day (6-48h)" (mck-16)
+   *    (sleepAboard OR >= 16h - `isOvernightCharter`, the same verdict the
+   *    listing payload serves as `isOvernight`) are excluded: the hero
+   *    describes the day trip, and one 48h charter in the set otherwise
+   *    stretches the pill to "Full day (6-48h)" (mck-16)
    *  - priceFrom: cheapest `priceFrom` (fallback `basePrice`) across the set
    *  - frequencyDays: distinct ACTIVE departure weekdays across the whole set
    *    (0-7); the frontend renders 7 as "Daily", 1-6 as "N days a week"
@@ -2258,7 +2260,7 @@ export class HubService {
         where: tourWhere,
         select: {
           id: true,
-          durationMinutesFrom: true,
+          ...overnightSelect,
           durationMinutesTo: true,
           priceFrom: true,
           basePrice: true,
@@ -2276,10 +2278,9 @@ export class HubService {
 
     // Duration range over day trips only - an overnight charter is not a day
     // trip and must not set the hero's duration (price/frequency still cover
-    // the whole set). Same >= 1440min rule as the frontend's charter split.
-    const dayTours = tours.filter(
-      (t) => (t.durationMinutesFrom ?? 0) < HubService.OVERNIGHT_MIN_MINUTES,
-    );
+    // the whole set). Same rule as the charter Day/Overnight split the listing
+    // payload serves (`isOvernight`): sleepAboard OR duration >= 16h.
+    const dayTours = tours.filter((t) => !isOvernightCharter(t));
     const durFrom = dayTours
       .map((t) => t.durationMinutesFrom)
       .filter((n): n is number => n != null);
@@ -2298,10 +2299,6 @@ export class HubService {
       inclusion: await this.computeHeroInclusion(tours.map((t) => t.id)),
     };
   }
-
-  // A tour spanning a full day or more is an overnight charter, not a day trip.
-  // Mirrors the frontend's charter Day/Overnight partition threshold.
-  private static readonly OVERNIGHT_MIN_MINUTES = 1440;
 
   // Amenity attributes the hero "inclusion" pill can surface, in display
   // priority (BBQ first, per Figma 48024:11162). The highest-priority amenity

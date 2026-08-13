@@ -26,6 +26,7 @@ import {
 } from '@/attributes/derived-attributes';
 import { PAID_TIER_MAX_RANK } from '@/tiers/tiers.service';
 import { cardTeaser, cardTeaserTranslationSelect } from './card-teaser';
+import { isOvernightCharter } from './overnight';
 import { evaluateLikelyToSellOut } from './demand-signal';
 import { computeQualityScore, listingCompleteness } from './quality-score';
 import {
@@ -167,6 +168,7 @@ export class ToursService {
     extraPersonPrice: true,
     durationMinutesFrom: true,
     durationMinutesTo: true,
+    sleepAboard: true,
     pickupModel: true,
     pickupRequired: true,
     maxPartySize: true,
@@ -246,11 +248,18 @@ export class ToursService {
     T extends {
       categories?: { categoryId: string; isPrimary: boolean }[];
       hubs?: { hubId: string; hub?: { name: string; slug: string } | null }[];
+      // Required (every caller selects via `tourSelect`): a narrowed select
+      // missing either would silently misclassify - keep the compile guard.
+      sleepAboard: boolean;
+      durationMinutesFrom: number | null;
     },
   >(tour: T) {
     const { categories, hubs, ...rest } = tour;
     return {
       ...rest,
+      // Backend-computed Day/Overnight charter verdict (overnight.ts). Served
+      // so the frontend partitions on it instead of mirroring the rule.
+      isOvernight: isOvernightCharter(tour),
       categoryIds: categories?.map((c) => c.categoryId) ?? [],
       primaryCategoryId:
         categories?.find((c) => c.isPrimary)?.categoryId ?? null,
@@ -981,6 +990,9 @@ export class ToursService {
       }[];
       categories?: { categoryId: string; isPrimary: boolean }[];
       hubs?: { hubId: string; hub?: { name: string; slug: string } | null }[];
+      // Required by flattenTour's isOvernight computation (see its constraint).
+      sleepAboard: boolean;
+      durationMinutesFrom: number | null;
     },
   >(hit: T) {
     const { destination, translations, ...rest } = hit;
@@ -2755,6 +2767,9 @@ export class ToursService {
             departureCity: dto.departureCity ?? null,
             minAgeYears: dto.minAgeYears ?? null,
             fitnessLevel: dto.fitnessLevel ?? null,
+            ...(dto.sleepAboard !== undefined && {
+              sleepAboard: dto.sleepAboard,
+            }),
             ...(dto.weatherDependent !== undefined && {
               weatherDependent: dto.weatherDependent,
             }),
@@ -3082,6 +3097,9 @@ export class ToursService {
           }),
           ...(dto.fitnessLevel !== undefined && {
             fitnessLevel: dto.fitnessLevel,
+          }),
+          ...(dto.sleepAboard !== undefined && {
+            sleepAboard: dto.sleepAboard,
           }),
           ...(dto.weatherDependent !== undefined && {
             weatherDependent: dto.weatherDependent,

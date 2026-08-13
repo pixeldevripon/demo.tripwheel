@@ -37,6 +37,12 @@ export interface SearchHit {
   maxPartySize?: number | null;
   durationMinutesFrom: number | null;
   durationMinutesTo: number | null;
+  /**
+   * Backend-computed Day/Overnight charter verdict (operator `sleepAboard` flag
+   * OR duration >= 16h). The hub page partitions its charter groups on this -
+   * never re-derive it client-side from duration.
+   */
+  isOvernight?: boolean;
   /** Activity hubs this tour belongs to (0 or more). The first drives the card's hub eyebrow. */
   hubs?: { id: string; name: string; slug: string }[];
   pickupModel: string;

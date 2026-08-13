@@ -224,10 +224,13 @@ function cardPrice(
     return { priceDisplay, priceUnit, priceNote };
 }
 
-/** A whole-unit charter is "overnight" when it spans a full day or more (multi-day). */
-const OVERNIGHT_MIN_MINUTES = 1440;
+/**
+ * Backend-computed Day/Overnight charter verdict: the operator's "guests sleep
+ * on board" flag OR duration >= 16h (`backend/src/tours/overnight.ts`). Served
+ * on every listing hit so the rule is never mirrored here.
+ */
 function isOvernightHit(hit: SearchHit): boolean {
-    return (hit.durationMinutesFrom ?? 0) >= OVERNIGHT_MIN_MINUTES;
+    return hit.isOvernight === true;
 }
 
 // The 4 hero meta-pill icons (Figma 48024:11162), in render order. The price

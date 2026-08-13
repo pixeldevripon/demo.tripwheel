@@ -40,6 +40,11 @@ model Tour {
   // ── Operational / booking logic (master E.3) ──
   durationMinutesFrom  Int?
   durationMinutesTo    Int?
+  // Guests sleep on board (operator truth, whole-unit charters). Drives the hub's
+  // Day/Overnight charter split together with the >=16h duration fallback — the
+  // flag is what classifies <16h sleep trips (sunset-to-sunrise) that no duration
+  // threshold can, while a 6h night cruise correctly stays a day charter.
+  sleepAboard          Boolean          @default(false)
   pickupModel          PickupModel      @default(NONE)
   pickupRequired       Boolean          @default(false) // → OCTO option.pickupRequired
   minPartySize         Int              @default(1) // minimum travelers per booking

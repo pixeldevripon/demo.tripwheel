@@ -648,6 +648,8 @@ interface Blueprint {
     wheelchairAccessible?: boolean;
     weatherDependent?: boolean;
     isLocalsFavourite?: boolean;
+    // Guests sleep on board (charters) - drives the hub Day/Overnight split.
+    sleepAboard?: boolean;
   };
   attrOverrides?: Record<string, AttrValue>;
   languages?: string[];
@@ -1172,7 +1174,7 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
     paymentModel: PaymentModel.OPERATOR_LINK,
     cancellationHours: 168,
     tierKey: 'premium',
-    flags: { familyFriendly: true, weatherDependent: true },
+    flags: { familyFriendly: true, weatherDependent: true, sleepAboard: true },
     attrOverrides: {
       boat_type: 'yacht',
       open_bar_included: true,
@@ -1208,7 +1210,7 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
     paymentModel: PaymentModel.OPERATOR_LINK,
     cancellationHours: 168,
     tierKey: 'premium',
-    flags: { familyFriendly: true, weatherDependent: true },
+    flags: { familyFriendly: true, weatherDependent: true, sleepAboard: true },
     attrOverrides: {
       boat_type: 'catamaran',
       open_bar_included: true,
@@ -2260,6 +2262,7 @@ export async function seedTours(): Promise<void> {
       minAgeYears: bp.minAgeYears ?? null,
       fitnessLevel: bp.fitnessLevel ?? FitnessLevel.EASY,
       bookingType: bp.bookingType,
+      sleepAboard: bp.flags?.sleepAboard ?? false,
       weatherDependent: bp.flags?.weatherDependent ?? false,
       wheelchairAccessible: bp.flags?.wheelchairAccessible ?? false,
       familyFriendly: bp.flags?.familyFriendly ?? false,
@@ -2401,6 +2404,7 @@ export async function seedTours(): Promise<void> {
           minAgeYears: bp.minAgeYears ?? null,
           fitnessLevel: bp.fitnessLevel ?? FitnessLevel.EASY,
           bookingType: bp.bookingType,
+          sleepAboard: bp.flags?.sleepAboard ?? false,
           weatherDependent: bp.flags?.weatherDependent ?? false,
           wheelchairAccessible: bp.flags?.wheelchairAccessible ?? false,
           familyFriendly: bp.flags?.familyFriendly ?? false,

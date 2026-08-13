@@ -182,6 +182,18 @@ export class TourResponseDto {
   @ApiPropertyOptional({ example: 8 }) minAgeYears!: number | null;
   @ApiPropertyOptional({ enum: FitnessLevel })
   fitnessLevel!: FitnessLevel | null;
+  @ApiProperty({
+    example: false,
+    description:
+      'Operator-set: guests sleep on board (whole-unit charters). One of the two inputs to isOvernight.',
+  })
+  sleepAboard!: boolean;
+  @ApiProperty({
+    example: false,
+    description:
+      'Computed Day/Overnight charter verdict: sleepAboard OR duration >= 16h. The frontend partitions hub charter groups on this; never re-derived client-side.',
+  })
+  isOvernight!: boolean;
   @ApiProperty({ example: false }) weatherDependent!: boolean;
   @ApiProperty({ example: false }) wheelchairAccessible!: boolean;
   @ApiProperty({ example: false }) familyFriendly!: boolean;
@@ -1182,6 +1194,15 @@ export class CreateTourDto {
   @IsEnum(FitnessLevel)
   fitnessLevel?: FitnessLevel;
 
+  @ApiPropertyOptional({
+    example: false,
+    description:
+      'Guests sleep on board (whole-unit charters). Forces the Overnight charter group for <16h sleep trips.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  sleepAboard?: boolean;
+
   @ApiPropertyOptional({ example: false })
   @IsOptional()
   @IsBoolean()
@@ -1530,6 +1551,15 @@ export class UpdateTourDto {
   @IsOptional()
   @IsEnum(FitnessLevel)
   fitnessLevel?: FitnessLevel;
+
+  @ApiPropertyOptional({
+    example: false,
+    description:
+      'Guests sleep on board (whole-unit charters). Forces the Overnight charter group for <16h sleep trips.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  sleepAboard?: boolean;
 
   @ApiPropertyOptional({ example: false })
   @IsOptional()

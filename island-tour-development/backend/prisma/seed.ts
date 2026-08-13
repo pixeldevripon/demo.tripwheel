@@ -817,6 +817,11 @@ const ATTRIBUTE_DEFS: AttrSeed[] = [
     dataType: AttributeDataType.BOOLEAN,
   },
   {
+    key: 'sleep_aboard',
+    displayName: 'Sleep Aboard',
+    dataType: AttributeDataType.BOOLEAN,
+  },
+  {
     key: 'food_included',
     displayName: 'Food Included',
     dataType: AttributeDataType.BOOLEAN,
