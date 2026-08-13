@@ -564,12 +564,12 @@ Review + verify:
 
 ### Phase 6 - verification + docs
 
-- [x] Chrome walkthrough (admin seat, live round trip: close-with-reason, platform attribution, island clock, reopen logged, day list, week default, legend, freshness card) - operator/staff seats + mobile width pending: owner/manager (everything), staff seat (close/reopen/range/confirm/add-one-off only - no seats field, no weekly tab, no capacity anywhere), admin (operator names, operator filter, overdue-freshness list, platform-attributed closures)
-- [ ] Traveler round trip: operator closes Sold out > traveler date struck "Sold out"; Not running > plain grey "No departure"; reopen > bookable again
-- [ ] Demand-signal spot check: Sold out closure writes what §3.7 counts; Not running does not
+- [x] Chrome walkthrough: admin seat (close-with-reason round trip, platform attribution, island clock, logged reopen, day list, week default, legend, per-tour freshness) and operator seat (confirm card + stamp-on-visit persistence) verified live; mobile width verified at 400px (Day-list default, stacked toolbar, no page overflow). Staff (Guide) seat: service guards unit-tested; UI walkthrough needs the product.pixelvega Guide login - the one remaining manual check: owner/manager (everything), staff seat (close/reopen/range/confirm/add-one-off only - no seats field, no weekly tab, no capacity anywhere), admin (operator names, operator filter, overdue-freshness list, platform-attributed closures)
+- [x] Traveler round trip: Sold out close -> date struck through on the public calendar; Not running -> plain grey, no strike; reopen -> bookable again (verified on sunset-sail-with-open-bar, 2026-08-13)
+- [x] Demand-signal spot check: a whole-day Sold out close = exactly 1 batch-collapsed event; Not running and slot closes = 0; retiring the closure withdraws the evidence while keeping the retire audit (verified against the live DB)
 - [ ] Range close on a day with bookings: consequence line counts correct; Undo restores the whole range
-- [ ] MASTER-CHECKLIST.md rows flipped; this doc's checkboxes flipped; memory resume-point updated
-- [ ] D1 founder flag raised (billing-copy erratum) with the master-doc reference
+- [x] This doc's checkboxes flipped; memory resume-point updated (MASTER-CHECKLIST carries no MCK-16 rows - the mockup is client-driven, not a master point)
+- [x] D1 resolved by the founder 2026-08-13: keep the shipped copy, no billing claim (master 7.2 phrasing stands as-is)
 
 ---
 
