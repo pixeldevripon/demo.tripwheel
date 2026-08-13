@@ -115,6 +115,11 @@ export interface TripListItem {
   // Audience / accessibility flags
   minAgeYears: number | null;
   fitnessLevel: FitnessLevel | null;
+  /**
+   * Guests sleep on board (whole-unit charters). With the backend's >=16h
+   * duration fallback this drives the hub page's Day/Overnight charter split.
+   */
+  sleepAboard: boolean;
   weatherDependent: boolean;
   wheelchairAccessible: boolean;
   familyFriendly: boolean;
@@ -628,6 +633,7 @@ export interface CreateTripPayload {
   departureCity?: string;
   minAgeYears?: number;
   fitnessLevel?: FitnessLevel;
+  sleepAboard?: boolean;
   weatherDependent?: boolean;
   wheelchairAccessible?: boolean;
   familyFriendly?: boolean;
@@ -695,6 +701,7 @@ export interface UpdateTripPayload {
   departureCity?: string | null;
   minAgeYears?: number | null;
   fitnessLevel?: FitnessLevel | null;
+  sleepAboard?: boolean;
   weatherDependent?: boolean;
   wheelchairAccessible?: boolean;
   familyFriendly?: boolean;

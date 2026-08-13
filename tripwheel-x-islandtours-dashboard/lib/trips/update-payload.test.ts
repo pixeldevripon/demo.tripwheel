@@ -73,6 +73,7 @@ describe('tripToUpdatePayload', () => {
     maxPartySize: 10,
     bookingCutoffMinutes: 120,
     cancellationHours: 48,
+    sleepAboard: true,
     weatherDependent: false,
     wheelchairAccessible: false,
     familyFriendly: true,
@@ -108,5 +109,17 @@ describe('tripToUpdatePayload', () => {
 
   it('passes maxPartySize through unconditionally (NOT NULL column)', () => {
     expect(tripToUpdatePayload(base).maxPartySize).toBe(10)
+  })
+
+  it('passes sleepAboard through so non-rules steps echo the stored value, not the default', () => {
+    expect(tripToUpdatePayload(base).sleepAboard).toBe(true)
+  })
+
+  it('drops the sleepAboard key while the backend does not serve the column yet', () => {
+    const p = tripToUpdatePayload({
+      ...base,
+      sleepAboard: undefined,
+    } as unknown as TripListItem)
+    expect('sleepAboard' in p && p.sleepAboard !== undefined).toBe(false)
   })
 })

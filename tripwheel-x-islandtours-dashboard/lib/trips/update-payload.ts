@@ -99,6 +99,10 @@ export function tripToUpdatePayload(trip: TripListItem): UpdateTripPayload {
 
         minAgeYears: trip.minAgeYears ?? undefined,
         fitnessLevel: trip.fitnessLevel ?? undefined,
+        // `?? undefined` (drop the key) rather than a hard false while the
+        // backend may not serve the column yet - never write a default over
+        // a value this client cannot see.
+        sleepAboard: trip.sleepAboard ?? undefined,
         weatherDependent: trip.weatherDependent,
         wheelchairAccessible: trip.wheelchairAccessible,
         familyFriendly: trip.familyFriendly,

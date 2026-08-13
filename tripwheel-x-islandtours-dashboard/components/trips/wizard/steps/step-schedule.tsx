@@ -55,7 +55,7 @@ import {
 } from '../../trip-schedules-tab';
 import { useStepCommit } from '../use-step-commit';
 import { useWizard } from '../wizard-context';
-import { ConsequenceText, FieldGrid } from '../wizard-fields';
+import { ConsequenceText, FieldGrid, ToggleRow } from '../wizard-fields';
 import { WizardSection } from '../wizard-section';
 import {
     focusFirstInvalid,
@@ -79,6 +79,7 @@ const scheduleSchema = z
         .max(10080)
         .optional()
         .or(z.literal('')),
+    sleepAboard: z.boolean(),
     })
     // "3 hours to 1 hour" saved cleanly before this. Nothing else catches it:
     // the backend DTO documents "≥ durationMinutesFrom" in its Swagger
@@ -104,6 +105,7 @@ const scheduleSchema = z
 type ScheduleValues = {
     durationMinutesFrom: string;
     durationMinutesTo: string;
+    sleepAboard: boolean;
 };
 
 function toDefaults(trip: TripListItem): ScheduleValues {
@@ -114,7 +116,27 @@ function toDefaults(trip: TripListItem): ScheduleValues {
                 : '',
         durationMinutesTo:
             trip.durationMinutesTo != null ? String(trip.durationMinutesTo) : '',
+        // `?? false` guards the deploy window where the backend does not serve
+        // the column yet - undefined would make the toggle uncontrolled.
+        sleepAboard: trip.sleepAboard ?? false,
     };
+}
+
+/**
+ * Mirror of the backend's OVERNIGHT_MIN_MINUTES (tours/overnight.ts) - used
+ * only to pick the toggle's helper copy, never to classify: the verdict the
+ * public site renders is always the backend-served `isOvernight`.
+ */
+const OVERNIGHT_AUTO_MINUTES = 960;
+
+/**
+ * "Charter" is boat/aircraft vocabulary - a whole-unit jeep or whole-group
+ * product is just a trip. Only the product noun changes; the public hub
+ * section the copy points at is named "Overnight charters" for every unit
+ * type.
+ */
+function unitNoun(type: TripListItem['wholeUnitType']): 'charter' | 'trip' {
+    return type === 'BOAT' || type === 'AIRCRAFT' ? 'charter' : 'trip';
 }
 
 /**
@@ -170,6 +192,7 @@ export function StepSchedule({ trip }: StepScheduleProps) {
         register,
         handleSubmit,
         watch,
+        setValue,
         reset,
         formState: { errors, isDirty },
     } = useForm<ScheduleValues>({
@@ -201,6 +224,15 @@ export function StepSchedule({ trip }: StepScheduleProps) {
                             durationMinutesTo: numberOrNull(
                                 values.durationMinutesTo,
                             ),
+                            // Only send the key once the backend serves the
+                            // column (serving implies accepting): a hard
+                            // `sleepAboard: false` during the deploy window
+                            // would trip forbidNonWhitelisted and 400 the
+                            // whole step save (see the isActive postmortem in
+                            // update-payload.ts).
+                            ...(trip.sleepAboard !== undefined && {
+                                sleepAboard: values.sleepAboard,
+                            }),
                         },
                     });
                     // Pristine at the values just persisted. Without
@@ -337,6 +369,33 @@ export function StepSchedule({ trip }: StepScheduleProps) {
                             </FieldError>
                         </Field>
                     </FieldGrid>
+                    {/* Whole-unit charters under the 16h auto-line only: at
+                        16h+ the duration above already decides Overnight (and
+                        the public "Sleep aboard" filter derives from that
+                        same verdict on the backend), so the switch would be
+                        inert - it only renders where it can still change the
+                        outcome: sleep trips shorter than 16h
+                        (sunset-to-sunrise) which no duration rule can
+                        classify. */}
+                    {trip.pricingModel === 'UNIT' &&
+                        !(
+                            Number(v.durationMinutesFrom) >=
+                            OVERNIGHT_AUTO_MINUTES
+                        ) && (
+                            <div className='mt-6'>
+                                <ToggleRow
+                                    id='sleepAboard'
+                                    label='Guests sleep on board'
+                                    description={`Lists this ${unitNoun(trip.wholeUnitType)} under Overnight charters. ${unitNoun(trip.wholeUnitType) === 'charter' ? 'Charters' : 'Trips'} of 16 hours or more count as overnight automatically.`}
+                                    checked={v.sleepAboard}
+                                    onChange={c =>
+                                        setValue('sleepAboard', c, {
+                                            shouldDirty: true,
+                                        })
+                                    }
+                                />
+                            </div>
+                        )}
                 </WizardSection>
 
                 <WizardSection
