@@ -1,5 +1,10 @@
 import { addDays, format, parseISO, startOfMonth, startOfWeek } from 'date-fns';
-import type { OverviewDeparture } from '@/types/trip';
+import {
+    departureState,
+    unitNoun,
+    type CalendarDepartureState,
+} from '@/components/common/departure-states';
+import type { OverviewDeparture, WholeUnitType } from '@/types/trip';
 
 /**
  * Shared pure helpers for the global availability calendar. Dates travel as
@@ -72,45 +77,17 @@ export function rangeLabel(view: CalendarView, anchorKey: string): string {
 }
 
 /**
- * Effective chip state: the four live statuses plus "departed" (cutoff passed
- * on a still-OPEN row - the boats left, nothing is wrong). Matches the agenda
- * legend exactly: green open · violet sold out · red closed · grey
- * departed/cancelled.
+ * Effective chip state, via the SHARED vocabulary (MCK-16 change 9): one
+ * derivation + one colour/label set for every dated surface, with cancelled
+ * distinct from departed - see components/common/departure-states.ts.
  */
-export type ChipState = 'open' | 'soldOut' | 'closed' | 'past';
-
-export function chipState(dep: OverviewDeparture): ChipState {
-    if (dep.status === 'CANCELLED') return 'past';
-    if (dep.status === 'SOLD_OUT') return 'soldOut';
-    // A closure row means someone stop-sold it; a bare CLOSED with the cutoff
-    // passed is just "departed".
-    if (dep.status === 'CLOSED') {
-        return dep.closure ? 'closed' : dep.cutoffPassed ? 'past' : 'closed';
-    }
-    return dep.cutoffPassed ? 'past' : 'open';
+export function chipState(dep: OverviewDeparture): CalendarDepartureState {
+    return departureState({
+        status: dep.status,
+        cutoffPassed: dep.cutoffPassed,
+        hasClosure: !!dep.closure,
+    });
 }
-
-/** Chip surface classes per state (bg + text; the dot uses DOT_CLASS). */
-export const CHIP_CLASS: Record<ChipState, string> = {
-    open: 'bg-success-subtle text-success-fg hover:bg-success-subtle/70',
-    soldOut: 'bg-info-subtle text-info-fg hover:bg-info-subtle/70',
-    closed: 'bg-destructive/10 text-destructive hover:bg-destructive/15',
-    past: 'bg-muted/60 text-muted-foreground hover:bg-muted',
-};
-
-export const DOT_CLASS: Record<ChipState, string> = {
-    open: 'bg-success-fg',
-    soldOut: 'bg-info-fg',
-    closed: 'bg-destructive',
-    past: 'bg-muted-foreground/50',
-};
-
-export const STATE_LABEL: Record<ChipState, string> = {
-    open: 'Open',
-    soldOut: 'Sold out',
-    closed: 'Closed by you',
-    past: 'Departed or cancelled',
-};
 
 /** "GMT-4" for the time-grid gutter corner, from an IANA zone. */
 export function gmtLabel(timeZone: string | undefined): string {
@@ -126,10 +103,18 @@ export function gmtLabel(timeZone: string | undefined): string {
     }
 }
 
-/** "3/12" seat chip text; unit charters speak guests, never seat math. */
-export function seatsLabel(dep: OverviewDeparture): string {
+/**
+ * "3/12" seat chip text; unit charters say what one booking takes whole -
+ * "Whole boat", never "Free" (MCK-16 change 11): on a screen where every
+ * other number is seats sold, "Free" reads as no cost. Booked-ness shows
+ * through the STATE, not the label.
+ */
+export function seatsLabel(
+    dep: OverviewDeparture,
+    wholeUnitType?: WholeUnitType | null,
+): string {
     if (dep.pricingModel === 'UNIT') {
-        return dep.bookedCount > 0 ? 'Booked' : 'Free';
+        return `Whole ${unitNoun(wholeUnitType)}`;
     }
     return `${dep.bookedCount}/${dep.capacity}`;
 }

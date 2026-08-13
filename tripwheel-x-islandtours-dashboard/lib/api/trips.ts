@@ -627,30 +627,35 @@ export const tripsApi = {
   // Bulk blackout (F8): one CLOSE_DATE per date in [from, to], one call.
   // closureReason rides every close (MCK-16 change 1) so the register and the
   // traveller calendar read the right word on every date in the range.
-  closeRange(
-    tripId: string,
-    payload: {
-      from: string;
-      to: string;
-      note?: string;
-      closureReason?: TourClosureReason;
-    }
-  ): Promise<{ closed: number }> {
-    return apiFetch<{ closed: number }>(`/availability/exceptions/close-range`, {
-      method: 'POST',
-      body: JSON.stringify({ tourId: tripId, ...payload }),
-    });
+  // tourId omitted = every active tour of the operator (the weather-day 'All
+  // tours' scope, MCK-16 §4); an admin acting without a tourId passes
+  // operatorId instead. tourCount is optional during the deploy window.
+  closeRange(payload: {
+    tourId?: string;
+    operatorId?: string;
+    from: string;
+    to: string;
+    note?: string;
+    closureReason?: TourClosureReason;
+  }): Promise<{ closed: number; tourCount?: number }> {
+    return apiFetch<{ closed: number; tourCount?: number }>(
+      `/availability/exceptions/close-range`,
+      { method: 'POST', body: JSON.stringify(payload) }
+    );
   },
 
-  // The one-unit Undo of closeRange (drops every whole-day closure in range).
-  reopenRange(
-    tripId: string,
-    payload: { from: string; to: string }
-  ): Promise<{ reopened: number }> {
-    return apiFetch<{ reopened: number }>(`/availability/exceptions/reopen-range`, {
-      method: 'POST',
-      body: JSON.stringify({ tourId: tripId, ...payload }),
-    });
+  // The one-unit Undo of closeRange (retires every whole-day closure in
+  // range). Scoped exactly like closeRange.
+  reopenRange(payload: {
+    tourId?: string;
+    operatorId?: string;
+    from: string;
+    to: string;
+  }): Promise<{ reopened: number; tourCount?: number }> {
+    return apiFetch<{ reopened: number; tourCount?: number }>(
+      `/availability/exceptions/reopen-range`,
+      { method: 'POST', body: JSON.stringify(payload) }
+    );
   },
 
   // Management calendar (operator month grid - one-tap close/reopen layer)

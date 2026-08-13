@@ -693,23 +693,31 @@ export const useConfirmAvailability = () =>
 
 // Bulk blackout + its one-unit Undo (F8). Same cache blast radius as any
 // exception write: register, detail (isBookable), month grid, status line.
+// tripId omitted = the all-tours weather-day scope; the cache blast radius is
+// then EVERY tour, so invalidation widens to the whole trips domain.
 export const useCloseRange = () =>
   useTripMutation(
     ({
       tripId,
       payload,
     }: {
-      tripId: string;
-      payload: Parameters<typeof tripsApi.closeRange>[1];
-    }) => tripsApi.closeRange(tripId, payload),
-    ({ tripId }) => exceptionKeys(tripId),
+      tripId?: string;
+      payload: Omit<Parameters<typeof tripsApi.closeRange>[0], 'tourId'>;
+    }) => tripsApi.closeRange({ ...(tripId && { tourId: tripId }), ...payload }),
+    ({ tripId }) => (tripId ? exceptionKeys(tripId) : [tripKeys.all]),
   );
 
 export const useReopenRange = () =>
   useTripMutation(
-    ({ tripId, payload }: { tripId: string; payload: { from: string; to: string } }) =>
-      tripsApi.reopenRange(tripId, payload),
-    ({ tripId }) => exceptionKeys(tripId),
+    ({
+      tripId,
+      payload,
+    }: {
+      tripId?: string;
+      payload: Omit<Parameters<typeof tripsApi.reopenRange>[0], 'tourId'>;
+    }) =>
+      tripsApi.reopenRange({ ...(tripId && { tourId: tripId }), ...payload }),
+    ({ tripId }) => (tripId ? exceptionKeys(tripId) : [tripKeys.all]),
   );
 
 export const useRemoveException = () =>

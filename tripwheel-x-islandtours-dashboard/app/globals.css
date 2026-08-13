@@ -162,6 +162,22 @@
     --info-fg: oklch(0.45 0.12 250);
     --info-solid: oklch(0.55 0.15 250);
 
+    /* Calendar departure states - the DECIDED vocabulary (MCK-16 change 9,
+     * availability review §3.5): Open = teal outline, Sold out = violet
+     * solid. Deliberately distinct from success (green) and info (blue) so
+     * calendar state reads as its own language, red stays reserved for
+     * cancellation (the one state that moves money), and a routine closure
+     * is never red. */
+    --cal-open-subtle: oklch(0.96 0.02 185);
+    --cal-open-border: oklch(0.75 0.08 185);
+    --cal-open-fg: oklch(0.4 0.09 185);
+    --cal-open-solid: oklch(0.58 0.11 185);
+
+    --cal-sold-subtle: oklch(0.95 0.03 300);
+    --cal-sold-border: oklch(0.82 0.07 300);
+    --cal-sold-fg: oklch(0.45 0.13 300);
+    --cal-sold-solid: oklch(0.5 0.16 300);
+
     /* Chart palette: the Devripon preset's set (user decision 2026-07-17 -
      * the old chart-2 red made positive booking bars read as danger). */
     --chart-1: oklch(0.68 0.14 159.65);
@@ -274,6 +290,16 @@
     --info-fg: oklch(0.82 0.12 250);
     --info-solid: oklch(0.62 0.15 250);
 
+    --cal-open-subtle: oklch(0.26 0.02 185);
+    --cal-open-border: oklch(0.42 0.06 185);
+    --cal-open-fg: oklch(0.8 0.1 185);
+    --cal-open-solid: oklch(0.62 0.11 185);
+
+    --cal-sold-subtle: oklch(0.28 0.04 300);
+    --cal-sold-border: oklch(0.42 0.07 300);
+    --cal-sold-fg: oklch(0.8 0.1 300);
+    --cal-sold-solid: oklch(0.56 0.15 300);
+
     --chart-1: oklch(0.69 0.16 156.32);
     --chart-2: var(--color-brand-400); /* brand teal, lightened for dark surfaces */
     --chart-3: oklch(0.69 0.17 256);
@@ -360,6 +386,16 @@
     --color-info-border: var(--info-border);
     --color-info-fg: var(--info-fg);
     --color-info-solid: var(--info-solid);
+
+    --color-cal-open-subtle: var(--cal-open-subtle);
+    --color-cal-open-border: var(--cal-open-border);
+    --color-cal-open-fg: var(--cal-open-fg);
+    --color-cal-open-solid: var(--cal-open-solid);
+
+    --color-cal-sold-subtle: var(--cal-sold-subtle);
+    --color-cal-sold-border: var(--cal-sold-border);
+    --color-cal-sold-fg: var(--cal-sold-fg);
+    --color-cal-sold-solid: var(--cal-sold-solid);
 
     --color-chart-1: var(--chart-1);
     --color-chart-2: var(--chart-2);

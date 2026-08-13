@@ -14,7 +14,8 @@ import { crossFade } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import type { OverviewDay, OverviewTour } from '@/types/trip';
 import { AddEventPopover } from './add-event-popover';
-import { DOT_CLASS, chipState, keyToDate } from './calendar-utils';
+import { chipState, keyToDate } from './calendar-utils';
+import { DEPARTURE_DOT_CLASS } from '@/components/common/departure-states';
 import { DayPeek, DayPeekContent } from './day-peek';
 import { DepartureChip } from './departure-chip';
 
@@ -37,7 +38,7 @@ export function CalendarMonthView({
     tours,
     operatorNameById,
     isAdmin,
-    canShape,
+    canAdd,
     onOpenDay,
 }: {
     days: OverviewDay[];
@@ -49,7 +50,7 @@ export function CalendarMonthView({
     tours: OverviewTour[];
     operatorNameById: Map<string, string>;
     isAdmin: boolean;
-    canShape: boolean;
+    canAdd: boolean;
     onOpenDay: (date: string) => void;
 }) {
     const anchorMonth = getMonth(keyToDate(anchor));
@@ -98,7 +99,7 @@ export function CalendarMonthView({
                         tours={tours}
                         operatorNameById={operatorNameById}
                         isAdmin={isAdmin}
-                        canShape={canShape}
+                        canAdd={canAdd}
                         onOpenDay={onOpenDay}
                     />
                 ))}
@@ -118,7 +119,7 @@ function MonthCell({
     tours,
     operatorNameById,
     isAdmin,
-    canShape,
+    canAdd,
     onOpenDay,
 }: {
     day: OverviewDay;
@@ -130,7 +131,7 @@ function MonthCell({
     tours: OverviewTour[];
     operatorNameById: Map<string, string>;
     isAdmin: boolean;
-    canShape: boolean;
+    canAdd: boolean;
     onOpenDay: (date: string) => void;
 }) {
     const reduceMotion = useReducedMotion();
@@ -205,7 +206,7 @@ function MonthCell({
                 {/* The Google-style hover "+": add a one-off departure or a
                     weekly schedule anchored on this day. Future days only -
                     the backend refuses writes into the past. */}
-                {canShape && !isPast && (
+                {canAdd && !isPast && (
                     <AddEventPopover date={day.date} tours={tours}>
                         <button
                             type='button'
@@ -231,17 +232,15 @@ function MonthCell({
                     />
                 ))}
                 {overflow > 0 && (
-                    <DayPeek
-                        date={day.date}
-                        departures={day.departures}
-                        operatorNameById={operatorNameById}
-                        isAdmin={isAdmin}>
-                        <button
-                            type='button'
-                            className='rounded-sm px-1.5 py-0.5 text-left text-2xs font-medium text-muted-foreground transition-colors duration-normal hover:bg-muted'>
-                            +{overflow} more
-                        </button>
-                    </DayPeek>
+                    /* Opens the DAY, not an in-place expansion (MCK-16 §3):
+                       a band that overflows is exactly the day worth reading
+                       in full, with its actions. */
+                    <button
+                        type='button'
+                        onClick={() => onOpenDay(day.date)}
+                        className='rounded-sm px-1.5 py-0.5 text-left text-2xs font-medium text-muted-foreground transition-colors duration-normal hover:bg-muted'>
+                        +{overflow} more
+                    </button>
                 )}
             </div>
 
@@ -261,7 +260,7 @@ function MonthCell({
                                 key={dep.id}
                                 className={cn(
                                     'size-1.5 rounded-full',
-                                    DOT_CLASS[chipState(dep)],
+                                    DEPARTURE_DOT_CLASS[chipState(dep)],
                                 )}
                             />
                         ))}

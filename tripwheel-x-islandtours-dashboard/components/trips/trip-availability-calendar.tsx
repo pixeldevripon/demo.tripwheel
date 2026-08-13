@@ -55,6 +55,11 @@ import {
     ClosureReasonPanel,
     ClosureReasonTabs,
 } from '@/components/common/closure-reason-panel';
+import {
+    DEPARTURE_CHIP_CLASS,
+    departureState,
+} from '@/components/common/departure-states';
+import { islandTime } from '@/lib/island-time';
 import { settleAll } from '@/lib/async/settle-all';
 import { crossFade, swapFade } from '@/lib/motion';
 import { cn } from '@/lib/utils';
@@ -572,6 +577,7 @@ export function TripAvailabilityCalendar({
                                               declaredStartTimes
                                           }
                                           isUnit={isUnit}
+                                          timeZone={timeZone}
                                       />
                                   ))
                                 : /* Streaming a fresh month: quiet numbered placeholders keep
@@ -604,25 +610,31 @@ export function TripAvailabilityCalendar({
                         made from the day card at all. */}
                     <div className='flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground'>
                         <span className='flex items-center gap-1.5'>
-                            <span className='rounded-full border border-success-solid/50 bg-success-subtle px-1.5 py-px text-2xs font-semibold tabular-nums leading-none text-success-fg'>
+                            <span className='rounded-full border border-cal-open-border bg-cal-open-subtle px-1.5 py-px text-2xs font-semibold tabular-nums leading-none text-cal-open-fg'>
                                 07:00 34/70
                             </span>
                             open, booked of capacity
                         </span>
                         <span className='flex items-center gap-1.5'>
-                            <span className='rounded-full bg-info-solid px-1.5 py-px text-2xs font-semibold leading-none text-white'>
+                            <span className='rounded-full bg-cal-sold-solid px-1.5 py-px text-2xs font-semibold leading-none text-white'>
                                 Sold out
                             </span>
-                            full
+                            full - revenue, never an error
                         </span>
                         <span className='flex items-center gap-1.5'>
                             <span className='rounded-full bg-muted px-1.5 py-px text-2xs font-semibold leading-none text-muted-foreground line-through'>
                                 Closed
                             </span>
-                            closed by you
+                            stop-sold
                         </span>
                         <span className='flex items-center gap-1.5'>
-                            <span className='rounded-full border border-dashed border-success-solid/50 px-1.5 py-px text-2xs font-semibold tabular-nums leading-none text-muted-foreground'>
+                            <span className='rounded-full border border-danger-border px-1.5 py-px text-2xs font-semibold leading-none text-danger-fg'>
+                                Cancelled
+                            </span>
+                            an Island Tours action - it moves money
+                        </span>
+                        <span className='flex items-center gap-1.5'>
+                            <span className='rounded-full border border-dashed border-cal-open-border px-1.5 py-px text-2xs font-semibold tabular-nums leading-none text-muted-foreground'>
                                 14:30
                             </span>
                             dashed = scheduled, not materialized yet
@@ -868,6 +880,8 @@ interface DayCellProps {
     maxPartySize: number;
     declaredStartTimes: string[];
     isUnit: boolean;
+    /** Tour-local IANA zone - audit times render on the ISLAND's clock. */
+    timeZone: string;
 }
 
 function DayCell({
@@ -881,6 +895,7 @@ function DayCell({
     maxPartySize,
     declaredStartTimes,
     isUnit,
+    timeZone,
 }: DayCellProps) {
     const dayNum = Number(day.date.slice(8, 10));
     // Every departure filled by bookings - the automatic, celebratory state
@@ -960,7 +975,7 @@ function DayCell({
                             </span>
                         )}
                         {!isPast && allSoldOut && (
-                            <span className='text-2xs font-medium uppercase leading-none text-info-fg'>
+                            <span className='text-2xs font-medium uppercase leading-none text-cal-sold-fg'>
                                 Sold out
                             </span>
                         )}
@@ -978,30 +993,35 @@ function DayCell({
                     <span className='flex w-full flex-col items-start gap-0.5'>
                         {day.departures.length > 0
                             ? day.departures.slice(0, 3).map(d => {
-                                  const soldOut = d.status === 'SOLD_OUT';
-                                  const stopped =
-                                      d.status === 'CLOSED' ||
-                                      d.status === 'CANCELLED';
+                                  // The SHARED four-state vocabulary (MCK-16
+                                  // change 9): one derivation, one class map -
+                                  // hand-rolled colour ternaries are how the
+                                  // two surfaces drifted apart the first time.
+                                  // The stored closureReason is the closure
+                                  // proxy on this payload; day-level past
+                                  // fading rides isPast.
+                                  const pillState = departureState({
+                                      status: d.status,
+                                      hasClosure: d.closureReason !== null,
+                                  });
                                   return (
                                       <span
                                           key={d.id}
                                           className={cn(
-                                              'max-w-full truncate rounded-full border px-1.5 py-px text-2xs font-semibold tabular-nums leading-none',
+                                              'max-w-full truncate rounded-full px-1.5 py-px text-2xs font-semibold tabular-nums leading-none',
                                               isPast && 'opacity-45',
-                                              soldOut
-                                                  ? 'border-transparent bg-info-solid text-white'
-                                                  : stopped
-                                                    ? 'border-transparent bg-muted text-muted-foreground line-through'
-                                                    : 'border-success-solid/50 bg-success-subtle text-success-fg'
+                                              DEPARTURE_CHIP_CLASS[pillState]
                                           )}>
                                           {d.startTime}{' '}
-                                          {soldOut
+                                          {pillState === 'soldOut'
                                               ? 'Sold out'
-                                              : stopped
-                                                ? 'Closed'
-                                                : isUnit
-                                                  ? `${d.bookedCount} booked`
-                                                  : `${d.bookedCount}/${d.capacity}`}
+                                              : pillState === 'cancelled'
+                                                ? 'Cancelled'
+                                                : pillState === 'closed'
+                                                  ? 'Closed'
+                                                  : isUnit
+                                                    ? `${d.bookedCount} booked`
+                                                    : `${d.bookedCount}/${d.capacity}`}
                                       </span>
                                   );
                               })
@@ -1010,7 +1030,7 @@ function DayCell({
                                   /* The weekly pattern covers this day but the
                                      engine has not filled it yet - dashed, so
                                      "will run" never reads as "is selling". */
-                                  <span className='max-w-full truncate rounded-full border border-dashed border-success-solid/50 px-1.5 py-px text-2xs font-semibold tabular-nums leading-none text-muted-foreground'>
+                                  <span className='max-w-full truncate rounded-full border border-dashed border-cal-open-border px-1.5 py-px text-2xs font-semibold tabular-nums leading-none text-muted-foreground'>
                                       {day.scheduledTimes[0] ?? '–'}
                                   </span>
                               )}
@@ -1040,6 +1060,7 @@ function DayCell({
                     maxPartySize={maxPartySize}
                     declaredStartTimes={declaredStartTimes}
                     isUnit={isUnit}
+                    timeZone={timeZone}
                     onClose={() => onOpenChange(false)}
                 />
             )}
@@ -1072,6 +1093,8 @@ interface DayPopoverProps {
     maxPartySize: number;
     declaredStartTimes: string[];
     isUnit: boolean;
+    /** Tour-local IANA zone - audit times render on the ISLAND's clock. */
+    timeZone: string;
     onClose: () => void;
 }
 
@@ -1081,6 +1104,7 @@ function DayPopover({
     maxPartySize,
     declaredStartTimes,
     isUnit,
+    timeZone,
     onClose,
 }: DayPopoverProps) {
     const { mutate: createException, isPending: isWriting } =
@@ -1326,6 +1350,7 @@ function DayPopover({
                             key={d.id}
                             departure={d}
                             isUnit={isUnit}
+                            timeZone={timeZone}
                             dayClosed={!!closeDateException}
                             closeException={slotException(
                                 'CLOSE_SLOT',
@@ -1407,12 +1432,10 @@ function DayPopover({
                             closeDateException.createdByName
                                 ? ' (Island Tours)'
                                 : ''}{' '}
-                            ·{' '}
-                            {format(
-                                new Date(closeDateException.createdAt),
-                                'MMM d, HH:mm'
-                            )}
-                            . Nothing reopens it automatically.
+                            {/* Island clock (E.9 one-clock rule) - this line
+                                must agree with the Date changes register. */}
+                            · {islandTime(closeDateException.createdAt, timeZone)}.
+                            Nothing reopens it automatically.
                         </p>
                         {closeDateException.createdBySide === 'PLATFORM' && (
                             <p className='text-xs text-muted-foreground'>
@@ -1640,6 +1663,8 @@ interface SlotRowProps {
     departure: TourDeparture;
     /** F10: private charters show Open/Booked states, never seat fractions. */
     isUnit: boolean;
+    /** Tour-local IANA zone - audit times render on the ISLAND's clock. */
+    timeZone: string;
     dayClosed: boolean;
     closeException?: { id: string };
     capacityException?: { id: string; capacity: number | null };
@@ -1652,6 +1677,7 @@ interface SlotRowProps {
 function SlotRow({
     departure: d,
     isUnit,
+    timeZone,
     dayClosed,
     closeException,
     capacityException,
@@ -1685,10 +1711,10 @@ function SlotRow({
                     {stopped && !closeException && ' · closed'}
                 </span>
                 {d.status === 'SOLD_OUT' && (
-                    <span className='rounded-sm bg-info-subtle px-1 py-px text-2xs font-medium text-info-fg'>
+                    <span className='rounded-sm bg-cal-sold-subtle px-1 py-px text-2xs font-medium text-cal-sold-fg'>
                         Sold out
                         {d.soldOutAt &&
-                            ` ${format(new Date(d.soldOutAt), 'HH:mm')}`}
+                            ` ${islandTime(d.soldOutAt, timeZone, { day: false })}`}
                     </span>
                 )}
                 {capacityException && capacityException.capacity != null && (

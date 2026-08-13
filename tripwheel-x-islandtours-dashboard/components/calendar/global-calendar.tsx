@@ -9,6 +9,7 @@ import {
     PlusSignIcon,
 } from '@hugeicons/core-free-icons';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import Link from 'next/link';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -22,30 +23,50 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OperatorFilterPopover } from '@/components/common/operator-filter-popover';
 import { TourFilterPopover } from '@/components/common/tour-filter-popover';
 import { useRole } from '@/contexts/role-context';
-import { tripKeys, useAvailabilityOverview } from '@/hooks/trips/use-trips';
+import { isPlatformWideRole } from '@/lib/rbac-utils';
+import {
+    tripKeys,
+    useAvailabilityOverview,
+    useConfirmAvailability,
+} from '@/hooks/trips/use-trips';
+import { CalendarDayList } from './day-list';
 import { tripsApi } from '@/lib/api/trips';
 import { crossFade, swapFade } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { AddEventPopover } from './add-event-popover';
 import { RangeDialog } from './range-dialog';
 import {
-    DOT_CLASS,
-    STATE_LABEL,
     dateToKey,
     keyToDate,
     rangeLabel,
     stepAnchor,
     viewWindow,
     type CalendarView,
-    type ChipState,
 } from './calendar-utils';
+import {
+    DEPARTURE_DOT_CLASS,
+    DEPARTURE_STATE_LABEL,
+    type CalendarDepartureState,
+} from '@/components/common/departure-states';
+import { PLATFORM_HOME_TIMEZONE, islandTime } from '@/lib/island-time';
+import {
+    CalendarTourMetaProvider,
+    type CalendarTourMeta,
+} from './calendar-tour-meta';
 import { CalendarMonthView } from './calendar-month-view';
 import { CalendarTimeGrid } from './calendar-time-grid';
 
 const VIEW_STORAGE_KEY = 'it-global-calendar-view';
 const OVERVIEW_STALE_MS = 60_000;
 
-const LEGEND: ChipState[] = ['open', 'soldOut', 'closed', 'past'];
+// The decided four states (MCK-16 change 9): cancelled is its own row - it is
+// the one state that moves money - and "past fades" is a note, not a state.
+const LEGEND: CalendarDepartureState[] = [
+    'open',
+    'soldOut',
+    'closed',
+    'cancelled',
+];
 
 /**
  * The global availability calendar: one full-width Month/Week/Day surface
@@ -62,8 +83,12 @@ const LEGEND: ChipState[] = ['open', 'soldOut', 'closed', 'past'];
  */
 export function GlobalCalendar() {
     const { role, can, canAny } = useRole();
-    const isAdmin = role === 'ADMIN';
-    const canShape = can('MANAGE_AVAILABILITY');
+    // The platform-wide set (ADMIN | STAFF | EDITOR), not a bare ADMIN test -
+    // testing ADMIN alone is the recorded §Admin.4 bug class.
+    const isAdmin = isPlatformWideRole(role);
+    // The Add affordances ride the stop-sell family (founder Aug 11: staff
+    // may add a plain one-off); the form itself narrows what that seat can
+    // set. Named canAdd downstream so nobody re-narrows it by pattern-match.
     const canStopSell = canAny(['MANAGE_AVAILABILITY', 'STOP_SELL']);
     const [rangeOpen, setRangeOpen] = useState(false);
     // Below xl the sidebar's mini calendar is gone - this popover replaces it.
@@ -72,13 +97,20 @@ export function GlobalCalendar() {
     const queryClient = useQueryClient();
 
     // View survives navigation (calendar habits are sticky); read after mount
-    // so server and first client render agree.
+    // so server and first client render agree. With no stored habit, desktop
+    // opens on WEEK - the decided agenda horizon is today+6 (review §5.3) and
+    // a week grid is that horizon in one screen - and the phone opens on the
+    // Day list (MCK-16 change 6).
     const [view, setView] = useState<CalendarView>('month');
     useEffect(() => {
         const stored = window.localStorage.getItem(VIEW_STORAGE_KEY);
         if (stored === 'day' || stored === 'week' || stored === 'month') {
             setView(stored);
+            return;
         }
+        setView(
+            window.matchMedia('(max-width: 640px)').matches ? 'day' : 'week',
+        );
     }, []);
     function changeView(next: CalendarView) {
         setView(next);
@@ -98,9 +130,14 @@ export function GlobalCalendar() {
     const [operatorId, setOperatorId] = useState<string | undefined>(undefined);
 
     const window_ = viewWindow(view, anchor);
+    // The admin operator filter narrows AT THE SERVER (MCK-16 change 12) -
+    // client-side narrowing of a platform-wide window stops scaling the
+    // moment the platform does. Tour narrowing stays client-side (instant
+    // chips over an already-scoped window).
     const { data, isLoading, isFetching } = useAvailabilityOverview({
         from: window_.from,
         days: window_.days,
+        ...(isAdmin && operatorId ? { operatorId } : {}),
     });
 
     const today = data?.today ?? dateToKey(new Date());
@@ -110,22 +147,73 @@ export function GlobalCalendar() {
         }
     }, [data?.today]);
 
-    // Prefetch the previous/next window so paging never waits on the network.
+    // Prefetch the previous/next window so paging never waits on the network
+    // (same scope as the live query, or the prefetch would be wasted).
     useEffect(() => {
         for (const dir of [-1, 1] as const) {
             const w = viewWindow(view, stepAnchor(view, anchor, dir));
-            const params = { from: w.from, days: w.days };
+            const params = {
+                from: w.from,
+                days: w.days,
+                ...(isAdmin && operatorId ? { operatorId } : {}),
+            };
             void queryClient.prefetchQuery({
                 queryKey: tripKeys.overview(params),
                 queryFn: () => tripsApi.getOverview(params),
                 staleTime: OVERVIEW_STALE_MS,
             });
         }
-    }, [view, anchor, queryClient]);
+    }, [view, anchor, queryClient, isAdmin, operatorId]);
+
+    // Freshness is an ACTION (MCK-16 change 7, dev spec §6.4): visiting the
+    // surface stamps availability_confirmed_at, and the card below is the
+    // explicit habit anchor the nudge emails will point at. Operators only -
+    // an admin never confirms on an operator's behalf.
+    const confirmAvailability = useConfirmAvailability();
+    const confirmMutate = confirmAvailability.mutate;
+    useEffect(() => {
+        if (!isAdmin) confirmMutate(undefined);
+    }, [isAdmin, confirmMutate]);
+    const [confirmedNow, setConfirmedNow] = useState<string | null>(null);
+    // The confirmed state must survive a reload (founder feedback
+    // 2026-08-13): the visit already stamped every tour, so when the STALEST
+    // stamp is on the island's today the card says so instead of asking
+    // again. `confirmedNow` only bridges the moment before the refetch.
+    const lastConfirmedAt = data?.lastConfirmedAt ?? null;
+    const islandZone = data?.tours?.[0]?.timeZone;
+    const confirmedToday = useMemo(() => {
+        if (!lastConfirmedAt || !data?.today) return false;
+        try {
+            return (
+                new Intl.DateTimeFormat('en-CA', {
+                    timeZone: islandZone ?? PLATFORM_HOME_TIMEZONE,
+                }).format(new Date(lastConfirmedAt)) === data.today
+            );
+        } catch {
+            return false;
+        }
+    }, [lastConfirmedAt, data?.today, islandZone]);
+    const confirmed = !!confirmedNow || confirmedToday;
 
     const tours = useMemo(() => data?.tours ?? [], [data]);
     const operatorNameById = useMemo(
         () => new Map(tours.map((t) => [t.operatorId, t.operatorName])),
+        [tours],
+    );
+    // Per-tour display meta for the chips: the island zone (one-clock audit
+    // lines) and the whole-unit noun. Provided via context - see
+    // calendar-tour-meta.tsx.
+    const tourMetaById = useMemo(
+        () =>
+            new Map<string, CalendarTourMeta>(
+                tours.map((t) => [
+                    t.id,
+                    {
+                        timeZone: t.timeZone,
+                        wholeUnitType: t.wholeUnitType ?? null,
+                    },
+                ]),
+            ),
         [tours],
     );
     // Client-side narrowing of the loaded window - instant, no refetch.
@@ -177,6 +265,7 @@ export function GlobalCalendar() {
         // normal flow the padding would otherwise re-appear BELOW the frame
         // and put a scrollbar on the whole page. Below lg the page keeps its
         // natural flow and the grid keeps its own height calc.
+        <CalendarTourMetaProvider value={tourMetaById}>
         <div className='flex flex-col gap-4 lg:-mb-8 lg:h-[calc(100dvh-var(--header-height)-80px)]'>
             {/* ── Toolbar (Waton shape: big title, quiet controls) ─────── */}
             <div className='flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2'>
@@ -241,7 +330,7 @@ export function GlobalCalendar() {
                         sidebar; below xl the sidebar is gone, so they all
                         surface here - full feature parity on phones. */}
                     <div className='flex flex-wrap items-center gap-2 xl:hidden'>
-                        {canShape && (
+                        {canStopSell && (
                             <AddEventPopover
                                 date={anchor}
                                 tours={addTours}
@@ -320,7 +409,7 @@ export function GlobalCalendar() {
                     rail HIDDEN (wheel/trackpad still scrolls), so no scrollbar
                     ever sits between the sidebar and the grid. */}
                 <aside className='hidden max-h-full w-60 shrink-0 flex-col gap-3 overflow-y-auto scrollbar-none xl:flex'>
-                    {canShape && (
+                    {canStopSell && (
                         <AddEventPopover
                             date={anchor}
                             tours={addTours}
@@ -380,31 +469,149 @@ export function GlobalCalendar() {
                                 <span
                                     className={cn(
                                         'size-2 rounded-full',
-                                        DOT_CLASS[state],
+                                        DEPARTURE_DOT_CLASS[state],
                                     )}
                                 />
-                                {STATE_LABEL[state]}
+                                {DEPARTURE_STATE_LABEL[state]}
                             </span>
                         ))}
-                    </div>
-                    {data?.lastConfirmedAt && (
-                        <p className='px-1 text-xs text-muted-foreground'>
-                            Availability confirmed{' '}
-                            {format(
-                                new Date(data.lastConfirmedAt),
-                                'd MMM, HH:mm',
-                            )}
+                        <p className='pt-1 text-2xs leading-relaxed text-muted-foreground/80'>
+                            Past departures fade. Sold out is revenue, never an
+                            error. Cancelling a booked departure triggers
+                            refunds and is an Island Tours action - it never
+                            starts from this surface.
                         </p>
+                    </div>
+                    {/* Freshness is an action (MCK-16 change 7): the passive
+                        "confirmed <date>" line became the confirm card. The
+                        admin rail reads the per-tour picture instead - one
+                        stamp cannot speak for every operator (change 12). */}
+                    {isAdmin ? (
+                        (() => {
+                            const WEEK_MS = 7 * 86_400_000;
+                            const overdue = tours.filter(
+                                (t) =>
+                                    !t.availabilityConfirmedAt ||
+                                    Date.now() -
+                                        new Date(
+                                            t.availabilityConfirmedAt,
+                                        ).getTime() >
+                                        WEEK_MS,
+                            ).length;
+                            return tours.length > 0 ? (
+                                <div className='rounded-lg border border-border/70 p-3'>
+                                    <p className='text-xs font-medium'>
+                                        Freshness is per tour
+                                    </p>
+                                    <p className='mt-1 text-2xs leading-relaxed text-muted-foreground'>
+                                        {overdue > 0
+                                            ? `${overdue} of ${tours.length} tours not confirmed in 7 days.`
+                                            : `All ${tours.length} tours confirmed within 7 days.`}
+                                    </p>
+                                </div>
+                            ) : null;
+                        })()
+                    ) : (
+                        <div className='rounded-lg border border-border/70 p-3'>
+                            <p className='text-xs font-medium'>
+                                {confirmed
+                                    ? 'Confirmed today'
+                                    : `Confirm today's availability`}
+                            </p>
+                            <p className='mt-1 text-2xs leading-relaxed text-muted-foreground'>
+                                {confirmed
+                                    ? `All your tours are stamped${
+                                          confirmedNow || lastConfirmedAt
+                                              ? ` (${islandTime(confirmedNow ?? (lastConfirmedAt as string), islandZone, { day: false })})`
+                                              : ''
+                                      }. The nudge email will not fire.`
+                                    : lastConfirmedAt
+                                      ? `Last confirmed ${islandTime(lastConfirmedAt, islandZone)}. Tell us the day is right, or close what is not.`
+                                      : 'Tell us the day is right, or close what is not.'}
+                            </p>
+                            <Button
+                                size='sm'
+                                variant={confirmed ? 'outline' : 'default'}
+                                className='mt-2 h-8 w-full'
+                                disabled={
+                                    confirmAvailability.isPending || confirmed
+                                }
+                                onClick={() =>
+                                    confirmAvailability.mutate(undefined, {
+                                        onSuccess: (res) =>
+                                            setConfirmedNow(res.confirmedAt),
+                                    })
+                                }>
+                                {confirmed
+                                    ? 'Confirmed ✓'
+                                    : 'Yes, today is right'}
+                            </Button>
+                        </div>
                     )}
                 </aside>
 
                 <div className='min-w-0 flex-1 lg:flex lg:min-h-0 lg:flex-col lg:self-stretch'>
+                    {/* The two-flavour empty-horizon signal (MCK-16 change 8):
+                        ONE line per flavour covering every affected tour - a
+                        nine-tour operator must never meet a wall of banners.
+                        Dry is amber (the fix is opening timetables); full is
+                        the same consequence arriving as GOOD news - sold out
+                        is never an error state on this platform. Copy carries
+                        the ranked-list consequence only (D1: tiers have no
+                        recurring meter, so no billing claim). */}
+                    {data?.horizon && data.horizon.dry.length > 0 && (
+                        <div className='mb-3 flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-warning-border bg-warning-subtle px-3 py-2 text-xs text-warning-fg'>
+                            <span className='font-medium'>
+                                {data.horizon.dry.length === 1
+                                    ? '1 tour has no open departure in the next 30 days.'
+                                    : `${data.horizon.dry.length} tours have no open departure in the next 30 days.`}
+                            </span>
+                            <span>
+                                While that lasts they are out of every ranked
+                                list; they stay reachable by direct link. Open
+                                their timetables:
+                            </span>
+                            {data.horizon.dry.map((t) => (
+                                <Link
+                                    key={t.id}
+                                    href={`/trips/${t.id}/edit?step=schedule`}
+                                    className='font-medium underline underline-offset-2 hover:opacity-80'>
+                                    {t.name}
+                                </Link>
+                            ))}
+                        </div>
+                    )}
+                    {data?.horizon && data.horizon.full.length > 0 && (
+                        <div className='mb-3 flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-cal-sold-border bg-cal-sold-subtle px-3 py-2 text-xs text-cal-sold-fg'>
+                            <span className='font-medium'>
+                                {data.horizon.full.length === 1
+                                    ? `${data.horizon.full[0].name} is fully booked for the next 30 days.`
+                                    : `${data.horizon.full.length} tours are fully booked for the next 30 days.`}
+                            </span>
+                            <span>
+                                Good problem. While it lasts they drop out of
+                                the ranked lists, so if you can carry more
+                                people, add departures:
+                            </span>
+                            {data.horizon.full.map((t) => (
+                                <Link
+                                    key={t.id}
+                                    href={`/trips/${t.id}/edit?step=schedule`}
+                                    className='font-medium underline underline-offset-2 hover:opacity-80'>
+                                    {t.name}
+                                </Link>
+                            ))}
+                        </div>
+                    )}
                     {/* ONE frame height for every view (and the skeleton), so
                         switching Day/Week/Month never shifts the layout - the
                         views fill it and scroll inside themselves. At lg+ the
                         frame is the column's leftover height (exact viewport
                         fill); below lg it falls back to its own calc. */}
-                    <div className='h-[calc(100dvh-270px)] min-h-104 lg:h-auto lg:flex-1'>
+                    {/* lg:min-h-0: with the horizon banners as siblings the
+                        frame must be able to shrink below its floor, or the
+                        no-page-scrollbar contract breaks on short viewports. */}
+                    <div className='h-[calc(100dvh-270px)] min-h-104 lg:h-auto lg:min-h-0 lg:flex-1'>
                     {isLoading ? (
                         <CalendarSkeleton view={view} />
                     ) : (
@@ -428,10 +635,10 @@ export function GlobalCalendar() {
                                         tours={addTours}
                                         operatorNameById={operatorNameById}
                                         isAdmin={isAdmin}
-                                        canShape={canShape}
+                                        canAdd={canStopSell}
                                         onOpenDay={openDay}
                                     />
-                                ) : (
+                                ) : view === 'week' ? (
                                     <CalendarTimeGrid
                                         days={filteredDays}
                                         today={today}
@@ -440,8 +647,28 @@ export function GlobalCalendar() {
                                         timeZone={tours[0]?.timeZone}
                                         operatorNameById={operatorNameById}
                                         isAdmin={isAdmin}
-                                        canShape={canShape}
+                                        canAdd={canStopSell}
                                         onOpenDay={openDay}
+                                    />
+                                ) : (
+                                    /* Day is the chronological LIST (MCK-16
+                                       change 6) - a one-day hour axis answered
+                                       a narrower question than the operator
+                                       has. */
+                                    <CalendarDayList
+                                        day={filteredDays.find(
+                                            (d) => d.date === anchor,
+                                        )}
+                                        today={today}
+                                        // A 1-day window shares NOTHING with
+                                        // the previous window, so paging in
+                                        // Day view always misses the stale
+                                        // placeholderData - loading must not
+                                        // read as "nothing runs this day".
+                                        loading={isFetching}
+                                        operatorNameById={operatorNameById}
+                                        isAdmin={isAdmin}
+                                        canStopSell={canStopSell}
                                     />
                                 )}
                             </motion.div>
@@ -458,18 +685,18 @@ export function GlobalCalendar() {
                                 <span
                                     className={cn(
                                         'size-2 rounded-full',
-                                        DOT_CLASS[state],
+                                        DEPARTURE_DOT_CLASS[state],
                                     )}
                                 />
-                                {STATE_LABEL[state]}
+                                {DEPARTURE_STATE_LABEL[state]}
                             </span>
                         ))}
                         {data?.lastConfirmedAt && (
                             <span className='text-xs text-muted-foreground'>
                                 · Confirmed{' '}
-                                {format(
-                                    new Date(data.lastConfirmedAt),
-                                    'd MMM, HH:mm',
+                                {islandTime(
+                                    data.lastConfirmedAt,
+                                    tours[0]?.timeZone,
                                 )}
                             </span>
                         )}
@@ -483,15 +710,22 @@ export function GlobalCalendar() {
             </div>
 
             {/* Keyed per open so every visit starts with fresh fields and the
-                current tour filter as its default. */}
+                current tour filter + viewed day as defaults. NOT keyed on the
+                anchor itself: the today-snap effect can move the anchor while
+                the dialog is open, and a remount would wipe a half-typed
+                form. */}
             <RangeDialog
                 key={`${rangeOpen}-${tourId ?? 'all'}`}
                 open={rangeOpen}
                 onOpenChange={setRangeOpen}
                 tours={tours}
                 defaultTourId={tourId}
+                defaultDate={anchor}
+                operatorId={operatorId}
+                isPlatform={isAdmin}
             />
         </div>
+        </CalendarTourMetaProvider>
     );
 }
 
