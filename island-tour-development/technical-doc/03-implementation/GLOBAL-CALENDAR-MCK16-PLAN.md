@@ -445,126 +445,126 @@ dependency. Phase 1 and 2 may ship as one PR if the migration count stays at one
 ### Phase 1 - backend: reason + attribution data model
 
 Schema and migration:
-- [ ] `prisma/availability.prisma`: add `createdBySide ActorSide?` (new enum `ActorSide { OPERATOR PLATFORM }` in `enums.prisma`), `retiredAt DateTime?`, `retiredBy String?`, `retiredBySide ActorSide?` to `AvailabilityException`
-- [ ] Migration with backfill: `createdBySide` from `createdBy` join to users.role (ADMIN > PLATFORM, else OPERATOR; null createdBy stays null)
-- [ ] `pnpm prisma:generate` + `pnpm prisma:validate` green
+- [x] `prisma/availability.prisma`: add `createdBySide ActorSide?` (new enum `ActorSide { OPERATOR PLATFORM }` in `enums.prisma`), `retiredAt DateTime?`, `retiredBy String?`, `retiredBySide ActorSide?` to `AvailabilityException`
+- [x] Migration with backfill: `createdBySide` from `createdBy` join to users.role (ADMIN > PLATFORM, else OPERATOR; null createdBy stays null)
+- [x] `pnpm prisma:generate` + `pnpm prisma:validate` green
 
 Writes:
-- [ ] `CloseAgendaDayDto` (`dto/availability.dto.ts:435-453`): add optional `closureReason`; write it + a `closureBatchId` in `closeAgendaDay` (`availability.service.ts:1045-1054`)
-- [ ] `UpdateExceptionDto` (`dto:749-771`): allow `closureReason` (backfill path, MANAGE_AVAILABILITY as today)
-- [ ] Every exception create sets `createdBySide` from the resolved actor (single choke point near `availability.service.ts:423,1052,1161`)
-- [ ] `deleteException` + `reopenRange` (`service:1186-1222`): soft-retire (set retiredAt/By/Side) instead of `delete`/`deleteMany` for CLOSE_* rows; ADD_SLOT/SET_CAPACITY delete behaviour per D3 (retire those too for register completeness)
-- [ ] Duplicate-closure guard: creating a closure where an identical **active** (unretired) row exists stays idempotent/oldest-wins as today - assert with a test
+- [x] `CloseAgendaDayDto` (`dto/availability.dto.ts:435-453`): add optional `closureReason`; write it + a `closureBatchId` in `closeAgendaDay` (`availability.service.ts:1045-1054`)
+- [x] `UpdateExceptionDto` (`dto:749-771`): allow `closureReason` (backfill path, MANAGE_AVAILABILITY as today)
+- [x] Every exception create sets `createdBySide` from the resolved actor (single choke point near `availability.service.ts:423,1052,1161`)
+- [x] `deleteException` + `reopenRange` (`service:1186-1222`): soft-retire (set retiredAt/By/Side) instead of `delete`/`deleteMany` for CLOSE_* rows; ADD_SLOT/SET_CAPACITY delete behaviour per D3 (retire those too for register completeness)
+- [x] Duplicate-closure guard: creating a closure where an identical **active** (unretired) row exists stays idempotent/oldest-wins as today - assert with a test
 
 Reads (every consumer of closure rows filters `retiredAt: null`):
-- [ ] Closure resolution `service:588-659` (agenda) and `884-927` (overview)
-- [ ] Traveler paths: `calendar()` day aggregation, `check`, `check-batch`, materializer interplay - sweep every `availabilityException.findMany` for the filter
-- [ ] Register `listExceptions` (`service:1239-1244`): returns retired rows WITH their retire fields (the register shows reopens); everything else excludes them
-- [ ] Agenda + overview closure objects (`service:630-674, 884-927`) and DTOs (`dto:299-310` + overview closure): add `closureReason`, `createdBySide`
-- [ ] Swagger decorators updated for every touched route
+- [x] Closure resolution `service:588-659` (agenda) and `884-927` (overview)
+- [x] Traveler paths: `calendar()` day aggregation, `check`, `check-batch`, materializer interplay - sweep every `availabilityException.findMany` for the filter
+- [x] Register `listExceptions` (`service:1239-1244`): returns retired rows WITH their retire fields (the register shows reopens); everything else excludes them
+- [x] Agenda + overview closure objects (`service:630-674, 884-927`) and DTOs (`dto:299-310` + overview closure): add `closureReason`, `createdBySide`
+- [x] Swagger decorators updated for every touched route
 
 Tests + hygiene:
-- [ ] Unit tests: reason stored on close-day; side stamped operator vs admin; retire instead of delete; retired closures invisible to agenda/overview/traveler calendar; register shows both events; PATCH backfills reason
-- [ ] Existing availability spec suite green (baseline before change, diff test names)
-- [ ] `MASTER-CHECKLIST.md` + this doc updated in the same PR
+- [x] Unit tests: reason stored on close-day; side stamped operator vs admin; retire instead of delete; retired closures invisible to agenda/overview/traveler calendar; register shows both events; PATCH backfills reason
+- [x] Existing availability spec suite green (baseline before change, diff test names)
+- [x] `MASTER-CHECKLIST.md` + this doc updated in the same PR
 
 ### Phase 2 - backend: surface data + permissions
 
 Overview payload:
-- [ ] `tours[]` gains `availabilityConfirmedAt` and `wholeUnitType` (`service:975-985`, `dto:376-401`)
-- [ ] New `horizon` block: `{ dry: [{id,name}], full: [{id,name}] }` over the caller's LIVE tours with zero live-bookable departures in `BOOKABLE_HORIZON_DAYS`; `full` = in-horizon departures exist and all are sold out (stored SOLD_OUT or closure-reason SOLD_OUT); reuse `availability-status.util.ts` - no second horizon constant
-- [ ] Admin scoping: horizon block respects `operatorId` narrowing; per-tour freshness serves the admin overdue count
+- [x] `tours[]` gains `availabilityConfirmedAt` and `wholeUnitType` (`service:975-985`, `dto:376-401`)
+- [x] New `horizon` block: `{ dry: [{id,name}], full: [{id,name}] }` over the caller's LIVE tours with zero live-bookable departures in `BOOKABLE_HORIZON_DAYS`; `full` = in-horizon departures exist and all are sold out (stored SOLD_OUT or closure-reason SOLD_OUT); reuse `availability-status.util.ts` - no second horizon constant
+- [x] Admin scoping: horizon block respects `operatorId` narrowing; per-tour freshness serves the admin overdue count
 
 Range close scope:
-- [ ] `CloseRangeDto` / `ReopenRangeDto`: `tourId` optional; absent = all the operator's LIVE tours (admin must pass `operatorId` or `tourId` - never platform-wide by accident)
-- [ ] Service fans out under one `closureBatchId`; reopen-range mirrors; response reports affected departure/tour counts for the consequence line
-- [ ] Throttle/size sanity: cap range length as today; test the multi-tour path
+- [x] `CloseRangeDto` / `ReopenRangeDto`: `tourId` optional; absent = all the operator's LIVE tours (admin must pass `operatorId` or `tourId` - never platform-wide by accident)
+- [x] Service fans out under one `closureBatchId`; reopen-range mirrors; response reports affected departure/tour counts for the consequence line
+- [x] Throttle/size sanity: cap range length as today; test the multi-tour path
 
 Staff grant (founder Aug 11):
-- [ ] `assertCanShapeInventory` (`service:131-144`): ADD_SLOT create allowed with STOP_SELL **iff no capacity supplied**; capacity present still demands MANAGE_AVAILABILITY; error copy updated
-- [ ] ADD_SLOT delete/retire allowed with STOP_SELL (D3); SET_CAPACITY + schedules unchanged
-- [ ] Tests: stop-sell-only seat can add a default-capacity one-off + undo it, cannot set seats, cannot touch schedules/capacity
+- [x] `assertCanShapeInventory` (`service:131-144`): ADD_SLOT create allowed with STOP_SELL **iff no capacity supplied**; capacity present still demands MANAGE_AVAILABILITY; error copy updated
+- [x] ADD_SLOT delete/retire allowed with STOP_SELL (D3); SET_CAPACITY + schedules unchanged
+- [x] Tests: stop-sell-only seat can add a default-capacity one-off + undo it, cannot set seats, cannot touch schedules/capacity
 
 Hygiene:
-- [ ] Swagger + DTO examples; spec suite green; MASTER-CHECKLIST updated
+- [x] Swagger + DTO examples; spec suite green; MASTER-CHECKLIST updated
 
 ### Phase 3 - dashboard: close-with-reason + card cleanup + attribution
 
 Reason flow (change 1):
-- [ ] Extract the wizard's reason panel into a shared component (`components/calendar/closure-reason-panel.tsx` or similar); wizard consumes the extraction (no behaviour change there)
-- [ ] `departure-chip.tsx`: Close opens the reason panel in the card; the two reason buttons are the commit; optional note; "Cancel, leave it open"; payload sends `closureReason` + `note`
-- [ ] `range-dialog.tsx`: Sold out / Not running segment (default Not running) + note; sends `closureReason`; wizard range close (`trip-availability-calendar.tsx:245-289`) same
-- [ ] Undo toasts preserved (close > undo reopens; reopen has no undo, as today)
+- [x] Extract the wizard's reason panel into a shared component (`components/calendar/closure-reason-panel.tsx` or similar); wizard consumes the extraction (no behaviour change there)
+- [x] `departure-chip.tsx`: Close opens the reason panel in the card; the two reason buttons are the commit; optional note; "Cancel, leave it open"; payload sends `closureReason` + `note`
+- [x] `range-dialog.tsx`: Sold out / Not running segment (default Not running) + note; sends `closureReason`; wizard range close (`trip-availability-calendar.tsx:245-289`) same
+- [x] Undo toasts preserved (close > undo reopens; reopen has no undo, as today)
 
 Card cleanup (change 3):
-- [ ] Remove capacity mutation + input + save (`departure-chip.tsx:184-203,256-284`); seats line stays read-only
-- [ ] Card keeps: name, day line, state chip, seats line, audit line, Bookings/Timetable links, Close/Reopen
+- [x] Remove capacity mutation + input + save (`departure-chip.tsx:184-203,256-284`); seats line stays read-only
+- [x] Card keeps: name, day line, state chip, seats line, audit line, Bookings/Timetable links, Close/Reopen
 
 Reason + attribution display (changes 5, 10-UI):
-- [ ] `types/trip.ts` closure shapes: `closureReason`, `createdBySide` (optional fields - deploy-window safe)
-- [ ] Card audit line: "**Sold out** - "note" - By {name} (Island Tours) - {when}"; null reason renders "No reason recorded" + backfill hint
-- [ ] Platform-closure explainer block (mockup copy) when side = PLATFORM; Reopen stays enabled
-- [ ] `trip-date-changes.tsx`: reason in the action label; reopen events rendered ("Reopened by ...")
-- [ ] Wizard day card renders the reason it already fetches
-- [ ] Copy sweep: no surface says "Only you (or your team) can reopen it"
+- [x] `types/trip.ts` closure shapes: `closureReason`, `createdBySide` (optional fields - deploy-window safe)
+- [x] Card audit line: "**Sold out** - "note" - By {name} (Island Tours) - {when}"; null reason renders "No reason recorded" + backfill hint
+- [x] Platform-closure explainer block (mockup copy) when side = PLATFORM; Reopen stays enabled
+- [x] `trip-date-changes.tsx`: reason in the action label; reopen events rendered ("Reopened by ...")
+- [x] Wizard day card renders the reason it already fetches
+- [x] Copy sweep: no surface says "Only you (or your team) can reopen it"
 
 Review + verify:
-- [ ] code-reviewer + security-reviewer; fix confirmed findings
-- [ ] Chrome: close with each reason from card and range; traveler calendar shows strike vs plain grey accordingly; platform closure (admin seat) shows attribution on operator seat; reopen logged in register
+- [x] code-reviewer + security-reviewer; fix confirmed findings
+- [x] Chrome: close with each reason from card and range; traveler calendar shows strike vs plain grey accordingly; platform closure (admin seat) shows attribution on operator seat; reopen logged in register
 
 ### Phase 4 - dashboard: one clock + shared states + unit wording
 
 One clock (change 4):
-- [ ] Shared island-time formatter module; adopt in `departure-chip.tsx`, freshness line, `availability-agenda.tsx:786`, `trip-date-changes.tsx` (replacing its inline copy)
-- [ ] "Today"/past reckoning on `/calendar` stays server-fed (`data.today`) - verify no browser-date regressions
+- [x] Shared island-time formatter module; adopt in `departure-chip.tsx`, freshness line, `availability-agenda.tsx:786`, `trip-date-changes.tsx` (replacing its inline copy)
+- [x] "Today"/past reckoning on `/calendar` stays server-fed (`data.today`) - verify no browser-date regressions
 
 Shared states (change 9):
-- [ ] `departure-states` module: one derivation (OPEN/SOLD_OUT/CLOSED/CANCELLED/past + cutoff) + one label/colour vocabulary; both surfaces consume it
-- [ ] Distinct Cancelled (red outline) on both surfaces; Closed = grey struck; routine closures never red
-- [ ] Tokens per D2 (teal open / violet sold-out) added once, used by the module only
-- [ ] Legend: four states + past-fades + "Sold out is revenue, never an error" + cancelled-never-from-here microcopy; "Closed by you" and "Departed or cancelled" labels retired
+- [x] `departure-states` module: one derivation (OPEN/SOLD_OUT/CLOSED/CANCELLED/past + cutoff) + one label/colour vocabulary; both surfaces consume it
+- [x] Distinct Cancelled (red outline) on both surfaces; Closed = grey struck; routine closures never red
+- [x] Tokens per D2 (teal open / violet sold-out) added once, used by the module only
+- [x] Legend: four states + past-fades + "Sold out is revenue, never an error" + cancelled-never-from-here microcopy; "Closed by you" and "Departed or cancelled" labels retired
 
 Unit wording (change 11):
-- [ ] `seatsLabel`: "Whole {noun}" from `wholeUnitType` (D4); card copy variants; add form hides Seats for UNIT
-- [ ] "All trips" > "All tours" in `tour-filter-popover.tsx` (+ audit its other consumers)
+- [x] `seatsLabel`: "Whole {noun}" from `wholeUnitType` (D4); card copy variants; add form hides Seats for UNIT
+- [x] "All trips" > "All tours" in `tour-filter-popover.tsx` (+ audit its other consumers)
 
 Review + verify:
-- [ ] Reviewers; Chrome check both surfaces render identical vocabulary for the same departure; timestamps match the register to the minute
+- [x] Reviewers; Chrome check both surfaces render identical vocabulary for the same departure; timestamps match the register to the minute
 
 ### Phase 5 - dashboard: views, freshness, horizon, admin, staff-add, range defaults
 
 Views (changes 2, 6):
-- [ ] Default view: week (desktop) / day (mobile); stored preference wins thereafter
-- [ ] New chronological day list replaces the one-column hour axis on `/calendar`; rows: time, tour, sub-line (seats or whole-unit copy; reason + by-line when closed), state chip, quick action (Close > reason panel; Reopen; disabled Automatic for derived sold-out; disabled Past)
-- [ ] "+N" chip opens the day view
-- [ ] `add-event-popover.tsx`: editable date field defaulting to the opened day; weekly tab derives weekday from the field; min = today
-- [ ] No "Close today" button anywhere (decided-against; note in code comment on the range dialog)
+- [x] Default view: week (desktop) / day (mobile); stored preference wins thereafter
+- [x] New chronological day list replaces the one-column hour axis on `/calendar`; rows: time, tour, sub-line (seats or whole-unit copy; reason + by-line when closed), state chip, quick action (Close > reason panel; Reopen; disabled Automatic for derived sold-out; disabled Past)
+- [x] "+N" chip opens the day view
+- [x] `add-event-popover.tsx`: editable date field defaulting to the opened day; weekly tab derives weekday from the field; min = today
+- [x] No "Close today" button anywhere (decided-against; note in code comment on the range dialog)
 
 Freshness (change 7):
-- [ ] Confirm card in the rail (+ mobile strip): unconfirmed state with button > confirmed state; stamp-on-visit on `/calendar` mount (parity with `/availability`)
-- [ ] Admin variant: "N tours not confirmed in 7 days" list (per-tour `availabilityConfirmedAt`), no confirm button
+- [x] Confirm card in the rail (+ mobile strip): unconfirmed state with button > confirmed state; stamp-on-visit on `/calendar` mount (parity with `/availability`)
+- [x] Admin variant: "N tours not confirmed in 7 days" list (per-tour `availabilityConfirmedAt`), no confirm button
 
 Horizon banners (change 8):
-- [ ] Dry banner (amber): tour names + ranked-list consequence + "Open their timetables" deep links; copy per D1 (no billing claim)
-- [ ] Full banner (calm): celebratory copy + "Add a departure"; never error-styled
-- [ ] One line per flavour regardless of tour count
+- [x] Dry banner (amber): tour names + ranked-list consequence + "Open their timetables" deep links; copy per D1 (no billing claim)
+- [x] Full banner (calm): celebratory copy + "Add a departure"; never error-styled
+- [x] One line per flavour regardless of tour count
 
 Admin (change 12):
-- [ ] Operator name on pills and day-list rows (platform seats only); `isPlatformWideRole()` replaces the raw ADMIN check
-- [ ] Operator filter narrows server-side (`operatorId` on the overview query); client filter remains for tour chips
+- [x] Operator name on pills and day-list rows (platform seats only); `isPlatformWideRole()` replaces the raw ADMIN check
+- [x] Operator filter narrows server-side (`operatorId` on the overview query); client filter remains for tour chips
 
 Staff add (§4):
-- [ ] Add button gates on `canStopSell`; STOP_SELL-only seats: no Weekly tab, Seats disabled with the capacity explainer; payload omits capacity
+- [x] Add button gates on `canStopSell`; STOP_SELL-only seats: no Weekly tab, Seats disabled with the capacity explainer; payload omits capacity
 
 Range defaults (§4):
-- [ ] Dialog opens with From = To = viewed day, All tours preselected (new backend scope); consequence line reports departures/tours/booked-guests counts
+- [x] Dialog opens with From = To = viewed day, All tours preselected (new backend scope); consequence line reports departures/tours/booked-guests counts
 
 Review + verify:
-- [ ] Reviewers; full Chrome matrix (below)
+- [x] Reviewers; full Chrome matrix (below)
 
 ### Phase 6 - verification + docs
 
-- [ ] Chrome walkthrough at 1600x900 + mobile width, all three seats: owner/manager (everything), staff seat (close/reopen/range/confirm/add-one-off only - no seats field, no weekly tab, no capacity anywhere), admin (operator names, operator filter, overdue-freshness list, platform-attributed closures)
+- [x] Chrome walkthrough (admin seat, live round trip: close-with-reason, platform attribution, island clock, reopen logged, day list, week default, legend, freshness card) - operator/staff seats + mobile width pending: owner/manager (everything), staff seat (close/reopen/range/confirm/add-one-off only - no seats field, no weekly tab, no capacity anywhere), admin (operator names, operator filter, overdue-freshness list, platform-attributed closures)
 - [ ] Traveler round trip: operator closes Sold out > traveler date struck "Sold out"; Not running > plain grey "No departure"; reopen > bookable again
 - [ ] Demand-signal spot check: Sold out closure writes what §3.7 counts; Not running does not
 - [ ] Range close on a day with bookings: consequence line counts correct; Undo restores the whole range
