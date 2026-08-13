@@ -48,6 +48,22 @@ model AvailabilityException {
   // plain "Closed", which is what they have always meant.
   closureReason ClosureReason?
 
+  // Which side wrote the row (MCK-16 change 10): an Island Tours closure is
+  // labelled as such on the operator's row, because the operator may reopen it
+  // and should know what they are undoing. Stamped at write time from the
+  // actor's role; null only on rows that predate the column with no resolvable
+  // creator.
+  createdBySide ActorSide?
+
+  // Soft retirement (dev spec §6.5: every mutation is audited - reopens too).
+  // A reopen/undo RETIRES the row instead of deleting it: every read of what
+  // is in force filters `retiredAt: null`, while the Date changes register
+  // keeps both the closure and its reopening. `retiredBy` is a plain user id
+  // (no FK), same as `createdBy`.
+  retiredAt     DateTime?
+  retiredBy     String?
+  retiredBySide ActorSide?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

@@ -50,6 +50,8 @@ function mockPrisma() {
       findUnique: jest.fn(),
       findMany: jest.fn(),
       update: jest.fn(),
+      // Reopens RETIRE rows via updateMany (soft delete, dev spec §6.5).
+      updateMany: jest.fn().mockResolvedValue({ count: 0 }),
       delete: jest.fn(),
       deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
@@ -562,15 +564,50 @@ describe('AvailabilityService', () => {
       expect(prisma.tour.update).toHaveBeenCalled();
     });
 
-    it('re-materialises on deleteException', async () => {
+    it('re-materialises on deleteException, which RETIRES the row', async () => {
       prisma.availabilityException.findUnique.mockResolvedValue({
         tourId: 't1',
         date: day('2030-06-10'),
+        retiredAt: null,
       });
-      prisma.availabilityException.delete.mockResolvedValue(exceptionRow());
+      prisma.availabilityException.updateMany.mockResolvedValue({ count: 1 });
       await svc.deleteException('u1', Role.TOUR_OPERATOR, 'x1');
+      // Soft retirement, never a hard delete - the register keeps the row.
+      // Guarded on retiredAt: null so racing Undos cannot both claim it.
+      expect(prisma.availabilityException.delete).not.toHaveBeenCalled();
+      expect(prisma.availabilityException.updateMany).toHaveBeenCalledWith({
+        where: { id: 'x1', retiredAt: null },
+        data: expect.objectContaining({
+          retiredAt: expect.any(Date),
+          retiredBy: 'u1',
+          retiredBySide: 'OPERATOR',
+        }),
+      });
       expect(materializer.materializeTour).toHaveBeenCalledWith('t1');
       expect(prisma.tour.update).toHaveBeenCalled();
+    });
+
+    it('deleteException stops without re-projecting when it loses the retire race', async () => {
+      prisma.availabilityException.findUnique.mockResolvedValue({
+        tourId: 't1',
+        date: day('2030-06-10'),
+        retiredAt: null,
+      });
+      // Another Undo won between the read and the write (0 rows matched).
+      prisma.availabilityException.updateMany.mockResolvedValue({ count: 0 });
+      await svc.deleteException('u1', Role.TOUR_OPERATOR, 'x1');
+      expect(materializer.materializeTour).not.toHaveBeenCalled();
+    });
+
+    it('deleteException is an idempotent no-op on an already-retired row', async () => {
+      prisma.availabilityException.findUnique.mockResolvedValue({
+        tourId: 't1',
+        date: day('2030-06-10'),
+        retiredAt: new Date('2030-06-09T10:00:00Z'),
+      });
+      await svc.deleteException('u1', Role.TOUR_OPERATOR, 'x1');
+      expect(prisma.availabilityException.updateMany).not.toHaveBeenCalled();
+      expect(materializer.materializeTour).not.toHaveBeenCalled();
     });
 
     // gap #12: reject exception shapes the materializer would otherwise skip.
@@ -700,15 +737,16 @@ describe('AvailabilityService', () => {
         await expect(
           svc.deleteException('u1', Role.TOUR_OPERATOR, 'x1'),
         ).rejects.toThrow(/close and reopen only/);
-        expect(prisma.availabilityException.delete).not.toHaveBeenCalled();
+        expect(prisma.availabilityException.updateMany).not.toHaveBeenCalled();
         // Reopening a closure stays allowed for the same seat.
         prisma.availabilityException.findUnique.mockResolvedValue({
           tourId: 't1',
           date: day('2030-06-05'),
           type: 'CLOSE_DATE',
         });
+        prisma.availabilityException.updateMany.mockResolvedValue({ count: 1 });
         await svc.deleteException('u1', Role.TOUR_OPERATOR, 'x1');
-        expect(prisma.availabilityException.delete).toHaveBeenCalled();
+        expect(prisma.availabilityException.updateMany).toHaveBeenCalled();
       });
 
       it('applies the merged-shape floor on updateException too', async () => {
@@ -771,7 +809,9 @@ describe('AvailabilityService', () => {
           type: 'CLOSE_DATE',
           capacity: null,
           note: 'Weather',
+          closureReason: 'NOT_RUNNING',
           createdBy: 'u1',
+          createdBySide: 'PLATFORM',
           createdAt: new Date('2030-06-04T08:00:00Z'),
         },
       ]);
@@ -781,14 +821,22 @@ describe('AvailabilityService', () => {
         from: '2030-06-05',
         days: 2,
       });
+      // The closure read asks only for rows in force (retired ones are
+      // register history, not live stop-sells).
+      expect(
+        prisma.availabilityException.findMany.mock.calls[0][0].where,
+      ).toMatchObject({ retiredAt: null });
       // Every requested day present, even when empty.
       expect(res.days.map((d) => d.date)).toEqual(['2030-06-05', '2030-06-06']);
       const rows = res.days[0].departures;
       expect(rows.map((r) => r.tourName)).toEqual(['Buggy', 'Catamaran']);
-      // t1's whole-day closure attaches with its audit line; t2 has none.
+      // t1's whole-day closure attaches with its audit line - now carrying the
+      // reason and the side (MCK-16 changes 5 + 10); t2 has none.
       expect(rows[1].closure).toMatchObject({
         id: 'x1',
         createdByName: 'Maria',
+        createdBySide: 'PLATFORM',
+        closureReason: 'NOT_RUNNING',
         note: 'Weather',
       });
       expect(rows[0].closure).toBeNull();
@@ -817,6 +865,7 @@ describe('AvailabilityService', () => {
       const res = await svc.closeAgendaDay('u1', Role.TOUR_OPERATOR, {
         date: '2030-06-05',
         note: 'Weather',
+        closureReason: 'NOT_RUNNING',
       });
       expect(res).toEqual({ closed: 1, tourIds: ['t1'] });
       const args = prisma.availabilityException.createMany.mock.calls[0][0];
@@ -826,6 +875,11 @@ describe('AvailabilityService', () => {
         type: 'CLOSE_DATE',
         note: 'Weather',
         createdBy: 'u1',
+        // MCK-16 changes 1 + 10: the reason and the side ride the write, and
+        // one tap shares one batch id so the demand signal reads one event.
+        closureReason: 'NOT_RUNNING',
+        createdBySide: 'OPERATOR',
+        closureBatchId: expect.any(String),
       });
       expect(materializer.materializeTour).toHaveBeenCalledWith(
         't1',
@@ -993,7 +1047,7 @@ describe('AvailabilityService', () => {
       prisma.availabilityException.createMany = jest
         .fn()
         .mockResolvedValue({ count: 0 });
-      prisma.availabilityException.deleteMany = jest
+      prisma.availabilityException.updateMany = jest
         .fn()
         .mockResolvedValue({ count: 3 });
     });
@@ -1051,14 +1105,16 @@ describe('AvailabilityService', () => {
       expect(materializer.materializeTour).not.toHaveBeenCalled();
     });
 
-    it('reopenRange deletes every whole-day closure in the bounds', async () => {
+    it('reopenRange RETIRES every active whole-day closure in the bounds', async () => {
       const res = await svc.reopenRange('u1', Role.TOUR_OPERATOR, {
         tourId: 't1',
         from: '2030-06-10',
         to: '2030-06-12',
       });
       expect(res.reopened).toBe(3);
-      expect(prisma.availabilityException.deleteMany).toHaveBeenCalledWith({
+      // Soft retirement (dev spec §6.5): the register keeps the closures.
+      expect(prisma.availabilityException.deleteMany).not.toHaveBeenCalled();
+      expect(prisma.availabilityException.updateMany).toHaveBeenCalledWith({
         where: {
           tourId: 't1',
           type: 'CLOSE_DATE',
@@ -1066,13 +1122,174 @@ describe('AvailabilityService', () => {
             gte: day('2030-06-10'),
             lte: day('2030-06-12'),
           },
+          retiredAt: null,
         },
+        data: expect.objectContaining({
+          retiredAt: expect.any(Date),
+          retiredBy: 'u1',
+          retiredBySide: 'OPERATOR',
+        }),
       });
       expect(materializer.materializeTour).toHaveBeenCalledWith(
         't1',
         '2030-06-10',
         '2030-06-12',
       );
+    });
+  });
+
+  // MCK-16 changes 1, 5 and 10: every exception write carries which SIDE made
+  // it, retired rows refuse edits, and legacy reasonless closures can be
+  // backfilled through PATCH rather than renamed in the UI.
+  describe('closure attribution + reason backfill (MCK-16)', () => {
+    function exceptionRow(over: Record<string, unknown> = {}) {
+      return {
+        id: 'x1',
+        tourId: 't1',
+        date: day('2030-06-10'),
+        startTime: null,
+        type: 'CLOSE_DATE',
+        capacity: null,
+        note: null,
+        closureReason: null,
+        createdBy: 'u1',
+        createdBySide: 'OPERATOR',
+        createdAt: new Date('2030-06-01T12:00:00.000Z'),
+        retiredAt: null,
+        retiredBy: null,
+        retiredBySide: null,
+        ...over,
+      };
+    }
+
+    beforeEach(() => {
+      prisma.tour.findUnique.mockResolvedValue(TOUR);
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
+      prisma.availabilityException.create.mockResolvedValue(exceptionRow());
+      prisma.availabilityException.update.mockResolvedValue(exceptionRow());
+    });
+
+    it('stamps the operator side on an operator close and PLATFORM on an admin close', async () => {
+      await svc.createException('u1', Role.TOUR_OPERATOR, {
+        tourId: 't1',
+        date: '2030-06-10',
+        type: 'CLOSE_DATE',
+      } as never);
+      expect(
+        prisma.availabilityException.create.mock.calls[0][0].data,
+      ).toMatchObject({ createdBy: 'u1', createdBySide: 'OPERATOR' });
+
+      await svc.createException('admin1', Role.ADMIN, {
+        tourId: 't1',
+        date: '2030-06-11',
+        type: 'CLOSE_DATE',
+      } as never);
+      expect(
+        prisma.availabilityException.create.mock.calls[1][0].data,
+      ).toMatchObject({ createdBy: 'admin1', createdBySide: 'PLATFORM' });
+    });
+
+    it('an admin undo retires with the PLATFORM side', async () => {
+      prisma.availabilityException.findUnique.mockResolvedValue(
+        exceptionRow({ retiredAt: null }),
+      );
+      prisma.availabilityException.updateMany.mockResolvedValue({ count: 1 });
+      await svc.deleteException('admin1', Role.ADMIN, 'x1');
+      expect(prisma.availabilityException.updateMany).toHaveBeenCalledWith({
+        where: { id: 'x1', retiredAt: null },
+        data: expect.objectContaining({
+          retiredBy: 'admin1',
+          retiredBySide: 'PLATFORM',
+        }),
+      });
+    });
+
+    it('a platform STAFF write stamps the PLATFORM side too', () => {
+      // isPlatformWideRole, not a bare ADMIN test - the §Admin.4 lesson.
+      expect(svc['actorSide'](Role.STAFF)).toBe('PLATFORM');
+      expect(svc['actorSide'](Role.EDITOR)).toBe('PLATFORM');
+      expect(svc['actorSide'](Role.TOUR_OPERATOR)).toBe('OPERATOR');
+      expect(svc['actorSide'](Role.GUIDE)).toBe('OPERATOR');
+    });
+
+    it('listExceptions returns retired rows WITH their retire audit line', async () => {
+      prisma.availabilityException.findMany.mockResolvedValue([
+        exceptionRow(),
+        exceptionRow({
+          id: 'x2',
+          retiredAt: new Date('2030-06-03T09:00:00Z'),
+          retiredBy: 'u2',
+          retiredBySide: 'OPERATOR',
+        }),
+      ]);
+      prisma.user.findMany.mockResolvedValueOnce([
+        { id: 'u1', name: 'Maria' },
+        { id: 'u2', name: 'Yuri' },
+      ]);
+      const res = await svc.listExceptions('u1', Role.TOUR_OPERATOR, {
+        tourId: 't1',
+      });
+      // The register is history: retired rows are NOT filtered out here.
+      const where = prisma.availabilityException.findMany.mock.calls[0][0]
+        .where as Record<string, unknown>;
+      expect(where).not.toHaveProperty('retiredAt');
+      expect(res[1]).toMatchObject({
+        id: 'x2',
+        retiredAt: '2030-06-03T09:00:00.000Z',
+        retiredByName: 'Yuri',
+        retiredBySide: 'OPERATOR',
+      });
+      expect(res[0]).toMatchObject({ retiredAt: null, retiredByName: null });
+    });
+
+    it('refuses to edit a retired row', async () => {
+      prisma.availabilityException.findUnique.mockResolvedValue(
+        exceptionRow({ retiredAt: new Date('2030-06-02T09:00:00Z') }),
+      );
+      await expect(
+        svc.updateException('u1', Role.TOUR_OPERATOR, 'x1', { note: 'late' }),
+      ).rejects.toThrow(ConflictException);
+      expect(prisma.availabilityException.update).not.toHaveBeenCalled();
+    });
+
+    it('backfills closureReason on a legacy closure via PATCH', async () => {
+      prisma.availabilityException.findUnique.mockResolvedValue(exceptionRow());
+      await svc.updateException('u1', Role.TOUR_OPERATOR, 'x1', {
+        closureReason: 'SOLD_OUT',
+      } as never);
+      expect(prisma.availabilityException.update).toHaveBeenCalledWith({
+        where: { id: 'x1' },
+        data: { closureReason: 'SOLD_OUT' },
+      });
+    });
+
+    it('refuses to RE-LABEL a recorded reason via PATCH (backfill only)', async () => {
+      prisma.availabilityException.findUnique.mockResolvedValue(
+        exceptionRow({ closureReason: 'NOT_RUNNING' }),
+      );
+      // NOT_RUNNING -> SOLD_OUT would manufacture §3.7 sell-out evidence.
+      await expect(
+        svc.updateException('u1', Role.TOUR_OPERATOR, 'x1', {
+          closureReason: 'SOLD_OUT',
+        } as never),
+      ).rejects.toThrow(ConflictException);
+      expect(prisma.availabilityException.update).not.toHaveBeenCalled();
+      // Re-sending the same value is an idempotent no-op and stays allowed.
+      await svc.updateException('u1', Role.TOUR_OPERATOR, 'x1', {
+        closureReason: 'NOT_RUNNING',
+      } as never);
+      expect(prisma.availabilityException.update).toHaveBeenCalled();
+    });
+
+    it('rejects a reason on a non-closure type via PATCH', async () => {
+      prisma.availabilityException.findUnique.mockResolvedValue(
+        exceptionRow({ type: 'ADD_SLOT', startTime: time('09:00') }),
+      );
+      await expect(
+        svc.updateException('u1', Role.TOUR_OPERATOR, 'x1', {
+          closureReason: 'SOLD_OUT',
+        } as never),
+      ).rejects.toThrow(/close_date \/ close_slot only/);
     });
   });
 

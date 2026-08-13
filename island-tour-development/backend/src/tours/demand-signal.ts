@@ -92,6 +92,9 @@ async function countRecentSellouts(
         type: AvailabilityExceptionType.CLOSE_DATE,
         closureReason: ClosureReason.SOLD_OUT,
         createdAt: { gte: windowStart, lte: now },
+        // An undone (retired) closure is withdrawn evidence - same semantics
+        // as when an undo used to hard-delete the row.
+        retiredAt: null,
       },
       select: { id: true, closureBatchId: true },
     }),

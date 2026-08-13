@@ -8,6 +8,7 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import {
+  ActorSide,
   AvailabilityExceptionType,
   AvailabilityScheduleStatus,
   DepartureStatus,
@@ -23,7 +24,10 @@ import {
 } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from '@/prisma/prisma.service';
-import { resolveOperatorId } from '@/common/utils/operator.util';
+import {
+  isPlatformWideRole,
+  resolveOperatorId,
+} from '@/common/utils/operator.util';
 import { assertDateRangeOrder } from '@/common/utils/date-range.util';
 import { InboxService } from '@/inbox/inbox.service';
 import { NotificationsService } from '@/notifications/notifications.service';
@@ -121,6 +125,19 @@ export class AvailabilityService {
     // narrow grant - the service re-checks before an ADD_SLOT / SET_CAPACITY.
     private readonly staffPermissions: StaffPermissionsService,
   ) {}
+
+  /**
+   * Which side of the marketplace this actor writes as (MCK-16 change 10).
+   * The platform set is `isPlatformWideRole` (ADMIN | STAFF | EDITOR), NOT a
+   * bare ADMIN test - testing ADMIN alone is the exact bug the util's own
+   * doc block records (test report 2026-08-01 §Admin.4). Today only ADMIN
+   * passes assertTourAccess onto foreign tours, but if platform staff ever
+   * gain that reach their writes must not stamp OPERATOR. Stamped at write
+   * time - a role can change later, so it cannot be re-derived from createdBy.
+   */
+  private actorSide(role: Role): ActorSide {
+    return isPlatformWideRole(role) ? ActorSide.PLATFORM : ActorSide.OPERATOR;
+  }
 
   /**
    * A STOP_SELL-only seat may close and reopen - never add departures or move
@@ -421,6 +438,7 @@ export class AvailabilityService {
         // reason on ADD_SLOT / SET_CAPACITY.
         closureReason: dto.closureReason ?? null,
         createdBy: userId,
+        createdBySide: this.actorSide(role),
       },
     });
     // An exception (close date/slot, add slot, set capacity) changes sellable
@@ -450,6 +468,8 @@ export class AvailabilityService {
         type: true,
         startTime: true,
         capacity: true,
+        closureReason: true,
+        retiredAt: true,
       },
     });
     if (!existing) throw new NotFoundException('Exception not found');
@@ -458,6 +478,15 @@ export class AvailabilityService {
       userId,
       role,
     );
+    // A retired row is history, not a live rule - editing it would change what
+    // the register says happened without changing anything in force. Checked
+    // AFTER ownership so a foreign caller cannot probe exception ids by
+    // status-code difference.
+    if (existing.retiredAt) {
+      throw new ConflictException(
+        'This change was already undone; it can no longer be edited',
+      );
+    }
     // Validate the merged exception shape (a partial edit can leave it invalid).
     const effectiveType = dto.type ?? existing.type;
     const effectiveStartTime =
@@ -486,6 +515,32 @@ export class AvailabilityService {
         effectiveCapacity,
       );
     }
+    // The reason backfill path (MCK-16 change 1): legacy reasonless closures
+    // get their reason set here rather than renamed in the UI. Same type guard
+    // as createException - a reason only means anything on a closure.
+    if (
+      dto.closureReason != null &&
+      effectiveType !== AvailabilityExceptionType.CLOSE_DATE &&
+      effectiveType !== AvailabilityExceptionType.CLOSE_SLOT
+    ) {
+      throw new UnprocessableEntityException(
+        'closureReason applies to close_date / close_slot only',
+      );
+    }
+    // BACKFILL only, never a re-label: the register is an audit trail, and
+    // §3.7 counts SOLD_OUT closures as sell-out evidence - letting an operator
+    // rewrite NOT_RUNNING closures to SOLD_OUT after the fact would let them
+    // manufacture the scarcity badge. Setting the same value again is a no-op
+    // and stays allowed; changing or clearing a recorded reason is not.
+    if (
+      dto.closureReason !== undefined &&
+      existing.closureReason != null &&
+      dto.closureReason !== existing.closureReason
+    ) {
+      throw new ConflictException(
+        'This closure already has a reason. Reopen the date and close it again if the label is wrong.',
+      );
+    }
     const row = await this.prisma.availabilityException.update({
       where: { id },
       data: {
@@ -495,6 +550,9 @@ export class AvailabilityService {
         }),
         ...(dto.capacity !== undefined && { capacity: dto.capacity ?? null }),
         ...(dto.note !== undefined && { note: dto.note ?? null }),
+        ...(dto.closureReason !== undefined && {
+          closureReason: dto.closureReason ?? null,
+        }),
       },
     });
     // Re-project departures + refresh the listing gate so the edited exception
@@ -508,10 +566,18 @@ export class AvailabilityService {
     return mapException(row, await this.exceptionActorNames([row]));
   }
 
+  /**
+   * Undo an exception - a reopen for the close types, a removal for
+   * ADD_SLOT / SET_CAPACITY. The row is RETIRED, not deleted (dev spec §6.5:
+   * reopens are mutations and must stay auditable): every "what is in force"
+   * read filters `retiredAt: null`, while the Date changes register keeps both
+   * the act and its undoing. Re-materialisation then restores the underlying
+   * schedule's departures exactly as the old hard delete did.
+   */
   async deleteException(userId: string, role: Role, id: string): Promise<void> {
     const existing = await this.prisma.availabilityException.findUnique({
       where: { id },
-      select: { tourId: true, date: true, type: true },
+      select: { tourId: true, date: true, type: true, retiredAt: true },
     });
     if (!existing) throw new NotFoundException('Exception not found');
     const operatorId = await this.assertTourAccess(
@@ -519,7 +585,9 @@ export class AvailabilityService {
       userId,
       role,
     );
-    // The stop-sell split cuts both ways: deleting an ADD_SLOT or SET_CAPACITY
+    // Already undone: a double-tapped Undo toast is a no-op, not an error.
+    if (existing.retiredAt) return;
+    // The stop-sell split cuts both ways: undoing an ADD_SLOT or SET_CAPACITY
     // row SHAPES inventory (it removes a departure / reverts a capacity
     // decision), so the narrow seat may only undo the close types.
     if (
@@ -528,8 +596,20 @@ export class AvailabilityService {
     ) {
       await this.assertCanShapeInventory(userId, role);
     }
-    await this.prisma.availabilityException.delete({ where: { id } });
-    // Removing an exception restores the underlying schedule's departures for
+    // Guarded on retiredAt: null (compare-and-swap, like reopenRange): two
+    // racing Undos must not both "win" and overwrite each other's who-undid-
+    // this audit line. The loser sees 0 rows and stops - the winner already
+    // owns the re-projection.
+    const { count } = await this.prisma.availabilityException.updateMany({
+      where: { id, retiredAt: null },
+      data: {
+        retiredAt: new Date(),
+        retiredBy: userId,
+        retiredBySide: this.actorSide(role),
+      },
+    });
+    if (count === 0) return;
+    // Retiring an exception restores the underlying schedule's departures for
     // that date, so re-project + refresh the listing gate now.
     await this.syncTourAvailability(existing.tourId, dateKey(existing.date));
     this.notifications.emitAvailabilityUpdate({
@@ -540,16 +620,22 @@ export class AvailabilityService {
   }
 
   /**
-   * Resolve `createdBy` user ids to display names in one query, so every
-   * exception row can say "Closed by Maria · Jul 28, 14:02" instead of a UUID.
-   * The exception table has no FK to users (createdBy survives account
-   * deletion as a plain string), hence the manual join.
+   * Resolve `createdBy` (and, where present, `retiredBy`) user ids to display
+   * names in one query, so every exception row can say "Closed by Maria ·
+   * Jul 28, 14:02" / "Reopened by Yuri" instead of a UUID. The exception table
+   * has no FK to users (the ids survive account deletion as plain strings),
+   * hence the manual join.
    */
   private async exceptionActorNames(
-    rows: Pick<AvailabilityException, 'createdBy'>[],
+    rows: (Pick<AvailabilityException, 'createdBy'> &
+      Partial<Pick<AvailabilityException, 'retiredBy'>>)[],
   ): Promise<Map<string, string>> {
     const ids = [
-      ...new Set(rows.map((r) => r.createdBy).filter((v): v is string => !!v)),
+      ...new Set(
+        rows
+          .flatMap((r) => [r.createdBy, r.retiredBy])
+          .filter((v): v is string => !!v),
+      ),
     ];
     if (ids.length === 0) return new Map();
     const users = await this.prisma.user.findMany({
@@ -626,6 +712,9 @@ export class AvailabilityService {
               AvailabilityExceptionType.CLOSE_SLOT,
             ],
           },
+          // Only closures in force - a retired (reopened) row is register
+          // history, not a live stop-sell.
+          retiredAt: null,
         },
         select: {
           id: true,
@@ -634,7 +723,9 @@ export class AvailabilityService {
           startTime: true,
           type: true,
           note: true,
+          closureReason: true,
           createdBy: true,
+          createdBySide: true,
           createdAt: true,
         },
         orderBy: { createdAt: 'asc' },
@@ -668,6 +759,8 @@ export class AvailabilityService {
             createdByName: row.createdBy
               ? (actorNames.get(row.createdBy) ?? null)
               : null,
+            createdBySide: row.createdBySide,
+            closureReason: row.closureReason,
             note: row.note,
           }
         : null;
@@ -853,78 +946,15 @@ export class AvailabilityService {
     const toDate = new Date(fromDate.getTime() + (dayCount - 1) * MS_PER_DAY);
     const tourIds = tours.map((t) => t.id);
 
-    const [departures, closures] = await Promise.all([
-      this.prisma.departure.findMany({
-        where: {
-          tourId: { in: tourIds },
-          date: { gte: fromDate, lte: toDate },
-        },
-        select: {
-          id: true,
-          tourId: true,
-          date: true,
-          startTime: true,
-          capacity: true,
-          bookedCount: true,
-          status: true,
-        },
-        orderBy: [{ date: 'asc' }, { startTime: 'asc' }],
-      }),
-      this.prisma.availabilityException.findMany({
-        where: {
-          tourId: { in: tourIds },
-          date: { gte: fromDate, lte: toDate },
-          type: {
-            in: [
-              AvailabilityExceptionType.CLOSE_DATE,
-              AvailabilityExceptionType.CLOSE_SLOT,
-            ],
-          },
-        },
-        select: {
-          id: true,
-          tourId: true,
-          date: true,
-          startTime: true,
-          type: true,
-          note: true,
-          createdBy: true,
-          createdAt: true,
-        },
-      }),
-    ]);
-    const actorNames = await this.exceptionActorNames(closures);
-    // Platform-wide the closure list can be much larger than one operator's,
-    // so the agenda's linear scan becomes two keyed maps.
-    type ClosureRow = (typeof closures)[number];
-    const slotClosures = new Map<string, ClosureRow>();
-    const dayClosures = new Map<string, ClosureRow>();
-    for (const c of closures) {
-      const date = dateKey(c.date);
-      if (
-        c.type === AvailabilityExceptionType.CLOSE_SLOT &&
-        c.startTime !== null
-      ) {
-        slotClosures.set(`${c.tourId}|${date}|${timeOfDay(c.startTime)}`, c);
-      } else if (c.type === AvailabilityExceptionType.CLOSE_DATE) {
-        dayClosures.set(`${c.tourId}|${date}`, c);
-      }
-    }
-    const closureFor = (tourId: string, date: string, startTime: string) => {
-      const row =
-        slotClosures.get(`${tourId}|${date}|${startTime}`) ??
-        dayClosures.get(`${tourId}|${date}`);
-      return row
-        ? {
-            id: row.id,
-            createdAt: row.createdAt.toISOString(),
-            createdByName: row.createdBy
-              ? (actorNames.get(row.createdBy) ?? null)
-              : null,
-            note: row.note,
-          }
-        : null;
-    };
+    // The same shared read as the agenda - one closure-resolution algorithm
+    // (oldest row wins, slot beats day) so the two surfaces can never report
+    // a different closure for the same departure. This block used to be an
+    // inline copy that had already drifted (no orderBy, last-write-wins).
+    const { departures, closureFor } = await this.departuresWithClosures(
+      tourIds,
+      fromDate,
+      toDate,
+    );
 
     const byDay = new Map<string, OverviewDepartureDto[]>();
     for (const row of departures) {
@@ -1033,6 +1063,9 @@ export class AvailabilityService {
             tourId: { in: tourIds },
             date,
             type: AvailabilityExceptionType.CLOSE_DATE,
+            // A retired closure no longer closes the day - re-closing after an
+            // undo must write a fresh row.
+            retiredAt: null,
           },
           select: { tourId: true },
         }),
@@ -1042,6 +1075,10 @@ export class AvailabilityService {
         .map((r) => r.tourId)
         .filter((id) => !closedSet.has(id));
       if (ids.length > 0) {
+        // One batch id for the whole tap: the demand signal reads operator
+        // SOLD_OUT closures as sell-out evidence (§3.7), and closing five
+        // tours' day is one operator action, not five.
+        const closureBatchId = randomUUID();
         await tx.availabilityException.createMany({
           data: ids.map((tourId) => ({
             tourId,
@@ -1049,7 +1086,10 @@ export class AvailabilityService {
             startTime: null,
             type: AvailabilityExceptionType.CLOSE_DATE,
             note: dto.note ?? null,
+            closureReason: dto.closureReason ?? null,
+            closureBatchId,
             createdBy: userId,
+            createdBySide: this.actorSide(role),
           })),
         });
       }
@@ -1144,6 +1184,8 @@ export class AvailabilityService {
           tourId: dto.tourId,
           type: AvailabilityExceptionType.CLOSE_DATE,
           date: { gte: from, lte: to },
+          // Retired closures are history - a re-close after an undo writes anew.
+          retiredAt: null,
         },
         select: { date: true },
       });
@@ -1159,6 +1201,7 @@ export class AvailabilityService {
           type: AvailabilityExceptionType.CLOSE_DATE,
           note: dto.note ?? null,
           createdBy: userId,
+          createdBySide: this.actorSide(role),
           closureBatchId,
           closureReason: dto.closureReason ?? null,
         });
@@ -1182,7 +1225,11 @@ export class AvailabilityService {
     return { closed: rows.length };
   }
 
-  /** The one-unit Undo of {@link closeRange}: drop every whole-day closure in the range. */
+  /**
+   * The one-unit Undo of {@link closeRange}: RETIRE every whole-day closure in
+   * the range (not delete - the register keeps the closure and its reopening,
+   * dev spec §6.5).
+   */
   async reopenRange(
     userId: string,
     role: Role,
@@ -1190,9 +1237,9 @@ export class AvailabilityService {
   ): Promise<{ reopened: number }> {
     const operatorId = await this.assertTourAccess(dto.tourId, userId, role);
     assertDateRangeOrder(dto.from, dto.to);
-    // Same bound as closeRange, and checked BEFORE the delete: the
+    // Same bound as closeRange, and checked BEFORE the retire: the
     // materializer's own 365-day cap would otherwise throw after rows were
-    // already gone, leaving closures deleted but departures un-projected.
+    // already retired, leaving closures lifted but departures un-projected.
     const spanDays =
       Math.round(
         (dayDate(dto.to).getTime() - dayDate(dto.from).getTime()) / MS_PER_DAY,
@@ -1200,11 +1247,17 @@ export class AvailabilityService {
     if (spanDays > 366) {
       throw new BadRequestException('A reopen range cannot exceed 366 days');
     }
-    const { count } = await this.prisma.availabilityException.deleteMany({
+    const { count } = await this.prisma.availabilityException.updateMany({
       where: {
         tourId: dto.tourId,
         type: AvailabilityExceptionType.CLOSE_DATE,
         date: { gte: dayDate(dto.from), lte: dayDate(dto.to) },
+        retiredAt: null,
+      },
+      data: {
+        retiredAt: new Date(),
+        retiredBy: userId,
+        retiredBySide: this.actorSide(role),
       },
     });
     if (count > 0) {
@@ -1290,6 +1343,9 @@ export class AvailabilityService {
         where: {
           tourId: query.tourId,
           date: { gte: monthStart, lte: monthEnd },
+          // The day panel shows rules in force; retired (undone) rows belong
+          // to the Date changes register only.
+          retiredAt: null,
         },
         orderBy: [{ date: 'asc' }, { startTime: 'asc' }],
       }),
@@ -2120,12 +2176,20 @@ function mapException(
     capacity: row.capacity,
     note: row.note,
     closureReason: row.closureReason,
-    // Audit surface (dev spec §6.5): every override answers "who, when" so an
-    // "I never closed that date" dispute is resolvable from the screen.
+    // Audit surface (dev spec §6.5): every override answers "who, when" - and
+    // WHICH SIDE (MCK-16 change 10) - so an "I never closed that date" dispute
+    // is resolvable from the screen. A retired row is a reopened/undone act;
+    // the register renders both the act and its undoing.
     createdAt: row.createdAt.toISOString(),
     createdByName: row.createdBy
       ? (actorNames?.get(row.createdBy) ?? null)
       : null,
+    createdBySide: row.createdBySide,
+    retiredAt: row.retiredAt ? row.retiredAt.toISOString() : null,
+    retiredByName: row.retiredBy
+      ? (actorNames?.get(row.retiredBy) ?? null)
+      : null,
+    retiredBySide: row.retiredBySide,
   };
 }
 

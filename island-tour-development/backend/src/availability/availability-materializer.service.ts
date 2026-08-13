@@ -73,7 +73,13 @@ export class AvailabilityMaterializerService {
         where: { tourId, status: 'ACTIVE' },
       }),
       this.prisma.availabilityException.findMany({
-        where: { tourId, date: { gte: fromDate, lte: toDate } },
+        // Retired rows are undone acts kept for the register - projecting them
+        // would re-close a reopened date (or resurrect a removed one-off).
+        where: {
+          tourId,
+          date: { gte: fromDate, lte: toDate },
+          retiredAt: null,
+        },
       }),
     ]);
 
