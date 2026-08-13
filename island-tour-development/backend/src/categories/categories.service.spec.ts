@@ -672,15 +672,199 @@ describe('CategoryService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('rejects converting an existing top-level category into a sub-category', async () => {
+    it('rejects demoting a top-level category WITHOUT confirmPageRemoval', async () => {
       // assertValidParent sees a top-level parent; self is currently top-level
-      // (parentCategoryId null) -> demotion is rejected.
-      prisma.category.findUnique.mockResolvedValue({ parentCategoryId: null });
+      // (parentCategoryId null) and the caller sent no confirmation -> rejected.
+      prisma.category.findUnique.mockResolvedValue({
+        parentCategoryId: null,
+        isSeeded: false,
+      });
       await expect(
         service.update('cat-1', { parentCategoryId: 'top-parent' }, 'admin-1'),
       ).rejects.toThrow(BadRequestException);
       // Never reaches the update mutation.
       expect(prisma.category.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects demoting a SEEDED category even with confirmPageRemoval', async () => {
+      prisma.category.findUnique
+        .mockResolvedValueOnce({ parentCategoryId: null }) // requested parent
+        .mockResolvedValueOnce({ parentCategoryId: null, isSeeded: true }); // self
+      await expect(
+        service.update(
+          'cat-1',
+          { parentCategoryId: 'top-parent', confirmPageRemoval: true },
+          'admin-1',
+        ),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prisma.category.update).not.toHaveBeenCalled();
+    });
+
+    it('demotes with confirmPageRemoval: sets the parent and retires the page slugs (cooldown)', async () => {
+      prisma.category.findUnique
+        .mockResolvedValueOnce({ parentCategoryId: null }) // requested parent
+        .mockResolvedValueOnce({ parentCategoryId: null, isSeeded: false }); // self
+      prisma.category.count.mockResolvedValue(0); // no children of its own
+      prisma.category.update.mockResolvedValue(makeCategoryRecord());
+
+      await service.update(
+        'cat-1',
+        { parentCategoryId: 'top-parent', confirmPageRemoval: true },
+        'admin-1',
+      );
+
+      expect(prisma.category.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ parentCategoryId: 'top-parent' }),
+        }),
+      );
+      // markSlugsDeleted: rows stay but 404 + cooldown, exactly like a hard delete.
+      expect(prisma.slugRegistry.updateMany).toHaveBeenCalledWith({
+        where: { entityType: SlugEntityType.CATEGORY, entityId: 'cat-1' },
+        data: { isActive: false, deletedAt: expect.any(Date) },
+      });
+    });
+
+    it('promotion (detach) resurrects its own retired rows and creates only the missing destinations', async () => {
+      prisma.category.findUnique.mockResolvedValueOnce({
+        parentCategoryId: 'parent-1',
+        isSeeded: false,
+      }); // self (no assertValidParent lookup for a null parent)
+      prisma.category.update.mockResolvedValue(
+        makeCategoryRecord({ slug: 'yacht-charters' }),
+      );
+      // After resurrection this category already holds curacao; aruba is missing.
+      prisma.slugRegistry.findMany.mockResolvedValue([
+        { destinationSlug: 'curacao' },
+      ]);
+      prisma.destination.findMany.mockResolvedValue([
+        { slug: 'curacao' },
+        { slug: 'aruba' },
+      ]);
+      prisma.slugRegistry.deleteMany.mockResolvedValue({ count: 0 });
+      prisma.slugRegistry.createMany.mockResolvedValue({ count: 1 });
+
+      await service.update('cat-1', { parentCategoryId: null }, 'admin-1');
+
+      // Own ghosts leave the delete-cooldown state (all rows) and only the
+      // active-destination rows go live.
+      expect(prisma.slugRegistry.updateMany).toHaveBeenCalledWith({
+        where: { entityType: SlugEntityType.CATEGORY, entityId: 'cat-1' },
+        data: { deletedAt: null },
+      });
+      expect(prisma.slugRegistry.updateMany).toHaveBeenCalledWith({
+        where: {
+          entityType: SlugEntityType.CATEGORY,
+          entityId: 'cat-1',
+          destinationSlug: { in: ['curacao', 'aruba'] },
+        },
+        data: { isActive: true },
+      });
+      // Only the missing destination gets a new row.
+      expect(prisma.slugRegistry.createMany).toHaveBeenCalledWith({
+        data: [
+          {
+            destinationSlug: 'aruba',
+            slug: 'yacht-charters',
+            entityType: SlugEntityType.CATEGORY,
+            entityId: 'cat-1',
+            isActive: true,
+          },
+        ],
+      });
+    });
+
+    it('promotion honors an explicit isActive:false sent in the same PATCH (rows never flip live)', async () => {
+      prisma.category.findUnique.mockResolvedValueOnce({
+        parentCategoryId: 'parent-1',
+        isSeeded: false,
+      });
+      prisma.category.update.mockResolvedValue(
+        makeCategoryRecord({ slug: 'yacht-charters', isActive: false }),
+      );
+      prisma.slugRegistry.findMany.mockResolvedValue([]);
+      prisma.destination.findMany.mockResolvedValue([{ slug: 'curacao' }]);
+      prisma.slugRegistry.deleteMany.mockResolvedValue({ count: 0 });
+      prisma.slugRegistry.updateMany.mockResolvedValue({ count: 1 });
+      prisma.slugRegistry.createMany.mockResolvedValue({ count: 1 });
+
+      await service.update(
+        'cat-1',
+        { parentCategoryId: null, isActive: false },
+        'admin-1',
+      );
+
+      // The resurrect write is scoped AND carries the caller's isActive.
+      expect(prisma.slugRegistry.updateMany).toHaveBeenCalledWith({
+        where: {
+          entityType: SlugEntityType.CATEGORY,
+          entityId: 'cat-1',
+          destinationSlug: { in: ['curacao'] },
+        },
+        data: { isActive: false },
+      });
+      // Newly created rows carry it too.
+      expect(prisma.slugRegistry.createMany).toHaveBeenCalledWith({
+        data: [
+          expect.objectContaining({
+            destinationSlug: 'curacao',
+            isActive: false,
+          }),
+        ],
+      });
+    });
+
+    it('promotion never re-lights rows in a deactivated destination', async () => {
+      prisma.category.findUnique.mockResolvedValueOnce({
+        parentCategoryId: 'parent-1',
+        isSeeded: false,
+      });
+      prisma.category.update.mockResolvedValue(
+        makeCategoryRecord({ slug: 'yacht-charters' }),
+      );
+      // Own rows cover curacao AND aruba, but aruba's destination is inactive.
+      prisma.slugRegistry.findMany.mockResolvedValue([
+        { destinationSlug: 'curacao' },
+        { destinationSlug: 'aruba' },
+      ]);
+      prisma.destination.findMany.mockResolvedValue([{ slug: 'curacao' }]);
+      prisma.slugRegistry.deleteMany.mockResolvedValue({ count: 0 });
+      prisma.slugRegistry.updateMany.mockResolvedValue({ count: 1 });
+      prisma.slugRegistry.createMany.mockResolvedValue({ count: 0 });
+
+      await service.update('cat-1', { parentCategoryId: null }, 'admin-1');
+
+      // isActive flips only inside the active-destination namespace.
+      expect(prisma.slugRegistry.updateMany).toHaveBeenCalledWith({
+        where: {
+          entityType: SlugEntityType.CATEGORY,
+          entityId: 'cat-1',
+          destinationSlug: { in: ['curacao'] },
+        },
+        data: { isActive: true },
+      });
+      // Both destinations are covered, nothing new to create.
+      expect(prisma.slugRegistry.createMany).not.toHaveBeenCalled();
+    });
+
+    it('promotion surfaces 409 (not a raw 500) when another entity reclaimed the slug post-cooldown', async () => {
+      prisma.category.findUnique.mockResolvedValueOnce({
+        parentCategoryId: 'parent-1',
+        isSeeded: false,
+      });
+      prisma.category.update.mockResolvedValue(
+        makeCategoryRecord({ slug: 'yacht-charters' }),
+      );
+      prisma.slugRegistry.findMany.mockResolvedValue([]);
+      prisma.destination.findMany.mockResolvedValue([{ slug: 'curacao' }]);
+      prisma.slugRegistry.deleteMany.mockResolvedValue({ count: 0 });
+      prisma.slugRegistry.createMany.mockRejectedValue(
+        makePrismaError('P2002'),
+      );
+
+      await expect(
+        service.update('cat-1', { parentCategoryId: null }, 'admin-1'),
+      ).rejects.toThrow(ConflictException);
     });
 
     it('rejects re-parenting a sub-category that already has its own children', async () => {

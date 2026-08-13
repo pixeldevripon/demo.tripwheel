@@ -184,7 +184,10 @@ export function ApiUpdateCategoryDocs() {
       description:
         'Updates any of: name, heroImage, description, icon, sortOrder, ' +
         'parentCategoryId, isActive. Slug is immutable. ' +
-        'If isActive changes, all slug_registry rows update accordingly.',
+        'If isActive changes, all slug_registry rows update accordingly. ' +
+        'parentCategoryId: null detaches a sub-category (promotes to top-level, restoring ' +
+        'its pages); setting it on a non-seeded top-level category demotes it to filter-only ' +
+        'and requires confirmPageRemoval: true (its page slugs retire with the 90-day cooldown).',
     }),
     ApiParam({ name: 'id', description: 'Category UUID' }),
     ApiResponse({ status: 200, type: CategoryResponseDto }),

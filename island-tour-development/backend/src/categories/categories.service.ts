@@ -497,27 +497,26 @@ export class CategoryService {
   }
 
   async update(id: string, dto: UpdateCategoryDto, adminId: string) {
-    // Parent-transition rules. A brand-new category may be created as a
-    // sub-category (create() handles that, skipping slug_registry), but an
-    // EXISTING top-level category must never be demoted into a sub-category -
-    // that would silently destroy its page. Promotion (sub -> top-level) is
-    // allowed and restores the slug_registry rows.
+    // Parent-transition rules. Promotion (sub -> top-level, e.g. Detach) is
+    // allowed and restores the slug_registry rows. Demotion (top-level -> sub,
+    // e.g. re-attaching a detached sub-category) removes the standalone page,
+    // so it is never silent: it requires the explicit confirmPageRemoval flag,
+    // and the 19 seeded master categories can never be demoted at all.
     let promoteToTopLevel = false;
+    let demoteToSub = false;
     if (dto.parentCategoryId !== undefined) {
       await this.assertValidParent(dto.parentCategoryId, id);
       const current = await this.prisma.category.findUnique({
         where: { id },
-        select: { parentCategoryId: true },
+        select: { parentCategoryId: true, isSeeded: true },
       });
       if (!current) throw new NotFoundException(`Category ${id} not found`);
       const wasSub = Boolean(current.parentCategoryId);
       const willBeSub = Boolean(dto.parentCategoryId);
 
-      if (!wasSub && willBeSub) {
-        throw new BadRequestException(
-          'An existing top-level category cannot be converted into a sub-category. Create a new sub-category instead.',
-        );
-      }
+      // Structural impossibility first (has children -> can never nest), so a
+      // caller is not told to confirm page removal on a request that could
+      // never succeed anyway.
       if (willBeSub) {
         const childCount = await this.prisma.category.count({
           where: { parentCategoryId: id },
@@ -527,6 +526,20 @@ export class CategoryService {
             'Cannot nest a category that already has sub-categories',
           );
         }
+      }
+      if (!wasSub && willBeSub) {
+        if (current.isSeeded) {
+          throw new ForbiddenException(
+            'Seeded categories cannot be converted into sub-categories',
+          );
+        }
+        if (dto.confirmPageRemoval !== true) {
+          throw new BadRequestException(
+            'Converting a top-level category into a sub-category removes its standalone ' +
+              'page on every destination. Send confirmPageRemoval: true to accept that.',
+          );
+        }
+        demoteToSub = true;
       }
       promoteToTopLevel = wasSub && !willBeSub;
     }
@@ -613,30 +626,83 @@ export class CategoryService {
         });
       }
 
+      if (demoteToSub) {
+        // Demoted to a filter-only sub-category (confirmed by the caller):
+        // retire its page slugs exactly like a hard delete - rows stay,
+        // isActive=false + deletedAt=now, so the URLs 404 and the slug is
+        // protected for the 90-day cooldown. A later Detach (promotion)
+        // clears the cooled-down ghosts and re-reserves.
+        await markSlugsDeleted(tx, SlugEntityType.CATEGORY, id);
+      }
+
       if (promoteToTopLevel) {
         // Promoted to top-level (e.g. Detach): reserve its slug per active
-        // destination, as in create. (Demotion is rejected up-front, so a
-        // top-level category never loses its page.)
+        // destination, as in create. (Unconfirmed demotion is rejected
+        // up-front, so a top-level category never silently loses its page.)
+        //
+        // Honor an `isActive: false` sent in the SAME request: the rows this
+        // block writes must not override the caller's explicit deactivation
+        // (the dto.isActive block above already applied it).
+        const rowsActive = dto.isActive ?? true;
         const destinations = await tx.destination.findMany({
           where: { isActive: true },
           select: { slug: true },
         });
-        if (destinations.length > 0) {
+        const activeDestSlugs = destinations.map((d) => d.slug);
+        // Resurrect the category's OWN retired rows first: a demotion inside
+        // the 90-day cooldown leaves fresh ghosts (deletedAt=now) that
+        // clearCooledDownSlugs deliberately does not touch, and createMany
+        // would collide with them on (destinationSlug, slug). Every own row
+        // leaves the delete-cooldown state, but only rows in ACTIVE
+        // destinations go live - a deactivated destination keeps its whole
+        // namespace dark (same scoping as `missing` below).
+        await tx.slugRegistry.updateMany({
+          where: { entityType: SlugEntityType.CATEGORY, entityId: id },
+          data: { deletedAt: null },
+        });
+        await tx.slugRegistry.updateMany({
+          where: {
+            entityType: SlugEntityType.CATEGORY,
+            entityId: id,
+            destinationSlug: { in: activeDestSlugs },
+          },
+          data: { isActive: rowsActive },
+        });
+        const own = await tx.slugRegistry.findMany({
+          where: { entityType: SlugEntityType.CATEGORY, entityId: id },
+          select: { destinationSlug: true },
+        });
+        const covered = new Set(own.map((r) => r.destinationSlug));
+        const missing = destinations.filter((d) => !covered.has(d.slug));
+        if (missing.length > 0) {
           await clearCooledDownSlugs(
             tx,
-            destinations.map((dest) => ({
+            missing.map((dest) => ({
               destinationSlug: dest.slug,
               slug: updated.slug,
             })),
           );
-          await tx.slugRegistry.createMany({
-            data: destinations.map((dest) => ({
-              destinationSlug: dest.slug,
-              slug: updated.slug,
-              entityType: SlugEntityType.CATEGORY,
-              entityId: id,
-            })),
-          });
+          await tx.slugRegistry
+            .createMany({
+              data: missing.map((dest) => ({
+                destinationSlug: dest.slug,
+                slug: updated.slug,
+                entityType: SlugEntityType.CATEGORY,
+                entityId: id,
+                isActive: rowsActive,
+              })),
+            })
+            .catch((err: unknown) => {
+              // Another entity legitimately claimed the freed slug after the
+              // 90-day cooldown - a collision, not corruption. Name the way
+              // out instead of surfacing a raw 500.
+              if ((err as { code?: string })?.code === 'P2002') {
+                throw new ConflictException(
+                  `Slug "${updated.slug}" is now used by another page in at least one destination. Rename this category, then detach it.`,
+                );
+              }
+              throw err;
+            });
         }
       }
 

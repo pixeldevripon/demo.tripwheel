@@ -432,7 +432,8 @@ export class CreateCategoryDto {
 
   @ApiPropertyOptional({
     description:
-      'Parent category id for future sub-categories (unused at launch).',
+      'Parent category id: creates the category as a FILTER-ONLY sub-category ' +
+      '(no standalone page, no slug_registry rows). Omit for a top-level category.',
   })
   @IsOptional()
   @IsString()
@@ -492,12 +493,26 @@ export class UpdateCategoryDto {
   sortOrder?: number;
 
   @ApiPropertyOptional({
+    nullable: true,
     description:
-      'Parent category id for future sub-categories (unused at launch).',
+      'Parent category id. null detaches (promotes to top-level, restoring its pages); ' +
+      'setting it on a top-level category demotes it to a filter-only sub-category and ' +
+      'requires confirmPageRemoval: true.',
   })
   @IsOptional()
   @IsString()
-  parentCategoryId?: string;
+  parentCategoryId?: string | null;
+
+  @ApiPropertyOptional({
+    example: true,
+    description:
+      'Required (true) when demoting a top-level category into a sub-category: accepts that ' +
+      'its standalone page is removed on every destination (slug retired with the 90-day ' +
+      'cooldown). Seeded categories can never be demoted.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  confirmPageRemoval?: boolean;
 
   @ApiPropertyOptional({ example: true })
   @IsOptional()
