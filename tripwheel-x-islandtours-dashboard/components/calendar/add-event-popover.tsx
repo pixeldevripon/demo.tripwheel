@@ -19,6 +19,8 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { DatePickerField } from '@/components/date-picker-field';
+import { useRole } from '@/contexts/role-context';
 import { useCreateException, useCreateSchedule } from '@/hooks/trips/use-trips';
 import type { OverviewTour } from '@/types/trip';
 import { keyToDate } from './calendar-utils';
@@ -44,9 +46,9 @@ function mondayZeroWeekday(dateKey: string): number {
  * The calendar's create popover (the Google-Calendar "add" card): either a
  * one-off extra departure (ADD_SLOT exception - any time, materialized
  * immediately) or a weekly schedule (recurring slot; startTime must be one of
- * the tour's slot times, weekday comes from the picked day). Rendered only
- * for MANAGE_AVAILABILITY - both writes are inventory shaping, which the
- * STOP_SELL-only seat cannot do.
+ * the tour's slot times, weekday comes from the picked day). The STOP_SELL
+ * seat sees the one-off half only, at the tour's own capacity (founder,
+ * Aug 11 2026); schedules and seat counts stay manager+.
  */
 export function AddEventPopover({
     date,
@@ -95,7 +97,7 @@ export function AddEventPopover({
  * clicked hour row.
  */
 export function AddEventForm({
-    date,
+    date: initialDate,
     tours,
     defaultTourId,
     defaultTime,
@@ -108,6 +110,15 @@ export function AddEventForm({
     onDone: () => void;
 }) {
     const [mode, setMode] = useState<'once' | 'weekly'>('once');
+    // The date is EDITABLE (MCK-16 change 2, AV-007): it defaults to the day
+    // the popover opened from, but any other day no longer means closing the
+    // form and hunting for the right cell.
+    const [date, setDate] = useState(initialDate);
+    // The staff grant (founder Aug 11): a STOP_SELL-only seat may add a plain
+    // one-off - the timetable is the pattern and stays manager+, as does any
+    // explicit seat count.
+    const { can } = useRole();
+    const stopSellOnly = !can('MANAGE_AVAILABILITY');
     const [tourId, setTourId] = useState(
         defaultTourId ?? (tours.length === 1 ? tours[0].id : ''),
     );
@@ -204,24 +215,36 @@ export function AddEventForm({
 
     return (
         <div className='p-4'>
-            <p className='text-sm font-medium'>
-                Add on {format(keyToDate(date), 'EEE d MMM yyyy')}
-            </p>
-            <Tabs
-                value={mode}
-                onValueChange={(v) => {
-                    setMode(v as 'once' | 'weekly');
-                    setTime('');
-                    setTouched(false);
-                }}
-                className='mt-3'>
-                <TabsList className='grid w-full grid-cols-2'>
-                    <TabsTrigger value='once'>One-off departure</TabsTrigger>
-                    <TabsTrigger value='weekly'>Weekly schedule</TabsTrigger>
-                </TabsList>
-            </Tabs>
+            <p className='text-sm font-medium'>Add a departure</p>
+            {/* Weekly schedules are the PATTERN and stay manager+ - the
+                narrow seat sees only the date-scoped one-off (founder,
+                Aug 11 2026). */}
+            {stopSellOnly ? null : (
+                <Tabs
+                    value={mode}
+                    onValueChange={(v) => {
+                        setMode(v as 'once' | 'weekly');
+                        setTime('');
+                        setTouched(false);
+                    }}
+                    className='mt-3'>
+                    <TabsList className='grid w-full grid-cols-2'>
+                        <TabsTrigger value='once'>One-off departure</TabsTrigger>
+                        <TabsTrigger value='weekly'>Weekly schedule</TabsTrigger>
+                    </TabsList>
+                </Tabs>
+            )}
 
             <div className='mt-3 flex flex-col gap-3'>
+                <div className='flex flex-col gap-1.5'>
+                    <Label className='text-xs'>
+                        {mode === 'once' ? 'Date' : 'First day'}
+                    </Label>
+                    {/* Editable, defaulting to the opened day (MCK-16 change
+                        2): this button works on its own instead of sending
+                        you back to the grid to click a cell first. */}
+                    <DatePickerField value={date} onChange={setDate} />
+                </div>
                 <div className='flex flex-col gap-1.5'>
                     <Label className='text-xs'>Tour</Label>
                     <Select value={tourId} onValueChange={setTourId}>
@@ -276,8 +299,10 @@ export function AddEventForm({
                     </div>
                     {/* No seat input on a private charter - the extra
                         departure IS the second boat (F10; the wizard's day
-                        panel makes the same choice). */}
-                    {tour?.pricingModel !== 'UNIT' && (
+                        panel makes the same choice) - and none for the
+                        narrow seat: a seat count is a capacity change, and
+                        those stay manager+ (founder, Aug 11 2026). */}
+                    {tour?.pricingModel !== 'UNIT' && !stopSellOnly && (
                         <div className='flex w-24 flex-col gap-1.5'>
                             <Label className='text-xs'>Seats</Label>
                             <Input
@@ -298,6 +323,13 @@ export function AddEventForm({
                     <p className='text-xs text-muted-foreground'>
                         Runs as its own private charter: one booking, up to{' '}
                         {tour.maxPartySize} guests.
+                    </p>
+                )}
+                {stopSellOnly && tour?.pricingModel !== 'UNIT' && (
+                    <p className='text-xs text-muted-foreground'>
+                        Uses the tour&apos;s own capacity. Setting a different
+                        number is a capacity change, and those stay at manager
+                        and up.
                     </p>
                 )}
 

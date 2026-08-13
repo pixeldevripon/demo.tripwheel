@@ -15,11 +15,23 @@ export function islandTime(
     timeZone: string = PLATFORM_HOME_TIMEZONE,
     opts: { day?: boolean } = { day: true },
 ): string {
-    return new Intl.DateTimeFormat('en-US', {
-        timeZone,
-        ...(opts.day !== false && { month: 'short', day: 'numeric' }),
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-    }).format(new Date(iso));
+    // Same guard as gmtLabel(): a malformed IANA zone from bad backend data
+    // must degrade to the home-zone render, never crash the section.
+    try {
+        return new Intl.DateTimeFormat('en-US', {
+            timeZone,
+            ...(opts.day !== false && { month: 'short', day: 'numeric' }),
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+        }).format(new Date(iso));
+    } catch {
+        return new Intl.DateTimeFormat('en-US', {
+            timeZone: PLATFORM_HOME_TIMEZONE,
+            ...(opts.day !== false && { month: 'short', day: 'numeric' }),
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+        }).format(new Date(iso));
+    }
 }

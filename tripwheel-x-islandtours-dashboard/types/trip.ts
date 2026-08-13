@@ -569,6 +569,15 @@ export interface AvailabilityOverviewResponse {
   days: OverviewDay[];
   tours: OverviewTour[];
   lastConfirmedAt: string | null;
+  // The two-flavour empty-horizon signal (MCK-16 change 8): LIVE tours with
+  // no open departure in the 30-day listing gate. dry = timetable ran out /
+  // closures (amber, open timetables); full = every departure sold out (good
+  // news, add departures). Null on the platform-wide admin read; optional
+  // while the backend deploy catches up.
+  horizon?: {
+    dry: { id: string; name: string }[];
+    full: { id: string; name: string }[];
+  } | null;
 }
 
 export interface AvailabilityOverviewParams {
@@ -1011,7 +1020,10 @@ export interface CreateTourExceptionPayload {
   date: string; // 'YYYY-MM-DD'
   type: TourExceptionType;
   startTime?: string; // 'HH:MM' — required for close_slot/add_slot; omit = whole date
-  capacity?: number; // required for add_slot/set_capacity
+  // set_capacity: required. add_slot: optional - blank/omitted resolves to the
+  // tour's maxPartySize server-side (and only a MANAGE_AVAILABILITY seat may
+  // name one; a plain add rides the narrow stop-sell grant).
+  capacity?: number;
   note?: string;
   // CLOSE_DATE / CLOSE_SLOT only — the backend rejects it on the other two.
   closureReason?: TourClosureReason;

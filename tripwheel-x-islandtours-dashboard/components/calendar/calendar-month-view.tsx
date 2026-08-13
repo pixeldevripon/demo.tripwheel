@@ -232,17 +232,15 @@ function MonthCell({
                     />
                 ))}
                 {overflow > 0 && (
-                    <DayPeek
-                        date={day.date}
-                        departures={day.departures}
-                        operatorNameById={operatorNameById}
-                        isAdmin={isAdmin}>
-                        <button
-                            type='button'
-                            className='rounded-sm px-1.5 py-0.5 text-left text-2xs font-medium text-muted-foreground transition-colors duration-normal hover:bg-muted'>
-                            +{overflow} more
-                        </button>
-                    </DayPeek>
+                    /* Opens the DAY, not an in-place expansion (MCK-16 §3):
+                       a band that overflows is exactly the day worth reading
+                       in full, with its actions. */
+                    <button
+                        type='button'
+                        onClick={() => onOpenDay(day.date)}
+                        className='rounded-sm px-1.5 py-0.5 text-left text-2xs font-medium text-muted-foreground transition-colors duration-normal hover:bg-muted'>
+                        +{overflow} more
+                    </button>
                 )}
             </div>
 

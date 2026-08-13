@@ -40,23 +40,40 @@ import {
  * same bounds); Reopen removes whole-day closures only - single-departure
  * closures and sold-out days are untouched.
  */
+const ALL_TOURS = '__all__';
+
 export function RangeDialog({
     open,
     onOpenChange,
     tours,
     defaultTourId,
+    defaultDate,
+    operatorId,
+    isPlatform = false,
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     tours: OverviewTour[];
     defaultTourId?: string;
+    /** The day being viewed - a full-day close is then three taps, not a
+     *  fresh empty form (MCK-16 §3). */
+    defaultDate?: string;
+    /** Admin scope for the all-tours option (the backend refuses a
+     *  platform-wide blackout without one). */
+    operatorId?: string;
+    isPlatform?: boolean;
 }) {
     const [mode, setMode] = useState<'close' | 'reopen'>('close');
+    // All tours preselected (MCK-16 §3: the range tool IS the weather-day
+    // action) - unless a tour filter is active, which then scopes it. An
+    // admin without an operator filter must pick a tour: the backend refuses
+    // an unscoped platform-wide range, so the option is hidden.
+    const allToursAllowed = !isPlatform || !!operatorId;
     const [tourId, setTourId] = useState(
-        defaultTourId ?? (tours.length === 1 ? tours[0].id : ''),
+        defaultTourId ?? (allToursAllowed ? ALL_TOURS : ''),
     );
-    const [from, setFrom] = useState('');
-    const [to, setTo] = useState('');
+    const [from, setFrom] = useState(defaultDate ?? '');
+    const [to, setTo] = useState(defaultDate ?? '');
     const [note, setNote] = useState('');
     // Default Not running: a blackout is almost always a not-running act
     // (weather is Not running plus a note); Sold out stays one tap away for
@@ -67,13 +84,13 @@ export function RangeDialog({
     const { mutate: reopenRange, isPending: isReopening } = useReopenRange();
     const busy = isClosing || isReopening;
 
-    // Follow the active tour filter while the dialog is closed.
     const effectiveTourId =
-        tourId || defaultTourId || (tours.length === 1 ? tours[0].id : '');
+        tourId || defaultTourId || (allToursAllowed ? ALL_TOURS : '');
+    const isAllTours = effectiveTourId === ALL_TOURS;
 
     function reset() {
-        setFrom('');
-        setTo('');
+        setFrom(defaultDate ?? '');
+        setTo(defaultDate ?? '');
         setNote('');
         setReason('NOT_RUNNING');
         setError(null);
@@ -93,20 +110,21 @@ export function RangeDialog({
             return;
         }
         setError(null);
-        const tripId = effectiveTourId;
+        const tripId = isAllTours ? undefined : effectiveTourId;
+        const scope = isAllTours && operatorId ? { operatorId } : {};
         const bounds = { from, to };
         if (mode === 'reopen') {
             // No Undo on a bulk reopen, deliberately: re-closing the same
             // bounds would also close days that were OPEN before.
             reopenRange(
-                { tripId, payload: bounds },
+                { tripId, payload: { ...bounds, ...scope } },
                 {
                     onSuccess: ({ reopened }) => {
                         onOpenChange(false);
                         reset();
                         toast.success(
                             reopened > 0
-                                ? `Reopened ${reopened} day${reopened === 1 ? '' : 's'}. New sales are running again.`
+                                ? `Reopened ${reopened} day-closure${reopened === 1 ? '' : 's'}. New sales are running again.`
                                 : 'No day-closures in that range to reopen.',
                         );
                     },
@@ -125,17 +143,22 @@ export function RangeDialog({
                 tripId,
                 payload: {
                     ...bounds,
+                    ...scope,
                     note: note.trim() || undefined,
                     closureReason: reason,
                 },
             },
             {
-                onSuccess: ({ closed }) => {
+                onSuccess: ({ closed, tourCount }) => {
                     onOpenChange(false);
                     reset();
+                    const acrossTours =
+                        tourCount != null && tourCount > 1
+                            ? ` across ${tourCount} tours`
+                            : '';
                     toast.success(
                         closed > 0
-                            ? `Closed ${closed} day${closed === 1 ? '' : 's'} · ${CLOSURE_REASON_LABEL[reason]}. New sales stopped; existing bookings are kept.`
+                            ? `Closed ${closed} day${closed === 1 ? '' : 's'}${acrossTours} · ${CLOSURE_REASON_LABEL[reason]}. New sales stopped; existing bookings are kept.`
                             : 'Those days were already closed.',
                         closed > 0
                             ? {
@@ -143,11 +166,17 @@ export function RangeDialog({
                                       label: 'Undo',
                                       onClick: () =>
                                           reopenRange(
-                                              { tripId, payload: bounds },
+                                              {
+                                                  tripId,
+                                                  payload: {
+                                                      ...bounds,
+                                                      ...scope,
+                                                  },
+                                              },
                                               {
                                                   onSuccess: ({ reopened }) =>
                                                       toast.success(
-                                                          `Reopened ${reopened} day${reopened === 1 ? '' : 's'}.`,
+                                                          `Reopened ${reopened} day-closure${reopened === 1 ? '' : 's'}.`,
                                                       ),
                                               },
                                           ),
@@ -204,6 +233,11 @@ export function RangeDialog({
                             <SelectValue placeholder='Pick a tour' />
                         </SelectTrigger>
                         <SelectContent>
+                            {allToursAllowed && (
+                                <SelectItem value={ALL_TOURS}>
+                                    All tours
+                                </SelectItem>
+                            )}
                             {tours.map((t) => (
                                 <SelectItem key={t.id} value={t.id}>
                                     {t.name}

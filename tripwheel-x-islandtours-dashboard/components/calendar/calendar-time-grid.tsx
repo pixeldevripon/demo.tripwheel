@@ -403,8 +403,9 @@ export function CalendarTimeGrid({
                                 ))}
 
                                 {/* Dense clusters fold their tail into a "+N"
-                                    chip in the last lane - same peek card as
-                                    the month view's "+N more". */}
+                                    chip in the last lane - it opens the DAY
+                                    (MCK-16 §3), where the overflow can be
+                                    read in full with its actions. */}
                                 {overflows.map((group) => (
                                     <div
                                         key={group.key}
@@ -416,17 +417,14 @@ export function CalendarTimeGrid({
                                                 '--dep-w': `${100 / group.lanes}%`,
                                             } as React.CSSProperties,
                                         }}>
-                                        <DayPeek
-                                            date={day.date}
-                                            departures={group.deps}
-                                            operatorNameById={operatorNameById}
-                                            isAdmin={isAdmin}>
-                                            <button
-                                                type='button'
-                                                className='flex h-full w-full items-center justify-center rounded-lg bg-muted/70 text-xs font-medium text-muted-foreground transition-colors duration-normal hover:bg-muted'>
-                                                +{group.deps.length}
-                                            </button>
-                                        </DayPeek>
+                                        <button
+                                            type='button'
+                                            onClick={() =>
+                                                onOpenDay(day.date)
+                                            }
+                                            className='flex h-full w-full items-center justify-center rounded-lg bg-muted/70 text-xs font-medium text-muted-foreground transition-colors duration-normal hover:bg-muted'>
+                                            +{group.deps.length}
+                                        </button>
                                     </div>
                                 ))}
 

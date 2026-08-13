@@ -55,7 +55,10 @@ import {
     ClosureReasonPanel,
     ClosureReasonTabs,
 } from '@/components/common/closure-reason-panel';
-import { departureState } from '@/components/common/departure-states';
+import {
+    DEPARTURE_CHIP_CLASS,
+    departureState,
+} from '@/components/common/departure-states';
 import { islandTime } from '@/lib/island-time';
 import { settleAll } from '@/lib/async/settle-all';
 import { crossFade, swapFade } from '@/lib/motion';
@@ -991,26 +994,23 @@ function DayCell({
                         {day.departures.length > 0
                             ? day.departures.slice(0, 3).map(d => {
                                   // The SHARED four-state vocabulary (MCK-16
-                                  // change 9): teal open, violet sold out,
-                                  // grey struck closed, red-outline cancelled
-                                  // - cancelled moves money and must never
-                                  // wear the same grey as a routine closure.
+                                  // change 9): one derivation, one class map -
+                                  // hand-rolled colour ternaries are how the
+                                  // two surfaces drifted apart the first time.
+                                  // The stored closureReason is the closure
+                                  // proxy on this payload; day-level past
+                                  // fading rides isPast.
                                   const pillState = departureState({
                                       status: d.status,
+                                      hasClosure: d.closureReason !== null,
                                   });
                                   return (
                                       <span
                                           key={d.id}
                                           className={cn(
-                                              'max-w-full truncate rounded-full border px-1.5 py-px text-2xs font-semibold tabular-nums leading-none',
+                                              'max-w-full truncate rounded-full px-1.5 py-px text-2xs font-semibold tabular-nums leading-none',
                                               isPast && 'opacity-45',
-                                              pillState === 'soldOut'
-                                                  ? 'border-transparent bg-cal-sold-solid text-white'
-                                                  : pillState === 'cancelled'
-                                                    ? 'border-danger-border bg-transparent text-danger-fg'
-                                                    : pillState === 'closed'
-                                                      ? 'border-transparent bg-muted text-muted-foreground line-through'
-                                                      : 'border-cal-open-border bg-cal-open-subtle text-cal-open-fg'
+                                              DEPARTURE_CHIP_CLASS[pillState]
                                           )}>
                                           {d.startTime}{' '}
                                           {pillState === 'soldOut'
@@ -1350,6 +1350,7 @@ function DayPopover({
                             key={d.id}
                             departure={d}
                             isUnit={isUnit}
+                            timeZone={timeZone}
                             dayClosed={!!closeDateException}
                             closeException={slotException(
                                 'CLOSE_SLOT',
@@ -1662,6 +1663,8 @@ interface SlotRowProps {
     departure: TourDeparture;
     /** F10: private charters show Open/Booked states, never seat fractions. */
     isUnit: boolean;
+    /** Tour-local IANA zone - audit times render on the ISLAND's clock. */
+    timeZone: string;
     dayClosed: boolean;
     closeException?: { id: string };
     capacityException?: { id: string; capacity: number | null };
@@ -1674,6 +1677,7 @@ interface SlotRowProps {
 function SlotRow({
     departure: d,
     isUnit,
+    timeZone,
     dayClosed,
     closeException,
     capacityException,
@@ -1710,7 +1714,7 @@ function SlotRow({
                     <span className='rounded-sm bg-cal-sold-subtle px-1 py-px text-2xs font-medium text-cal-sold-fg'>
                         Sold out
                         {d.soldOutAt &&
-                            ` ${format(new Date(d.soldOutAt), 'HH:mm')}`}
+                            ` ${islandTime(d.soldOutAt, timeZone, { day: false })}`}
                     </span>
                 )}
                 {capacityException && capacityException.capacity != null && (

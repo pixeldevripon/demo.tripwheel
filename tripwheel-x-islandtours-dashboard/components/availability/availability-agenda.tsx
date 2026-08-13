@@ -45,6 +45,11 @@ import {
     ClosureReasonPanel,
     ClosureReasonTabs,
 } from '@/components/common/closure-reason-panel';
+import {
+    DEPARTURE_DOT_CLASS,
+    DEPARTURE_STATE_LABEL,
+    departureState,
+} from '@/components/common/departure-states';
 import { springPop } from '@/lib/motion';
 import { islandTime } from '@/lib/island-time';
 import { cn } from '@/lib/utils';
@@ -429,10 +434,12 @@ export function AvailabilityAgenda() {
                         stamp it fresh - nothing else changes.
                     </p>
                     <p className='mt-1 text-xs text-muted-foreground'>
+                        {/* Island clock (E.9 one-clock rule) - this line must
+                            agree with the register for the same stamp. */}
                         {confirmedNow
-                            ? `Confirmed · today ${format(new Date(confirmedNow), 'HH:mm')} ✓`
+                            ? `Confirmed · today ${islandTime(confirmedNow, data.tours[0]?.timeZone, { day: false })} ✓`
                             : data.lastConfirmedAt
-                              ? `Last confirmed ${format(new Date(data.lastConfirmedAt), 'EEE d MMM, HH:mm')}`
+                              ? `Last confirmed ${islandTime(data.lastConfirmedAt, data.tours[0]?.timeZone)}`
                               : 'Not confirmed yet'}
                     </p>
                 </div>
@@ -525,22 +532,28 @@ export function AvailabilityAgenda() {
                 {/* Colour legend - same vocabulary as the tour calendar's,
                     named before the colours are met in the list below. */}
                 <div className='ml-auto flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground'>
-                    <span className='flex items-center gap-1.5'>
-                        <span className='size-2 rounded-full bg-success-solid' />
-                        open
-                    </span>
-                    <span className='flex items-center gap-1.5'>
-                        <span className='size-2 rounded-full bg-info-solid' />
-                        sold out
-                    </span>
-                    <span className='flex items-center gap-1.5'>
-                        <span className='size-2 rounded-full bg-destructive/60' />
-                        closed by you
-                    </span>
-                    <span className='flex items-center gap-1.5'>
-                        <span className='size-2 rounded-full bg-foreground/25' />
-                        departed or cancelled
-                    </span>
+                    {/* The SHARED four-state vocabulary (MCK-16 change 9) -
+                        the legend must teach exactly what the rows render. */}
+                    {(
+                        [
+                            'open',
+                            'soldOut',
+                            'closed',
+                            'cancelled',
+                        ] as const
+                    ).map(state => (
+                        <span
+                            key={state}
+                            className='flex items-center gap-1.5'>
+                            <span
+                                className={cn(
+                                    'size-2 rounded-full',
+                                    DEPARTURE_DOT_CLASS[state],
+                                )}
+                            />
+                            {DEPARTURE_STATE_LABEL[state]}
+                        </span>
+                    ))}
                 </div>
             </div>
 
@@ -834,24 +847,27 @@ function AgendaRow({ row, timeZone, busy, onClose, onReopen }: AgendaRowProps) {
         <div
             className={cn(
                 'flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2',
-                // State as a translucent row wash PLUS the dot below: the
-                // wash makes the state impossible to miss across a long list,
-                // the dot anchors it at the line start.
-                row.status === 'OPEN' && 'bg-success-subtle/15',
-                row.status === 'SOLD_OUT' && 'bg-info-subtle/60',
-                manuallyClosed && 'bg-destructive/5',
-                row.status === 'CANCELLED' && 'bg-muted/40',
+                // State as a translucent row wash PLUS the dot below, in the
+                // SHARED vocabulary (MCK-16 change 9): teal open, violet sold
+                // out, neutral closed, and cancelled DISTINCT from a departed
+                // boat - it is the one state that moves money.
+                row.status === 'OPEN' && !departed && 'bg-cal-open-subtle/40',
+                row.status === 'SOLD_OUT' && 'bg-cal-sold-subtle/60',
+                manuallyClosed && 'bg-muted/40',
+                row.status === 'CANCELLED' && 'bg-danger-subtle/40',
                 departed && 'bg-transparent opacity-50'
             )}>
             <span
                 aria-hidden
                 className={cn(
                     'size-1.5 shrink-0 rounded-full',
-                    row.status === 'OPEN' && 'bg-success-solid',
-                    row.status === 'SOLD_OUT' && 'bg-info-solid',
-                    manuallyClosed && 'bg-destructive/60',
-                    (departed || row.status === 'CANCELLED') &&
-                        'bg-foreground/25'
+                    DEPARTURE_DOT_CLASS[
+                        departureState({
+                            status: row.status,
+                            cutoffPassed: row.cutoffPassed,
+                            hasClosure: !!row.closure,
+                        })
+                    ]
                 )}
             />
             <span

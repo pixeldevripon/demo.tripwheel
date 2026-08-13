@@ -77,6 +77,9 @@ export function DepartureChip({
                         state === 'past' && 'opacity-70',
                         className,
                     )}>
+                    {/* The operator rides the ROW for platform seats (MCK-16
+                        change 12) - a departure must be traceable to a
+                        company without opening the card. */}
                     {variant === 'row' ? (
                         <>
                             <span className='shrink-0 font-medium tabular-nums'>
@@ -84,6 +87,7 @@ export function DepartureChip({
                             </span>
                             <span className='min-w-0 flex-1 truncate'>
                                 {dep.tourName}
+                                {operatorName ? ` · ${operatorName}` : ''}
                             </span>
                             <span className='shrink-0 tabular-nums text-2xs'>
                                 {seatsLabel(dep, meta.wholeUnitType)}
@@ -97,6 +101,7 @@ export function DepartureChip({
                             <span className='w-full truncate whitespace-nowrap tabular-nums text-2xs'>
                                 {dep.startTime} ·{' '}
                                 {seatsLabel(dep, meta.wholeUnitType)}
+                                {operatorName ? ` · ${operatorName}` : ''}
                             </span>
                         </>
                     )}
