@@ -130,10 +130,13 @@ export function AddEventForm({
         capacityValue !== undefined &&
         (!Number.isInteger(capacityValue) || capacityValue < 1);
 
-    // Blank capacity falls back to the tour's maxPartySize on both paths
-    // (mirroring the backend, where maxPartySize is NOT NULL and resolves
-    // any omitted capacity).
-    const onceCapacity = capacityValue ?? tour?.maxPartySize;
+    // Only a TYPED capacity is sent; blank resolves to the tour's
+    // maxPartySize on the backend (NOT NULL there). Sending the default
+    // explicitly would also turn a plain add into a "capacity change" for
+    // the narrow stop-sell seat. UNIT charters never send one - the extra
+    // departure IS the second boat (F10).
+    const onceCapacity =
+        tour?.pricingModel === 'UNIT' ? undefined : capacityValue;
     const timeInvalid =
         mode === 'once' ? !HHMM.test(time) : tour ? !time : true;
 
@@ -271,19 +274,32 @@ export function AddEventForm({
                             </Select>
                         )}
                     </div>
-                    <div className='flex w-24 flex-col gap-1.5'>
-                        <Label className='text-xs'>Seats</Label>
-                        <Input
-                            type='number'
-                            min={1}
-                            value={capacity}
-                            onChange={(e) => setCapacity(e.target.value)}
-                            placeholder={tour ? String(tour.maxPartySize) : ''}
-                            aria-invalid={capacityInvalid || undefined}
-                            className='h-9'
-                        />
-                    </div>
+                    {/* No seat input on a private charter - the extra
+                        departure IS the second boat (F10; the wizard's day
+                        panel makes the same choice). */}
+                    {tour?.pricingModel !== 'UNIT' && (
+                        <div className='flex w-24 flex-col gap-1.5'>
+                            <Label className='text-xs'>Seats</Label>
+                            <Input
+                                type='number'
+                                min={1}
+                                value={capacity}
+                                onChange={(e) => setCapacity(e.target.value)}
+                                placeholder={
+                                    tour ? String(tour.maxPartySize) : ''
+                                }
+                                aria-invalid={capacityInvalid || undefined}
+                                className='h-9'
+                            />
+                        </div>
+                    )}
                 </div>
+                {tour?.pricingModel === 'UNIT' && (
+                    <p className='text-xs text-muted-foreground'>
+                        Runs as its own private charter: one booking, up to{' '}
+                        {tour.maxPartySize} guests.
+                    </p>
+                )}
 
                 {mode === 'weekly' && (
                     <p className='text-xs text-muted-foreground'>

@@ -52,9 +52,12 @@ export function TourFilterPopover({ value, onChange }: TourFilterPopoverProps) {
   const tours = data?.data ?? [];
 
   const selected = value ? tours.find((t) => t.id === value) : undefined;
+  // "Tours", the platform word, everywhere a traveller-facing noun leaks into
+  // operator chrome (MCK-16 change 11, review F16) - "trips" was the odd one
+  // out against the nav, the agenda and the public site.
   const label = value
-    ? (selected?.name ?? selectedName ?? '1 trip')
-    : 'All trips';
+    ? (selected?.name ?? selectedName ?? '1 tour')
+    : 'All tours';
 
   function handleSelect(tour: TripListItem) {
     const next = tour.id === value ? undefined : tour.id;

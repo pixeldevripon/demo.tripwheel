@@ -522,7 +522,9 @@ export interface AgendaDay {
 
 export interface AgendaResponse {
   days: AgendaDay[];
-  tours: { id: string; name: string }[];
+  // timeZone rides along (optional during the deploy window) so audit
+  // timestamps render on the ISLAND's clock - the E.9 one-clock rule.
+  tours: { id: string; name: string; timeZone?: string }[];
   // The STALEST availability_confirmed_at across tours (weakest link).
   lastConfirmedAt: string | null;
 }
@@ -550,8 +552,14 @@ export interface OverviewTour {
   operatorName: string;
   timeZone: string;
   pricingModel: PricingModel;
+  // What one UNIT booking takes whole - drives the "Whole boat" pill noun
+  // (MCK-16 change 11). Optional while the backend deploy catches up.
+  wholeUnitType?: WholeUnitType | null;
   maxPartySize: number;
   startTimes: string[];
+  // This tour's own freshness stamp - per tour because the field IS per tour
+  // (MCK-16 change 12). Optional while the backend deploy catches up.
+  availabilityConfirmedAt?: string | null;
 }
 
 export interface AvailabilityOverviewResponse {

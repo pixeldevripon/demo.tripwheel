@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CLOSURE_REASON_LABEL } from '@/components/common/closure-reason-panel';
 import { useExceptions, useRemoveException } from '@/hooks/trips/use-trips';
+import { islandTime } from '@/lib/island-time';
 import { cn } from '@/lib/utils';
 import type { TourException } from '@/types/trip';
 
@@ -48,20 +49,6 @@ function undoLabel(x: TourException): string {
     return x.type === 'CLOSE_DATE' || x.type === 'CLOSE_SLOT'
         ? 'Reopen'
         : 'Remove';
-}
-
-// An audit timestamp in the ISLAND's clock (code-review M12): the viewer's
-// zone and the island's can disagree near midnight, and this is a dispute
-// surface. One helper for both the closure and the reopen line.
-function islandTime(timeZone: string, iso: string): string {
-    return new Intl.DateTimeFormat('en-US', {
-        timeZone,
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-    }).format(new Date(iso));
 }
 
 // 'YYYY-MM-DD' → 'Wed 12 Aug 2026'.
@@ -163,7 +150,7 @@ export function TripDateChanges({ tripId, timeZone }: TripDateChangesProps) {
                                     format used the viewer's zone, so on a dispute
                                     surface the two clocks could disagree near midnight
                                     (code-review M12). */}
-                                {islandTime(timeZone, x.createdAt)}
+                                {islandTime(x.createdAt, timeZone)}
                             </p>
                             {retired && x.retiredAt && (
                                 <p className='text-xs text-muted-foreground'>
@@ -180,7 +167,7 @@ export function TripDateChanges({ tripId, timeZone }: TripDateChangesProps) {
                                     x.retiredByName
                                         ? ' (Island Tours)'
                                         : ''}{' '}
-                                    · {islandTime(timeZone, x.retiredAt)}
+                                    · {islandTime(x.retiredAt, timeZone)}
                                 </p>
                             )}
                         </div>

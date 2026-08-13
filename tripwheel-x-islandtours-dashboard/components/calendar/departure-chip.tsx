@@ -17,16 +17,17 @@ import {
     useRemoveException,
 } from '@/hooks/trips/use-trips';
 import { springPop } from '@/lib/motion';
+import { islandTime } from '@/lib/island-time';
 import { cn } from '@/lib/utils';
 import type { OverviewDeparture, TourClosureReason } from '@/types/trip';
+import { chipState, keyToDate, seatsLabel } from './calendar-utils';
+import { useCalendarTourMeta } from './calendar-tour-meta';
 import {
-    CHIP_CLASS,
-    DOT_CLASS,
-    STATE_LABEL,
-    chipState,
-    keyToDate,
-    seatsLabel,
-} from './calendar-utils';
+    DEPARTURE_CHIP_CLASS,
+    DEPARTURE_DOT_CLASS,
+    DEPARTURE_STATE_LABEL,
+    unitNoun,
+} from '@/components/common/departure-states';
 import {
     CLOSURE_REASON_LABEL,
     ClosureReasonPanel,
@@ -59,6 +60,7 @@ export function DepartureChip({
 }) {
     const reduceMotion = useReducedMotion();
     const state = chipState(dep);
+    const meta = useCalendarTourMeta(dep.tourId);
     return (
         <Popover>
             <PopoverTrigger asChild>
@@ -71,7 +73,7 @@ export function DepartureChip({
                         variant === 'row'
                             ? 'px-1.5 py-0.5'
                             : 'h-full flex-col items-start gap-0.5 rounded-lg px-2 py-1',
-                        CHIP_CLASS[state],
+                        DEPARTURE_CHIP_CLASS[state],
                         state === 'past' && 'opacity-70',
                         className,
                     )}>
@@ -84,7 +86,7 @@ export function DepartureChip({
                                 {dep.tourName}
                             </span>
                             <span className='shrink-0 tabular-nums text-2xs'>
-                                {seatsLabel(dep)}
+                                {seatsLabel(dep, meta.wholeUnitType)}
                             </span>
                         </>
                     ) : (
@@ -93,7 +95,8 @@ export function DepartureChip({
                                 {dep.tourName}
                             </span>
                             <span className='w-full truncate whitespace-nowrap tabular-nums text-2xs'>
-                                {dep.startTime} · {seatsLabel(dep)}
+                                {dep.startTime} ·{' '}
+                                {seatsLabel(dep, meta.wholeUnitType)}
                             </span>
                         </>
                     )}
@@ -119,6 +122,7 @@ function DepartureCard({
     const { canAny } = useRole();
     const canStopSell = canAny(['MANAGE_AVAILABILITY', 'STOP_SELL']);
     const state = chipState(dep);
+    const meta = useCalendarTourMeta(dep.tourId);
 
     const createException = useCreateException();
     const removeException = useRemoveException();
@@ -211,12 +215,12 @@ function DepartureCard({
                 </div>
                 <span className='flex shrink-0 items-center gap-1.5 rounded-full bg-muted/60 px-2 py-0.5 text-2xs font-medium'>
                     <span
-                        className={cn('size-1.5 rounded-full', DOT_CLASS[state])}
+                        className={cn(
+                            'size-1.5 rounded-full',
+                            DEPARTURE_DOT_CLASS[state],
+                        )}
                     />
-                    {/* Neutral badge - the closer might be a teammate or (for
-                        admins) another operator; the audit line below names
-                        them. */}
-                    {state === 'closed' ? 'Closed' : STATE_LABEL[state]}
+                    {DEPARTURE_STATE_LABEL[state]}
                 </span>
             </div>
 
@@ -224,7 +228,7 @@ function DepartureCard({
                 {dep.pricingModel === 'UNIT'
                     ? dep.bookedCount > 0
                         ? `Booked - private hire, ${dep.bookedCount} ${dep.bookedCount === 1 ? 'guest' : 'guests'}`
-                        : 'Free - whole unit, one group takes it all'
+                        : `Whole ${unitNoun(meta.wholeUnitType)}, one group takes it all`
                     : `${dep.bookedCount} of ${dep.capacity} seats booked`}
             </p>
 
@@ -260,7 +264,9 @@ function DepartureCard({
                         {closedByPlatform && closure.createdByName
                             ? ' (Island Tours)'
                             : ''}{' '}
-                        · {format(new Date(closure.createdAt), 'd MMM, HH:mm')}
+                        {/* Island clock, not the viewer's (E.9 one-clock rule)
+                            - this line must agree with the register. */}
+                        · {islandTime(closure.createdAt, meta.timeZone)}
                     </p>
                     {closedByPlatform && (
                         <p>
@@ -293,6 +299,9 @@ function DepartureCard({
                 </div>
                 {canStopSell &&
                     state !== 'past' &&
+                    // Cancelled moves money and is an Island Tours act in v1 -
+                    // this surface offers it no self-serve action.
+                    state !== 'cancelled' &&
                     !derivedSoldOut &&
                     !reasonOpen &&
                     (closure ? (

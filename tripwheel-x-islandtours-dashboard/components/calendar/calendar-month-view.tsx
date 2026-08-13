@@ -14,7 +14,8 @@ import { crossFade } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import type { OverviewDay, OverviewTour } from '@/types/trip';
 import { AddEventPopover } from './add-event-popover';
-import { DOT_CLASS, chipState, keyToDate } from './calendar-utils';
+import { chipState, keyToDate } from './calendar-utils';
+import { DEPARTURE_DOT_CLASS } from '@/components/common/departure-states';
 import { DayPeek, DayPeekContent } from './day-peek';
 import { DepartureChip } from './departure-chip';
 
@@ -261,7 +262,7 @@ function MonthCell({
                                 key={dep.id}
                                 className={cn(
                                     'size-1.5 rounded-full',
-                                    DOT_CLASS[chipState(dep)],
+                                    DEPARTURE_DOT_CLASS[chipState(dep)],
                                 )}
                             />
                         ))}

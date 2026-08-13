@@ -29,23 +29,37 @@ import { cn } from '@/lib/utils';
 import { AddEventPopover } from './add-event-popover';
 import { RangeDialog } from './range-dialog';
 import {
-    DOT_CLASS,
-    STATE_LABEL,
     dateToKey,
     keyToDate,
     rangeLabel,
     stepAnchor,
     viewWindow,
     type CalendarView,
-    type ChipState,
 } from './calendar-utils';
+import {
+    DEPARTURE_DOT_CLASS,
+    DEPARTURE_STATE_LABEL,
+    type CalendarDepartureState,
+} from '@/components/common/departure-states';
+import { islandTime } from '@/lib/island-time';
+import {
+    CalendarTourMetaProvider,
+    type CalendarTourMeta,
+} from './calendar-tour-meta';
 import { CalendarMonthView } from './calendar-month-view';
 import { CalendarTimeGrid } from './calendar-time-grid';
 
 const VIEW_STORAGE_KEY = 'it-global-calendar-view';
 const OVERVIEW_STALE_MS = 60_000;
 
-const LEGEND: ChipState[] = ['open', 'soldOut', 'closed', 'past'];
+// The decided four states (MCK-16 change 9): cancelled is its own row - it is
+// the one state that moves money - and "past fades" is a note, not a state.
+const LEGEND: CalendarDepartureState[] = [
+    'open',
+    'soldOut',
+    'closed',
+    'cancelled',
+];
 
 /**
  * The global availability calendar: one full-width Month/Week/Day surface
@@ -128,6 +142,22 @@ export function GlobalCalendar() {
         () => new Map(tours.map((t) => [t.operatorId, t.operatorName])),
         [tours],
     );
+    // Per-tour display meta for the chips: the island zone (one-clock audit
+    // lines) and the whole-unit noun. Provided via context - see
+    // calendar-tour-meta.tsx.
+    const tourMetaById = useMemo(
+        () =>
+            new Map<string, CalendarTourMeta>(
+                tours.map((t) => [
+                    t.id,
+                    {
+                        timeZone: t.timeZone,
+                        wholeUnitType: t.wholeUnitType ?? null,
+                    },
+                ]),
+            ),
+        [tours],
+    );
     // Client-side narrowing of the loaded window - instant, no refetch.
     const filteredDays = useMemo(() => {
         const days = data?.days ?? [];
@@ -177,6 +207,7 @@ export function GlobalCalendar() {
         // normal flow the padding would otherwise re-appear BELOW the frame
         // and put a scrollbar on the whole page. Below lg the page keeps its
         // natural flow and the grid keeps its own height calc.
+        <CalendarTourMetaProvider value={tourMetaById}>
         <div className='flex flex-col gap-4 lg:-mb-8 lg:h-[calc(100dvh-var(--header-height)-80px)]'>
             {/* ── Toolbar (Waton shape: big title, quiet controls) ─────── */}
             <div className='flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2'>
@@ -380,19 +411,28 @@ export function GlobalCalendar() {
                                 <span
                                     className={cn(
                                         'size-2 rounded-full',
-                                        DOT_CLASS[state],
+                                        DEPARTURE_DOT_CLASS[state],
                                     )}
                                 />
-                                {STATE_LABEL[state]}
+                                {DEPARTURE_STATE_LABEL[state]}
                             </span>
                         ))}
+                        <p className='pt-1 text-2xs leading-relaxed text-muted-foreground/80'>
+                            Past departures fade. Sold out is revenue, never an
+                            error. Cancelling a booked departure triggers
+                            refunds and is an Island Tours action - it never
+                            starts from this surface.
+                        </p>
                     </div>
                     {data?.lastConfirmedAt && (
                         <p className='px-1 text-xs text-muted-foreground'>
+                            {/* Island clock (E.9 one-clock rule), borrowing
+                                the first tour's zone - one operator, one
+                                island in practice. */}
                             Availability confirmed{' '}
-                            {format(
-                                new Date(data.lastConfirmedAt),
-                                'd MMM, HH:mm',
+                            {islandTime(
+                                data.lastConfirmedAt,
+                                tours[0]?.timeZone,
                             )}
                         </p>
                     )}
@@ -458,18 +498,18 @@ export function GlobalCalendar() {
                                 <span
                                     className={cn(
                                         'size-2 rounded-full',
-                                        DOT_CLASS[state],
+                                        DEPARTURE_DOT_CLASS[state],
                                     )}
                                 />
-                                {STATE_LABEL[state]}
+                                {DEPARTURE_STATE_LABEL[state]}
                             </span>
                         ))}
                         {data?.lastConfirmedAt && (
                             <span className='text-xs text-muted-foreground'>
                                 · Confirmed{' '}
-                                {format(
-                                    new Date(data.lastConfirmedAt),
-                                    'd MMM, HH:mm',
+                                {islandTime(
+                                    data.lastConfirmedAt,
+                                    tours[0]?.timeZone,
                                 )}
                             </span>
                         )}
@@ -492,6 +532,7 @@ export function GlobalCalendar() {
                 defaultTourId={tourId}
             />
         </div>
+        </CalendarTourMetaProvider>
     );
 }
 

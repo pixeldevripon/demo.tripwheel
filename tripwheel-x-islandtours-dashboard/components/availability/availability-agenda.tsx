@@ -46,6 +46,7 @@ import {
     ClosureReasonTabs,
 } from '@/components/common/closure-reason-panel';
 import { springPop } from '@/lib/motion';
+import { islandTime } from '@/lib/island-time';
 import { cn } from '@/lib/utils';
 import type { AgendaDeparture, TourClosureReason } from '@/types/trip';
 
@@ -198,6 +199,13 @@ export function AvailabilityAgenda() {
               .flatMap(d => d.departures)
               .find(r => r.id === closeSlotId && r.status === 'OPEN') ?? null)
         : null;
+    // Island zone per tour (E.9 one-clock rule); optional while the backend
+    // deploy catches up - islandTime falls back to the platform home zone.
+    const tourZoneById = new Map(
+        (data?.tours ?? [])
+            .filter(t => !!t.timeZone)
+            .map(t => [t.id, t.timeZone as string]),
+    );
     // The island's REAL today - captured from the default (from=null) window,
     // whose first day the backend anchors on the island clock. It must
     // survive the rail moving the window into the future, or "Today"/"Close
@@ -641,6 +649,11 @@ export function AvailabilityAgenda() {
                                             <AgendaRow
                                                 key={row.id}
                                                 row={row}
+                                                timeZone={
+                                                    tourZoneById.get(
+                                                        row.tourId,
+                                                    ) ?? undefined
+                                                }
                                                 busy={busy}
                                                 onClose={() =>
                                                     setCloseSlotId(row.id)
@@ -781,12 +794,14 @@ export function AvailabilityAgenda() {
 
 interface AgendaRowProps {
     row: AgendaDeparture;
+    /** The tour's island zone - audit times render on the ISLAND's clock. */
+    timeZone?: string;
     busy: boolean;
     onClose: () => void;
     onReopen: () => void;
 }
 
-function AgendaRow({ row, busy, onClose, onReopen }: AgendaRowProps) {
+function AgendaRow({ row, timeZone, busy, onClose, onReopen }: AgendaRowProps) {
     const isUnit = row.pricingModel === 'UNIT';
     // A row that reads CLOSED with no closure behind it and a passed cutoff is
     // not closed at all - the boat simply left. Rendering it as "Closed"
@@ -861,14 +876,15 @@ function AgendaRow({ row, busy, onClose, onReopen }: AgendaRowProps) {
                 <span className='text-xs text-muted-foreground'>Departed</span>
             ) : row.status === 'SOLD_OUT' ? (
                 // Automatic and celebratory - no action needed (§3.5). Flips
-                // back by itself if a spot frees up.
+                // back by itself if a spot frees up. Violet, the decided
+                // sold-out colour (MCK-16 change 9).
                 <span
                     title='Reopens automatically if a spot frees up'
-                    className='rounded-sm bg-info-subtle px-1.5 py-0.5 text-2xs font-medium text-info-fg'>
+                    className='rounded-sm bg-cal-sold-subtle px-1.5 py-0.5 text-2xs font-medium text-cal-sold-fg'>
                     Sold out
                 </span>
             ) : row.status === 'CANCELLED' ? (
-                <span className='rounded-sm bg-destructive/10 px-1.5 py-0.5 text-2xs font-medium text-destructive'>
+                <span className='rounded-sm border border-danger-border px-1.5 py-0.5 text-2xs font-medium text-danger-fg'>
                     Cancelled
                 </span>
             ) : manuallyClosed ? (
@@ -887,7 +903,7 @@ function AgendaRow({ row, busy, onClose, onReopen }: AgendaRowProps) {
                                   row.closure.createdByName
                                       ? ' (Island Tours)'
                                       : ''
-                              }, ${format(new Date(row.closure.createdAt), 'HH:mm')}${row.closure.note ? ` · ${row.closure.note}` : ''}`
+                              }, ${islandTime(row.closure.createdAt, timeZone, { day: false })}${row.closure.note ? ` · ${row.closure.note}` : ''}`
                             : 'Closed'}
                     </span>
                     {row.closure && (
