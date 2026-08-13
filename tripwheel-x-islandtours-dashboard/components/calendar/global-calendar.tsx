@@ -9,6 +9,7 @@ import {
     PlusSignIcon,
 } from '@hugeicons/core-free-icons';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import Link from 'next/link';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -85,7 +86,9 @@ export function GlobalCalendar() {
     // The platform-wide set (ADMIN | STAFF | EDITOR), not a bare ADMIN test -
     // testing ADMIN alone is the recorded §Admin.4 bug class.
     const isAdmin = isPlatformWideRole(role);
-    const canShape = can('MANAGE_AVAILABILITY');
+    // The Add affordances ride the stop-sell family (founder Aug 11: staff
+    // may add a plain one-off); the form itself narrows what that seat can
+    // set. Named canAdd downstream so nobody re-narrows it by pattern-match.
     const canStopSell = canAny(['MANAGE_AVAILABILITY', 'STOP_SELL']);
     const [rangeOpen, setRangeOpen] = useState(false);
     // Below xl the sidebar's mini calendar is gone - this popover replaces it.
@@ -547,12 +550,12 @@ export function GlobalCalendar() {
                                 their timetables:
                             </span>
                             {data.horizon.dry.map((t) => (
-                                <a
+                                <Link
                                     key={t.id}
                                     href={`/trips/${t.id}/edit?step=schedule`}
                                     className='font-medium underline underline-offset-2 hover:opacity-80'>
                                     {t.name}
-                                </a>
+                                </Link>
                             ))}
                         </div>
                     )}
@@ -569,12 +572,12 @@ export function GlobalCalendar() {
                                 people, add departures:
                             </span>
                             {data.horizon.full.map((t) => (
-                                <a
+                                <Link
                                     key={t.id}
                                     href={`/trips/${t.id}/edit?step=schedule`}
                                     className='font-medium underline underline-offset-2 hover:opacity-80'>
                                     {t.name}
-                                </a>
+                                </Link>
                             ))}
                         </div>
                     )}
@@ -583,7 +586,10 @@ export function GlobalCalendar() {
                         views fill it and scroll inside themselves. At lg+ the
                         frame is the column's leftover height (exact viewport
                         fill); below lg it falls back to its own calc. */}
-                    <div className='h-[calc(100dvh-270px)] min-h-104 lg:h-auto lg:flex-1'>
+                    {/* lg:min-h-0: with the horizon banners as siblings the
+                        frame must be able to shrink below its floor, or the
+                        no-page-scrollbar contract breaks on short viewports. */}
+                    <div className='h-[calc(100dvh-270px)] min-h-104 lg:h-auto lg:min-h-0 lg:flex-1'>
                     {isLoading ? (
                         <CalendarSkeleton view={view} />
                     ) : (
@@ -607,7 +613,7 @@ export function GlobalCalendar() {
                                         tours={addTours}
                                         operatorNameById={operatorNameById}
                                         isAdmin={isAdmin}
-                                        canShape={canStopSell}
+                                        canAdd={canStopSell}
                                         onOpenDay={openDay}
                                     />
                                 ) : view === 'week' ? (
@@ -619,7 +625,7 @@ export function GlobalCalendar() {
                                         timeZone={tours[0]?.timeZone}
                                         operatorNameById={operatorNameById}
                                         isAdmin={isAdmin}
-                                        canShape={canStopSell}
+                                        canAdd={canStopSell}
                                         onOpenDay={openDay}
                                     />
                                 ) : (
@@ -632,6 +638,12 @@ export function GlobalCalendar() {
                                             (d) => d.date === anchor,
                                         )}
                                         today={today}
+                                        // A 1-day window shares NOTHING with
+                                        // the previous window, so paging in
+                                        // Day view always misses the stale
+                                        // placeholderData - loading must not
+                                        // read as "nothing runs this day".
+                                        loading={isFetching}
                                         operatorNameById={operatorNameById}
                                         isAdmin={isAdmin}
                                         canStopSell={canStopSell}
@@ -676,9 +688,12 @@ export function GlobalCalendar() {
             </div>
 
             {/* Keyed per open so every visit starts with fresh fields and the
-                current tour filter as its default. */}
+                current tour filter + viewed day as defaults. NOT keyed on the
+                anchor itself: the today-snap effect can move the anchor while
+                the dialog is open, and a remount would wipe a half-typed
+                form. */}
             <RangeDialog
-                key={`${rangeOpen}-${tourId ?? 'all'}-${anchor}`}
+                key={`${rangeOpen}-${tourId ?? 'all'}`}
                 open={rangeOpen}
                 onOpenChange={setRangeOpen}
                 tours={tours}

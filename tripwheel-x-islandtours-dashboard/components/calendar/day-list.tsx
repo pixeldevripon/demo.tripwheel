@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -33,12 +33,17 @@ import {
 export function CalendarDayList({
     day,
     today,
+    loading = false,
     operatorNameById,
     isAdmin,
     canStopSell,
 }: {
     day: OverviewDay | undefined;
     today: string;
+    /** The 1-day window shares nothing with the previous one, so paging
+     *  always misses the stale placeholder data - loading must never read
+     *  as an empty day. */
+    loading?: boolean;
     operatorNameById: Map<string, string>;
     isAdmin: boolean;
     canStopSell: boolean;
@@ -46,12 +51,20 @@ export function CalendarDayList({
     const [reasonRowId, setReasonRowId] = useState<string | null>(null);
     const [note, setNote] = useState('');
     const [error, setError] = useState<string | null>(null);
+    // A draft abandoned on one day must not re-expand when navigation comes
+    // back to a row with the same id (departure ids are stable DB rows).
+    const dayKey = day?.date;
+    useEffect(() => {
+        setReasonRowId(null);
+        setNote('');
+        setError(null);
+    }, [dayKey]);
     const createException = useCreateException();
     const removeException = useRemoveException();
     const busy = createException.isPending || removeException.isPending;
 
     const rows = [...(day?.departures ?? [])].sort((a, b) =>
-        a.startTime < b.startTime ? -1 : 1,
+        a.startTime.localeCompare(b.startTime),
     );
     const openCount = rows.filter((r) => chipState(r) === 'open').length;
 
@@ -66,11 +79,21 @@ export function CalendarDayList({
                 </p>
             </div>
             <div className='min-h-0 flex-1 divide-y divide-border/60 overflow-y-auto'>
-                {rows.length === 0 && (
-                    <p className='px-4 py-6 text-sm text-muted-foreground'>
-                        Nothing runs this day.
-                    </p>
-                )}
+                {rows.length === 0 &&
+                    (loading && !day ? (
+                        <div className='space-y-2 p-4'>
+                            {Array.from({ length: 6 }, (_, i) => (
+                                <div
+                                    key={i}
+                                    className='h-10 animate-pulse rounded-md bg-muted/50'
+                                />
+                            ))}
+                        </div>
+                    ) : (
+                        <p className='px-4 py-6 text-sm text-muted-foreground'>
+                            Nothing runs this day.
+                        </p>
+                    ))}
                 {rows.map((dep) => (
                     <DayListRow
                         key={dep.id}

@@ -38,7 +38,7 @@ export function CalendarMonthView({
     tours,
     operatorNameById,
     isAdmin,
-    canShape,
+    canAdd,
     onOpenDay,
 }: {
     days: OverviewDay[];
@@ -50,7 +50,7 @@ export function CalendarMonthView({
     tours: OverviewTour[];
     operatorNameById: Map<string, string>;
     isAdmin: boolean;
-    canShape: boolean;
+    canAdd: boolean;
     onOpenDay: (date: string) => void;
 }) {
     const anchorMonth = getMonth(keyToDate(anchor));
@@ -99,7 +99,7 @@ export function CalendarMonthView({
                         tours={tours}
                         operatorNameById={operatorNameById}
                         isAdmin={isAdmin}
-                        canShape={canShape}
+                        canAdd={canAdd}
                         onOpenDay={onOpenDay}
                     />
                 ))}
@@ -119,7 +119,7 @@ function MonthCell({
     tours,
     operatorNameById,
     isAdmin,
-    canShape,
+    canAdd,
     onOpenDay,
 }: {
     day: OverviewDay;
@@ -131,7 +131,7 @@ function MonthCell({
     tours: OverviewTour[];
     operatorNameById: Map<string, string>;
     isAdmin: boolean;
-    canShape: boolean;
+    canAdd: boolean;
     onOpenDay: (date: string) => void;
 }) {
     const reduceMotion = useReducedMotion();
@@ -206,7 +206,7 @@ function MonthCell({
                 {/* The Google-style hover "+": add a one-off departure or a
                     weekly schedule anchored on this day. Future days only -
                     the backend refuses writes into the past. */}
-                {canShape && !isPast && (
+                {canAdd && !isPast && (
                     <AddEventPopover date={day.date} tours={tours}>
                         <button
                             type='button'

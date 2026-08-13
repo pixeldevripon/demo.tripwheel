@@ -122,7 +122,7 @@ export function CalendarTimeGrid({
     timeZone,
     operatorNameById,
     isAdmin,
-    canShape,
+    canAdd,
     onOpenDay,
 }: {
     days: OverviewDay[];
@@ -134,7 +134,7 @@ export function CalendarTimeGrid({
     timeZone?: string;
     operatorNameById: Map<string, string>;
     isAdmin: boolean;
-    canShape: boolean;
+    canAdd: boolean;
     onOpenDay: (date: string) => void;
 }) {
     const reduceMotion = useReducedMotion();
@@ -182,7 +182,7 @@ export function CalendarTimeGrid({
         day: OverviewDay,
         dayIndex: number,
     ) {
-        if (!canShape || day.date < today) return;
+        if (!canAdd || day.date < today) return;
         /*
          * Chips handle their own clicks - but their POPOVERS could not, because
          * React re-dispatches portalled events up the React tree: a click on
@@ -341,7 +341,7 @@ export function CalendarTimeGrid({
                                     'relative flex-1 border-l border-border/50',
                                     days.length > 1 ? 'min-w-24 md:min-w-0' : 'min-w-0',
                                     isPastDay && 'bg-muted/20',
-                                    canShape && !isPastDay && 'cursor-pointer',
+                                    canAdd && !isPastDay && 'cursor-pointer',
                                 )}>
                                 {/* The picked column's wash glides with the
                                     header ring (week view only - a day view
@@ -367,7 +367,7 @@ export function CalendarTimeGrid({
                                         key={h}
                                         className={cn(
                                             'h-20 border-t border-border/40 first:border-t-0',
-                                            canShape &&
+                                            canAdd &&
                                                 !isPastDay &&
                                                 'transition-colors duration-normal hover:bg-accent',
                                         )}

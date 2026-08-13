@@ -816,12 +816,17 @@ interface AgendaRowProps {
 
 function AgendaRow({ row, timeZone, busy, onClose, onReopen }: AgendaRowProps) {
     const isUnit = row.pricingModel === 'UNIT';
-    // A row that reads CLOSED with no closure behind it and a passed cutoff is
-    // not closed at all - the boat simply left. Rendering it as "Closed"
-    // turned every afternoon's list into a wall of struck-through alarm.
-    const departed =
-        row.cutoffPassed && !row.closure && row.status === 'CLOSED';
-    const manuallyClosed = row.status === 'CLOSED' && !departed;
+    // ONE derivation (the shared vocabulary) - two hand-rolled expressions of
+    // the same rule is exactly how the surfaces drifted apart before. A
+    // departed boat is not "Closed": rendering it so turned every afternoon's
+    // list into a wall of struck-through alarm.
+    const rowState = departureState({
+        status: row.status,
+        cutoffPassed: row.cutoffPassed,
+        hasClosure: !!row.closure,
+    });
+    const departed = rowState === 'past' && row.status !== 'CANCELLED';
+    const manuallyClosed = rowState === 'closed';
 
     // How full is it, in words a dock reads at a glance: nothing booked leads
     // with what is LEFT ("40 seats open"), a filling boat with the fraction.
@@ -861,13 +866,7 @@ function AgendaRow({ row, timeZone, busy, onClose, onReopen }: AgendaRowProps) {
                 aria-hidden
                 className={cn(
                     'size-1.5 shrink-0 rounded-full',
-                    DEPARTURE_DOT_CLASS[
-                        departureState({
-                            status: row.status,
-                            cutoffPassed: row.cutoffPassed,
-                            hasClosure: !!row.closure,
-                        })
-                    ]
+                    DEPARTURE_DOT_CLASS[rowState]
                 )}
             />
             <span

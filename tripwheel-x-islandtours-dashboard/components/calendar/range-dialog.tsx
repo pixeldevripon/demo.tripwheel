@@ -178,6 +178,15 @@ export function RangeDialog({
                                                       toast.success(
                                                           `Reopened ${reopened} day-closure${reopened === 1 ? '' : 's'}.`,
                                                       ),
+                                                  // A failed undo must never
+                                                  // fail silently - the days
+                                                  // are still closed.
+                                                  onError: (err) =>
+                                                      toast.error(
+                                                          err instanceof Error
+                                                              ? err.message
+                                                              : 'Undo failed - the days are still closed.',
+                                                      ),
                                               },
                                           ),
                                   },
