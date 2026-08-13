@@ -204,7 +204,9 @@ export const ApiReopenRangeDocs = () =>
       description:
         'Retires every whole-day closure in [from, to] - the one-unit Undo ' +
         'of close-range (also reopens individually closed days in the ' +
-        'range). Retired closures stay in the Date changes register.',
+        'range). Scoped like close-range: one tour with tourId, or every ' +
+        'active tour of the operator without (admins pass operatorId). ' +
+        'Retired closures stay in the Date changes register.',
     }),
     ApiOkResponse({ type: ReopenRangeResultDto }),
     ApiNotFoundResponse({ type: NotFoundErrorDto }),

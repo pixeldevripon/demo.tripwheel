@@ -357,9 +357,12 @@ export class AgendaResponseDto {
   @ApiProperty({ type: [AgendaDayDto] }) days!: AgendaDayDto[];
   @ApiProperty({
     type: [Object],
-    description: 'The operator´s tours, for the filter chips (id + name).',
+    description:
+      'The operator´s tours, for the filter chips (id + name) - plus each ' +
+      'tour´s IANA timeZone so audit timestamps render on the island´s ' +
+      'clock (E.9 one-clock rule).',
   })
-  tours!: { id: string; name: string }[];
+  tours!: { id: string; name: string; timeZone: string }[];
   @ApiPropertyOptional({
     nullable: true,
     description:
@@ -680,9 +683,14 @@ export class CloseRangeResultDto {
 export class ReopenRangeResultDto {
   @ApiProperty({
     example: 14,
-    description: 'Whole-day closures removed in the range.',
+    description: 'Whole-day closures retired (reopened) in the range.',
   })
   reopened!: number;
+  @ApiProperty({
+    example: 3,
+    description: 'Distinct tours that held closures in the range.',
+  })
+  tourCount!: number;
 }
 
 export class ListSchedulesQueryDto {

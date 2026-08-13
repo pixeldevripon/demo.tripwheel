@@ -1140,12 +1140,17 @@ describe('AvailabilityService', () => {
     });
 
     it('reopenRange RETIRES every active whole-day closure in the bounds', async () => {
+      // The affected-tours read inside the retire transaction.
+      prisma.availabilityException.findMany.mockResolvedValueOnce([
+        { tourId: 't1' },
+      ]);
       const res = await svc.reopenRange('u1', Role.TOUR_OPERATOR, {
         tourId: 't1',
         from: '2030-06-10',
         to: '2030-06-12',
       });
       expect(res.reopened).toBe(3);
+      expect(res.tourCount).toBe(1);
       // Soft retirement (dev spec §6.5): the register keeps the closures.
       expect(prisma.availabilityException.deleteMany).not.toHaveBeenCalled();
       expect(prisma.availabilityException.updateMany).toHaveBeenCalledWith({
@@ -1232,18 +1237,70 @@ describe('AvailabilityService', () => {
       expect(prisma.availabilityException.createMany).not.toHaveBeenCalled();
     });
 
-    it('reopenRange without a tourId retires across the operator´s tours', async () => {
+    it('reopenRange without a tourId retires across the operator´s tours, projecting only touched ones', async () => {
       prisma.tour.findMany.mockResolvedValue([{ id: 't1' }, { id: 't2' }]);
+      // Only t2 actually held closures in the range.
+      prisma.availabilityException.findMany.mockResolvedValueOnce([
+        { tourId: 't2' },
+      ]);
       const res = await svc.reopenRange('u1', Role.TOUR_OPERATOR, {
         from: '2030-06-10',
         to: '2030-06-11',
       });
-      expect(res.reopened).toBe(2);
+      expect(res).toEqual({ reopened: 2, tourCount: 1 });
       expect(prisma.availabilityException.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ tourId: { in: ['t1', 't2'] } }),
         }),
       );
+      // t1 held nothing - re-projecting it would be wasted materializer work.
+      expect(materializer.materializeTour).toHaveBeenCalledWith(
+        't2',
+        '2030-06-10',
+        '2030-06-11',
+      );
+      expect(materializer.materializeTour).not.toHaveBeenCalledWith(
+        't1',
+        '2030-06-10',
+        '2030-06-11',
+      );
+    });
+
+    it('a stop-sell seat cannot undo an ADD_SLOT that carries its own seat count', async () => {
+      staffPermissions.hasPermissions.mockResolvedValue({
+        granted: false,
+        missing: ['MANAGE_AVAILABILITY'],
+      });
+      prisma.availabilityException.findUnique.mockResolvedValue({
+        tourId: 't1',
+        date: day('2030-06-05'),
+        type: 'ADD_SLOT',
+        capacity: 50, // a manager's capacity decision rides this row
+        retiredAt: null,
+      });
+      await expect(
+        svc.deleteException('u1', Role.TOUR_OPERATOR, 'x1'),
+      ).rejects.toThrow(/Manage availability permission/);
+    });
+
+    it('updateException re-checks the shape permission on capacity/type edits (defence in depth)', async () => {
+      staffPermissions.hasPermissions.mockResolvedValue({
+        granted: false,
+        missing: ['MANAGE_AVAILABILITY'],
+      });
+      prisma.availabilityException.findUnique.mockResolvedValue({
+        tourId: 't1',
+        date: day('2030-06-05'),
+        type: 'SET_CAPACITY',
+        startTime: null,
+        capacity: 12,
+        closureReason: null,
+        retiredAt: null,
+      });
+      await expect(
+        svc.updateException('u1', Role.TOUR_OPERATOR, 'x1', { capacity: 40 }),
+      ).rejects.toThrow(/Manage availability permission/);
+      expect(prisma.availabilityException.update).not.toHaveBeenCalled();
     });
   });
 
