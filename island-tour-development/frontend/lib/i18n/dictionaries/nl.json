@@ -325,6 +325,8 @@
         "youMightLike": "Misschien vind je dit ook leuk",
         "hub": {
             "whyTitle": "Waarom {hub}",
+            "whyReadMore": "Lees meer",
+            "whyShowLess": "Toon minder",
             "firstTimersTitle": "Wat we eerstebezoekers vertellen over {hub}",
             "alsoWorthTitle": "Ook de moeite waard op {destination}",
             "titlePattern": "Dagtochten naar {hub}",

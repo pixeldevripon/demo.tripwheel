@@ -703,7 +703,8 @@ export async function HubPage({
                 <HubWhySection
                     title={whyTitle}
                     paragraphs={whyParagraphs}
-                    learnMoreLabel={dict.destination.about.learnMore}
+                    readMoreLabel={hubDict.whyReadMore}
+                    showLessLabel={hubDict.whyShowLess}
                 />
             )}
 

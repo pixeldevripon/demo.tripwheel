@@ -1,5 +1,4 @@
-'use client';
-
+import { ExpandableText } from '../expandable-text';
 import { Reveal } from '../reveal';
 
 /**
@@ -14,12 +13,15 @@ import { Reveal } from '../reveal';
  * paragraph.
  *
  * Desktop shows the full body and never clamps (the same ~95 words cost about
- * a fifth of the screen there; a "Learn more" would trade a click for it).
- * Mobile keeps the intro short: the lead-in always renders in full, then about
- * two lines of body, and "Learn more" runs on inline directly after the
- * ellipsis - never on its own line, and the hook is never inside the cut. The
- * link goes somewhere, as those words mean everywhere else on the platform: it
- * scrolls to the Discover section, which already carries the long read.
+ * a fifth of the screen there; a toggle would trade a click for it). Mobile
+ * keeps the intro short: the lead-in always renders in full, then about two
+ * lines of body, and "Read more" runs on inline directly after the cut -
+ * never on its own line, and the hook is never inside the cut. The toggle
+ * expands the rest of the text IN PLACE and flips to "Show less" (client
+ * feedback on mck-16 §3: the reader wants the rest of the paragraph, not a
+ * jump to another part of the page - this supersedes the earlier
+ * scroll-to-Discover behaviour). Same shared `ExpandableText` control as the
+ * review snippets.
  */
 
 // The lead-in must be a real sentence, not an abbreviation's dot - require a
@@ -29,25 +31,16 @@ const LEAD_IN_RE = /^(.{10,}?[.!?…])\s+(\S[\s\S]*)$/;
 // ~2 lines of 14.5px body copy in a small-phone measure.
 const MOBILE_CLAMP_CHARS = 150;
 
-/** Cut at a word boundary at or before `max`, dropping trailing punctuation. */
-function truncateAtWord(text: string, max: number): string {
-    if (text.length <= max) return text;
-    const slice = text.slice(0, max + 1);
-    const cut = slice.lastIndexOf(' ');
-    return (cut > 0 ? slice.slice(0, cut) : slice).replace(/[\s,;:.]+$/, '');
-}
-
 export function HubWhySection({
     title,
     paragraphs,
-    learnMoreLabel,
-    learnMoreTargetId = 'hub-section-discover',
+    readMoreLabel,
+    showLessLabel,
 }: {
     title: string;
     paragraphs: string[];
-    learnMoreLabel: string;
-    /** Element id the mobile "Learn more" smooth-scrolls to (the long read). */
-    learnMoreTargetId?: string;
+    readMoreLabel: string;
+    showLessLabel: string;
 }) {
     // Split the opening sentence off the first paragraph. No match means the
     // first paragraph IS a single sentence - it becomes the lead-in whole.
@@ -55,19 +48,6 @@ export function HubWhySection({
     const match = first.match(LEAD_IN_RE);
     const leadIn = match ? match[1] : first;
     const body = match ? [match[2], ...paragraphs.slice(1)] : paragraphs.slice(1);
-
-    const mobileBody = truncateAtWord(body[0] ?? '', MOBILE_CLAMP_CHARS);
-    const mobileCut =
-        body.length > 1 || (body[0] ?? '').length > MOBILE_CLAMP_CHARS;
-
-    const handleLearnMore = () => {
-        // The Discover panel renders stacked inside the trips section with a
-        // stable id + scroll-mt, so plain scrollIntoView lands it below the
-        // fixed navbar (same pattern as the hero's Check Availability).
-        document
-            .getElementById(learnMoreTargetId)
-            ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    };
 
     return (
         // Mobile py 32px (vs the it-section 64px default); desktop keeps 130px.
@@ -93,19 +73,18 @@ export function HubWhySection({
                             </p>
                         ))}
 
-                        {/* Mobile: about two lines, then Learn more inline
-                            right after the cut - the link never costs a row. */}
+                        {/* Mobile: about two lines, then Read more inline right
+                            after the cut - the toggle never costs a row, and
+                            expanding keeps paragraph breaks via pre-line. */}
                         {body.length > 0 && (
-                            <p className='m-0 text-[14.5px] leading-[1.6] text-it-ink md:hidden'>
-                                {mobileBody}
-                                {mobileCut && '…'}{' '}
-                                <button
-                                    type='button'
-                                    onClick={handleLearnMore}
-                                    className='inline cursor-pointer whitespace-nowrap border-none bg-transparent p-0 text-[14px] font-normal leading-[1.6] tracking-[-0.012em] text-it-heading underline decoration-1 underline-offset-[3px] transition-colors hover:text-it-primary'>
-                                    {learnMoreLabel}
-                                </button>
-                            </p>
+                            <ExpandableText
+                                text={body.join('\n\n')}
+                                moreLabel={readMoreLabel}
+                                lessLabel={showLessLabel}
+                                limit={MOBILE_CLAMP_CHARS}
+                                className='m-0 whitespace-pre-line text-[14.5px] leading-[1.6] text-it-ink md:hidden'
+                                buttonClassName='inline cursor-pointer whitespace-nowrap border-none bg-transparent p-0 text-[14px] font-normal leading-[1.6] tracking-[-0.012em] text-it-primary underline decoration-1 underline-offset-[3px]'
+                            />
                         )}
                     </div>
                 </Reveal>

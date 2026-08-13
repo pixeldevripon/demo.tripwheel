@@ -325,6 +325,8 @@
         "youMightLike": "Vous aimerez aussi",
         "hub": {
             "whyTitle": "Pourquoi {hub}",
+            "whyReadMore": "Lire la suite",
+            "whyShowLess": "Voir moins",
             "firstTimersTitle": "Ce que nous disons aux nouveaux venus sur {hub}",
             "alsoWorthTitle": "À ne pas manquer non plus à {destination}",
             "titlePattern": "Excursions d'une journée à {hub}",

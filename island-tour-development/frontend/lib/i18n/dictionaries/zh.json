@@ -325,6 +325,8 @@
         "youMightLike": "您可能也喜欢",
         "hub": {
             "whyTitle": "为什么选择{hub}",
+            "whyReadMore": "阅读更多",
+            "whyShowLess": "收起",
             "firstTimersTitle": "我们给初次到访者关于{hub}的建议",
             "alsoWorthTitle": "在{destination}也值得一游",
             "titlePattern": "{hub}一日游",
