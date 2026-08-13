@@ -153,7 +153,12 @@ describe('evaluateLikelyToSellOut (master §3.7)', () => {
       await evaluateLikelyToSellOut(prisma, 't1', NOW);
       expect(prisma.availabilityException.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ closureReason: 'SOLD_OUT' }),
+          // retiredAt: null - an undone (retired) closure is withdrawn
+          // evidence, same semantics as when Undo hard-deleted the row.
+          where: expect.objectContaining({
+            closureReason: 'SOLD_OUT',
+            retiredAt: null,
+          }),
         }),
       );
     });

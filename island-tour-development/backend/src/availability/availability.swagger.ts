@@ -86,8 +86,15 @@ export const ApiUpdateExceptionDocs = () =>
 
 export const ApiDeleteExceptionDocs = () =>
   applyDecorators(
-    ApiOperation({ summary: 'Delete an availability exception' }),
-    ApiOkResponse({ description: 'Deleted.' }),
+    ApiOperation({
+      summary: 'Undo an availability exception',
+      description:
+        'A reopen for the close types, a removal for add_slot / ' +
+        'set_capacity. The row is RETIRED, not deleted: it stops being in ' +
+        'force but stays in the Date changes register with who undid it and ' +
+        'when (dev spec §6.5 - reopens are audited too). Idempotent.',
+    }),
+    ApiOkResponse({ description: 'Retired (no longer in force).' }),
     ApiNotFoundResponse({ type: NotFoundErrorDto }),
     authErrors(),
   );
@@ -109,7 +116,7 @@ export const ApiManageCalendarDocs = () =>
         'booked counts - management view), the day’s exceptions, and whether ' +
         'the weekly pattern covers the date. Closing a day from the grid is ' +
         'the ordinary POST /availability/exceptions CLOSE_DATE write; ' +
-        'reopening deletes that exception.',
+        'reopening retires that exception (DELETE exceptions/:id).',
     }),
     ApiOkResponse({ type: ManageCalendarDayDto, isArray: true }),
     ApiNotFoundResponse({ type: NotFoundErrorDto }),
@@ -192,8 +199,9 @@ export const ApiReopenRangeDocs = () =>
     ApiOperation({
       summary: 'Reopen a date range',
       description:
-        'Removes every whole-day closure in [from, to] - the one-unit Undo ' +
-        'of close-range (also reopens individually closed days in the range).',
+        'Retires every whole-day closure in [from, to] - the one-unit Undo ' +
+        'of close-range (also reopens individually closed days in the ' +
+        'range). Retired closures stay in the Date changes register.',
     }),
     ApiOkResponse({ type: ReopenRangeResultDto }),
     ApiNotFoundResponse({ type: NotFoundErrorDto }),

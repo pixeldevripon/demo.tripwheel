@@ -14,6 +14,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import {
+  ActorSide,
   AvailabilityExceptionType,
   AvailabilityScheduleStatus,
   ClosureReason,
@@ -87,6 +88,38 @@ export class ExceptionResponseDto {
       'the account no longer exists or the row predates audit capture.',
   })
   createdByName!: string | null;
+  @ApiPropertyOptional({
+    enum: ActorSide,
+    nullable: true,
+    description:
+      'Which side made the change (MCK-16 change 10): PLATFORM = Island ' +
+      'Tours, OPERATOR = the tour´s own operator seat. An operator undoing a ' +
+      'platform closure should know what they are undoing. Null on rows ' +
+      'whose creator could not be resolved.',
+  })
+  createdBySide!: ActorSide | null;
+  @ApiPropertyOptional({
+    example: '2026-08-13T14:12:00.000Z',
+    nullable: true,
+    description:
+      'When this change was undone (a reopen for the close types). The row ' +
+      'is no longer in force; the register keeps it so both the act and its ' +
+      'undoing stay auditable (dev spec §6.5).',
+  })
+  retiredAt!: string | null;
+  @ApiPropertyOptional({
+    example: 'Yuri',
+    nullable: true,
+    description:
+      'Display name of whoever undid the change ("Reopened by Yuri").',
+  })
+  retiredByName!: string | null;
+  @ApiPropertyOptional({
+    enum: ActorSide,
+    nullable: true,
+    description: 'Which side undid the change.',
+  })
+  retiredBySide!: ActorSide | null;
 }
 
 export class DepartureResponseDto {
@@ -300,12 +333,16 @@ export class AgendaDepartureDto {
     nullable: true,
     description:
       'The CLOSE_DATE/CLOSE_SLOT row stopping this departure, when one ' +
-      'exists - carries the id (for Reopen) and the who/when audit line.',
+      'exists - carries the id (for Reopen), the who/when/which-side audit ' +
+      'line, and the reason the traveller calendar is rendering (MCK-16 ' +
+      'changes 5 and 10).',
   })
   closure!: {
     id: string;
     createdAt: string;
     createdByName: string | null;
+    createdBySide: ActorSide | null;
+    closureReason: ClosureReason | null;
     note: string | null;
   } | null;
 }
@@ -450,6 +487,18 @@ export class CloseAgendaDayDto {
   @IsString()
   @MaxLength(500)
   note?: string;
+
+  @ApiPropertyOptional({
+    enum: ClosureReason,
+    description:
+      'Why the day is being closed - the same two reasons as every other ' +
+      'close, so the register and the traveller calendar read the right ' +
+      'word on each affected tour. Omitted, the closures read as plain ' +
+      '"Closed".',
+  })
+  @IsOptional()
+  @IsEnum(ClosureReason)
+  closureReason?: ClosureReason;
 }
 
 export class CloseAgendaDayResultDto {
@@ -768,6 +817,19 @@ export class UpdateExceptionDto {
   @IsString()
   @MaxLength(500)
   note?: string;
+
+  @ApiPropertyOptional({
+    enum: ClosureReason,
+    description:
+      'BACKFILL a reason onto a CLOSE_DATE / CLOSE_SLOT row that has none - ' +
+      'the path for closures written before the reason question existed ' +
+      '(MCK-16: "Backfill it rather than renaming the label"). A recorded ' +
+      'reason can never be changed or cleared (409): the register is an ' +
+      'audit trail and SOLD_OUT closures feed the demand signal.',
+  })
+  @IsOptional()
+  @IsEnum(ClosureReason)
+  closureReason?: ClosureReason;
 }
 
 export class MaterializeDto {

@@ -353,6 +353,19 @@ enum ClosureReason {
   @@map("closure_reason")
 }
 
+// Which side of the marketplace performed an availability action (MCK-16
+// change 10). An operator undoing an Island Tours closure must know what they
+// are undoing, so the side is stamped at write time - it cannot be re-derived
+// later because the acting user's role can change and the account can be
+// deleted. PLATFORM = an Island Tours admin acting through the admin bypass;
+// OPERATOR = the tour's own operator seat (owner, manager, or staff).
+enum ActorSide {
+  OPERATOR @map("operator")
+  PLATFORM @map("platform")
+
+  @@map("actor_side")
+}
+
 enum DepartureStatus {
   OPEN      @map("open")
   CLOSED    @map("closed")

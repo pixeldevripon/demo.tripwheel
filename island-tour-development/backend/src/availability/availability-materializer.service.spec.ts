@@ -104,6 +104,18 @@ describe('AvailabilityMaterializerService', () => {
     svc = new AvailabilityMaterializerService(prisma as never);
   });
 
+  it('projects only exceptions still in force (retiredAt: null)', async () => {
+    // A retired closure must not re-close a reopened date - the reads filter
+    // it, so reconcile after a reopen restores the schedule's departure.
+    prisma.availabilitySchedule.findMany.mockResolvedValue([schedule()]);
+    await svc.materializeTour('t1', DAY, DAY);
+    expect(prisma.availabilityException.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ retiredAt: null }),
+      }),
+    );
+  });
+
   it('creates an OPEN departure per schedule start time', async () => {
     prisma.availabilitySchedule.findMany.mockResolvedValue([schedule()]);
 
