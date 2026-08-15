@@ -1297,7 +1297,7 @@ describe('AvailabilityService', () => {
         destinationId: 'dest-1',
         from: '2030-06-10',
         to: '2030-06-10',
-      } as never);
+      });
       // A non-admin stays pinned to their own operator; the island only narrows.
       expect(prisma.tour.findMany).toHaveBeenCalledWith(
         expect.objectContaining({

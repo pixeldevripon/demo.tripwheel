@@ -367,6 +367,60 @@ describe('ToursService', () => {
       prisma.slugRegistry.create.mockResolvedValue({});
     });
 
+    // Client review #16/#17: a sub-category is a valid TAG but never the
+    // PRIMARY (no page -> 404 breadcrumb). Enforced server-side, not just by
+    // the dashboard hiding sub-categories from the select.
+    it('rejects a sub-category as the primary on create', async () => {
+      prisma.category.findMany.mockResolvedValue([
+        { id: 'cat-sub', parentCategoryId: 'cat-1' },
+      ]);
+      await expect(
+        service.create(
+          { ...baseCreateDto, categoryIds: ['cat-sub'] },
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
+      ).rejects.toThrow(/top-level/);
+      expect(prisma.tour.create).not.toHaveBeenCalled();
+    });
+
+    it('accepts a sub-category as a NON-primary tag on create', async () => {
+      prisma.category.findMany.mockResolvedValue([
+        { id: 'cat-1', parentCategoryId: null },
+        { id: 'cat-sub', parentCategoryId: 'cat-1' },
+      ]);
+      prisma.tour.findFirst.mockResolvedValue(null);
+      prisma.slugRegistry.findUnique.mockResolvedValue(null);
+      await service.create(
+        {
+          ...baseCreateDto,
+          categoryIds: ['cat-1', 'cat-sub'],
+          primaryCategoryId: 'cat-1',
+        },
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
+      expect(prisma.tour.create).toHaveBeenCalled();
+    });
+
+    it('rejects a sub-category as the primary on update', async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({ status: TourStatus.DRAFT }),
+      );
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+      prisma.category.findMany.mockResolvedValue([
+        { id: 'cat-sub', parentCategoryId: 'cat-1' },
+      ]);
+      await expect(
+        service.update(
+          'tour-1',
+          { categoryIds: ['cat-sub'] },
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
+      ).rejects.toThrow(/top-level/);
+    });
+
     // Client review #12 / master 2.3: the slug is a destination-registry
     // entry set by Island Tours - an operator's slug is ignored (never an
     // error) and the address derives from the name.
