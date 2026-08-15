@@ -38,10 +38,18 @@ import {
 } from '@/components/ui/select';
 import { useActiveCategories } from '@/hooks/categories/use-categories';
 import { useActiveDestinations } from '@/hooks/destinations/use-destinations';
+import { useActiveHubs } from '@/hooks/hubs/use-hubs';
 import { useCreateTrip, useUpdateTrip } from '@/hooks/trips/use-trips';
 import { tripToUpdatePayload } from '@/lib/trips/update-payload';
 import { tourUrl } from '@/lib/public-site';
-import { toSlug } from '@/lib/utils';
+import {
+    TITLE_MAX,
+    TITLE_MIN,
+    titleLengthState,
+    tourH1Prefix,
+    tourPageH1,
+} from '@/lib/tours/tour-name';
+import { cn, toSlug } from '@/lib/utils';
 import type { TripListItem } from '@/types/trip';
 import { useSyncFormWhenPristine } from '@/hooks/use-sync-form-when-pristine';
 import { useStepCommit } from '../use-step-commit';
@@ -111,6 +119,61 @@ function UrlPreview({
             ) : (
                 body
             )}
+        </p>
+    );
+}
+
+/**
+ * Title length against the agreed 35-60 range (client review comment 15).
+ *
+ * Advisory, never a gate - see `titleLengthState`. It states the range, says
+ * which side a title falls on, and goes quiet once it is inside.
+ */
+function TitleCharCount({ value }: { value: string }) {
+    const state = titleLengthState(value);
+    if (state === 'empty') return null;
+    return (
+        <span
+            className={cn(
+                'text-xs tabular-nums',
+                state === 'ok' ? 'text-content-muted' : 'text-warning-fg',
+            )}>
+            {value.trim().length} / {TITLE_MIN}-{TITLE_MAX}
+            {state === 'short' ? ' · short' : state === 'long' ? ' · long' : ''}
+        </span>
+    );
+}
+
+/**
+ * The H1 the public tour page will actually render.
+ *
+ * LD15 composes it as "{Hub or Destination}: {Tour name}" at RENDER time, from
+ * a stored title that is meant to be island-free. Nothing on this screen said
+ * so, and the prefix is invisible from here - so "Full day jetski tour to
+ * Klein Curacao" ships and comes out as "Klein Curacao: Full day jetski tour
+ * to Klein Curacao". A rule in prose cannot catch that; the composed line
+ * catches it whatever the operator typed (client review comment 14).
+ *
+ * Same shape as `UrlPreview` above - muted prefix, readable tail - because
+ * this answers the same kind of question about the same kind of unseen
+ * output, and the client asked for the pattern the Slug field already uses.
+ */
+function H1Preview({
+    prefix,
+    title,
+}: {
+    prefix: string | null;
+    title: string;
+}) {
+    // No prefix resolved yet (no destination picked) - half a composed H1
+    // teaches the wrong shape, exactly as with half a URL.
+    if (!prefix) return null;
+    const shown = tourPageH1(prefix, title.trim() || 'Your tour title');
+    const head = `${prefix}: `;
+    return (
+        <p className='truncate text-xs'>
+            <span className='text-content-subtle'>{head}</span>
+            <span className='text-content'>{shown.slice(head.length)}</span>
         </p>
     );
 }
@@ -188,6 +251,28 @@ export function StepBasics({ trip }: StepBasicsProps) {
         null;
     const categoryIds = watch('categoryIds');
     const primaryCategoryId = watch('primaryCategoryId');
+
+    /*
+     * The H1 prefix, resolved the way the PUBLIC page resolves it
+     * (`tourPageH1(hubs[0]?.name ?? destinationName, title)`): the first hub's
+     * name, falling back to the destination. `hubIds[0]` stands in for the
+     * primary hub because the schema has no `isPrimary` yet - the public site
+     * makes exactly the same stand-in, and the preview is worthless if it
+     * disagrees with what actually renders.
+     *
+     * Hubs are attached on the Reach step, so a tour being CREATED has none
+     * and the destination always wins. In edit mode this is the same query
+     * Reach already runs, so a session that has been there pays nothing.
+     */
+    const { data: hubs } = useActiveHubs(destinationIdValue || undefined);
+    const destinationName =
+        (destinations ?? []).find(d => d.id === destinationIdValue)?.name ??
+        trip?.destinationName ??
+        null;
+    const hubName = trip?.hubIds.length
+        ? ((hubs ?? []).find(h => h.id === trip.hubIds[0])?.name ?? null)
+        : null;
+    const h1Prefix = tourH1Prefix(hubName, destinationName);
 
     // Auto-slug until the operator takes over, create only - renaming an
     // existing slug is a 301 + a 90-day cooldown, never a side effect of
@@ -293,21 +378,39 @@ export function StepBasics({ trip }: StepBasicsProps) {
                     }}>
                     <div className='space-y-6 py-6'>
                         <Field>
-                            <Label>
-                                Tour title{' '}
-                                <span aria-hidden className='text-danger-fg'>
-                                    *
-                                </span>
-                            </Label>
+                            {/* Counter on the label row, right-aligned - the
+                                same place the Content step puts its overview
+                                count. */}
+                            <div className='flex items-center justify-between gap-3'>
+                                <Label>
+                                    Tour title{' '}
+                                    <span
+                                        aria-hidden
+                                        className='text-danger-fg'>
+                                        *
+                                    </span>
+                                </Label>
+                                <TitleCharCount value={nameValue ?? ''} />
+                            </div>
                             <Input
                                 {...register('name')}
                                 placeholder='Sunset Catamaran Cruise'
                                 aria-invalid={!!errors.name}
                                 autoFocus={isCreate}
                             />
+                            {/* The composed H1, live - see H1Preview. Sits
+                                where the Slug field's URL preview sits, for
+                                the same reason: the operator cannot otherwise
+                                see what their typing turns into. */}
+                            <H1Preview
+                                prefix={h1Prefix}
+                                title={nameValue ?? ''}
+                            />
                             <FieldDescription>
-                                What travellers will see on the card and the
-                                booking page.
+                                What travellers see on the card and the booking
+                                page. Leave the island name out, we add it
+                                automatically. Title Case, {TITLE_MIN} to{' '}
+                                {TITLE_MAX} characters.
                             </FieldDescription>
                             <FieldError>{errors.name?.message}</FieldError>
                         </Field>
