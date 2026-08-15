@@ -11,6 +11,7 @@ vi.mock('@/hooks/categories/use-categories', () => ({
   useActiveCategories: () => ({
     data: [
       { id: 'c1', name: 'Boat trips', parentCategoryId: null },
+      { id: 'c2', name: 'Day Trips', parentCategoryId: null },
       // A filter-only sub-category (client review #16/#17): never an option
       // in the Basics select, but a stored tag that must survive its edits.
       { id: 'c-sub', name: 'Catamaran Cruises', parentCategoryId: 'c1' },
@@ -264,6 +265,26 @@ describe('StepBasics — sub-categories (client review comments 16 + 17)', () =>
     const ids = updateTripMock.mock.calls[0][0].payload.categoryIds
     expect(ids).toContain('c1')
     expect(ids).not.toContain('c-sub')
+  })
+
+  it('deselecting the starred parent repoints the primary before the save', async () => {
+    const user = userEvent.setup()
+    updateTripMock.mockReset()
+    updateTripMock.mockResolvedValue({})
+    render(
+      <StepBasics
+        trip={trip({ categoryIds: ['c1', 'c2'], primaryCategoryId: 'c1' })}
+      />,
+    )
+    // c1 ('Boat trips') is starred; removing it must hand the star to c2,
+    // never submit the dropped id as the primary.
+    await user.click(screen.getByLabelText('Remove Boat trips'))
+    const form = document.querySelector('form') as HTMLFormElement
+    fireEvent.submit(form)
+    await waitFor(() => expect(updateTripMock).toHaveBeenCalled())
+    const payload = updateTripMock.mock.calls[0][0].payload
+    expect(payload.primaryCategoryId).toBe('c2')
+    expect(payload.categoryIds).not.toContain('c1')
   })
 
   it('blocks a save whose only remaining tags are invisible sub-categories', async () => {

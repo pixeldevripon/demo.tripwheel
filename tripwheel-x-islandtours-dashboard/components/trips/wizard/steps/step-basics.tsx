@@ -211,6 +211,7 @@ export function StepBasics({ trip }: StepBasicsProps) {
         watch,
         setValue,
         setError,
+        getValues,
         control,
         reset,
         formState: { errors, isDirty },
@@ -308,15 +309,16 @@ export function StepBasics({ trip }: StepBasicsProps) {
     );
     const toggleSubType = useCallback(
         (id: string, on: boolean) => {
+            // Read at call time, not from the closed-over watch value - two
+            // toggles landing before a re-render must not clobber each other.
+            const current = getValues('categoryIds');
             setValue(
                 'categoryIds',
-                on
-                    ? [...categoryIds, id]
-                    : categoryIds.filter(x => x !== id),
+                on ? [...current, id] : current.filter(x => x !== id),
                 { shouldDirty: true },
             );
         },
-        [categoryIds, setValue],
+        [getValues, setValue],
     );
 
     /*
