@@ -312,6 +312,35 @@ describe('ToursService', () => {
       });
     });
 
+    // The dashboard's status dropdown has sent approvalStatus=PENDING/REJECTED
+    // since 2026-08-02; without the DTO field the WHOLE request 400s
+    // (forbidNonWhitelisted) and the "In review" filter looked slow, then
+    // empty (the client retried a 400 three times).
+    it('filters my-tours on the approvalStatus axis, independent of status', async () => {
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+
+      await service.findMyTours('operator-user', Role.TOUR_OPERATOR, {
+        approvalStatus: TourApprovalStatus.PENDING,
+      });
+
+      expect(prisma.tour.findMany.mock.calls.at(-1)?.[0].where).toEqual({
+        operatorId: 'op-1',
+        approvalStatus: 'PENDING',
+      });
+    });
+
+    it('filters the admin list on approvalStatus, ANDed with status', async () => {
+      await service.findAllAdmin({
+        status: TourStatus.PAUSED,
+        approvalStatus: TourApprovalStatus.REJECTED,
+      });
+
+      expect(prisma.tour.findMany.mock.calls.at(-1)?.[0].where).toEqual({
+        status: 'PAUSED',
+        approvalStatus: 'REJECTED',
+      });
+    });
+
     it('still 400s a TOUR_OPERATOR with no operator profile', async () => {
       prisma.operator.findUnique.mockResolvedValue(null);
       prisma.staffMember.findUnique.mockResolvedValue(null);

@@ -854,6 +854,19 @@ export class MyToursQueryDto {
   status?: TourStatus;
 
   @ApiPropertyOptional({
+    enum: TourApprovalStatus,
+    description:
+      'Review-workflow filter - a SEPARATE axis from status (submitting ' +
+      'stamps PENDING and leaves status alone). The dashboard status ' +
+      'dropdown has offered "In review"/"Changes requested" since 2026-08-02 ' +
+      'against this param; without it here the whole request 400s ' +
+      '(forbidNonWhitelisted) and the list never loads.',
+  })
+  @IsOptional()
+  @IsEnum(TourApprovalStatus)
+  approvalStatus?: TourApprovalStatus;
+
+  @ApiPropertyOptional({
     example: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
     description: 'Filter by destination ID',
   })
@@ -891,6 +904,16 @@ export class AdminToursQueryDto {
   @IsOptional()
   @IsEnum(TourStatus)
   status?: TourStatus;
+
+  @ApiPropertyOptional({
+    enum: TourApprovalStatus,
+    description:
+      'Review-workflow filter - same separate axis as on my-tours; the ' +
+      'admin submissions view filters PENDING through this.',
+  })
+  @IsOptional()
+  @IsEnum(TourApprovalStatus)
+  approvalStatus?: TourApprovalStatus;
 
   @ApiPropertyOptional({
     example: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
