@@ -633,6 +633,39 @@ export class CategoryService {
         // protected for the 90-day cooldown. A later Detach (promotion)
         // clears the cooled-down ghosts and re-reserves.
         await markSlugsDeleted(tx, SlugEntityType.CATEGORY, id);
+        // Retag every tour tagged with this category (review #78): a
+        // demotion must never manufacture ORPHAN sub tags - each tour gains
+        // the new parent's link, and a primary held here moves onto the
+        // parent (a sub has no page for a breadcrumb). Same invariant the
+        // sync script's retag pass and the tours write-guards enforce.
+        const parentId = dto.parentCategoryId as string;
+        const tagged = await tx.tourCategory.findMany({
+          where: { categoryId: id },
+          select: { tourId: true, isPrimary: true },
+        });
+        for (const t of tagged) {
+          await tx.tourCategory.upsert({
+            where: {
+              tourId_categoryId: { tourId: t.tourId, categoryId: parentId },
+            },
+            create: { tourId: t.tourId, categoryId: parentId },
+            update: {},
+          });
+          if (t.isPrimary) {
+            await tx.tourCategory.update({
+              where: {
+                tourId_categoryId: { tourId: t.tourId, categoryId: id },
+              },
+              data: { isPrimary: false },
+            });
+            await tx.tourCategory.update({
+              where: {
+                tourId_categoryId: { tourId: t.tourId, categoryId: parentId },
+              },
+              data: { isPrimary: true },
+            });
+          }
+        }
       }
 
       if (promoteToTopLevel) {

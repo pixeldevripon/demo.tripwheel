@@ -280,6 +280,20 @@ async function main(): Promise<void> {
     }
   }
 
+  // ── Orphan-heal pass (review #78) ───────────────────────────────────────────
+  // EVERY sub-category - configured here or demoted through the admin UI -
+  // gets the same retag, so no tour is left carrying a sub tag without its
+  // parent (the tours write-guards reject such a set, and pre-fix admin
+  // demotions never retagged). Converged data makes this a pure no-op.
+  const healState = await loadCategories();
+  const byId = new Map([...healState.values()].map((c) => [c.id, c]));
+  for (const row of healState.values()) {
+    if (!row.parentCategoryId) continue;
+    const parent = byId.get(row.parentCategoryId);
+    if (!parent) continue;
+    await retagTours(row.id, parent.id, row.slug);
+  }
+
   // ── Booking-type duplicates (Private Charter) ───────────────────────────────
   // Fresh state again - the loop above may have reshaped the taxonomy.
   const bySlug = await loadCategories();
