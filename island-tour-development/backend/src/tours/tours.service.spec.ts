@@ -403,6 +403,46 @@ describe('ToursService', () => {
       expect(prisma.tour.create).toHaveBeenCalled();
     });
 
+    // Review #17 verbatim: the sub-type is validated against the tour's OWN
+    // categories - an orphan sub (parent absent from the tour) is rejected.
+    it('rejects a sub-category tag whose parent is not on the tour (create)', async () => {
+      prisma.category.findMany.mockResolvedValue([
+        { id: 'cat-other', parentCategoryId: null },
+        { id: 'cat-sub', parentCategoryId: 'cat-1' },
+      ]);
+      await expect(
+        service.create(
+          {
+            ...baseCreateDto,
+            categoryIds: ['cat-other', 'cat-sub'],
+            primaryCategoryId: 'cat-other',
+          },
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
+      ).rejects.toThrow(/parent category on the same tour/);
+      expect(prisma.tour.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects an orphan sub-category tag on update', async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({ status: TourStatus.DRAFT }),
+      );
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+      prisma.category.findMany.mockResolvedValue([
+        { id: 'cat-other', parentCategoryId: null },
+        { id: 'cat-sub', parentCategoryId: 'cat-1' },
+      ]);
+      await expect(
+        service.update(
+          'tour-1',
+          { categoryIds: ['cat-other', 'cat-sub'] },
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
+      ).rejects.toThrow(/parent category on the same tour/);
+    });
+
     it('rejects a sub-category as the primary on update', async () => {
       prisma.tour.findUnique.mockResolvedValue(
         makeTour({ status: TourStatus.DRAFT }),

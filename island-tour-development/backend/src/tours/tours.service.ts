@@ -2691,7 +2691,7 @@ export class ToursService {
     // would 404 (client review #16/#17). Enforced HERE, not just in the
     // dashboard - and since the primary is always one of categoryIds, this
     // also guarantees every tour keeps at least one top-level category.
-    this.assertPrimaryIsTopLevel(primaryCategoryId, foundCategories);
+    this.assertCategorySetShape(primaryCategoryId, foundCategories);
 
     const hubIds = [...new Set(dto.hubIds ?? [])];
 
@@ -2952,7 +2952,7 @@ export class ToursService {
         );
       }
       // Same top-level-primary rule as create() - see the comment there.
-      this.assertPrimaryIsTopLevel(primaryCategoryId, found);
+      this.assertCategorySetShape(primaryCategoryId, found);
     }
     const hubIds =
       dto.hubIds !== undefined ? [...new Set(dto.hubIds)] : undefined;
@@ -3727,13 +3727,18 @@ export class ToursService {
    * knows precisely what to change - never a raw hub UUID.
    */
   /**
-   * The PRIMARY category must be top-level (client review #16/#17): a
-   * sub-category is a filter-only refinement with no page, so a breadcrumb
-   * anchored on it would 404. Sub-categories remain valid NON-primary tags
-   * (they are the Row-2 chip data). Because the primary is always a member
-   * of categoryIds, this also guarantees >=1 top-level category per tour.
+   * Category-set shape rules (client review #16/#17):
+   *
+   * 1. The PRIMARY must be top-level: a sub-category is a filter-only
+   *    refinement with no page, so a breadcrumb anchored on it would 404.
+   *    Because the primary is always a member of categoryIds, this also
+   *    guarantees >=1 top-level category per tour.
+   * 2. A sub-category tag requires its PARENT on the same tour - the sub-type
+   *    is validated against the tour's OWN categories (review #17 verbatim).
+   *    An orphan sub would put the tour on a refine pill of a page it never
+   *    appears on unfiltered.
    */
-  private assertPrimaryIsTopLevel(
+  private assertCategorySetShape(
     primaryCategoryId: string,
     categories: { id: string; parentCategoryId: string | null }[],
   ): void {
@@ -3741,6 +3746,15 @@ export class ToursService {
     if (primary?.parentCategoryId) {
       throw new BadRequestException(
         'primaryCategoryId must be a top-level category - sub-categories are filter tags, not pages',
+      );
+    }
+    const ids = new Set(categories.map((c) => c.id));
+    const orphan = categories.find(
+      (c) => c.parentCategoryId && !ids.has(c.parentCategoryId),
+    );
+    if (orphan) {
+      throw new BadRequestException(
+        'A sub-category tag requires its parent category on the same tour',
       );
     }
   }
