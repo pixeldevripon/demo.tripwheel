@@ -174,14 +174,33 @@ const PAYMENT_OPTIONS = [
     { value: 'OPERATOR_LINK', label: 'Operator link (deposit)' },
     { value: 'ON_ARRIVAL', label: 'Pay on arrival' },
     { value: 'PAID_IN_FULL', label: 'Paid in full' },
+    // The fourth model, listed but not selectable. The platform takes nothing at
+    // booking, so the backend refuses to reserve or quote one of these tours -
+    // OPERATOR_FULL was dropped for v1 (founder, 2026-07-15) because it would
+    // create a confirmed but unpaid booking. Picking it here would publish a tour
+    // that 422s every traveller at checkout. It stays in the list so the model set
+    // reads as complete rather than as three-of-four, and so a tour already on
+    // OPERATOR_FULL still renders its own label instead of a blank select.
+    {
+        value: 'OPERATOR_FULL',
+        label: 'No platform payment (not yet available)',
+        disabled: true,
+    },
 ];
 
 const PAYMENT_CONSEQUENCE: Record<string, string> = {
     OPERATOR_LINK:
         'The traveller pays a deposit now; you collect the balance yourself.',
-    ON_ARRIVAL: 'The traveller pays you in full when they arrive.',
+    // Island Tours captures the deposit at booking and the operator settles the
+    // rest on site - this is a deposit model, same as OPERATOR_LINK, differing
+    // only in where the balance is collected. The old copy said the traveller
+    // paid in full on arrival, which contradicted both the commercial model and
+    // the "what you accept on site" field right below it.
+    ON_ARRIVAL:
+        'The traveller pays a deposit to Island Tours now and settles the balance with you on arrival.',
     PAID_IN_FULL: 'The traveller pays the whole price at checkout.',
-    OPERATOR_FULL: 'You take payment entirely outside the platform.',
+    OPERATOR_FULL:
+        'You take payment entirely outside the platform. Not available yet - Island Tours cannot take bookings for a tour on this model, so switch to one of the others to sell it.',
 };
 
 const CANCELLATION_OPTIONS = [
