@@ -21,6 +21,7 @@ import {
   CalendarDayResponseDto,
   CloseAgendaDayResultDto,
   CloseRangeResultDto,
+  RangeImpactResultDto,
   ConfirmAvailabilityResultDto,
   ReopenRangeResultDto,
   DepartureResponseDto,
@@ -209,6 +210,24 @@ export const ApiReopenRangeDocs = () =>
         'Retired closures stay in the Date changes register.',
     }),
     ApiOkResponse({ type: ReopenRangeResultDto }),
+    ApiNotFoundResponse({ type: NotFoundErrorDto }),
+    authErrors(),
+  );
+
+export const ApiRangeImpactDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Preview what a range close would hit',
+      description:
+        'Read-only counts for [from, to] under the same scope rules as ' +
+        'close-range (one tour with tourId, every active tour of the ' +
+        'operator without, admins pass operatorId): non-cancelled ' +
+        'departures, distinct tours, and travellers with a committed ' +
+        'booking on those departures. The range modal states these before ' +
+        'the confirm button; a close keeps every booked guest and sends ' +
+        'no guest notification.',
+    }),
+    ApiOkResponse({ type: RangeImpactResultDto }),
     ApiNotFoundResponse({ type: NotFoundErrorDto }),
     authErrors(),
   );

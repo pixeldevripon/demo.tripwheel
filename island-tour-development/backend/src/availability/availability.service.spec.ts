@@ -65,7 +65,11 @@ function mockPrisma() {
       // updateDeparture writes through a guarded updateMany (optimistic lock on
       // bookedCount); default to "claimed" so tests opt in to the race.
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      // rangeImpact's per-tour departure counts.
+      groupBy: jest.fn().mockResolvedValue([]),
     },
+    // rangeImpact's booked-guest count (one unit item per traveller).
+    bookingUnitItem: { count: jest.fn().mockResolvedValue(0) },
   };
   // Interactive-transaction passthrough: the callback runs against the same
   // mock, which is exactly what the duplicate-guard tests need to observe.
@@ -1301,6 +1305,118 @@ describe('AvailabilityService', () => {
         svc.updateException('u1', Role.TOUR_OPERATOR, 'x1', { capacity: 40 }),
       ).rejects.toThrow(/Manage availability permission/);
       expect(prisma.availabilityException.update).not.toHaveBeenCalled();
+    });
+  });
+
+  // Client review comment 5: the range modal states what a close would hit
+  // BEFORE the button - and the preview resolves scope through the same
+  // rangeScope as the write.
+  describe('rangeImpact', () => {
+    beforeEach(() => {
+      prisma.tour.findUnique.mockResolvedValue(TOUR);
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
+    });
+
+    it('counts departures, tours and committed guests for one tour', async () => {
+      prisma.departure.groupBy.mockResolvedValueOnce([
+        { tourId: 't1', _count: { _all: 5 } },
+      ]);
+      prisma.bookingUnitItem.count.mockResolvedValueOnce(12);
+      const res = await svc.rangeImpact('u1', Role.TOUR_OPERATOR, {
+        tourId: 't1',
+        from: '2030-06-10',
+        to: '2030-06-12',
+      });
+      expect(res).toEqual({ departures: 5, tours: 1, bookedGuests: 12 });
+      // Cancelled departures are excluded - a close does not touch them.
+      expect(prisma.departure.groupBy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            tourId: { in: ['t1'] },
+            date: { gte: day('2030-06-10'), lte: day('2030-06-12') },
+            status: { not: 'CANCELLED' },
+          },
+        }),
+      );
+      // Guests = unit items on COMMITTED bookings only, filtered at both
+      // the item and the booking level.
+      expect(prisma.bookingUnitItem.count).toHaveBeenCalledWith({
+        where: {
+          status: { in: ['CONFIRMED', 'REDEEMED'] },
+          booking: {
+            status: { in: ['CONFIRMED', 'REDEEMED'] },
+            departure: expect.objectContaining({
+              tourId: { in: ['t1'] },
+              status: { not: 'CANCELLED' },
+            }),
+          },
+        },
+      });
+    });
+
+    it('sums across the all-tours scope of the calling operator', async () => {
+      prisma.tour.findMany.mockResolvedValue([{ id: 't1' }, { id: 't2' }]);
+      prisma.departure.groupBy.mockResolvedValueOnce([
+        { tourId: 't1', _count: { _all: 9 } },
+        { tourId: 't2', _count: { _all: 5 } },
+      ]);
+      prisma.bookingUnitItem.count.mockResolvedValueOnce(46);
+      const res = await svc.rangeImpact('u1', Role.TOUR_OPERATOR, {
+        from: '2030-06-10',
+        to: '2030-06-12',
+      });
+      expect(res).toEqual({ departures: 14, tours: 2, bookedGuests: 46 });
+      expect(prisma.departure.groupBy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ tourId: { in: ['t1', 't2'] } }),
+        }),
+      );
+    });
+
+    it('an ADMIN without a tourId must name an operatorId', async () => {
+      await expect(
+        svc.rangeImpact('admin1', Role.ADMIN, {
+          from: '2030-06-10',
+          to: '2030-06-12',
+        }),
+      ).rejects.toThrow(/operatorId/);
+      expect(prisma.departure.groupBy).not.toHaveBeenCalled();
+    });
+
+    it('rejects a reversed range before querying', async () => {
+      await expect(
+        svc.rangeImpact('u1', Role.TOUR_OPERATOR, {
+          tourId: 't1',
+          from: '2030-06-12',
+          to: '2030-06-10',
+        }),
+      ).rejects.toThrow();
+      expect(prisma.departure.groupBy).not.toHaveBeenCalled();
+      expect(prisma.bookingUnitItem.count).not.toHaveBeenCalled();
+    });
+
+    it('returns zeros for an operator with no tours, without querying', async () => {
+      prisma.tour.findMany.mockResolvedValue([]);
+      const res = await svc.rangeImpact('u1', Role.TOUR_OPERATOR, {
+        from: '2030-06-10',
+        to: '2030-06-12',
+      });
+      expect(res).toEqual({ departures: 0, tours: 0, bookedGuests: 0 });
+      expect(prisma.departure.groupBy).not.toHaveBeenCalled();
+    });
+
+    it('is strictly read-only - no writes, no re-projection', async () => {
+      prisma.departure.groupBy.mockResolvedValueOnce([
+        { tourId: 't1', _count: { _all: 2 } },
+      ]);
+      await svc.rangeImpact('u1', Role.TOUR_OPERATOR, {
+        tourId: 't1',
+        from: '2030-06-10',
+        to: '2030-06-12',
+      });
+      expect(prisma.availabilityException.createMany).not.toHaveBeenCalled();
+      expect(prisma.availabilityException.updateMany).not.toHaveBeenCalled();
+      expect(materializer.materializeTour).not.toHaveBeenCalled();
     });
   });
 

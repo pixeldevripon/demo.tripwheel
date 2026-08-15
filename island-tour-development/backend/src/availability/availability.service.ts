@@ -11,6 +11,7 @@ import {
   ActorSide,
   AvailabilityExceptionType,
   AvailabilityScheduleStatus,
+  BookingStatus,
   ClosureReason,
   DepartureStatus,
   InboxEvent,
@@ -78,6 +79,8 @@ import type {
   ManageCalendarDayStatus,
   ManageCalendarQueryDto,
   MaterializeDto,
+  RangeImpactQueryDto,
+  RangeImpactResultDto,
   AvailabilityOverviewResponseDto,
   OverviewDayDto,
   OverviewDepartureDto,
@@ -1518,6 +1521,56 @@ export class AvailabilityService {
       `User ${userId} reopened range ${dto.from}..${dto.to} across ${touched.length} tour(s) (${count} closure(s))`,
     );
     return { reopened: count, tourCount: touched.length };
+  }
+
+  /**
+   * Read-only impact preview for {@link closeRange}: what would this scope +
+   * range actually hit? The range modal states the consequence before the
+   * button (client review comment 5) - departures, tours, and the travellers
+   * who keep their bookings. Resolves scope through the same {@link rangeScope}
+   * as the write, so the preview and the action can never disagree about
+   * reach.
+   */
+  async rangeImpact(
+    userId: string,
+    role: Role,
+    query: RangeImpactQueryDto,
+  ): Promise<RangeImpactResultDto> {
+    const { tourIds } = await this.rangeScope(userId, role, query);
+    assertDateRangeOrder(query.from, query.to);
+    if (tourIds.length === 0) {
+      return { departures: 0, tours: 0, bookedGuests: 0 };
+    }
+    const departureWhere: Prisma.DepartureWhereInput = {
+      tourId: { in: tourIds },
+      date: { gte: dayDate(query.from), lte: dayDate(query.to) },
+      // Cancelled departures are already dead - a close does not touch them.
+      status: { not: DepartureStatus.CANCELLED },
+    };
+    // Guests, not bookings: one BookingUnitItem per traveller on BOTH pricing
+    // models (a UNIT charter books 1 unit but seats N items). Committed
+    // bookings only - a cart hold is not a "booked guest keeps their booking"
+    // promise. Item AND booking status filtered so a partially cancelled
+    // traveller never counts.
+    const committed = [BookingStatus.CONFIRMED, BookingStatus.REDEEMED];
+    const [byTour, bookedGuests] = await Promise.all([
+      this.prisma.departure.groupBy({
+        by: ['tourId'],
+        where: departureWhere,
+        _count: { _all: true },
+      }),
+      this.prisma.bookingUnitItem.count({
+        where: {
+          status: { in: committed },
+          booking: { status: { in: committed }, departure: departureWhere },
+        },
+      }),
+    ]);
+    return {
+      departures: byTour.reduce((sum, t) => sum + t._count._all, 0),
+      tours: byTour.length,
+      bookedGuests,
+    };
   }
 
   async listExceptions(

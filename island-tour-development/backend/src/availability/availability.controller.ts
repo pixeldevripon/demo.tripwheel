@@ -36,6 +36,7 @@ import {
   ManageCalendarQueryDto,
   MaterializeDto,
   OverviewQueryDto,
+  RangeImpactQueryDto,
   ReopenRangeDto,
   UpdateDepartureDto,
   UpdateExceptionDto,
@@ -60,6 +61,7 @@ import {
   ApiManageCalendarDocs,
   ApiMaterializeDocs,
   ApiOverviewDocs,
+  ApiRangeImpactDocs,
   ApiReopenRangeDocs,
   ApiUpdateDepartureDocs,
   ApiUpdateExceptionDocs,
@@ -250,6 +252,16 @@ export class AvailabilityController {
     @Body() dto: ReopenRangeDto,
   ) {
     return this.availability.reopenRange(user.id, user.role, dto);
+  }
+
+  @Get('exceptions/range-impact')
+  @RequireAnyPermission(Permission.MANAGE_AVAILABILITY, Permission.STOP_SELL)
+  @ApiRangeImpactDocs()
+  rangeImpact(
+    @AuthenticatedUser() user: TypedAuthUser,
+    @Query() query: RangeImpactQueryDto,
+  ) {
+    return this.availability.rangeImpact(user.id, user.role, query);
   }
 
   @Get('exceptions')
