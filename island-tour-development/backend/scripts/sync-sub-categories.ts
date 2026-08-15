@@ -42,6 +42,7 @@ import {
   type TourLinkRow,
 } from '../src/categories/sub-category-sync';
 import { markSlugsDeleted } from '../src/common/utils/slug-registry.util';
+import { PublicCacheService } from '../src/workers/public-cache.service';
 
 dotenv.config();
 
@@ -50,6 +51,9 @@ const prisma = new PrismaClient({
 });
 
 const DRY_RUN = process.argv.includes('--dry');
+
+/** Set whenever a write actually happened - drives the cache bust below. */
+let mutated = false;
 
 function log(line: string): void {
   console.log(`${DRY_RUN ? '[dry] ' : ''}${line}`);
@@ -119,35 +123,49 @@ async function retagTours(
     const ops = planTourRetag(link, subCategoryId, parentId);
     if (!ops.addParentLink && !ops.movePrimaryToParent) continue;
     if (!DRY_RUN) {
-      await prisma.$transaction(async (tx) => {
-        if (ops.addParentLink) {
-          await tx.tourCategory.create({
-            data: {
-              tourId: ops.tourId,
-              categoryId: parentId,
-              isPrimary: false,
-            },
-          });
-        }
-        if (ops.movePrimaryToParent) {
-          await tx.tourCategory.update({
-            where: {
-              tourId_categoryId: {
+      try {
+        await prisma.$transaction(async (tx) => {
+          if (ops.addParentLink) {
+            await tx.tourCategory.create({
+              data: {
                 tourId: ops.tourId,
-                categoryId: subCategoryId,
+                categoryId: parentId,
+                isPrimary: false,
               },
-            },
-            data: { isPrimary: false },
-          });
-          await tx.tourCategory.update({
-            where: {
-              tourId_categoryId: { tourId: ops.tourId, categoryId: parentId },
-            },
-            data: { isPrimary: true },
-          });
+            });
+          }
+          if (ops.movePrimaryToParent) {
+            await tx.tourCategory.update({
+              where: {
+                tourId_categoryId: {
+                  tourId: ops.tourId,
+                  categoryId: subCategoryId,
+                },
+              },
+              data: { isPrimary: false },
+            });
+            await tx.tourCategory.update({
+              where: {
+                tourId_categoryId: { tourId: ops.tourId, categoryId: parentId },
+              },
+              data: { isPrimary: true },
+            });
+          }
+        });
+      } catch (err: unknown) {
+        // An admin attaching the parent to the same tour mid-run races the
+        // link create (P2002 on tourId+categoryId). One tour's race must not
+        // abort the whole run - report it; the idempotent re-run converges.
+        if ((err as { code?: string })?.code === 'P2002') {
+          log(
+            `  ${label}: tour ${ops.tourId} raced a concurrent edit - re-run to converge`,
+          );
+          continue;
         }
-      });
+        throw err;
+      }
     }
+    if (!DRY_RUN) mutated = true;
     if (ops.addParentLink) added++;
     if (ops.movePrimaryToParent) repointed++;
   }
@@ -160,9 +178,13 @@ async function retagTours(
 
 async function main(): Promise<void> {
   log('Syncing sub-categories from prisma/data/sub-categories.config.ts ...');
-  const bySlug = await loadCategories();
 
   for (const spec of SUB_CATEGORY_SYNC.subCategories) {
+    // Reloaded EVERY iteration: earlier entries mutate the taxonomy, and a
+    // stale snapshot would let a later entry nest under a parent that was
+    // itself just demoted - silently breaking single-level nesting. 23 rows;
+    // the re-read costs nothing next to that landmine.
+    const bySlug = await loadCategories();
     const action = planSubCategory(spec, bySlug);
     switch (action.kind) {
       case 'skip':
@@ -181,24 +203,28 @@ async function main(): Promise<void> {
       case 'create': {
         log(`CREATE ${spec.slug} under ${spec.parentSlug}`);
         if (!DRY_RUN) {
-          // End of the parent's row, as in the admin create flow. Filter-only:
-          // sub-categories write NO slug-registry rows.
-          const sortOrder =
-            ((
-              await prisma.category.aggregate({
-                where: { parentCategoryId: action.parentId },
-                _max: { sortOrder: true },
-              })
-            )._max.sortOrder ?? -1) + 1;
-          await prisma.category
-            .create({
-              data: {
-                name: spec.name,
-                slug: spec.slug,
-                parentCategoryId: action.parentId,
-                sortOrder,
-                isSeeded: false,
-              },
+          // End of the parent's row, as in the admin create flow - aggregate
+          // and create in ONE transaction (same shape as the service) so a
+          // concurrent sibling create cannot hand out the same sortOrder.
+          // Filter-only: sub-categories write NO slug-registry rows.
+          await prisma
+            .$transaction(async (tx) => {
+              const sortOrder =
+                ((
+                  await tx.category.aggregate({
+                    where: { parentCategoryId: action.parentId },
+                    _max: { sortOrder: true },
+                  })
+                )._max.sortOrder ?? -1) + 1;
+              await tx.category.create({
+                data: {
+                  name: spec.name,
+                  slug: spec.slug,
+                  parentCategoryId: action.parentId,
+                  sortOrder,
+                  isSeeded: false,
+                },
+              });
             })
             .catch((err: unknown) => {
               if ((err as { code?: string })?.code === 'P2002') {
@@ -207,23 +233,32 @@ async function main(): Promise<void> {
               }
               throw err;
             });
+          mutated = true;
         }
         continue;
       }
       case 'repoint':
         log(`REPOINT ${spec.slug}: moving under ${spec.parentSlug}`);
+        // Retag FIRST: the interim state (dual-tagged tours, category not yet
+        // moved) is valid, so an interrupted run never leaves a tour's
+        // breadcrumb pointing at a page-less category.
+        await retagTours(action.categoryId, action.parentId, spec.slug);
         if (!DRY_RUN) {
           await prisma.category.update({
             where: { id: action.categoryId },
             data: { parentCategoryId: action.parentId },
           });
+          mutated = true;
         }
-        await retagTours(action.categoryId, action.parentId, spec.slug);
         continue;
       case 'demote': {
         log(
           `DEMOTE ${spec.slug} under ${spec.parentSlug} (page slugs retired, 90-day cooldown)`,
         );
+        // Retag BEFORE the page slugs are retired (see repoint): an
+        // interrupted run leaves tours dual-tagged with the category still
+        // top-level - valid - instead of primaries pointing at a 404.
+        await retagTours(action.categoryId, action.parentId, spec.slug);
         if (!DRY_RUN) {
           // Same transaction shape as the admin demotion (categories.service
           // update with confirmPageRemoval): nest + retire the page slugs.
@@ -238,14 +273,16 @@ async function main(): Promise<void> {
               action.categoryId,
             );
           });
+          mutated = true;
         }
-        await retagTours(action.categoryId, action.parentId, spec.slug);
         continue;
       }
     }
   }
 
   // ── Booking-type duplicates (Private Charter) ───────────────────────────────
+  // Fresh state again - the loop above may have reshaped the taxonomy.
+  const bySlug = await loadCategories();
   for (const removal of SUB_CATEGORY_SYNC.removeToBookingType) {
     const cat = bySlug.get(removal.slug);
     if (!cat) {
@@ -285,6 +322,7 @@ async function main(): Promise<void> {
           }
         });
       }
+      if (!DRY_RUN) mutated = true;
       stamped++;
       if (action.kind === 'detach') detached++;
       else stragglers.push(link.tourId);
@@ -306,11 +344,22 @@ async function main(): Promise<void> {
         });
         await markSlugsDeleted(tx, SlugEntityType.CATEGORY, cat.id);
       });
+      mutated = true;
       log(`  ${removal.slug}: deactivated, page slugs retired`);
     }
   }
 
-  log('Done.');
+  if (mutated) {
+    // Direct Prisma writes bypass the dashboard's revalidation bridge - bust
+    // the public 'use cache' tags ourselves, or demoted category pages keep
+    // serving until their cacheLife window expires (observed in verification).
+    await new PublicCacheService().revalidateTags([
+      'categories',
+      'slug-registry',
+      'tours',
+      'search',
+    ]);
+  }
 }
 
 main()

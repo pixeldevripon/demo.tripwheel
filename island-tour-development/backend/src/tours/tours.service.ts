@@ -2679,13 +2679,19 @@ export class ToursService {
     }
     const foundCategories = await this.prisma.category.findMany({
       where: { id: { in: categoryIds }, isActive: true },
-      select: { id: true },
+      select: { id: true, parentCategoryId: true },
     });
     if (foundCategories.length !== categoryIds.length) {
       throw new BadRequestException(
         'One or more categories not found or not active',
       );
     }
+    // Sub-categories are legitimate TAGS (the Row-2 chips ride tour_categories)
+    // but never the PRIMARY: a sub has no page, so a breadcrumb anchored on it
+    // would 404 (client review #16/#17). Enforced HERE, not just in the
+    // dashboard - and since the primary is always one of categoryIds, this
+    // also guarantees every tour keeps at least one top-level category.
+    this.assertPrimaryIsTopLevel(primaryCategoryId, foundCategories);
 
     const hubIds = [...new Set(dto.hubIds ?? [])];
 
@@ -2938,13 +2944,15 @@ export class ToursService {
       }
       const found = await this.prisma.category.findMany({
         where: { id: { in: categoryIds }, isActive: true },
-        select: { id: true },
+        select: { id: true, parentCategoryId: true },
       });
       if (found.length !== categoryIds.length) {
         throw new BadRequestException(
           'One or more categories not found or not active',
         );
       }
+      // Same top-level-primary rule as create() - see the comment there.
+      this.assertPrimaryIsTopLevel(primaryCategoryId, found);
     }
     const hubIds =
       dto.hubIds !== undefined ? [...new Set(dto.hubIds)] : undefined;
@@ -3718,6 +3726,25 @@ export class ToursService {
    * mismatch (the tour's categories vs the hub's allowed categories) so the operator
    * knows precisely what to change - never a raw hub UUID.
    */
+  /**
+   * The PRIMARY category must be top-level (client review #16/#17): a
+   * sub-category is a filter-only refinement with no page, so a breadcrumb
+   * anchored on it would 404. Sub-categories remain valid NON-primary tags
+   * (they are the Row-2 chip data). Because the primary is always a member
+   * of categoryIds, this also guarantees >=1 top-level category per tour.
+   */
+  private assertPrimaryIsTopLevel(
+    primaryCategoryId: string,
+    categories: { id: string; parentCategoryId: string | null }[],
+  ): void {
+    const primary = categories.find((c) => c.id === primaryCategoryId);
+    if (primary?.parentCategoryId) {
+      throw new BadRequestException(
+        'primaryCategoryId must be a top-level category - sub-categories are filter tags, not pages',
+      );
+    }
+  }
+
   private async assertHubAllowsCategories(
     tx: Prisma.TransactionClient,
     hubId: string,

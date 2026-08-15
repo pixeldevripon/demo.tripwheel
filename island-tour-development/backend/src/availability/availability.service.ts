@@ -1355,9 +1355,7 @@ export class AvailabilityService {
       return {
         operatorId,
         tourIds: [dto.tourId],
-        operatorByTour: new Map(
-          operatorId ? [[dto.tourId, operatorId]] : [],
-        ),
+        operatorByTour: new Map(operatorId ? [[dto.tourId, operatorId]] : []),
       };
     }
     let operatorId: string | null;
