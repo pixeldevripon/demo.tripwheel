@@ -643,11 +643,18 @@ export interface MyTripsQueryParams {
 export interface AdminTripsQueryParams {
   search?: string;
   status?: TripStatus;
-  /** See MyTripsQueryParams.approvalStatus - same separate axis. */
-  approvalStatus?: TripApprovalStatus;
+  /** See MyTripsQueryParams.approvalStatus - same separate axis. WITHOUT it
+   *  the admin list excludes PENDING/REJECTED (they live on /submissions);
+   *  'ANY' skips the axis entirely (the command palette's jump-to-anything). */
+  approvalStatus?: TripApprovalStatus | 'ANY';
   operatorId?: string;
   destinationId?: string;
   isLocalsFavourite?: boolean;
+  /** Both review states at once - the Submissions queue's "All" view. */
+  reviewLoop?: boolean;
+  /** The Submissions queue sorts submittedAt asc - FIFO review fairness. */
+  sortBy?: 'updatedAt' | 'submittedAt';
+  sortDir?: 'asc' | 'desc';
   page?: number;
   limit?: number;
 }

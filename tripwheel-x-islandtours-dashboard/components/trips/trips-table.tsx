@@ -76,7 +76,7 @@ export function TripsTable({
     <Button asChild size='sm'>
       <Link href='/trips/new'>
         <HugeiconsIcon icon={PlusSignIcon} />
-        New Trip
+        New Tour
       </Link>
     </Button>
   );
@@ -90,10 +90,10 @@ export function TripsTable({
       skeletonRows={limit > 10 ? 10 : limit}
       empty={{
         icon: Location01Icon,
-        title: 'No trips found.',
+        title: 'No tours found.',
         description: isAdminView
-          ? 'No trips match the current filters.'
-          : 'Create your first trip to get started.',
+          ? 'No tours match the current filters.'
+          : 'Create your first tour to get started.',
         action: newTripButton,
       }}
       toolbar={(table) => (
@@ -101,30 +101,20 @@ export function TripsTable({
           <DataTableSearch
             value={searchValue}
             onChange={onSearchChange}
-            placeholder='Search trips...'
+            placeholder='Search tours...'
           />
-          {/* ONE control, TWO backend filters. `status` (Draft/Live/Paused/
-              Archived) and `approvalStatus` (review workflow) are independent
-              axes on the server - submitting for review stamps PENDING and
-              leaves `status` where it was - but an operator asking "where is
-              the tour I sent in?" is not thinking in axes. So the review
-              states are offered in the same list and the handler routes the
-              choice to whichever filter owns it, clearing the other so the two
-              can never contradict each other.
-              Reported 2026-08-02 §03: without this a resubmitted PAUSED or
-              ARCHIVED tour could not be found at all. */}
+          {/* Lifecycle status only. The review axis (In review / Changes
+              requested) moved to the Submissions queue (client 2026-08-15) -
+              for an admin those tours are not in this list at all. The
+              atomic two-key write stays: picking a status also clears any
+              approvalStatus left in the URL from the pre-move era, and two
+              same-tick setFilter calls would clobber each other. */}
           <Select
-            value={filters.approvalStatus ?? filters.status ?? 'all'}
+            value={filters.status ?? 'all'}
             onValueChange={(v) => {
-              const isReview = v === 'PENDING' || v === 'REJECTED';
-              // ONE atomic write for the two keys. Two setFilter calls in the
-              // same tick clobber each other (each starts from the render-time
-              // URL snapshot, so the second reverts the first) - which made
-              // this filter do nothing at all: ?status=DRAFT flashed into the
-              // URL and was immediately replaced away.
               onFiltersChange({
-                status: v === 'all' || isReview ? undefined : v,
-                approvalStatus: isReview ? v : undefined,
+                status: v === 'all' ? undefined : v,
+                approvalStatus: undefined,
               });
             }}
           >
@@ -137,11 +127,6 @@ export function TripsTable({
               <SelectItem value='LIVE'>Live</SelectItem>
               <SelectItem value='PAUSED'>Paused</SelectItem>
               <SelectItem value='ARCHIVED'>Archived</SelectItem>
-              {/* Labels match the badges on the rows (TRIP_APPROVAL_STATUS) -
-                  a filter that names a state differently from the column it
-                  filters is its own bug report. */}
-              <SelectItem value='PENDING'>In review</SelectItem>
-              <SelectItem value='REJECTED'>Changes requested</SelectItem>
             </SelectContent>
           </Select>
           <Select

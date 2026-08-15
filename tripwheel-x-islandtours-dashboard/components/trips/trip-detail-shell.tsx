@@ -1,6 +1,7 @@
 'use client';
 
 import { Breadcrumb } from '@/components/breadcrumb';
+import { useToursListCopy } from '@/components/trips/tours-list-copy';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface TripDetailShellProps {
@@ -25,17 +26,18 @@ export function TripDetailShell({
     fullWidth = false,
     children,
 }: TripDetailShellProps) {
+    const { title: listTitle } = useToursListCopy();
     return (
         <div className={fullWidth ? undefined : 'w-full max-w-6xl'}>
             <Breadcrumb
                 items={[
                     { label: 'Dashboard', href: '/' },
-                    { label: 'My Trips', href: '/trips' },
+                    { label: listTitle, href: '/trips' },
                     {
                         label: isLoading ? (
                             <Skeleton className='h-3 w-20 inline-block' />
                         ) : (
-                            (name ?? 'Trip')
+                            (name ?? 'Tour')
                         ),
                         href: `/trips/${id}/edit`,
                     },

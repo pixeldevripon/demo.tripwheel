@@ -28,6 +28,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Breadcrumb } from '@/components/breadcrumb';
 import { StatusBadge } from '@/components/common/status-badge';
+import { useToursListCopy } from '@/components/trips/tours-list-copy';
 import {
     TRIP_APPROVAL_STATUS,
     TRIP_STATUS,
@@ -79,6 +80,7 @@ function resolveMode(trip: TripListItem | null | undefined): WizardMode {
 
 export function TripWizard({ tripId }: TripWizardProps) {
     const router = useRouter();
+    const { title: listTitle } = useToursListCopy();
     const searchParams = useSearchParams();
     const reduceMotion = useReducedMotion();
 
@@ -195,14 +197,14 @@ export function TripWizard({ tripId }: TripWizardProps) {
                 <Breadcrumb
                     items={[
                         { label: 'Dashboard', href: '/' },
-                        { label: 'My Trips', href: '/trips' },
-                        { label: trip?.name ?? 'New Trip' },
+                        { label: listTitle, href: '/trips' },
+                        { label: trip?.name ?? 'New Tour' },
                     ]}
                 />
 
                 <div className='mb-4 flex flex-wrap items-center justify-between gap-3'>
                     <h1 className='text-xl font-medium text-content'>
-                        {trip?.name ?? 'New trip'}
+                        {trip?.name ?? 'New tour'}
                     </h1>
                     {statusMeta && (
                         <div className='flex items-center gap-2'>

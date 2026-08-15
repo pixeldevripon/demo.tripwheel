@@ -4,7 +4,7 @@
  * Covers:
  *  1. Trip List Page (/trips)
  *     - Page loads with heading and table
- *     - "New Trip" button visible and navigates correctly
+ *     - "New Tour" button visible and navigates correctly
  *     - Row-actions dropdown (Edit Details, Schedules, Translations, Archive)
  *     - Restore action visible for archived trips
  *     - Admin view: operator column visible; operator view: operator column hidden
@@ -359,11 +359,11 @@ test.describe('Trip List Page (/trips)', () => {
     await expect(page.getByText('Archived Snorkel Trip')).toBeVisible();
   });
 
-  test('"New Trip" button is visible and navigates to /trips/new', async ({ page }) => {
+  test('"New Tour" button is visible and navigates to /trips/new', async ({ page }) => {
     // Mock supporting data so the new-trip form page doesn't hit unmocked API endpoints
     await mockSupportingData(page);
-    // Sidebar also has "Add New Trip" which matches /new trip/i - use exact match for the header button
-    await page.getByRole('link', { name: 'New Trip', exact: true }).click();
+    // Use exact match for the header button
+    await page.getByRole('link', { name: 'New Tour', exact: true }).click();
     await expect(page).toHaveURL(/\/trips\/new/, { timeout: 5_000 });
   });
 

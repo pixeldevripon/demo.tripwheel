@@ -127,7 +127,7 @@ export function TourFilterPopover({
       <PopoverContent className="w-72 p-0" align="end" collisionPadding={12}>
         <Command shouldFilter={false}>
           <CommandInput
-            placeholder="Search trips..."
+            placeholder="Search tours..."
             value={q}
             onValueChange={setQ}
           />
@@ -138,7 +138,7 @@ export function TourFilterPopover({
               </div>
             ) : (
               <>
-                <CommandEmpty>No trips found.</CommandEmpty>
+                <CommandEmpty>No tours found.</CommandEmpty>
                 <CommandGroup>
                   {tours.map((tour) => (
                     <CommandItem

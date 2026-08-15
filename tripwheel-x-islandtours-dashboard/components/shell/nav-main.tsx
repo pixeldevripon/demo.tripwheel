@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/sidebar';
 import { useBookings } from '@/hooks/bookings/use-bookings';
 import { usePendingReviewCount } from '@/hooks/reviews/use-reviews';
+import { useAdminTrips } from '@/hooks/trips/use-trips';
 import { useSpotlightQueue } from '@/hooks/tiers/use-tiers';
 import type { NavGroup } from '@/lib/rbac-utils';
 import { cn } from '@/lib/utils';
@@ -71,6 +72,18 @@ function SpotlightBadge() {
 }
 
 /**
+ * Tour submissions in the review loop (client review #18).
+ *
+ * `reviewLoop: true` mirrors the queue page's default "All Status" view -
+ * In review AND Changes requested (client 2026-08-15) - or the badge
+ * promises different work than the click shows.
+ */
+function SubmissionsBadge() {
+    const { data } = useAdminTrips({ limit: 1, reviewLoop: true });
+    return <CountChip count={data?.total ?? 0} />;
+}
+
+/**
  * Actionable count badges (04 §1.4: badges only where a number demands
  * action). Keyed by nav url; each badge only mounts when its item survived
  * permission filtering, so operators never fire admin-only queries.
@@ -85,6 +98,7 @@ const NAV_BADGES: Record<string, React.ComponentType> = {
     'cancellation-requests': CancellationsBadge,
     reviews: PendingReviewsBadge,
     spotlight: SpotlightBadge,
+    submissions: SubmissionsBadge,
     trips: () => <InboxNavBadge category='TOURS' />,
     bookings: () => <InboxNavBadge category='BOOKINGS' />,
     payments: () => <InboxNavBadge category='PAYMENTS' />,

@@ -1,6 +1,7 @@
 import {
     Calendar01Icon,
     CheckmarkBadge01Icon,
+    InboxIcon,
     Calendar03Icon,
     CalendarCheckIn01Icon,
     CalendarRemove01Icon,
@@ -137,6 +138,20 @@ const dashboardNav: NavGroup[] = [
                 url: 'trips',
                 icon: MapsIcon,
                 permissions: [Permission.VIEW_TRIPS],
+            },
+            {
+                // The publish gate's queue (client review #18): operators
+                // submit, Island Tours approves - this row is where pending
+                // submissions get SPOTTED. An INDEPENDENT page (client
+                // 2026-08-15), same actionable-count badge pattern as
+                // Cancellations/Reviews/Spotlight, and its own icon - the
+                // checkmark badge belongs to Operator Verification.
+                // MANAGE_TRIPS = the approve/reject permission, so operators
+                // never see the row.
+                title: 'Submissions',
+                url: 'submissions',
+                icon: InboxIcon,
+                permissions: [Permission.MANAGE_TRIPS],
             },
             {
                 title: 'Media',

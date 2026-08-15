@@ -84,7 +84,7 @@ export function makeTripColumns({
   cols.push(
     {
       accessorKey: 'name',
-      header: 'Trip',
+      header: 'Tour',
       cell: ({ row }) => {
         const trip = row.original;
         return (

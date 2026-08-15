@@ -104,7 +104,9 @@ export function CommandPalette({
         searching && !isAdmin && can(Permission.VIEW_TRIPS),
     );
     const adminTrips = useAdminTrips(
-        { search: debouncedQuery, limit: 6 },
+        // ANY: the palette jumps to any tour, including one mid-review -
+        // the admin list's default excludes PENDING/REJECTED otherwise.
+        { search: debouncedQuery, limit: 6, approvalStatus: 'ANY' },
         searching && isAdmin,
     );
     const bookings = useBookings(

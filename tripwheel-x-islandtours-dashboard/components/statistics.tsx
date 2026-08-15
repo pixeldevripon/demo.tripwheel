@@ -1883,7 +1883,7 @@ function StatisticsContent({
                                         ) : (
                                             <ChartEmpty
                                                 icon={Airplane01Icon}
-                                                message='No trips to display'
+                                                message='No tours to display'
                                                 className='h-[clamp(240px,30vh,420px)]'
                                             />
                                         )}
