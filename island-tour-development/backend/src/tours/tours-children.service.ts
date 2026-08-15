@@ -483,7 +483,8 @@ export class TourChildrenService {
           maxAge: dto.maxAge ?? null,
           price: dto.price,
           priceOriginal: dto.priceOriginal ?? null,
-          priceNet: dto.priceNet ?? null,
+          // priceNet is never client-written (client review #20): net = price
+          // minus tier commission, derived - not typed.
           isDefault: dto.isDefault ?? false,
           displayOrder: dto.displayOrder ?? 0,
         },
@@ -545,7 +546,7 @@ export class TourChildrenService {
           ...(dto.priceOriginal !== undefined && {
             priceOriginal: dto.priceOriginal,
           }),
-          ...(dto.priceNet !== undefined && { priceNet: dto.priceNet }),
+          // priceNet is never client-written (client review #20).
           ...(dto.isDefault !== undefined && { isDefault: dto.isDefault }),
           ...(dto.displayOrder !== undefined && {
             displayOrder: dto.displayOrder,

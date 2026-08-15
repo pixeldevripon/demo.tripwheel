@@ -288,13 +288,11 @@ export class CreateTourAgeBandDto {
   @IsDecimal({}, { message: 'priceOriginal must be a valid decimal number' })
   priceOriginal?: string;
 
-  @ApiPropertyOptional({
-    example: '60.00',
-    description: 'Optional operator net price',
-  })
-  @IsOptional()
-  @IsDecimal({}, { message: 'priceNet must be a valid decimal number' })
-  priceNet?: string;
+  // priceNet is deliberately NOT accepted here (client review #20): what an
+  // operator keeps is price minus their tier commission, never a number they
+  // type - an editable net is a settlement dispute waiting to happen. The
+  // column stays for its readers (booking snapshot, OCTO serializer); the
+  // global forbidNonWhitelisted pipe 400s any client still sending it.
 
   @ApiPropertyOptional({
     example: true,
@@ -359,10 +357,7 @@ export class UpdateTourAgeBandDto {
   @IsDecimal({}, { message: 'priceOriginal must be a valid decimal number' })
   priceOriginal?: string;
 
-  @ApiPropertyOptional({ example: '60.00' })
-  @IsOptional()
-  @IsDecimal({}, { message: 'priceNet must be a valid decimal number' })
-  priceNet?: string;
+  // priceNet deliberately absent - see CreateTourAgeBandDto (client review #20).
 
   @ApiPropertyOptional({ example: true })
   @IsOptional()

@@ -910,6 +910,11 @@ describe('TourChildrenService', () => {
         'tour-1',
         prisma,
       );
+      // Client review #20: net = price minus tier commission, derived - the
+      // create write must never carry a client-supplied priceNet.
+      expect(
+        prisma.tourAgeBand.create.mock.calls[0][0].data.priceNet,
+      ).toBeUndefined();
     });
 
     it('clears other default bands when the new band is the default', async () => {
