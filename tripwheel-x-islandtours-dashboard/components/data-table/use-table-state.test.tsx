@@ -9,14 +9,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useTableState } from './use-table-state'
 
-const replaceMock = vi.fn()
 let currentSearch = ''
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ replace: replaceMock }),
   usePathname: () => '/trips',
   useSearchParams: () => new URLSearchParams(currentSearch),
 }))
+
+// Writes go through the native History API (shallow - no RSC round trip),
+// which Next keeps useSearchParams in sync with.
+const replaceMock = vi.spyOn(window.history, 'replaceState')
 
 beforeEach(() => {
   replaceMock.mockReset()
@@ -30,9 +32,7 @@ describe('useTableState.setFilters', () => {
       result.current.setFilters({ status: 'DRAFT', approvalStatus: undefined })
     })
     expect(replaceMock).toHaveBeenCalledTimes(1)
-    expect(replaceMock).toHaveBeenCalledWith('/trips?status=DRAFT', {
-      scroll: false,
-    })
+    expect(replaceMock).toHaveBeenCalledWith(null, '', '/trips?status=DRAFT')
   })
 
   it('routes a review pick: clears status, sets approvalStatus, atomically', () => {
@@ -45,9 +45,11 @@ describe('useTableState.setFilters', () => {
       })
     })
     expect(replaceMock).toHaveBeenCalledTimes(1)
-    expect(replaceMock).toHaveBeenCalledWith('/trips?approvalStatus=PENDING', {
-      scroll: false,
-    })
+    expect(replaceMock).toHaveBeenCalledWith(
+      null,
+      '',
+      '/trips?approvalStatus=PENDING',
+    )
   })
 
   it('resets paging on any filter write', () => {
@@ -56,9 +58,7 @@ describe('useTableState.setFilters', () => {
     act(() => {
       result.current.setFilters({ status: 'PAUSED' })
     })
-    expect(replaceMock).toHaveBeenCalledWith('/trips?status=PAUSED', {
-      scroll: false,
-    })
+    expect(replaceMock).toHaveBeenCalledWith(null, '', '/trips?status=PAUSED')
   })
 
   it('documents the clobber that motivated it: two setFilter calls in one tick lose the first write', () => {
@@ -70,6 +70,6 @@ describe('useTableState.setFilters', () => {
       result.current.setFilter('status', 'DRAFT')
       result.current.setFilter('approvalStatus', undefined)
     })
-    expect(replaceMock).toHaveBeenLastCalledWith('/trips', { scroll: false })
+    expect(replaceMock).toHaveBeenLastCalledWith(null, '', '/trips')
   })
 })

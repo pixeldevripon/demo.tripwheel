@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 
 /**
  * URL-synced list state: page, limit, debounced search, named filters (R10,
@@ -43,7 +43,6 @@ export interface TableState {
 
 export function useTableState(options?: { defaultLimit?: number }): TableState {
     const defaultLimit = options?.defaultLimit ?? 20;
-    const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
@@ -68,11 +67,19 @@ export function useTableState(options?: { defaultLimit?: number }): TableState {
             const params = new URLSearchParams(searchParams.toString());
             mutate(params);
             const qs = params.toString();
-            router.replace(qs ? `${pathname}?${qs}` : pathname, {
-                scroll: false,
-            });
+            // SHALLOW on purpose: every list here is client-fetched (TanStack),
+            // so router.replace's RSC round-trip on each filter/page/search
+            // write was pure overhead - it dominated the perceived filter
+            // latency (user report 2026-08-15). The native History API keeps
+            // useSearchParams/usePathname in sync (Next 14.1+), and no list
+            // page reads searchParams on the server.
+            window.history.replaceState(
+                null,
+                '',
+                qs ? `${pathname}?${qs}` : pathname,
+            );
         },
-        [router, pathname, searchParams],
+        [pathname, searchParams],
     );
 
     const setPage = React.useCallback(
