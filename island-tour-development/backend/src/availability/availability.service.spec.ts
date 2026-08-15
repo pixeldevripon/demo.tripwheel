@@ -990,6 +990,24 @@ describe('AvailabilityService', () => {
       );
     });
 
+    it('narrows to one island for every caller (client review #10)', async () => {
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
+      prisma.tour.findMany.mockResolvedValue([]);
+      await svc.overview('u1', Role.TOUR_OPERATOR, {
+        destinationId: 'dest-1',
+      });
+      // A pure narrowing: the non-admin keeps their operator pin AND the island.
+      expect(prisma.tour.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            operatorId: 'op1',
+            isActive: true,
+            destinationId: 'dest-1',
+          },
+        }),
+      );
+    });
+
     it('returns an honest empty for a caller with no operator context', async () => {
       prisma.operator.findUnique.mockResolvedValue(null);
       const res = await svc.overview('u1', Role.TOUR_OPERATOR, {});
@@ -1231,14 +1249,65 @@ describe('AvailabilityService', () => {
       );
     });
 
-    it('an ADMIN without a tourId must name an operatorId', async () => {
+    it('an ADMIN without a tourId must name an operatorId or destinationId', async () => {
       await expect(
         svc.closeRange('admin1', Role.ADMIN, {
           from: '2030-06-10',
           to: '2030-06-11',
         }),
-      ).rejects.toThrow(/operatorId/);
+      ).rejects.toThrow(/operatorId or destinationId/);
       expect(prisma.availabilityException.createMany).not.toHaveBeenCalled();
+    });
+
+    // Client review #10: the realistic admin bulk close is a whole island
+    // (weather) or a whole operator.
+    it('an ADMIN may scope a range to an island alone - and each tour notifies ITS operator', async () => {
+      prisma.tour.findMany.mockResolvedValue([
+        { id: 't1', operatorId: 'opA' },
+        { id: 't2', operatorId: 'opB' },
+      ]);
+      prisma.availabilityException.findMany.mockResolvedValueOnce([]);
+      const res = await svc.closeRange('admin1', Role.ADMIN, {
+        destinationId: 'dest-1',
+        from: '2030-06-10',
+        to: '2030-06-10',
+        closureReason: 'NOT_RUNNING',
+      } as never);
+      expect(res).toEqual({ closed: 2, tourCount: 2 });
+      // Scope = the island's active tours, no operator pin.
+      expect(prisma.tour.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { destinationId: 'dest-1', isActive: true },
+        }),
+      );
+      // An island-wide close spans operators - the availability webhook for
+      // each tour must target the tour's OWN operator, not null.
+      expect(notifications.emitAvailabilityUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({ tourId: 't1', operatorId: 'opA' }),
+      );
+      expect(notifications.emitAvailabilityUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({ tourId: 't2', operatorId: 'opB' }),
+      );
+    });
+
+    it('operator + island combine as an intersection', async () => {
+      prisma.tour.findMany.mockResolvedValue([{ id: 't1', operatorId: 'op1' }]);
+      prisma.availabilityException.findMany.mockResolvedValueOnce([]);
+      await svc.closeRange('u1', Role.TOUR_OPERATOR, {
+        destinationId: 'dest-1',
+        from: '2030-06-10',
+        to: '2030-06-10',
+      } as never);
+      // A non-admin stays pinned to their own operator; the island only narrows.
+      expect(prisma.tour.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            operatorId: 'op1',
+            destinationId: 'dest-1',
+            isActive: true,
+          },
+        }),
+      );
     });
 
     it('reopenRange without a tourId retires across the operator´s tours, projecting only touched ones', async () => {
@@ -1373,14 +1442,37 @@ describe('AvailabilityService', () => {
       );
     });
 
-    it('an ADMIN without a tourId must name an operatorId', async () => {
+    it('an ADMIN without a tourId must name an operatorId or destinationId', async () => {
       await expect(
         svc.rangeImpact('admin1', Role.ADMIN, {
           from: '2030-06-10',
           to: '2030-06-12',
         }),
-      ).rejects.toThrow(/operatorId/);
+      ).rejects.toThrow(/operatorId or destinationId/);
       expect(prisma.departure.groupBy).not.toHaveBeenCalled();
+    });
+
+    it('previews an island-wide scope (admin, destinationId alone)', async () => {
+      prisma.tour.findMany.mockResolvedValue([
+        { id: 't1', operatorId: 'opA' },
+        { id: 't2', operatorId: 'opB' },
+      ]);
+      prisma.departure.groupBy.mockResolvedValueOnce([
+        { tourId: 't1', _count: { _all: 4 } },
+        { tourId: 't2', _count: { _all: 2 } },
+      ]);
+      prisma.bookingUnitItem.count.mockResolvedValueOnce(11);
+      const res = await svc.rangeImpact('admin1', Role.ADMIN, {
+        destinationId: 'dest-1',
+        from: '2030-06-10',
+        to: '2030-06-12',
+      });
+      expect(res).toEqual({ departures: 6, tours: 2, bookedGuests: 11 });
+      expect(prisma.tour.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { destinationId: 'dest-1', isActive: true },
+        }),
+      );
     });
 
     it('rejects a reversed range before querying', async () => {
