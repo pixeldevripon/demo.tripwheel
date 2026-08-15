@@ -25,6 +25,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
+import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldDescription, FieldError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -278,6 +279,44 @@ export function StepBasics({ trip }: StepBasicsProps) {
                     .map(c => c.id),
             ),
         [categories],
+    );
+    const parentBySubId = useMemo(
+        () =>
+            new Map(
+                (categories ?? [])
+                    .filter(c => c.parentCategoryId)
+                    .map(c => [c.id, c.parentCategoryId as string]),
+            ),
+        [categories],
+    );
+    // Sub-type picker data (client review #17): one group per SELECTED
+    // top-level category that has sub-categories. Selection writes into the
+    // same categoryIds set the backend validates (a sub tag requires its
+    // parent on the tour - enforced server-side too).
+    const subTypeGroups = useMemo(
+        () =>
+            topLevelCategories
+                .filter(p => categoryIds.includes(p.id))
+                .map(p => ({
+                    parent: p,
+                    children: (categories ?? []).filter(
+                        c => c.parentCategoryId === p.id,
+                    ),
+                }))
+                .filter(g => g.children.length > 0),
+        [topLevelCategories, categories, categoryIds],
+    );
+    const toggleSubType = useCallback(
+        (id: string, on: boolean) => {
+            setValue(
+                'categoryIds',
+                on
+                    ? [...categoryIds, id]
+                    : categoryIds.filter(x => x !== id),
+                { shouldDirty: true },
+            );
+        },
+        [categoryIds, setValue],
     );
 
     /*
@@ -612,21 +651,28 @@ export function StepBasics({ trip }: StepBasicsProps) {
                                         }))}
                                         // The form value may carry sub-category
                                         // tags (Row-2 chip data). They are
-                                        // invisible to this control and MUST
-                                        // survive its edits untouched - a
-                                        // Basics save must never strip a
-                                        // tour's sub-type tags.
+                                        // invisible to this control and ride
+                                        // through its edits - EXCEPT when
+                                        // their parent is deselected, which
+                                        // drops them too (an orphan sub is
+                                        // rejected server-side).
                                         value={field.value.filter(
                                             id => !subCategoryIds.has(id),
                                         )}
-                                        onChange={next =>
+                                        onChange={next => {
+                                            const kept = new Set(next);
                                             field.onChange([
                                                 ...next,
-                                                ...field.value.filter(id =>
-                                                    subCategoryIds.has(id),
-                                                ),
-                                            ])
-                                        }
+                                                ...field.value.filter(id => {
+                                                    const parent =
+                                                        parentBySubId.get(id);
+                                                    return (
+                                                        parent !== undefined &&
+                                                        kept.has(parent)
+                                                    );
+                                                }),
+                                            ]);
+                                        }}
                                         placeholder='Select categories…'
                                         searchPlaceholder='Search categories…'
                                         primaryValue={primaryCategoryId || null}
@@ -658,6 +704,55 @@ export function StepBasics({ trip }: StepBasicsProps) {
                                 {errors.categoryIds?.message}
                             </FieldError>
                         </Field>
+
+                        {/* Sub-types (client review #17): optional
+                            refinements per selected category, simple view -
+                            they power the filter chips on the category page
+                            and never get a page or URL of their own. */}
+                        {subTypeGroups.length > 0 && (
+                            <Field>
+                                <Label>Sub-types</Label>
+                                <div className='space-y-2'>
+                                    {subTypeGroups.map(
+                                        ({ parent, children }) => (
+                                            <div
+                                                key={parent.id}
+                                                className='flex flex-wrap items-center gap-x-4 gap-y-1.5'>
+                                                {subTypeGroups.length > 1 && (
+                                                    <span className='text-xs text-content-muted'>
+                                                        {parent.name}:
+                                                    </span>
+                                                )}
+                                                {children.map(child => (
+                                                    <label
+                                                        key={child.id}
+                                                        className='flex cursor-pointer items-center gap-1.5 text-sm'>
+                                                        <Checkbox
+                                                            checked={categoryIds.includes(
+                                                                child.id,
+                                                            )}
+                                                            onCheckedChange={v =>
+                                                                toggleSubType(
+                                                                    child.id,
+                                                                    v === true,
+                                                                )
+                                                            }
+                                                        />
+                                                        {child.name}
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        ),
+                                    )}
+                                </div>
+                                <FieldDescription>
+                                    Optional refinements - travellers use them
+                                    as filter chips on the category page. A
+                                    sub-type never has a page or URL of its
+                                    own.
+                                </FieldDescription>
+                            </Field>
+                        )}
                     </div>
                     {/* Implicit submission needs a default button in the form.
                         `hidden` keeps it out of the render and the a11y tree,

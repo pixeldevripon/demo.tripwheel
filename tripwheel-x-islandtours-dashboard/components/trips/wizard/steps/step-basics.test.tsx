@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { StepBasics } from '@/components/trips/wizard/steps/step-basics'
 import type { TripListItem } from '@/types/trip'
@@ -197,12 +197,14 @@ describe('StepBasics — sub-categories (client review comments 16 + 17)', () =>
   it('the Categories select offers top-level categories only', async () => {
     const user = userEvent.setup()
     render(<StepBasics trip={trip()} />)
-    // Open the multi-select and look at its option list. The top-level name
-    // appears at least once (chip and/or option row); the sub-category name
-    // appears NOWHERE - not an option, and with only 'c1' selected, no chip.
+    // Open the multi-select: the sub-category must not be an OPTION (it now
+    // legitimately appears elsewhere as the sub-type picker's checkbox).
     await user.click(screen.getByText('1 selected'))
-    expect(screen.getAllByText('Boat trips').length).toBeGreaterThan(0)
-    expect(screen.queryByText('Catamaran Cruises')).not.toBeInTheDocument()
+    const listbox = screen.getByRole('listbox')
+    expect(within(listbox).getByText('Boat trips')).toBeInTheDocument()
+    expect(
+      within(listbox).queryByText('Catamaran Cruises'),
+    ).not.toBeInTheDocument()
   })
 
   it('a stored sub-category tag survives a Basics save untouched', async () => {
@@ -219,6 +221,49 @@ describe('StepBasics — sub-categories (client review comments 16 + 17)', () =>
     const payload = updateTripMock.mock.calls[0][0].payload
     expect(payload.categoryIds).toEqual(expect.arrayContaining(['c1', 'c-sub']))
     expect(payload.primaryCategoryId).toBe('c1')
+  })
+
+  it('sub-type picker lists the selected parent\'s children and toggling tags the tour', async () => {
+    const user = userEvent.setup()
+    updateTripMock.mockReset()
+    updateTripMock.mockResolvedValue({})
+    render(<StepBasics trip={trip({ categoryIds: ['c1'] })} />)
+    expect(screen.getByText('Sub-types')).toBeInTheDocument()
+    const box = screen.getByRole('checkbox', { name: /Catamaran Cruises/ })
+    expect(box).not.toBeChecked()
+    await user.click(box)
+    const form = document.querySelector('form') as HTMLFormElement
+    fireEvent.submit(form)
+    await waitFor(() => expect(updateTripMock).toHaveBeenCalled())
+    expect(updateTripMock.mock.calls[0][0].payload.categoryIds).toEqual(
+      expect.arrayContaining(['c1', 'c-sub']),
+    )
+  })
+
+  it('deselecting a parent drops its sub-types from the tour', async () => {
+    const user = userEvent.setup()
+    updateTripMock.mockReset()
+    updateTripMock.mockResolvedValue({})
+    render(
+      <StepBasics
+        trip={trip({ categoryIds: ['c1', 'c-sub'], primaryCategoryId: 'c1' })}
+      />,
+    )
+    expect(
+      screen.getByRole('checkbox', { name: /Catamaran Cruises/ }),
+    ).toBeChecked()
+    // Remove the parent chip - the invisible sub-tag must fall with it.
+    await user.click(screen.getByLabelText('Remove Boat trips'))
+    expect(screen.queryByText('Sub-types')).not.toBeInTheDocument()
+    // Re-select the parent and save: the sub must NOT silently come back.
+    await user.click(screen.getByText('Select categories…'))
+    await user.click(screen.getByText('Boat trips'))
+    const form = document.querySelector('form') as HTMLFormElement
+    fireEvent.submit(form)
+    await waitFor(() => expect(updateTripMock).toHaveBeenCalled())
+    const ids = updateTripMock.mock.calls[0][0].payload.categoryIds
+    expect(ids).toContain('c1')
+    expect(ids).not.toContain('c-sub')
   })
 
   it('blocks a save whose only remaining tags are invisible sub-categories', async () => {
