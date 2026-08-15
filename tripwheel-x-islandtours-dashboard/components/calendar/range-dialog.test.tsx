@@ -118,3 +118,69 @@ describe('RangeDialog impact rendering', () => {
         expect(screen.getByText('Guests are not notified.')).toBeTruthy();
     });
 });
+
+describe('RangeDialog island scope (client review #10)', () => {
+    beforeEach(() => {
+        mockedImpact.mockReset();
+        mockedImpact.mockReturnValue({
+            data: undefined,
+            isError: false,
+            isPlaceholderData: false,
+        } as unknown as ReturnType<typeof useRangeImpact>);
+    });
+
+    it('an island filter alone unlocks the whole-island All tours scope for an admin', () => {
+        render(
+            <RangeDialog
+                open
+                onOpenChange={() => {}}
+                tours={TOURS}
+                defaultDate='2026-09-01'
+                isPlatform
+                destinationId='dest-1'
+                islandName='Curaçao'
+            />,
+        );
+        // Named for what it really is - the whole-island weather day.
+        expect(screen.getByText('All tours on Curaçao')).toBeTruthy();
+        // And the impact preview carries the SAME island scope the close
+        // will send.
+        expect(mockedImpact.mock.calls.at(-1)?.[0]).toMatchObject({
+            destinationId: 'dest-1',
+        });
+    });
+
+    it('island + operator intersect - the label stays plain All tours', () => {
+        render(
+            <RangeDialog
+                open
+                onOpenChange={() => {}}
+                tours={TOURS}
+                defaultDate='2026-09-01'
+                isPlatform
+                operatorId='op-1'
+                destinationId='dest-1'
+                islandName='Curaçao'
+            />,
+        );
+        expect(screen.getByText('All tours')).toBeTruthy();
+        expect(screen.queryByText('All tours on Curaçao')).toBeNull();
+        expect(mockedImpact.mock.calls.at(-1)?.[0]).toMatchObject({
+            operatorId: 'op-1',
+            destinationId: 'dest-1',
+        });
+    });
+
+    it('an unscoped admin still gets no All tours option', () => {
+        render(
+            <RangeDialog
+                open
+                onOpenChange={() => {}}
+                tours={TOURS}
+                defaultDate='2026-09-01'
+                isPlatform
+            />,
+        );
+        expect(screen.queryByText(/All tours/)).toBeNull();
+    });
+});

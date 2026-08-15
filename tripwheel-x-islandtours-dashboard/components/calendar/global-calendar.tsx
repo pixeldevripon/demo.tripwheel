@@ -20,8 +20,10 @@ import {
 } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { IslandFilterPopover } from '@/components/common/island-filter-popover';
 import { OperatorFilterPopover } from '@/components/common/operator-filter-popover';
 import { TourFilterPopover } from '@/components/common/tour-filter-popover';
+import { useActiveDestinations } from '@/hooks/destinations/use-destinations';
 import { useRole } from '@/contexts/role-context';
 import { isPlatformWideRole } from '@/lib/rbac-utils';
 import {
@@ -128,16 +130,39 @@ export function GlobalCalendar() {
 
     const [tourId, setTourId] = useState<string | undefined>(undefined);
     const [operatorId, setOperatorId] = useState<string | undefined>(undefined);
+    const [destinationId, setDestinationId] = useState<string | undefined>(
+        undefined,
+    );
+    // The cascade resets DOWNWARD only (client review #10): picking an
+    // island drops a stale operator/tour choice that may not exist there;
+    // picking an operator drops the tour the same way. Never upward - the
+    // island survives an operator change.
+    function changeIsland(next: string | undefined) {
+        setDestinationId(next);
+        setOperatorId(undefined);
+        setTourId(undefined);
+    }
+    function changeOperator(next: string | undefined) {
+        setOperatorId(next);
+        setTourId(undefined);
+    }
+    // For the range dialog's "All tours on {island}" wording; the list is the
+    // same tiny cached query the island filter itself renders from.
+    const { data: destinations } = useActiveDestinations();
+    const islandName = destinationId
+        ? (destinations ?? []).find((d) => d.id === destinationId)?.name
+        : undefined;
 
     const window_ = viewWindow(view, anchor);
-    // The admin operator filter narrows AT THE SERVER (MCK-16 change 12) -
-    // client-side narrowing of a platform-wide window stops scaling the
-    // moment the platform does. Tour narrowing stays client-side (instant
-    // chips over an already-scoped window).
+    // The admin operator + island filters narrow AT THE SERVER (MCK-16
+    // change 12) - client-side narrowing of a platform-wide window stops
+    // scaling the moment the platform does. Tour narrowing stays client-side
+    // (instant chips over an already-scoped window).
     const { data, isLoading, isFetching } = useAvailabilityOverview({
         from: window_.from,
         days: window_.days,
         ...(isAdmin && operatorId ? { operatorId } : {}),
+        ...(isAdmin && destinationId ? { destinationId } : {}),
     });
 
     const today = data?.today ?? dateToKey(new Date());
@@ -156,6 +181,7 @@ export function GlobalCalendar() {
                 from: w.from,
                 days: w.days,
                 ...(isAdmin && operatorId ? { operatorId } : {}),
+                ...(isAdmin && destinationId ? { destinationId } : {}),
             };
             void queryClient.prefetchQuery({
                 queryKey: tripKeys.overview(params),
@@ -163,7 +189,7 @@ export function GlobalCalendar() {
                 staleTime: OVERVIEW_STALE_MS,
             });
         }
-    }, [view, anchor, queryClient, isAdmin, operatorId]);
+    }, [view, anchor, queryClient, isAdmin, operatorId, destinationId]);
 
     // Freshness is an ACTION (MCK-16 change 7, dev spec §6.4): visiting the
     // surface stamps availability_confirmed_at, and the card below is the
@@ -241,15 +267,28 @@ export function GlobalCalendar() {
     const addDisabled = anchor < today;
     const addTours = tourId ? tours.filter((t) => t.id === tourId) : tours;
 
+    // Island above Operator above Tour, cascading (client review #10).
     const filters = (
         <>
-            <TourFilterPopover value={tourId} onChange={setTourId} />
+            {isAdmin && (
+                <IslandFilterPopover
+                    value={destinationId}
+                    onChange={changeIsland}
+                />
+            )}
             {isAdmin && (
                 <OperatorFilterPopover
                     value={operatorId}
-                    onChange={setOperatorId}
+                    onChange={changeOperator}
+                    destinationId={destinationId}
                 />
             )}
+            <TourFilterPopover
+                value={tourId}
+                onChange={setTourId}
+                operatorId={operatorId}
+                destinationId={isAdmin ? destinationId : undefined}
+            />
         </>
     );
 
@@ -722,6 +761,8 @@ export function GlobalCalendar() {
                 defaultTourId={tourId}
                 defaultDate={anchor}
                 operatorId={operatorId}
+                destinationId={isAdmin ? destinationId : undefined}
+                islandName={islandName}
                 isPlatform={isAdmin}
             />
         </div>

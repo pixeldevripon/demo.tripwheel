@@ -28,6 +28,10 @@ import type { TripListItem } from '@/types/trip';
 interface TourFilterPopoverProps {
   value: string | undefined;
   onChange: (tourId: string | undefined) => void;
+  /** Cascade narrowing (client review #10): Island narrows Operator,
+   *  Operator narrows Tour. Both are pure filters on the search query. */
+  operatorId?: string;
+  destinationId?: string;
 }
 
 /**
@@ -35,7 +39,12 @@ interface TourFilterPopoverProps {
  * Role-aware: an admin searches every tour, an operator only their own (the
  * same split as the Trips list). Queries run only while the popover is open.
  */
-export function TourFilterPopover({ value, onChange }: TourFilterPopoverProps) {
+export function TourFilterPopover({
+  value,
+  onChange,
+  operatorId,
+  destinationId,
+}: TourFilterPopoverProps) {
   const { role } = useRole();
   const isAdmin = role === 'ADMIN';
 
@@ -45,7 +54,16 @@ export function TourFilterPopover({ value, onChange }: TourFilterPopoverProps) {
   // query only runs while the popover is open).
   const [selectedName, setSelectedName] = useState<string | null>(null);
 
-  const params = { limit: 20, ...(q ? { search: q } : {}) };
+  const params = {
+    limit: 20,
+    ...(q ? { search: q } : {}),
+    // operatorId exists only on the admin list query - my-trips would 400 on
+    // the unknown param (global ValidationPipe forbids non-whitelisted keys).
+    ...(isAdmin && operatorId ? { operatorId } : {}),
+    // destinationId is whitelisted on BOTH list queries (MyTripsQueryParams
+    // and AdminTripsQueryParams), so unlike operatorId it needs no role gate.
+    ...(destinationId ? { destinationId } : {}),
+  };
   const adminQuery = useAdminTrips(params, open && isAdmin);
   const operatorQuery = useMyTrips(params, open && !isAdmin);
   const { data, isFetching } = isAdmin ? adminQuery : operatorQuery;

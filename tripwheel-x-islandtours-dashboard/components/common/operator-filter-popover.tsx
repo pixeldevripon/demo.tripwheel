@@ -23,13 +23,20 @@ import type { OperatorSearchItem } from '@/lib/api/operators';
 interface OperatorFilterPopoverProps {
   value: string | undefined;
   onChange: (operatorId: string | undefined) => void;
+  /** Island cascade (client review #10): only operators with >=1 active
+   *  tour on this island appear. */
+  destinationId?: string;
 }
 
 function getDisplayName(op: OperatorSearchItem): string {
   return op.companyInfo?.companyName ?? op.user.name;
 }
 
-export function OperatorFilterPopover({ value, onChange }: OperatorFilterPopoverProps) {
+export function OperatorFilterPopover({
+  value,
+  onChange,
+  destinationId,
+}: OperatorFilterPopoverProps) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
   // The label must survive the search results changing (or never loading -
@@ -37,7 +44,7 @@ export function OperatorFilterPopover({ value, onChange }: OperatorFilterPopover
   // remembered here rather than re-derived from the current result page.
   const [selectedName, setSelectedName] = useState<string | null>(null);
 
-  const { data, isFetching } = useOperatorSearch(q, open);
+  const { data, isFetching } = useOperatorSearch(q, open, destinationId);
   const operators = data?.data ?? [];
 
   const selected = value ? operators.find((op) => op.id === value) : undefined;

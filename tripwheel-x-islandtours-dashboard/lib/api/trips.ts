@@ -19,6 +19,7 @@ import type {
   DepartureStatus,
   ManageCalendarDay,
   RangeImpact,
+  RangeScopeParams,
   TourDeparture,
   CreateTripPayload,
   MyTripsQueryParams,
@@ -631,11 +632,7 @@ export const tripsApi = {
   // tourId omitted = every active tour of the operator (the weather-day 'All
   // tours' scope, MCK-16 §4); an admin acting without a tourId passes
   // operatorId instead. tourCount is optional during the deploy window.
-  closeRange(payload: {
-    tourId?: string;
-    operatorId?: string;
-    from: string;
-    to: string;
+  closeRange(payload: RangeScopeParams & {
     note?: string;
     closureReason?: TourClosureReason;
   }): Promise<{ closed: number; tourCount?: number }> {
@@ -647,12 +644,9 @@ export const tripsApi = {
 
   // The one-unit Undo of closeRange (retires every whole-day closure in
   // range). Scoped exactly like closeRange.
-  reopenRange(payload: {
-    tourId?: string;
-    operatorId?: string;
-    from: string;
-    to: string;
-  }): Promise<{ reopened: number; tourCount?: number }> {
+  reopenRange(
+    payload: RangeScopeParams,
+  ): Promise<{ reopened: number; tourCount?: number }> {
     return apiFetch<{ reopened: number; tourCount?: number }>(
       `/availability/exceptions/reopen-range`,
       { method: 'POST', body: JSON.stringify(payload) }
@@ -663,14 +657,9 @@ export const tripsApi = {
   // rendered in the modal above the confirm button. Scoped exactly like
   // closeRange. 404s on an older backend during the deploy window - the
   // caller hides the counts line, never the action.
-  getRangeImpact(params: {
-    tourId?: string;
-    operatorId?: string;
-    from: string;
-    to: string;
-  }): Promise<RangeImpact> {
+  getRangeImpact(params: RangeScopeParams): Promise<RangeImpact> {
     return apiFetch<RangeImpact>(
-      `/availability/exceptions/range-impact${buildQuery(params)}`
+      `/availability/exceptions/range-impact${buildQuery({ ...params })}`
     );
   },
 
