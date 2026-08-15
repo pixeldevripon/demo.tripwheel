@@ -720,6 +720,24 @@ export const useReopenRange = () =>
     ({ tripId }) => (tripId ? exceptionKeys(tripId) : [tripKeys.all]),
   );
 
+// Live impact preview for the range dialog (client review #5) - what the
+// close would hit, updating as the scope and bounds change. keepPrevious so
+// the line doesn't blink away between keystrokes; no retry so an older
+// backend's 404 fails fast and the dialog simply hides the counts.
+export function useRangeImpact(
+  params: Parameters<typeof tripsApi.getRangeImpact>[0],
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: tripKeys.rangeImpact(params),
+    queryFn: () => tripsApi.getRangeImpact(params),
+    enabled,
+    placeholderData: (prev) => prev,
+    staleTime: 30_000,
+    retry: false,
+  });
+}
+
 export const useRemoveException = () =>
   useTripMutation(
     ({ exceptionId }: { tripId: string; exceptionId: string }) =>

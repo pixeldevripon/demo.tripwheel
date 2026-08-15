@@ -25,8 +25,12 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useCloseRange, useReopenRange } from '@/hooks/trips/use-trips';
-import type { OverviewTour, TourClosureReason } from '@/types/trip';
+import {
+    useCloseRange,
+    useRangeImpact,
+    useReopenRange,
+} from '@/hooks/trips/use-trips';
+import type { OverviewTour, RangeImpact, TourClosureReason } from '@/types/trip';
 import {
     CLOSURE_REASON_LABEL,
     ClosureReasonTabs,
@@ -41,6 +45,31 @@ import {
  * closures and sold-out days are untouched.
  */
 const ALL_TOURS = '__all__';
+
+/**
+ * The consequence, stated before the button (client review #5): departures,
+ * tours and the guests who keep their bookings. Zero departures is still
+ * said out loud - closing empty days is legitimate (they stay closed when a
+ * schedule later fills them) but the operator should know nothing is hit yet.
+ */
+export function impactSentence(
+    impact: RangeImpact,
+    spansTours: boolean,
+): string {
+    if (impact.departures === 0) {
+        return 'No departures are scheduled in these days yet - the days still close.';
+    }
+    const deps = `${impact.departures} departure${impact.departures === 1 ? '' : 's'}`;
+    const tours = spansTours
+        ? ` across ${impact.tours} tour${impact.tours === 1 ? '' : 's'}`
+        : '';
+    const g = impact.bookedGuests;
+    const guests =
+        g > 0
+            ? ` ${g} booked guest${g === 1 ? '' : 's'} keep${g === 1 ? 's' : ''} their booking${g === 1 ? '' : 's'}.`
+            : '';
+    return `This closes ${deps}${tours}.${guests}`;
+}
 
 export function RangeDialog({
     open,
@@ -87,6 +116,27 @@ export function RangeDialog({
     const effectiveTourId =
         tourId || defaultTourId || (allToursAllowed ? ALL_TOURS : '');
     const isAllTours = effectiveTourId === ALL_TOURS;
+
+    // Live impact preview (client review #5) - same scope shape the close
+    // itself will send, so the numbers describe exactly this action. Off
+    // until the form is complete; an older backend 404s and the counts line
+    // simply stays hidden (the locked no-notification line does not).
+    const previewEnabled =
+        open &&
+        mode === 'close' &&
+        !!effectiveTourId &&
+        !!from &&
+        !!to &&
+        to >= from;
+    const { data: impact, isError: impactUnavailable } = useRangeImpact(
+        {
+            ...(isAllTours ? {} : { tourId: effectiveTourId }),
+            ...(isAllTours && operatorId ? { operatorId } : {}),
+            from,
+            to,
+        },
+        previewEnabled,
+    );
 
     function reset() {
         setFrom(defaultDate ?? '');
@@ -299,6 +349,24 @@ export function RangeDialog({
                                 maxLength={500}
                             />
                         </Field>
+                        <div className='space-y-1 rounded-md bg-muted/50 px-3 py-2 text-xs'>
+                            {previewEnabled &&
+                                impact &&
+                                !impactUnavailable && (
+                                    <p className='text-foreground'>
+                                        {impactSentence(
+                                            impact,
+                                            isAllTours || impact.tours > 1,
+                                        )}
+                                    </p>
+                                )}
+                            {/* Locked line (client review #5): stated on every
+                                close, whatever the counts say - this action
+                                never messages a traveller. */}
+                            <p className='text-muted-foreground'>
+                                Guests are not notified.
+                            </p>
+                        </div>
                     </>
                 )}
                 {error && <p className='text-xs text-destructive'>{error}</p>}
