@@ -391,7 +391,26 @@ export function BookingCalendar() {
                                                 <motion.button
                                                     type='button'
                                                     disabled={disabled}
-                                                    title={hint ?? undefined}
+                                                    // NO `title`. It handed the
+                                                    // browser a tooltip of its
+                                                    // own, drawn BELOW the cell
+                                                    // while the styled bubble
+                                                    // sat above it - the same
+                                                    // two words twice, in two
+                                                    // designs, on every hovered
+                                                    // date (Pastel #79). The
+                                                    // bubble is the one the
+                                                    // mockup draws and the one
+                                                    // we control, so it is the
+                                                    // one that stays. Nothing
+                                                    // went with the `title`:
+                                                    // the hint reaches
+                                                    // assistive tech through
+                                                    // the label below, which a
+                                                    // `title` on a DISABLED
+                                                    // button never did reliably
+                                                    // anyway.
+                                                    //
                                                     // The label is the whole
                                                     // answer for a screen
                                                     // reader, which cannot see
