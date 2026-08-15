@@ -32,6 +32,7 @@ import {
 import {
     CLOSURE_REASON_LABEL,
     ClosureReasonPanel,
+    closureReassurance,
 } from '@/components/common/closure-reason-panel';
 
 /**
@@ -353,11 +354,7 @@ function DepartureCard({
                 <div className='mt-3'>
                     <ClosureReasonPanel
                         question={`Why are you closing the ${dep.startTime} departure?`}
-                        reassurance={
-                            dep.bookedCount > 0
-                                ? `${dep.bookedCount} booked guest${dep.bookedCount === 1 ? '' : 's'} keep their booking${dep.bookedCount === 1 ? '' : 's'}. Closing only stops new sales.`
-                                : 'This only stops new sales. Existing bookings are always kept.'
-                        }
+                        reassurance={closureReassurance(dep.bookedCount)}
                         note={note}
                         onNoteChange={setNote}
                         busy={busy}

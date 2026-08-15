@@ -55,6 +55,7 @@ import {
     CLOSURE_REASON_LABEL,
     ClosureReasonPanel,
     ClosureReasonTabs,
+    closureReassurance,
 } from '@/components/common/closure-reason-panel';
 import {
     DEPARTURE_CHIP_CLASS,
@@ -1271,19 +1272,21 @@ function DayPopover({
         );
     }
 
-    // The guarantee, not a warning. Shown on the close panel whether or not the
-    // day has bookings: the operator who needs to read it most is the one who
-    // has not yet dared to close a day that does.
     // Departures still on sale - what decides whether "close the day" is a
     // different action from "close that departure".
     const openDepartureCount = day.departures.filter(
         d => d.status === 'OPEN',
     ).length;
 
-    const closeReassurance =
-        day.bookedTotal > 0
-            ? `${day.bookedTotal} booked guest${day.bookedTotal === 1 ? '' : 's'} keep their booking${day.bookedTotal === 1 ? '' : 's'}. Closing only stops new sales.`
-            : 'This only stops new sales. Existing bookings are always kept.';
+    // Count what is actually being closed. The day total on a close-slot panel
+    // tells the operator stopping an empty 09:00 that 46 guests ride on it,
+    // when those 46 are on the 14:00 and the act does not touch them.
+    const closeReassurance = closureReassurance(
+        panel.kind === 'close-slot'
+            ? (day.departures.find(d => d.startTime === panel.startTime)
+                  ?.bookedCount ?? 0)
+            : day.bookedTotal,
+    );
 
     return (
         <PopoverContent align='start' sideOffset={6} className='w-80 p-0'>

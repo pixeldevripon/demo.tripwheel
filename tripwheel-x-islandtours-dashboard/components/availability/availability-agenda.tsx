@@ -17,6 +17,7 @@ import {
     CLOSURE_REASON_LABEL,
     ClosureReasonPanel,
     ClosureReasonTabs,
+    closureReassurance,
 } from '@/components/common/closure-reason-panel';
 import {
     DEPARTURE_DOT_CLASS,
@@ -826,11 +827,9 @@ export function AvailabilityAgenda() {
                     {closeSlotTarget && (
                         <ClosureReasonPanel
                             question={`Why are you closing the ${closeSlotTarget.startTime} departure?`}
-                            reassurance={
-                                closeSlotTarget.bookedCount > 0
-                                    ? `${closeSlotTarget.bookedCount} booked guest${closeSlotTarget.bookedCount === 1 ? '' : 's'} keep their booking${closeSlotTarget.bookedCount === 1 ? '' : 's'}. Closing only stops new sales.`
-                                    : 'This only stops new sales. Existing bookings are always kept.'
-                            }
+                            reassurance={closureReassurance(
+                                closeSlotTarget.bookedCount,
+                            )}
                             note={closeSlotNote}
                             onNoteChange={setCloseSlotNote}
                             busy={busy}
