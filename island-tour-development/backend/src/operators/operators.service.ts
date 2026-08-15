@@ -371,6 +371,7 @@ export class OperatorsService {
       search,
       isActive,
       verificationStatus,
+      destinationId,
       page = 1,
       limit = 20,
     } = query;
@@ -379,6 +380,12 @@ export class OperatorsService {
     const where: Prisma.OperatorWhereInput = {};
     if (isActive !== undefined) where.isActive = isActive;
     if (verificationStatus) where.verificationStatus = verificationStatus;
+    // Island cascade (client review #10): "operators on this island" means
+    // operators with at least one active tour there - an operator with no
+    // presence on the island is noise in an island-scoped picker.
+    if (destinationId) {
+      where.tours = { some: { destinationId, isActive: true } };
+    }
     if (search) {
       where.OR = [
         { user: { name: { contains: search, mode: 'insensitive' } } },

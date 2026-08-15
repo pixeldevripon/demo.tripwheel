@@ -411,6 +411,17 @@ export class OverviewQueryDto {
   @IsOptional()
   @IsString()
   operatorId?: string;
+
+  @ApiPropertyOptional({
+    example: 'destination-uuid',
+    description:
+      'Narrow to one island (client review #10). A pure narrowing filter, ' +
+      'so it is honoured for every caller - a non-admin just intersects it ' +
+      'with their own operator scope.',
+  })
+  @IsOptional()
+  @IsString()
+  destinationId?: string;
 }
 
 export class OverviewTourDto {
@@ -591,13 +602,20 @@ export class ConfirmAvailabilityResultDto {
 
 // ── Bulk blackout (dev spec §6.2: "blackout ranges") ─────────────────────────
 
-export class CloseRangeDto {
+/**
+ * One scope contract for the three range endpoints (close, reopen, impact
+ * preview): a single tour, or every active tour of an operator and/or an
+ * island. Shared so the three can never drift apart - the preview must
+ * describe exactly what the write will do.
+ */
+export class RangeScopeDto {
   @ApiPropertyOptional({
     example: 'tour-uuid',
     description:
-      'One tour. Omit to close the range on EVERY active tour of the ' +
-      'caller´s operator - the "All tours" weather-day scope (an admin ' +
-      'omitting it must pass operatorId instead).',
+      'One tour. Omit to act on EVERY active tour in scope - the ' +
+      'weather-day scope. Non-admins are always pinned to their own ' +
+      'operator; an admin omitting tourId must pass operatorId and/or ' +
+      'destinationId instead.',
   })
   @IsOptional()
   @IsString()
@@ -614,6 +632,27 @@ export class CloseRangeDto {
   operatorId?: string;
 
   @ApiPropertyOptional({
+    example: 'destination-uuid',
+    description:
+      'Island scope (client review #10): narrows to tours of one ' +
+      'destination. Combines with operatorId; for an ADMIN it can also ' +
+      'stand alone - the whole-island weather day.',
+  })
+  @IsOptional()
+  @IsString()
+  destinationId?: string;
+
+  @ApiProperty({ example: '2026-09-01' })
+  @IsLocalDate()
+  from!: string;
+
+  @ApiProperty({ example: '2026-09-14' })
+  @IsLocalDate()
+  to!: string;
+}
+
+export class CloseRangeDto extends RangeScopeDto {
+  @ApiPropertyOptional({
     enum: ClosureReason,
     description:
       'Why the range is being closed. The same two reasons as a single-day ' +
@@ -624,14 +663,6 @@ export class CloseRangeDto {
   @IsEnum(ClosureReason)
   closureReason?: ClosureReason;
 
-  @ApiProperty({ example: '2026-09-01' })
-  @IsLocalDate()
-  from!: string;
-
-  @ApiProperty({ example: '2026-09-14' })
-  @IsLocalDate()
-  to!: string;
-
   @ApiPropertyOptional({ example: 'Maintenance haul-out' })
   @IsOptional()
   @IsString()
@@ -639,33 +670,7 @@ export class CloseRangeDto {
   note?: string;
 }
 
-export class ReopenRangeDto {
-  @ApiPropertyOptional({
-    example: 'tour-uuid',
-    description:
-      'One tour. Omit to reopen across every active tour of the caller´s ' +
-      'operator (admins must pass operatorId instead).',
-  })
-  @IsOptional()
-  @IsString()
-  tourId?: string;
-
-  @ApiPropertyOptional({
-    example: 'operator-uuid',
-    description: 'Scope for an admin acting without a tourId (ADMIN only).',
-  })
-  @IsOptional()
-  @IsString()
-  operatorId?: string;
-
-  @ApiProperty({ example: '2026-09-01' })
-  @IsLocalDate()
-  from!: string;
-
-  @ApiProperty({ example: '2026-09-14' })
-  @IsLocalDate()
-  to!: string;
-}
+export class ReopenRangeDto extends RangeScopeDto {}
 
 export class CloseRangeResultDto {
   @ApiProperty({
@@ -693,34 +698,7 @@ export class ReopenRangeResultDto {
   tourCount!: number;
 }
 
-export class RangeImpactQueryDto {
-  @ApiPropertyOptional({
-    example: 'tour-uuid',
-    description:
-      'One tour. Omit to preview across every active tour of the calling ' +
-      'operator (admins must pass operatorId instead) - the same scope rules ' +
-      'as close-range itself, so preview and action never disagree.',
-  })
-  @IsOptional()
-  @IsString()
-  tourId?: string;
-
-  @ApiPropertyOptional({
-    example: 'operator-uuid',
-    description: 'Scope for an admin acting without a tourId (ADMIN only).',
-  })
-  @IsOptional()
-  @IsString()
-  operatorId?: string;
-
-  @ApiProperty({ example: '2026-09-01' })
-  @IsLocalDate()
-  from!: string;
-
-  @ApiProperty({ example: '2026-09-14' })
-  @IsLocalDate()
-  to!: string;
-}
+export class RangeImpactQueryDto extends RangeScopeDto {}
 
 export class RangeImpactResultDto {
   @ApiProperty({

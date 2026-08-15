@@ -949,6 +949,9 @@ export class AvailabilityService {
       tourWhere = { operatorId, isActive: true };
     }
     if (query.tourId) tourWhere.id = query.tourId;
+    // Island filter (client review #10): a pure narrowing, so it is honoured
+    // for every caller - a non-admin just intersects it with their own scope.
+    if (query.destinationId) tourWhere.destinationId = query.destinationId;
 
     const tours = await this.prisma.tour.findMany({
       where: tourWhere,
@@ -1339,33 +1342,60 @@ export class AvailabilityService {
   private async rangeScope(
     userId: string,
     role: Role,
-    dto: { tourId?: string; operatorId?: string },
-  ): Promise<{ operatorId: string | null; tourIds: string[] }> {
+    dto: { tourId?: string; operatorId?: string; destinationId?: string },
+  ): Promise<{
+    operatorId: string | null;
+    tourIds: string[];
+    /** Each tour's own operator - an island scope spans operators, and the
+     *  availability-update webhooks must target the RIGHT one per tour. */
+    operatorByTour: Map<string, string>;
+  }> {
     if (dto.tourId) {
       const operatorId = await this.assertTourAccess(dto.tourId, userId, role);
-      return { operatorId, tourIds: [dto.tourId] };
+      return {
+        operatorId,
+        tourIds: [dto.tourId],
+        operatorByTour: new Map(
+          operatorId ? [[dto.tourId, operatorId]] : [],
+        ),
+      };
     }
     let operatorId: string | null;
     if (role === Role.ADMIN) {
-      if (!dto.operatorId) {
+      // An island alone is a legitimate admin scope (the whole-island
+      // weather day, client review #10) - but a platform-wide blackout can
+      // still never be expressed by accident.
+      if (!dto.operatorId && !dto.destinationId) {
         throw new BadRequestException(
-          'A range action without a tourId needs an operatorId scope',
+          'A range action without a tourId needs an operatorId or destinationId scope',
         );
       }
-      operatorId = dto.operatorId;
+      operatorId = dto.operatorId ?? null;
     } else {
       operatorId = await this.operatorContext(userId);
-      if (!operatorId) return { operatorId: null, tourIds: [] };
+      if (!operatorId) {
+        return { operatorId: null, tourIds: [], operatorByTour: new Map() };
+      }
     }
     const tours = await this.prisma.tour.findMany({
-      where: { operatorId, isActive: true },
-      select: { id: true },
+      where: {
+        ...(operatorId ? { operatorId } : {}),
+        // A pure narrowing filter for every caller; for an admin acting
+        // island-wide it IS the scope.
+        ...(dto.destinationId ? { destinationId: dto.destinationId } : {}),
+        isActive: true,
+      },
+      select: { id: true, operatorId: true },
       // Ceiling on the fan-out (rows written = tours × days; projection runs
-      // per tour). Far above any real operator's catalogue - same reasoning
+      // per tour). Far above any real island's catalogue - same reasoning
       // as overview()'s take: 500.
       take: 200,
     });
-    return { operatorId, tourIds: tours.map((t) => t.id) };
+    return {
+      operatorId,
+      tourIds: tours.map((t) => t.id),
+      operatorByTour: new Map(tours.map((t) => [t.id, t.operatorId])),
+    };
   }
 
   /**
@@ -1379,6 +1409,9 @@ export class AvailabilityService {
     to: string,
     operatorId: string | null,
     localDate?: string,
+    /** Per-tour operator override - an island-wide range spans operators,
+     *  and each tour's availability webhook must reach ITS operator. */
+    operatorByTour?: Map<string, string>,
   ): Promise<void> {
     const CHUNK = 5;
     for (let i = 0; i < tourIds.length; i += CHUNK) {
@@ -1388,7 +1421,7 @@ export class AvailabilityService {
           await this.refreshIsBookable(tourId);
           this.notifications.emitAvailabilityUpdate({
             tourId,
-            operatorId,
+            operatorId: operatorByTour?.get(tourId) ?? operatorId,
             ...(localDate && { localDate }),
           });
         }),
@@ -1401,7 +1434,11 @@ export class AvailabilityService {
     role: Role,
     dto: CloseRangeDto,
   ): Promise<{ closed: number; tourCount: number }> {
-    const { operatorId, tourIds } = await this.rangeScope(userId, role, dto);
+    const { operatorId, tourIds, operatorByTour } = await this.rangeScope(
+      userId,
+      role,
+      dto,
+    );
     assertDateRangeOrder(dto.from, dto.to);
     if (tourIds.length === 0) return { closed: 0, tourCount: 0 };
     const from = dayDate(dto.from);
@@ -1458,7 +1495,14 @@ export class AvailabilityService {
     if (touched.length > 0) {
       // Projection per affected tour, bounded concurrency - the closures
       // must hit sellable inventory now, not at the nightly job.
-      await this.reprojectTours(touched, dto.from, dto.to, operatorId);
+      await this.reprojectTours(
+        touched,
+        dto.from,
+        dto.to,
+        operatorId,
+        undefined,
+        operatorByTour,
+      );
     }
     this.logger.log(
       `User ${userId} closed range ${dto.from}..${dto.to} across ${touched.length} tour(s) (${rows.length} day-closure(s))`,
@@ -1476,7 +1520,11 @@ export class AvailabilityService {
     role: Role,
     dto: ReopenRangeDto,
   ): Promise<{ reopened: number; tourCount: number }> {
-    const { operatorId, tourIds } = await this.rangeScope(userId, role, dto);
+    const { operatorId, tourIds, operatorByTour } = await this.rangeScope(
+      userId,
+      role,
+      dto,
+    );
     assertDateRangeOrder(dto.from, dto.to);
     if (tourIds.length === 0) return { reopened: 0, tourCount: 0 };
     // Same bound as closeRange, and checked BEFORE the retire: the
@@ -1515,7 +1563,14 @@ export class AvailabilityService {
       return { count: result.count, touched: affected.map((a) => a.tourId) };
     });
     if (count > 0) {
-      await this.reprojectTours(touched, dto.from, dto.to, operatorId);
+      await this.reprojectTours(
+        touched,
+        dto.from,
+        dto.to,
+        operatorId,
+        undefined,
+        operatorByTour,
+      );
     }
     this.logger.log(
       `User ${userId} reopened range ${dto.from}..${dto.to} across ${touched.length} tour(s) (${count} closure(s))`,

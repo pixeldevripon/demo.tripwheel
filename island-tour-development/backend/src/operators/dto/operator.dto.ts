@@ -211,6 +211,16 @@ export class OperatorQueryDto {
   @IsEnum(OperatorVerificationStatus)
   verificationStatus?: OperatorVerificationStatus;
 
+  @ApiPropertyOptional({
+    example: 'destination-uuid',
+    description:
+      'Only operators with at least one active tour on this island - the ' +
+      'admin calendar cascade (client review #10).',
+  })
+  @IsOptional()
+  @IsString()
+  destinationId?: string;
+
   @ApiPropertyOptional({ description: 'Page number (1-based)', default: 1 })
   @IsOptional()
   @Type(() => Number)

@@ -136,6 +136,31 @@ describe('OperatorsService', () => {
     expect(service).toBeDefined();
   });
 
+  // Island cascade (client review #10): "operators on this island" = at
+  // least one active tour there.
+  describe('findAll island filter', () => {
+    // The suite's mocks are module-level and never cleared, so each test
+    // reads its OWN (last) call, not the first ever recorded.
+    const lastFindManyWhere = () =>
+      mockPrismaService.operator.findMany.mock.calls.at(-1)?.[0].where;
+
+    it('filters by an active tour on the destination', async () => {
+      mockPrismaService.operator.count.mockResolvedValue(0);
+      mockPrismaService.operator.findMany.mockResolvedValue([]);
+      await service.findAll({ destinationId: 'dest-1' });
+      expect(lastFindManyWhere().tours).toEqual({
+        some: { destinationId: 'dest-1', isActive: true },
+      });
+    });
+
+    it('leaves the tours clause off without a destination', async () => {
+      mockPrismaService.operator.count.mockResolvedValue(0);
+      mockPrismaService.operator.findMany.mockResolvedValue([]);
+      await service.findAll({});
+      expect(lastFindManyWhere().tours).toBeUndefined();
+    });
+  });
+
   // The operator-level PSP switch mirrors the platform payment_settings switch:
   // owner-only, and the TARGET provider must already be configured (400).
   describe('payment provider switch', () => {
