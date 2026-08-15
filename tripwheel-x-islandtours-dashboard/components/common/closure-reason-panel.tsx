@@ -28,6 +28,27 @@ export const CLOSURE_REASON_LABEL: Record<TourClosureReason, string> = {
 };
 
 /**
+ * The reassurance line under the close question. When there are bookings the
+ * COUNT is the reassurance: an operator hovering over Close is hesitating over
+ * those guests, and a line that reads identically at 0 and at 46 never tells
+ * them the blast radius of the act. Only when nothing is booked does the
+ * generic guarantee say everything there is to say.
+ *
+ * Pass the count for the thing actually being closed - one departure's
+ * bookedCount when closing that departure, the day's total when closing the
+ * day. Quoting a day total on a single-departure close overstates it.
+ */
+export function closureReassurance(bookedCount: number): string {
+    if (bookedCount <= 0) {
+        return 'This only stops new sales. Existing bookings are always kept.';
+    }
+    const one = bookedCount === 1;
+    return `${bookedCount} booked guest${one ? '' : 's'} ${
+        one ? 'keeps' : 'keep'
+    } their booking${one ? '' : 's'}. Closing only stops new sales.`;
+}
+
+/**
  * The reason picker for BATCH closes (a range, a whole day) - where the act
  * has its own submit button, so the reason is a field rather than the commit.
  * One component instead of three hand-written Tabs blocks: a third reason is
@@ -82,7 +103,11 @@ export function ClosureReasonPanel({
     onCancel,
 }: {
     question: string;
-    /** The booked-guests guarantee - shown whether or not the day has bookings. */
+    /**
+     * The booked-guests guarantee - shown whether or not the day has bookings.
+     * Build it with `closureReassurance()` so every surface says it the same
+     * way and names the real count.
+     */
     reassurance: string;
     note: string;
     onNoteChange: (value: string) => void;
