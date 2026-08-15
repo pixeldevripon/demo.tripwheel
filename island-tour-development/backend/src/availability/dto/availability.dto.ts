@@ -693,6 +693,56 @@ export class ReopenRangeResultDto {
   tourCount!: number;
 }
 
+export class RangeImpactQueryDto {
+  @ApiPropertyOptional({
+    example: 'tour-uuid',
+    description:
+      'One tour. Omit to preview across every active tour of the calling ' +
+      'operator (admins must pass operatorId instead) - the same scope rules ' +
+      'as close-range itself, so preview and action never disagree.',
+  })
+  @IsOptional()
+  @IsString()
+  tourId?: string;
+
+  @ApiPropertyOptional({
+    example: 'operator-uuid',
+    description: 'Scope for an admin acting without a tourId (ADMIN only).',
+  })
+  @IsOptional()
+  @IsString()
+  operatorId?: string;
+
+  @ApiProperty({ example: '2026-09-01' })
+  @IsLocalDate()
+  from!: string;
+
+  @ApiProperty({ example: '2026-09-14' })
+  @IsLocalDate()
+  to!: string;
+}
+
+export class RangeImpactResultDto {
+  @ApiProperty({
+    example: 14,
+    description: 'Non-cancelled departures inside the range.',
+  })
+  departures!: number;
+  @ApiProperty({
+    example: 3,
+    description: 'Distinct tours with at least one of those departures.',
+  })
+  tours!: number;
+  @ApiProperty({
+    example: 46,
+    description:
+      'Travellers holding a committed (confirmed or redeemed) booking on ' +
+      'those departures. A close keeps every one of them - it only stops ' +
+      'new sales - and sends no guest notification.',
+  })
+  bookedGuests!: number;
+}
+
 export class ListSchedulesQueryDto {
   @ApiProperty({ example: 'tour-uuid' })
   @IsString()
