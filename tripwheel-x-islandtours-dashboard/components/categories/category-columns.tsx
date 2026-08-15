@@ -99,24 +99,25 @@ export const categoryColumns: ColumnDef<CategoryWithSubs>[] = [
       if (subs.length === 0) {
         return <span className="text-xs text-muted-foreground">—</span>;
       }
+      // Simple view, not chips (client 2026-08-15): folder + a plain
+      // comma-separated name list; each name is a quiet link.
       return (
-        <div className="flex max-w-72 items-start gap-1.5">
-          <span className="mt-0.5 flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
-            <HugeiconsIcon icon={Folder01Icon} className="size-3.5" />
-            {subs.length}
-          </span>
-          <div className="flex flex-wrap gap-1">
-            {subs.map((sub) => (
-              <Link
-                key={sub.id}
-                href={`/categories/${sub.id}`}
-                onClick={(e) => e.stopPropagation()}
-                className="rounded-full border border-border bg-muted/60 px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground hover:underline underline-offset-2"
-              >
-                {sub.name}
-              </Link>
+        <div className="flex max-w-72 items-start gap-1.5 text-xs text-muted-foreground">
+          <HugeiconsIcon icon={Folder01Icon} className="mt-0.5 size-3.5 shrink-0" />
+          <span className="min-w-0">
+            {subs.map((sub, i) => (
+              <span key={sub.id}>
+                {i > 0 && ', '}
+                <Link
+                  href={`/categories/${sub.id}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="hover:text-foreground hover:underline underline-offset-2"
+                >
+                  {sub.name}
+                </Link>
+              </span>
             ))}
-          </div>
+          </span>
         </div>
       );
     },
