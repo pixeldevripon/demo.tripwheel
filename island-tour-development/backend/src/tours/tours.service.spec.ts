@@ -188,7 +188,7 @@ describe('ToursService', () => {
 
   let pendingChanges: {
     isGated: jest.Mock;
-    stash: jest.Mock;
+    setStashedName: jest.Mock;
     getLatestForTour: jest.Mock;
   };
 
@@ -204,7 +204,7 @@ describe('ToursService', () => {
           role !== Role.STAFF &&
           role !== Role.EDITOR,
       ),
-      stash: jest.fn().mockResolvedValue(undefined),
+      setStashedName: jest.fn().mockResolvedValue(null),
       getLatestForTour: jest.fn().mockResolvedValue(null),
     };
     availability = {
@@ -2584,10 +2584,10 @@ describe('ToursService', () => {
         Role.TOUR_OPERATOR,
       );
 
-      expect(pendingChanges.stash).toHaveBeenCalledWith(
+      expect(pendingChanges.setStashedName).toHaveBeenCalledWith(
         expect.objectContaining({ id: 'tour-1' }),
         'user-1',
-        { tour: { name: 'A Bolder New Title' } },
+        'A Bolder New Title',
       );
       // The stored row is untouched: no name in the applied update.
       expect(prisma.tour.update.mock.calls[0][0].data.name).toBeUndefined();
@@ -2612,7 +2612,7 @@ describe('ToursService', () => {
       const data = prisma.tour.update.mock.calls[0][0].data;
       expect(data.basePrice).toBe('99.00');
       expect(data.bookingCutoffMinutes).toBe(60);
-      expect(pendingChanges.stash).not.toHaveBeenCalled();
+      expect(pendingChanges.setStashedName).not.toHaveBeenCalled();
       expect(result.warnings).toEqual([]);
     });
 
@@ -2633,7 +2633,7 @@ describe('ToursService', () => {
       expect(prisma.tour.update.mock.calls[0][0].data.name).toBe(
         'Editorial Title',
       );
-      expect(pendingChanges.stash).not.toHaveBeenCalled();
+      expect(pendingChanges.setStashedName).not.toHaveBeenCalled();
     });
 
     it("an operator's title change on a DRAFT tour applies instantly", async () => {
@@ -2654,7 +2654,7 @@ describe('ToursService', () => {
       expect(prisma.tour.update.mock.calls[0][0].data.name).toBe(
         'Draft Rename',
       );
-      expect(pendingChanges.stash).not.toHaveBeenCalled();
+      expect(pendingChanges.setStashedName).not.toHaveBeenCalled();
     });
 
     it('lets an ADMIN change cancellationHours on a LIVE tour', async () => {

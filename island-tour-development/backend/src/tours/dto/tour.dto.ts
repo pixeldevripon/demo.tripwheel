@@ -868,6 +868,39 @@ export class MyToursQueryDto {
   approvalStatus?: TourApprovalStatus;
 
   @ApiPropertyOptional({
+    example: true,
+    description:
+      "The operator's whole review loop at once: PENDING and REJECTED " +
+      'together - the operator Submissions view. Ignored when ' +
+      'approvalStatus is set.',
+  })
+  @IsOptional()
+  @Transform(({ value }) =>
+    value === 'true' || value === true
+      ? true
+      : value === 'false' || value === false
+        ? false
+        : undefined,
+  )
+  @IsBoolean()
+  reviewLoop?: boolean;
+
+  @ApiPropertyOptional({
+    enum: ['updatedAt', 'submittedAt'],
+    description:
+      'Sort column (default updatedAt) - the Submissions view sorts by ' +
+      'submittedAt ascending, matching the admin queue.',
+  })
+  @IsOptional()
+  @IsIn(['updatedAt', 'submittedAt'])
+  sortBy?: 'updatedAt' | 'submittedAt';
+
+  @ApiPropertyOptional({ enum: ['asc', 'desc'] })
+  @IsOptional()
+  @IsIn(['asc', 'desc'])
+  sortDir?: 'asc' | 'desc';
+
+  @ApiPropertyOptional({
     example: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
     description: 'Filter by destination ID',
   })
@@ -1373,6 +1406,26 @@ export class TourPendingChangePayloadDto {
       'The staged copy of the WHOLE gallery when photos were touched.',
   })
   images?: unknown[];
+
+  @ApiPropertyOptional({
+    type: 'object',
+    additionalProperties: { type: 'array', items: { type: 'object' } },
+    description:
+      'Staged copies of the itemized content lists (highlights / inclusions ' +
+      '/ exclusions / features / locations) - whole desired state per kind, ' +
+      'translations included.',
+  })
+  lists?: Record<string, unknown[]>;
+
+  @ApiPropertyOptional({
+    type: 'object',
+    additionalProperties: true,
+    description:
+      'Bookkeeping, never applied: `fieldTimes` maps each staged unit ' +
+      "('title' | 'photos' | 'tr:{locale}:{field}' | 'list:{kind}') to the " +
+      'ISO time it was last staged.',
+  })
+  meta?: { fieldTimes?: Record<string, string> };
 }
 
 export class TourPendingChangeDto {
@@ -1387,6 +1440,13 @@ export class TourPendingChangeDto {
     description: "Which areas the set touches: 'title' | 'content' | 'photos'.",
   })
   changedAreas!: string[];
+  @ApiPropertyOptional({
+    description:
+      'LIVE counterparts of every kept field (open sets only) - the diff ' +
+      'both roles render against; the operator could not see them otherwise ' +
+      '(their own reads are overlaid with the proposal).',
+  })
+  current?: TourPendingChangePayloadDto;
   @ApiProperty() submittedAt!: Date;
   @ApiPropertyOptional() submittedById!: string | null;
   @ApiPropertyOptional() decidedAt!: Date | null;

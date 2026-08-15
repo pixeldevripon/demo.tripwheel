@@ -14,11 +14,25 @@ function createMockPrismaService() {
       count: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      delete: jest.fn(),
+      deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
+      groupBy: jest.fn().mockResolvedValue([]),
     },
     tour: { findUnique: jest.fn(), update: jest.fn() },
-    tourTranslation: { upsert: jest.fn() },
+    tourTranslation: { findUnique: jest.fn(), upsert: jest.fn() },
+    tourHighlight: {
+      findMany: jest.fn().mockResolvedValue([]),
+      create: jest.fn(),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      deleteMany: jest.fn(),
+    },
+    tourHighlightTranslation: {
+      upsert: jest.fn(),
+      deleteMany: jest.fn(),
+    },
     tourImage: {
-      findMany: jest.fn(),
+      findMany: jest.fn().mockResolvedValue([]),
       create: jest.fn(),
       update: jest.fn(),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
@@ -106,6 +120,7 @@ describe('TourPendingChangesService', () => {
       // First call = getOpenForTour (PENDING filter), second would be the
       // decided fallback - it must never be reached.
       prisma.tourPendingChange.findFirst.mockResolvedValueOnce(open);
+      prisma.tour.findUnique.mockResolvedValue({ name: 'Live Name' });
 
       const result = await service.getLatestForTour('tour-1');
 
@@ -113,68 +128,235 @@ describe('TourPendingChangesService', () => {
       expect(result?.status).toBe(PendingChangeStatus.PENDING);
       expect(prisma.tourPendingChange.findFirst).toHaveBeenCalledTimes(1);
     });
+
+    it('an open set is PRUNED against the live rows and the healed payload persisted', async () => {
+      prisma.tourPendingChange.findFirst.mockResolvedValueOnce(
+        makeOpenChange({
+          tour: { name: 'Live Name' }, // equal -> pruned
+          translations: {
+            en: {
+              overview: 'Live overview', // equal -> pruned
+              title: 'A genuinely new title', // differs -> kept
+            },
+          },
+        }),
+      );
+      prisma.tour.findUnique.mockResolvedValue({ name: 'Live Name' });
+      prisma.tourTranslation.findUnique.mockResolvedValue({
+        overview: 'Live overview',
+        title: 'Live Translation Title',
+      });
+      prisma.tourPendingChange.update.mockResolvedValue(
+        makeOpenChange({
+          translations: { en: { title: 'A genuinely new title' } },
+        }),
+      );
+
+      const result = await service.getLatestForTour('tour-1');
+
+      expect(prisma.tourPendingChange.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            id: 'chg-1',
+            updatedAt: new Date('2026-08-15T10:00:00Z'),
+          },
+          data: {
+            payload: {
+              translations: { en: { title: 'A genuinely new title' } },
+            },
+          },
+        }),
+      );
+      expect(result?.changedAreas).toEqual(['content']);
+    });
+
+    it('a set that prunes to NOTHING is withdrawn and the decided fallback served', async () => {
+      const decided = makeOpenChange(
+        { tour: { name: 'Old proposal' } },
+        { id: 'chg-0', status: PendingChangeStatus.REJECTED },
+      );
+      prisma.tourPendingChange.findFirst
+        .mockResolvedValueOnce(makeOpenChange({ tour: { name: 'Live Name' } }))
+        .mockResolvedValueOnce(decided);
+      prisma.tour.findUnique.mockResolvedValue({ name: 'Live Name' });
+
+      const result = await service.getLatestForTour('tour-1');
+
+      expect(prisma.tourPendingChange.deleteMany).toHaveBeenCalledWith({
+        where: {
+          id: 'chg-1',
+          updatedAt: new Date('2026-08-15T10:00:00Z'),
+        },
+      });
+      expect(result?.id).toBe('chg-0');
+      expect(result?.status).toBe(PendingChangeStatus.REJECTED);
+    });
   });
 
-  describe('stash', () => {
-    it('opens a change set and notifies the platform ONCE', async () => {
+  describe('stash mutators', () => {
+    it('a held title opens a change set and notifies the platform ONCE', async () => {
       prisma.tourPendingChange.findFirst.mockResolvedValue(null);
       prisma.tourPendingChange.create.mockResolvedValue(
         makeOpenChange({ tour: { name: 'New' } }),
       );
 
-      await service.stash(TOUR, 'user-1', { tour: { name: 'New' } });
+      await service.setStashedName(TOUR, 'user-1', 'New');
 
       expect(prisma.tourPendingChange.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
             tourId: 'tour-1',
-            payload: { tour: { name: 'New' } },
+            payload: expect.objectContaining({
+              tour: { name: 'New' },
+              // Per-unit stamp (client ask: per-change timestamps).
+              meta: { fieldTimes: { title: expect.any(String) } },
+            }),
           }),
         }),
       );
       expect(inbox.notify).toHaveBeenCalledTimes(1);
     });
 
-    it('merges into the open set without re-notifying', async () => {
+    it('a translation stash REPLACES defined keys, drops reverted ones, keeps the rest', async () => {
       prisma.tourPendingChange.findFirst.mockResolvedValue(
         makeOpenChange({
           tour: { name: 'Held Title' },
-          translations: { en: { overview: 'old proposal' } },
+          translations: {
+            en: { overview: 'old proposal', metaTitle: 'seo half' },
+          },
         }),
       );
       prisma.tourPendingChange.update.mockResolvedValue(makeOpenChange({}));
 
-      await service.stash(TOUR, 'user-1', {
-        translations: { en: { description: 'long copy' }, nl: { title: 'x' } },
-      });
+      // The copy form re-saves: overview changed again, title newly changed,
+      // and a previously-stashed field (none here) that now equals live is
+      // passed as reverted. metaTitle was written by the SEO form - this
+      // request does not define it, so it stays.
+      await service.setTranslationStash(
+        TOUR,
+        'user-1',
+        'en',
+        { overview: 'newer proposal', title: 'Held Copy Title' },
+        ['description'],
+      );
 
       expect(prisma.tourPendingChange.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'chg-1' },
           data: {
-            payload: {
+            payload: expect.objectContaining({
               tour: { name: 'Held Title' },
               translations: {
-                en: { overview: 'old proposal', description: 'long copy' },
-                nl: { title: 'x' },
+                en: {
+                  overview: 'newer proposal',
+                  metaTitle: 'seo half',
+                  title: 'Held Copy Title',
+                },
               },
-            },
+              meta: {
+                fieldTimes: {
+                  'tr:en:overview': expect.any(String),
+                  'tr:en:title': expect.any(String),
+                },
+              },
+            }),
           },
         }),
       );
       expect(inbox.notify).not.toHaveBeenCalled();
     });
 
-    it('a lost create race (P2002) folds into the winner row', async () => {
+    it('reverting the last held change DELETES the set - review withdrawn', async () => {
+      prisma.tourPendingChange.findFirst.mockResolvedValue(
+        makeOpenChange({ translations: { en: { overview: 'proposal' } } }),
+      );
+
+      await service.setTranslationStash(TOUR, 'user-1', 'en', {}, ['overview']);
+
+      expect(prisma.tourPendingChange.delete).toHaveBeenCalledWith({
+        where: { id: 'chg-1' },
+      });
+      expect(prisma.tourPendingChange.update).not.toHaveBeenCalled();
+    });
+
+    it('typing the live title back withdraws a title-only set', async () => {
+      prisma.tourPendingChange.findFirst.mockResolvedValue(
+        makeOpenChange({ tour: { name: 'Held Title' } }),
+      );
+
+      await service.setStashedName(TOUR, 'user-1', null);
+
+      expect(prisma.tourPendingChange.delete).toHaveBeenCalledWith({
+        where: { id: 'chg-1' },
+      });
+    });
+
+    it('a save after rejection REVIVES the whole rejected proposal (client round 6)', async () => {
+      // No open set; the tour's last word is a rejection carrying two edits.
+      prisma.tourPendingChange.findFirst
+        .mockResolvedValueOnce(null) // getOpenForTour
+        .mockResolvedValueOnce(
+          makeOpenChange(
+            {
+              tour: { name: 'Held Title' },
+              translations: { en: { overview: 'Held overview' } },
+            },
+            { id: 'chg-rejected', status: PendingChangeStatus.REJECTED },
+          ),
+        );
+      prisma.tourPendingChange.create.mockResolvedValue(
+        makeOpenChange({}, { id: 'chg-2' }),
+      );
+
+      // The operator fixes ONE key - the flagged overview.
+      await service.setTranslationStash(TOUR, 'user-1', 'en', {
+        overview: 'Fixed overview',
+      });
+
+      // The new PENDING set carries the held title AND the fixed overview -
+      // fixing one key must never drop the rest of the proposal.
+      expect(prisma.tourPendingChange.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            payload: expect.objectContaining({
+              tour: { name: 'Held Title' },
+              translations: { en: { overview: 'Fixed overview' } },
+            }),
+          }),
+        }),
+      );
+      // The rejection stays as history - never deleted or updated.
+      expect(prisma.tourPendingChange.delete).not.toHaveBeenCalled();
+      expect(prisma.tourPendingChange.update).not.toHaveBeenCalled();
+      // The platform hears it as a resubmission.
+      expect(inbox.notify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Sunset Cruise: content changes updated after review',
+        }),
+      );
+    });
+
+    it('a lost create race (P2002) re-applies the mutation onto the winner', async () => {
       prisma.tourPendingChange.findFirst
         .mockResolvedValueOnce(null) // the pre-check
         .mockResolvedValue(makeOpenChange({ tour: { name: 'Winner' } }));
       prisma.tourPendingChange.create.mockRejectedValue({ code: 'P2002' });
       prisma.tourPendingChange.update.mockResolvedValue(makeOpenChange({}));
 
-      await service.stash(TOUR, 'user-1', { tour: { name: 'Loser' } });
+      await service.setTranslationStash(TOUR, 'user-1', 'en', {
+        overview: 'loser edit',
+      });
 
-      expect(prisma.tourPendingChange.update).toHaveBeenCalled();
+      expect(prisma.tourPendingChange.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: {
+            payload: expect.objectContaining({
+              tour: { name: 'Winner' },
+              translations: { en: { overview: 'loser edit' } },
+            }),
+          },
+        }),
+      );
       expect(inbox.notify).not.toHaveBeenCalled();
     });
   });
@@ -355,6 +537,154 @@ describe('TourPendingChangesService', () => {
         isMachineTranslated: false,
       });
       expect(upsert.create.tourId).toBe('tour-1');
+    });
+
+    it('approving a list reconciles rows and PRESERVES each staged translation flag', async () => {
+      prisma.tourPendingChange.findFirst.mockResolvedValue(
+        makeOpenChange({
+          lists: {
+            highlights: [
+              {
+                id: 'hl-1',
+                displayOrder: 0,
+                imageUrl: null,
+                translations: [
+                  // Human-edited EN - must stay human after approval.
+                  {
+                    locale: 'en',
+                    text: 'Edited text',
+                    isMachineTranslated: false,
+                  },
+                  // Untouched machine NL, copied into the stage verbatim -
+                  // must STAY machine so the AI may refresh it.
+                  {
+                    locale: 'nl',
+                    text: 'Machinetekst',
+                    isMachineTranslated: true,
+                  },
+                ],
+              },
+              {
+                id: 'new-1',
+                isNew: true,
+                displayOrder: 1,
+                imageUrl: null,
+                translations: [
+                  {
+                    locale: 'en',
+                    text: 'Brand new bullet',
+                    isMachineTranslated: false,
+                  },
+                ],
+              },
+            ],
+          },
+        }),
+      );
+      prisma.tour.findUnique.mockResolvedValue(TOUR);
+      prisma.tourPendingChange.update.mockResolvedValue(
+        makeOpenChange({}, { status: PendingChangeStatus.APPROVED }),
+      );
+
+      await service.approve('tour-1', 'admin-1');
+
+      // Rows not staged are deleted, scoped by tourId.
+      expect(prisma.tourHighlight.deleteMany).toHaveBeenCalledWith({
+        where: { tourId: 'tour-1', id: { notIn: ['hl-1'] } },
+      });
+      expect(prisma.tourHighlight.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ id: 'new-1', tourId: 'tour-1' }),
+        }),
+      );
+      // The human EN edit keeps isMachineTranslated false in the UPDATE
+      // branch (code review CRITICAL - the AI refresh this approval enqueues
+      // would otherwise overwrite the just-approved edit)...
+      expect(prisma.tourHighlightTranslation.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            highlightId_locale: { highlightId: 'hl-1', locale: 'en' },
+          },
+          update: expect.objectContaining({
+            text: 'Edited text',
+            isMachineTranslated: false,
+          }),
+        }),
+      );
+      // ...while the untouched machine NL row stays machine.
+      expect(prisma.tourHighlightTranslation.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            highlightId_locale: { highlightId: 'hl-1', locale: 'nl' },
+          },
+          update: expect.objectContaining({ isMachineTranslated: true }),
+        }),
+      );
+      // A list carries EN, so the machine locales re-source.
+      expect(contentTranslation.enqueue).toHaveBeenCalledWith('tour', 'tour-1');
+    });
+
+    it('an untouched translation row is NOT rewritten on approve (sourceHash preserved)', async () => {
+      prisma.tourPendingChange.findFirst.mockResolvedValue(
+        makeOpenChange({
+          lists: {
+            highlights: [
+              {
+                id: 'hl-1',
+                displayOrder: 0,
+                imageUrl: null,
+                translations: [
+                  {
+                    locale: 'en',
+                    text: 'Edited text',
+                    isMachineTranslated: false,
+                  },
+                  {
+                    locale: 'nl',
+                    text: 'Machinetekst',
+                    isMachineTranslated: true,
+                  },
+                ],
+              },
+            ],
+          },
+        }),
+      );
+      // The live row: EN differs (edited), NL is a verbatim copy.
+      prisma.tourHighlight.findMany.mockResolvedValue([
+        {
+          id: 'hl-1',
+          displayOrder: 0,
+          imageUrl: null,
+          translations: [
+            { locale: 'en', text: 'Old text', isMachineTranslated: false },
+            { locale: 'nl', text: 'Machinetekst', isMachineTranslated: true },
+          ],
+        },
+      ]);
+      prisma.tour.findUnique.mockResolvedValue(TOUR);
+      prisma.tourPendingChange.update.mockResolvedValue(
+        makeOpenChange({}, { status: PendingChangeStatus.APPROVED }),
+      );
+
+      await service.approve('tour-1', 'admin-1');
+
+      const upsertedLocales =
+        prisma.tourHighlightTranslation.upsert.mock.calls.map(
+          (c) => c[0].where.highlightId_locale.locale,
+        );
+      expect(upsertedLocales).toEqual(['en']);
+    });
+
+    it('changedAreas names every configured list kind', () => {
+      expect(
+        service.changedAreas({
+          lists: {
+            features: [],
+            locations: [],
+          },
+        }),
+      ).toEqual(['features', 'locations']);
     });
 
     it('an approve with no EN translation change enqueues nothing', async () => {

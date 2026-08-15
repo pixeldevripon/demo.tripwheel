@@ -378,13 +378,20 @@ describe('TourChildrenService', () => {
   let toursService: ReturnType<typeof createMockToursService>;
   let pendingChanges: {
     isGated: jest.Mock;
-    stash: jest.Mock;
+    setStashedName: jest.Mock;
+    setTranslationStash: jest.Mock;
     getOpenForTour: jest.Mock;
+    getWorkingSetForTour: jest.Mock;
     getStagedImages: jest.Mock;
     stageImageAdd: jest.Mock;
     stageImageUpdate: jest.Mock;
     stageImageRemove: jest.Mock;
     toImageShape: jest.Mock;
+    getStagedList: jest.Mock;
+    stageListAdd: jest.Mock;
+    stageListUpdate: jest.Mock;
+    stageListRemove: jest.Mock;
+    toListItemShape: jest.Mock;
     getLatestForTour: jest.Mock;
   };
 
@@ -398,8 +405,32 @@ describe('TourChildrenService', () => {
         (status: TourStatus, role: Role) =>
           status === TourStatus.LIVE && role === Role.TOUR_OPERATOR,
       ),
-      stash: jest.fn().mockResolvedValue(undefined),
+      setStashedName: jest.fn().mockResolvedValue(null),
+      getStagedList: jest.fn().mockResolvedValue(null),
+      stageListAdd: jest.fn(),
+      stageListUpdate: jest.fn(),
+      stageListRemove: jest.fn().mockResolvedValue(undefined),
+      toListItemShape: jest.fn((tourId: string, item: object) => ({
+        tourId,
+        ...item,
+      })),
+      setTranslationStash: jest
+        .fn()
+        .mockImplementation(
+          (
+            _tour: unknown,
+            _by: string,
+            locale: string,
+            changed: Record<string, unknown>,
+          ) =>
+            Promise.resolve(
+              Object.keys(changed).length > 0
+                ? { payload: { translations: { [locale]: changed } } }
+                : null,
+            ),
+        ),
       getOpenForTour: jest.fn().mockResolvedValue(null),
+      getWorkingSetForTour: jest.fn().mockResolvedValue(null),
       getStagedImages: jest.fn().mockResolvedValue(null),
       stageImageAdd: jest.fn(),
       stageImageUpdate: jest.fn(),
@@ -1256,6 +1287,153 @@ describe('TourChildrenService', () => {
     });
   });
 
+  // ── Live-tour content gate on the itemized lists (UX round 4) ──
+  describe('gated list edits on a LIVE tour', () => {
+    it("routes an operator's highlight add to the staged list", async () => {
+      toursService.findTourOrThrow.mockResolvedValue(
+        makeTour({ status: TourStatus.LIVE }),
+      );
+      pendingChanges.stageListAdd.mockResolvedValue({
+        tourId: 'tour-1',
+        id: 'staged-1',
+      });
+
+      await service.addHighlight(
+        'tour-1',
+        { text: 'A brand new highlight' },
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
+
+      expect(pendingChanges.stageListAdd).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'tour-1' }),
+        'highlights',
+        { text: 'A brand new highlight' },
+        { text: 'A brand new highlight' },
+        'user-1',
+      );
+      expect(prisma.tourHighlight.create).not.toHaveBeenCalled();
+    });
+
+    it("routes an operator's exclusion removal to the staged list", async () => {
+      toursService.findTourOrThrow.mockResolvedValue(
+        makeTour({ status: TourStatus.LIVE }),
+      );
+
+      const result = await service.removeExclusion(
+        'tour-1',
+        'ex-1',
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
+
+      expect(pendingChanges.stageListRemove).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'tour-1' }),
+        'exclusions',
+        'ex-1',
+        'user-1',
+      );
+      expect(prisma.tourExclusion.delete).not.toHaveBeenCalled();
+      expect(result).toEqual({ message: 'Exclusion removed successfully' });
+    });
+
+    it("stages an operator's per-item translation upsert in ANY locale", async () => {
+      toursService.findTourOrThrow.mockResolvedValue(
+        makeTour({ status: TourStatus.LIVE }),
+      );
+      pendingChanges.stageListUpdate.mockResolvedValue({
+        tourId: 'tour-1',
+        id: 'hl-1',
+        translations: [
+          { locale: Locale.nl, text: 'Nederlandse tekst' },
+          { locale: Locale.en, text: 'English text' },
+        ],
+      });
+
+      const result = (await service.upsertHighlightTranslation(
+        'tour-1',
+        'hl-1',
+        Locale.nl,
+        { text: 'Nederlandse tekst' },
+        'user-1',
+        Role.TOUR_OPERATOR,
+      )) as { text?: string; pendingReview?: boolean };
+
+      expect(pendingChanges.stageListUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'tour-1' }),
+        'highlights',
+        'hl-1',
+        {},
+        { locale: Locale.nl, fields: { text: 'Nederlandse tekst' } },
+        'user-1',
+      );
+      expect(prisma.tourHighlightTranslation.upsert).not.toHaveBeenCalled();
+      expect(result.pendingReview).toBe(true);
+      expect(result.text).toBe('Nederlandse tekst');
+    });
+
+    it('serves the STAGED list on a gated read, the real one otherwise', async () => {
+      toursService.findTourOrThrow.mockResolvedValue(
+        makeTour({ status: TourStatus.LIVE }),
+      );
+      pendingChanges.getStagedList.mockResolvedValue([
+        {
+          id: 'inc-2',
+          displayOrder: 1,
+          translations: [{ locale: Locale.en, label: 'Second' }],
+        },
+        {
+          id: 'inc-1',
+          displayOrder: 0,
+          translations: [{ locale: Locale.en, label: 'First' }],
+        },
+      ]);
+
+      const result = (await service.getInclusions(
+        'tour-1',
+        'user-1',
+        Role.TOUR_OPERATOR,
+      )) as Array<{ id: string }>;
+
+      expect(result.map((i) => i.id)).toEqual(['inc-1', 'inc-2']);
+      expect(prisma.tourInclusion.findMany).not.toHaveBeenCalled();
+    });
+
+    it('blocks an operator deleting an item translation on a LIVE tour', async () => {
+      toursService.findTourOrThrow.mockResolvedValue(
+        makeTour({ status: TourStatus.LIVE }),
+      );
+      await expect(
+        service.deleteFeatureTranslation(
+          'tour-1',
+          'ft-1',
+          Locale.nl,
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it("an ADMIN's list edit on a LIVE tour applies directly", async () => {
+      toursService.findTourOrThrow.mockResolvedValue(
+        makeTour({ status: TourStatus.LIVE }),
+      );
+      prisma.tourHighlight.create.mockResolvedValue({ id: 'hl-9' });
+      prisma.tourHighlightTranslation.create.mockResolvedValue({});
+      prisma.tourHighlight.findUnique.mockResolvedValue(makeHighlight());
+
+      await service.addHighlight(
+        'tour-1',
+        { text: 'Editorial highlight' },
+        'admin-1',
+        Role.ADMIN,
+      );
+
+      expect(pendingChanges.stageListAdd).not.toHaveBeenCalled();
+      expect(prisma.tourHighlight.create).toHaveBeenCalled();
+    });
+  });
+
   describe('addHighlight', () => {
     it('creates a highlight with English translation inside a transaction and returns it', async () => {
       const highlight = makeHighlight();
@@ -1906,15 +2084,52 @@ describe('TourChildrenService', () => {
         Role.TOUR_OPERATOR,
       )) as { overview: string; pendingReview?: boolean };
 
-      expect(pendingChanges.stash).toHaveBeenCalledWith(
+      expect(pendingChanges.setTranslationStash).toHaveBeenCalledWith(
         expect.objectContaining({ id: 'tour-1' }),
         'user-1',
-        { translations: { en: { overview: 'A brand new overview' } } },
+        Locale.en,
+        { overview: 'A brand new overview' },
+        [],
       );
       // The stored row is untouched and no machine re-translation fires.
       expect(prisma.tourTranslation.upsert).not.toHaveBeenCalled();
       expect(result.pendingReview).toBe(true);
       expect(result.overview).toBe('A brand new overview');
+    });
+
+    it('a whole-form save stashes ONLY the fields that differ from the live row', async () => {
+      toursService.findTourOrThrow.mockResolvedValue(
+        makeTour({ status: TourStatus.LIVE }),
+      );
+      prisma.tourTranslation.findUnique.mockResolvedValue({
+        locale: Locale.en,
+        title: 'Live Title',
+        overview: 'Live overview',
+        whatToBring: ['Towel', 'Sunscreen'],
+        isMachineTranslated: false,
+        updatedAt: new Date(),
+      });
+
+      // The copy form PATCHes every field it owns; only overview changed.
+      await service.upsertTranslation(
+        'tour-1',
+        Locale.en,
+        {
+          title: 'Live Title',
+          overview: 'A sharper overview',
+          whatToBring: ['Towel', 'Sunscreen'],
+        },
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
+
+      expect(pendingChanges.setTranslationStash).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'tour-1' }),
+        'user-1',
+        Locale.en,
+        { overview: 'A sharper overview' },
+        expect.arrayContaining(['title', 'whatToBring']),
+      );
     });
 
     it("the gated READ overlays the stash so the form's refetch cannot revert a saved edit", async () => {
@@ -1928,7 +2143,7 @@ describe('TourChildrenService', () => {
         isMachineTranslated: false,
         updatedAt: new Date(),
       });
-      pendingChanges.getOpenForTour.mockResolvedValue({
+      pendingChanges.getWorkingSetForTour.mockResolvedValue({
         id: 'chg-1',
         payload: {
           translations: { en: { overview: 'The proposed overview' } },
@@ -1963,7 +2178,7 @@ describe('TourChildrenService', () => {
         Role.ADMIN,
       )) as { overview: string; pendingReview?: boolean };
 
-      expect(pendingChanges.getOpenForTour).not.toHaveBeenCalled();
+      expect(pendingChanges.getWorkingSetForTour).not.toHaveBeenCalled();
       expect(result.overview).toBe('Live overview travellers see');
       expect(result.pendingReview).toBeUndefined();
     });
@@ -1982,7 +2197,7 @@ describe('TourChildrenService', () => {
         Role.ADMIN,
       );
 
-      expect(pendingChanges.stash).not.toHaveBeenCalled();
+      expect(pendingChanges.setTranslationStash).not.toHaveBeenCalled();
       expect(prisma.tourTranslation.upsert).toHaveBeenCalled();
     });
 

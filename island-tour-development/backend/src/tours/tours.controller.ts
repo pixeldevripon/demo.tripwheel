@@ -136,6 +136,23 @@ export class ToursController {
     return this.toursService.findMyTours(user.id, user.role, query);
   }
 
+  // ── Operator submissions: content lane - static before :id ────────────────────
+
+  @Get('my/pending-changes')
+  @RequirePermissions(Permission.VIEW_TRIPS)
+  @ApiListPendingChangesDocs()
+  listMyPendingChanges(
+    @Query() query: PendingChangesQueryDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.toursService.getMyPendingChanges(
+      user.id,
+      user.role,
+      query.page,
+      query.limit,
+    );
+  }
+
   // ── Admin all tours - static route before :id ─────────────────────────────────
 
   @Get('admin/all')

@@ -2091,6 +2091,9 @@ export class ToursService {
       search,
       status,
       approvalStatus,
+      reviewLoop,
+      sortBy = 'updatedAt',
+      sortDir = 'desc',
       destinationId,
       page = 1,
       limit = 20,
@@ -2101,6 +2104,14 @@ export class ToursService {
     if (search) where.name = { contains: search, mode: 'insensitive' };
     if (status) where.status = status;
     if (approvalStatus) where.approvalStatus = approvalStatus;
+    // The operator Submissions view: both review states at once. Unlike the
+    // admin list there is NO default exclusion here - operators always see
+    // all their own tours unless they ask for the loop explicitly.
+    else if (reviewLoop) {
+      where.approvalStatus = {
+        in: [TourApprovalStatus.PENDING, TourApprovalStatus.REJECTED],
+      };
+    }
     if (destinationId) where.destinationId = destinationId;
 
     const [total, data] = await Promise.all([
@@ -2148,7 +2159,7 @@ export class ToursService {
             },
           },
         },
-        orderBy: { updatedAt: 'desc' },
+        orderBy: { [sortBy]: sortDir },
         skip,
         take: limit,
       }),
@@ -2259,6 +2270,26 @@ export class ToursService {
         ));
     if (!isPlatform && !isOwner) {
       this.neutralizeForPublic(result);
+    }
+    // Live-tour content gate: the OWNER's read overlays a held title, exactly
+    // like the translation and staged-gallery reads. Without this, the five
+    // wizard steps that resend `name: trip.name` on every save echo the LIVE
+    // title back, which the update() revert path reads as "operator retyped
+    // the live title" and silently withdraws the held one (code-review
+    // finding, UX round 3) - and the operator never sees their proposed
+    // title anywhere but the Review diff.
+    if (
+      isOwner &&
+      requesterRole != null &&
+      this.pendingChanges.isGated(tour.status, requesterRole)
+    ) {
+      const working = await this.pendingChanges.getWorkingSetForTour(id);
+      const heldName = (
+        working?.payload as { tour?: { name?: string } } | undefined
+      )?.tour?.name;
+      if (heldName !== undefined) {
+        (result as { name: string }).name = heldName;
+      }
     }
     return result;
   }
@@ -2912,13 +2943,19 @@ export class ToursService {
     // explicit client rule); the free-cancellation window has its own
     // admin-only guard below.
     let heldName: string | undefined;
+    let revertHeldName = false;
     if (
       dto.name !== undefined &&
-      dto.name !== tour.name &&
       this.pendingChanges.isGated(tour.status, requesterRole)
     ) {
-      heldName = dto.name;
-      dto = { ...dto, name: undefined };
+      if (dto.name !== tour.name) {
+        heldName = dto.name;
+        dto = { ...dto, name: undefined };
+      } else {
+        // Typing the live title back withdraws any held title - a stale
+        // "waiting for review" over nothing is worse than none.
+        revertHeldName = true;
+      }
     }
 
     // Party size is a RANGE, and either end can arrive alone - so the guard has
@@ -3300,12 +3337,12 @@ export class ToursService {
     }
 
     if (heldName !== undefined) {
-      await this.pendingChanges.stash(tour, requesterId, {
-        tour: { name: heldName },
-      });
+      await this.pendingChanges.setStashedName(tour, requesterId, heldName);
       warnings.push(
         'The new title was sent to Island Tours for review - travellers keep seeing the current title until it is approved.',
       );
+    } else if (revertHeldName) {
+      await this.pendingChanges.setStashedName(tour, requesterId, null);
     }
 
     this.logger.log(`User ${requesterId} updated tour ${id}`);
@@ -3749,6 +3786,24 @@ export class ToursService {
    */
   private tourReviewPath(tourId: string): string {
     return `/trips/${tourId}/edit?step=review`;
+  }
+
+  /**
+   * The operator Submissions view's content lane. Platform roles get an
+   * empty page rather than a side-effectful operator auto-provision: their
+   * own edits never gate, so they can have nothing in flight.
+   */
+  async getMyPendingChanges(
+    userId: string,
+    role: Role,
+    page?: number,
+    limit?: number,
+  ) {
+    if (isPlatformWideRole(role)) {
+      return { total: 0, page: page ?? 1, limit: limit ?? 20, data: [] };
+    }
+    const operatorId = await this.resolveOperatorId(userId, role);
+    return this.pendingChanges.listForOperator(operatorId, page, limit);
   }
 
   /**

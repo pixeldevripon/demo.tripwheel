@@ -8,6 +8,7 @@ import { ToursService } from './tours.service';
 import {
   TourPendingChangesService,
   TRANSLATION_CONTENT_KEYS,
+  type StagedListKind,
 } from './tour-pending-changes.service';
 import {
   BadRequestException,
@@ -69,6 +70,69 @@ export class TourChildrenService {
     const tour = await this.toursService.findTourOrThrow(tourId);
     await this.toursService.assertOwnership(tour, requesterId, requesterRole);
     return tour;
+  }
+
+  /**
+   * Live-tour content gate for the itemized lists (client review #19, UX
+   * round 4: EVERY content change is recorded - lists and their translations
+   * included). Returns the staged list in the real GET's shape when the
+   * caller is gated and a stage exists, else null (serve the real rows).
+   */
+  private async gatedListRead(
+    tour: { id: string; status: TourStatus },
+    requesterRole: Role,
+    kind: StagedListKind,
+  ) {
+    if (!this.pendingChanges.isGated(tour.status, requesterRole)) return null;
+    const staged = await this.pendingChanges.getStagedList(tour.id, kind);
+    if (!staged) return null;
+    return [...staged]
+      .sort(
+        (a, b) =>
+          ((a.displayOrder as number) ?? 0) - ((b.displayOrder as number) ?? 0),
+      )
+      .map((i) => this.pendingChanges.toListItemShape(tour.id, i));
+  }
+
+  /** The gated per-item translation upsert: stage the locale's fields and
+   *  echo the staged entry so the form keeps showing what was typed. */
+  private async gatedItemTranslationUpsert(
+    tour: { id: string; operatorId: string; name: string },
+    kind: StagedListKind,
+    itemId: string,
+    locale: Locale,
+    fields: Record<string, unknown>,
+    requesterId: string,
+  ) {
+    const item = await this.pendingChanges.stageListUpdate(
+      tour,
+      kind,
+      itemId,
+      {},
+      { locale, fields },
+      requesterId,
+    );
+    this.logger.log(
+      `User ${requesterId} staged ${kind} translation [${locale}] on live tour ${tour.id}`,
+    );
+    const entry = (
+      item.translations as Array<{ locale: string } & Record<string, unknown>>
+    ).find((t) => t.locale === locale);
+    return { ...entry, pendingReview: true };
+  }
+
+  /** Item translation deletes on a live tour stay platform-side - the
+   *  pending payload stages values, not row deletions per locale... and a
+   *  vanished locale mid-review is indistinguishable from an unloaded one. */
+  private assertItemTranslationDeletable(
+    tour: { status: TourStatus },
+    requesterRole: Role,
+  ) {
+    if (this.pendingChanges.isGated(tour.status, requesterRole)) {
+      throw new ForbiddenException(
+        'Translations on a live tour are removed by Island Tours - contact us to take one down.',
+      );
+    }
   }
 
   // ── Images ────────────────────────────────────────────────────────────────────
@@ -685,7 +749,17 @@ export class TourChildrenService {
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
+    const stagedHighlight = await this.gatedListRead(
+      tour,
+      requesterRole,
+      'highlights',
+    );
+    if (stagedHighlight) return stagedHighlight;
     return this.prisma.tourHighlight.findMany({
       where: { tourId },
       select: this.highlightSelect,
@@ -699,7 +773,23 @@ export class TourChildrenService {
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
+    if (this.pendingChanges.isGated(tour.status, requesterRole)) {
+      this.logger.log(
+        `User ${requesterId} staged a highlights add on live tour ${tourId}`,
+      );
+      return this.pendingChanges.stageListAdd(
+        tour,
+        'highlights',
+        dto as unknown as Record<string, unknown>,
+        dto as unknown as Record<string, unknown>,
+        requesterId,
+      );
+    }
 
     const result = await this.prisma.$transaction(async (tx) => {
       const highlight = await tx.tourHighlight.create({
@@ -736,7 +826,25 @@ export class TourChildrenService {
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
+    if (this.pendingChanges.isGated(tour.status, requesterRole)) {
+      this.logger.log(
+        `User ${requesterId} staged a highlights update on live tour ${tourId}`,
+      );
+      const patch = dto as unknown as Record<string, unknown>;
+      return this.pendingChanges.stageListUpdate(
+        tour,
+        'highlights',
+        highlightId,
+        patch,
+        { locale: LocaleEnum.en, fields: patch },
+        requesterId,
+      );
+    }
 
     const existing = await this.prisma.tourHighlight.findFirst({
       where: { id: highlightId, tourId },
@@ -770,7 +878,23 @@ export class TourChildrenService {
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
+    if (this.pendingChanges.isGated(tour.status, requesterRole)) {
+      await this.pendingChanges.stageListRemove(
+        tour,
+        'highlights',
+        highlightId,
+        requesterId,
+      );
+      this.logger.log(
+        `User ${requesterId} staged a highlights removal on live tour ${tourId}`,
+      );
+      return { message: 'Highlight removed successfully' };
+    }
 
     const existing = await this.prisma.tourHighlight.findFirst({
       where: { id: highlightId, tourId },
@@ -796,7 +920,21 @@ export class TourChildrenService {
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
+    if (this.pendingChanges.isGated(tour.status, requesterRole)) {
+      return this.gatedItemTranslationUpsert(
+        tour,
+        'highlights',
+        highlightId,
+        locale,
+        dto as unknown as Record<string, unknown>,
+        requesterId,
+      );
+    }
 
     const highlight = await this.prisma.tourHighlight.findFirst({
       where: { id: highlightId, tourId },
@@ -843,7 +981,12 @@ export class TourChildrenService {
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
+    this.assertItemTranslationDeletable(tour, requesterRole);
 
     if (locale === Locale.en) {
       throw new BadRequestException(
@@ -903,7 +1046,17 @@ export class TourChildrenService {
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
+    const stagedInclusion = await this.gatedListRead(
+      tour,
+      requesterRole,
+      'inclusions',
+    );
+    if (stagedInclusion) return stagedInclusion;
     return this.prisma.tourInclusion.findMany({
       where: { tourId },
       select: this.inclusionSelect,
@@ -917,7 +1070,23 @@ export class TourChildrenService {
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
+    if (this.pendingChanges.isGated(tour.status, requesterRole)) {
+      this.logger.log(
+        `User ${requesterId} staged a inclusions add on live tour ${tourId}`,
+      );
+      return this.pendingChanges.stageListAdd(
+        tour,
+        'inclusions',
+        dto as unknown as Record<string, unknown>,
+        dto as unknown as Record<string, unknown>,
+        requesterId,
+      );
+    }
 
     const result = await this.prisma.$transaction(async (tx) => {
       const inclusion = await tx.tourInclusion.create({
@@ -954,7 +1123,25 @@ export class TourChildrenService {
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
+    if (this.pendingChanges.isGated(tour.status, requesterRole)) {
+      this.logger.log(
+        `User ${requesterId} staged a inclusions update on live tour ${tourId}`,
+      );
+      const patch = dto as unknown as Record<string, unknown>;
+      return this.pendingChanges.stageListUpdate(
+        tour,
+        'inclusions',
+        inclusionId,
+        patch,
+        { locale: LocaleEnum.en, fields: patch },
+        requesterId,
+      );
+    }
 
     const existing = await this.prisma.tourInclusion.findFirst({
       where: { id: inclusionId, tourId },
@@ -989,7 +1176,23 @@ export class TourChildrenService {
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
+    if (this.pendingChanges.isGated(tour.status, requesterRole)) {
+      await this.pendingChanges.stageListRemove(
+        tour,
+        'inclusions',
+        inclusionId,
+        requesterId,
+      );
+      this.logger.log(
+        `User ${requesterId} staged a inclusions removal on live tour ${tourId}`,
+      );
+      return { message: 'Inclusion removed successfully' };
+    }
 
     const existing = await this.prisma.tourInclusion.findFirst({
       where: { id: inclusionId, tourId },
@@ -1015,7 +1218,21 @@ export class TourChildrenService {
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
+    if (this.pendingChanges.isGated(tour.status, requesterRole)) {
+      return this.gatedItemTranslationUpsert(
+        tour,
+        'inclusions',
+        inclusionId,
+        locale,
+        dto as unknown as Record<string, unknown>,
+        requesterId,
+      );
+    }
 
     const inclusion = await this.prisma.tourInclusion.findFirst({
       where: { id: inclusionId, tourId },
@@ -1062,7 +1279,12 @@ export class TourChildrenService {
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
+    this.assertItemTranslationDeletable(tour, requesterRole);
 
     if (locale === Locale.en) {
       throw new BadRequestException(
@@ -1124,7 +1346,17 @@ export class TourChildrenService {
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
+    const stagedExclusion = await this.gatedListRead(
+      tour,
+      requesterRole,
+      'exclusions',
+    );
+    if (stagedExclusion) return stagedExclusion;
     return this.prisma.tourExclusion.findMany({
       where: { tourId },
       select: this.exclusionSelect,
@@ -1138,7 +1370,23 @@ export class TourChildrenService {
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
+    if (this.pendingChanges.isGated(tour.status, requesterRole)) {
+      this.logger.log(
+        `User ${requesterId} staged a exclusions add on live tour ${tourId}`,
+      );
+      return this.pendingChanges.stageListAdd(
+        tour,
+        'exclusions',
+        dto as unknown as Record<string, unknown>,
+        dto as unknown as Record<string, unknown>,
+        requesterId,
+      );
+    }
 
     const result = await this.prisma.$transaction(async (tx) => {
       const exclusion = await tx.tourExclusion.create({
@@ -1177,7 +1425,25 @@ export class TourChildrenService {
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
+    if (this.pendingChanges.isGated(tour.status, requesterRole)) {
+      this.logger.log(
+        `User ${requesterId} staged a exclusions update on live tour ${tourId}`,
+      );
+      const patch = dto as unknown as Record<string, unknown>;
+      return this.pendingChanges.stageListUpdate(
+        tour,
+        'exclusions',
+        exclusionId,
+        patch,
+        { locale: LocaleEnum.en, fields: patch },
+        requesterId,
+      );
+    }
 
     const existing = await this.prisma.tourExclusion.findFirst({
       where: { id: exclusionId, tourId },
@@ -1214,7 +1480,23 @@ export class TourChildrenService {
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
+    if (this.pendingChanges.isGated(tour.status, requesterRole)) {
+      await this.pendingChanges.stageListRemove(
+        tour,
+        'exclusions',
+        exclusionId,
+        requesterId,
+      );
+      this.logger.log(
+        `User ${requesterId} staged a exclusions removal on live tour ${tourId}`,
+      );
+      return { message: 'Exclusion removed successfully' };
+    }
 
     const existing = await this.prisma.tourExclusion.findFirst({
       where: { id: exclusionId, tourId },
@@ -1240,7 +1522,21 @@ export class TourChildrenService {
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
+    if (this.pendingChanges.isGated(tour.status, requesterRole)) {
+      return this.gatedItemTranslationUpsert(
+        tour,
+        'exclusions',
+        exclusionId,
+        locale,
+        dto as unknown as Record<string, unknown>,
+        requesterId,
+      );
+    }
 
     const exclusion = await this.prisma.tourExclusion.findFirst({
       where: { id: exclusionId, tourId },
@@ -1287,7 +1583,12 @@ export class TourChildrenService {
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
+    this.assertItemTranslationDeletable(tour, requesterRole);
 
     if (locale === Locale.en) {
       throw new BadRequestException(
@@ -1342,7 +1643,17 @@ export class TourChildrenService {
   } as const;
 
   async getFeatures(tourId: string, requesterId: string, requesterRole: Role) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
+    const stagedFeature = await this.gatedListRead(
+      tour,
+      requesterRole,
+      'features',
+    );
+    if (stagedFeature) return stagedFeature;
     return this.prisma.tourFeature.findMany({
       where: { tourId },
       select: this.featureSelect,
@@ -1356,7 +1667,23 @@ export class TourChildrenService {
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
+    if (this.pendingChanges.isGated(tour.status, requesterRole)) {
+      this.logger.log(
+        `User ${requesterId} staged a features add on live tour ${tourId}`,
+      );
+      return this.pendingChanges.stageListAdd(
+        tour,
+        'features',
+        dto as unknown as Record<string, unknown>,
+        dto as unknown as Record<string, unknown>,
+        requesterId,
+      );
+    }
     const result = await this.prisma.$transaction(async (tx) => {
       const feature = await tx.tourFeature.create({
         data: { tourId, type: dto.type, displayOrder: dto.displayOrder ?? 0 },
@@ -1382,7 +1709,25 @@ export class TourChildrenService {
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
+    if (this.pendingChanges.isGated(tour.status, requesterRole)) {
+      this.logger.log(
+        `User ${requesterId} staged a features update on live tour ${tourId}`,
+      );
+      const patch = dto as unknown as Record<string, unknown>;
+      return this.pendingChanges.stageListUpdate(
+        tour,
+        'features',
+        featureId,
+        patch,
+        { locale: LocaleEnum.en, fields: patch },
+        requesterId,
+      );
+    }
     const existing = await this.prisma.tourFeature.findFirst({
       where: { id: featureId, tourId },
       select: { id: true },
@@ -1413,7 +1758,23 @@ export class TourChildrenService {
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
+    if (this.pendingChanges.isGated(tour.status, requesterRole)) {
+      await this.pendingChanges.stageListRemove(
+        tour,
+        'features',
+        featureId,
+        requesterId,
+      );
+      this.logger.log(
+        `User ${requesterId} staged a features removal on live tour ${tourId}`,
+      );
+      return { message: 'Feature removed successfully' };
+    }
     const existing = await this.prisma.tourFeature.findFirst({
       where: { id: featureId, tourId },
       select: { id: true },
@@ -1437,7 +1798,21 @@ export class TourChildrenService {
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
+    if (this.pendingChanges.isGated(tour.status, requesterRole)) {
+      return this.gatedItemTranslationUpsert(
+        tour,
+        'features',
+        featureId,
+        locale,
+        dto as unknown as Record<string, unknown>,
+        requesterId,
+      );
+    }
     const feature = await this.prisma.tourFeature.findFirst({
       where: { id: featureId, tourId },
       select: { id: true },
@@ -1481,7 +1856,12 @@ export class TourChildrenService {
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
+    this.assertItemTranslationDeletable(tour, requesterRole);
     if (locale === Locale.en)
       throw new BadRequestException(
         'English feature text cannot be deleted. Update the text instead.',
@@ -1544,7 +1924,17 @@ export class TourChildrenService {
   } as const;
 
   async getLocations(tourId: string, requesterId: string, requesterRole: Role) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
+    const stagedLocation = await this.gatedListRead(
+      tour,
+      requesterRole,
+      'locations',
+    );
+    if (stagedLocation) return stagedLocation;
     return this.prisma.tourLocation.findMany({
       where: { tourId },
       select: this.locationSelect,
@@ -1558,7 +1948,23 @@ export class TourChildrenService {
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
+    if (this.pendingChanges.isGated(tour.status, requesterRole)) {
+      this.logger.log(
+        `User ${requesterId} staged a locations add on live tour ${tourId}`,
+      );
+      return this.pendingChanges.stageListAdd(
+        tour,
+        'locations',
+        dto as unknown as Record<string, unknown>,
+        dto as unknown as Record<string, unknown>,
+        requesterId,
+      );
+    }
     const result = await this.prisma.$transaction(async (tx) => {
       const location = await tx.tourLocation.create({
         data: {
@@ -1602,7 +2008,25 @@ export class TourChildrenService {
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
+    if (this.pendingChanges.isGated(tour.status, requesterRole)) {
+      this.logger.log(
+        `User ${requesterId} staged a locations update on live tour ${tourId}`,
+      );
+      const patch = dto as unknown as Record<string, unknown>;
+      return this.pendingChanges.stageListUpdate(
+        tour,
+        'locations',
+        locationId,
+        patch,
+        { locale: LocaleEnum.en, fields: patch },
+        requesterId,
+      );
+    }
     const existing = await this.prisma.tourLocation.findFirst({
       where: { id: locationId, tourId },
       select: { id: true },
@@ -1650,7 +2074,23 @@ export class TourChildrenService {
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
+    if (this.pendingChanges.isGated(tour.status, requesterRole)) {
+      await this.pendingChanges.stageListRemove(
+        tour,
+        'locations',
+        locationId,
+        requesterId,
+      );
+      this.logger.log(
+        `User ${requesterId} staged a locations removal on live tour ${tourId}`,
+      );
+      return { message: 'Location removed successfully' };
+    }
     const existing = await this.prisma.tourLocation.findFirst({
       where: { id: locationId, tourId },
       select: { id: true },
@@ -1674,7 +2114,21 @@ export class TourChildrenService {
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
+    if (this.pendingChanges.isGated(tour.status, requesterRole)) {
+      return this.gatedItemTranslationUpsert(
+        tour,
+        'locations',
+        locationId,
+        locale,
+        dto as unknown as Record<string, unknown>,
+        requesterId,
+      );
+    }
     const location = await this.prisma.tourLocation.findFirst({
       where: { id: locationId, tourId },
       select: { id: true },
@@ -1730,7 +2184,12 @@ export class TourChildrenService {
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
+    this.assertItemTranslationDeletable(tour, requesterRole);
     if (locale === Locale.en)
       throw new BadRequestException(
         'English location text cannot be deleted. Update the text instead.',
@@ -2091,9 +2550,12 @@ export class TourChildrenService {
     // live copy seconds after save (code-review #80 finding 1). Mirrors the
     // staged-gallery read in getImages.
     if (this.pendingChanges.isGated(tour.status, requesterRole)) {
-      const open = await this.pendingChanges.getOpenForTour(tourId);
+      // The WORKING set: a rejection sends the proposal back, it does not
+      // erase it - the form keeps showing the operator's draft so a re-save
+      // carries every held edit forward (client round 6).
+      const working = await this.pendingChanges.getWorkingSetForTour(tourId);
       const staged = (
-        open?.payload as
+        working?.payload as
           | { translations?: Record<string, Record<string, unknown>> }
           | undefined
       )?.translations?.[locale];
@@ -2132,22 +2594,51 @@ export class TourChildrenService {
     // stays untouched and no machine re-translation is enqueued. The response
     // echoes the proposed values so the form keeps showing what the operator
     // typed, flagged `pendingReview`.
+    //
+    // Only TRUE differences vs the live row enter the stash (UX round 2: the
+    // whole-form PATCH used to stash every defined field, so the reviewer saw
+    // twelve field names for a one-line edit). A defined field that EQUALS
+    // the live value leaves the stash - editing back cancels that part of
+    // the review; undefined fields (the copy form and the SEO form write
+    // disjoint halves of the same locale) keep their stashed values.
     if (this.pendingChanges.isGated(tour.status, requesterRole)) {
       const fields = this.definedTranslationFields(dto);
-      await this.pendingChanges.stash(tour, requesterId, {
-        translations: { [locale]: fields },
-      });
-      this.logger.log(
-        `User ${requesterId} staged translation [${locale}] changes on live tour ${tourId}`,
-      );
       const current = await this.prisma.tourTranslation.findUnique({
         where: { tourId_locale: { tourId, locale } },
         select: this.tourTranslationSelect,
       });
+      const norm = (v: unknown) => (v === '' || v === undefined ? null : v);
+      const changed: Record<string, unknown> = {};
+      const reverted: string[] = [];
+      for (const [key, value] of Object.entries(fields)) {
+        const live = (current as Record<string, unknown> | null)?.[key];
+        const same = Array.isArray(value)
+          ? JSON.stringify(value) === JSON.stringify(live ?? [])
+          : norm(value) === norm(live);
+        if (same) reverted.push(key);
+        else changed[key] = value;
+      }
+      const set = await this.pendingChanges.setTranslationStash(
+        tour,
+        requesterId,
+        locale,
+        changed,
+        reverted,
+      );
+      this.logger.log(
+        `User ${requesterId} staged translation [${locale}] changes on live tour ${tourId} (${Object.keys(changed).length} changed)`,
+      );
+      const stillStashed = (
+        set?.payload as
+          | { translations?: Record<string, Record<string, unknown>> }
+          | undefined
+      )?.translations?.[locale];
       return {
         ...(current ?? { locale, isMachineTranslated: false, updatedAt: null }),
-        ...fields,
-        pendingReview: true,
+        ...stillStashed,
+        ...(stillStashed && Object.keys(stillStashed).length > 0
+          ? { pendingReview: true }
+          : {}),
       };
     }
 
