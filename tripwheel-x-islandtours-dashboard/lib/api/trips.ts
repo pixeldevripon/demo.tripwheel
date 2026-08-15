@@ -23,6 +23,7 @@ import type {
   TourDeparture,
   CreateTripPayload,
   MyTripsQueryParams,
+  PaginatedPendingChanges,
   PaginatedTrips,
   TourAddOn,
   TourAgeBand,
@@ -38,6 +39,7 @@ import type {
   TourException,
   TourClosureReason,
   TripListItem,
+  TripPendingChange,
   TripTranslation,
   TripUpdateResponse,
   UpdateTourAddOnPayload,
@@ -164,6 +166,44 @@ export const tripsApi = {
 
   remove(id: string): Promise<{ message: string }> {
     return apiFetch<{ message: string }>(`/tours/${id}`, { method: 'DELETE' });
+  },
+
+  // ── Live-tour pending content changes (client review #19 / dashboard #80) ──
+
+  /** The tour's LATEST change set (open or decided) - null when none exists.
+   *  Nest serialises a null return as an empty 200 body, hence the `?? null`. */
+  async getPendingChange(id: string): Promise<TripPendingChange | null> {
+    return (
+      (await apiFetch<TripPendingChange | null>(
+        `/tours/${id}/pending-changes`,
+      )) ?? null
+    );
+  },
+
+  /** Admin queue: open change sets across all tours, oldest submission first. */
+  getPendingChanges(
+    params: { page?: number; limit?: number } = {},
+  ): Promise<PaginatedPendingChanges> {
+    const query = buildQuery(params);
+    return apiFetch<PaginatedPendingChanges>(
+      `/tours/admin/pending-changes${query}`,
+    );
+  },
+
+  /** Admin applies the open set to the live tour (slug untouched). */
+  approvePendingChanges(id: string, note?: string): Promise<TripPendingChange> {
+    return apiFetch<TripPendingChange>(`/tours/${id}/pending-changes/approve`, {
+      method: 'POST',
+      body: JSON.stringify(note?.trim() ? { note } : {}),
+    });
+  },
+
+  /** Admin sends the open set back - live content untouched, note required. */
+  rejectPendingChanges(id: string, note: string): Promise<TripPendingChange> {
+    return apiFetch<TripPendingChange>(`/tours/${id}/pending-changes/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ note }),
+    });
   },
 
   // Images

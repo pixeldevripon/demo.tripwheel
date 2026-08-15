@@ -237,6 +237,43 @@ export const useRejectTrip = () =>
     ({ id }) => [tripKeys.all, tripKeys.detail(id)],
   );
 
+// ── Live-tour pending content changes (client review #19 / dashboard #80) ──
+
+/** The tour's LATEST content change set (open or decided) - null when none. */
+export function useTripPendingChange(tripId: string) {
+  return useQuery({
+    queryKey: tripKeys.pendingChange(tripId),
+    queryFn: () => tripsApi.getPendingChange(tripId),
+    enabled: !!tripId,
+  });
+}
+
+/** Admin queue of open change sets across all tours, oldest first. */
+export function usePendingChangesQueue(
+  params: { page?: number; limit?: number } = {},
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: tripKeys.pendingChangesQueue(params),
+    queryFn: () => tripsApi.getPendingChanges(params),
+    enabled,
+  });
+}
+
+export const useApprovePendingChanges = () =>
+  useTripMutation(
+    ({ id, note }: { id: string; note?: string }) =>
+      tripsApi.approvePendingChanges(id, note),
+    ({ id }) => [tripKeys.all, tripKeys.detail(id)],
+  );
+
+export const useRejectPendingChanges = () =>
+  useTripMutation(
+    ({ id, note }: { id: string; note: string }) =>
+      tripsApi.rejectPendingChanges(id, note),
+    ({ id }) => [tripKeys.all, tripKeys.detail(id)],
+  );
+
 export const usePublishTrip = () =>
   useTripMutation(
     (id: string) => tripsApi.publish(id),
@@ -288,21 +325,42 @@ export const useAddImage = () =>
   useTripMutation(
     ({ tripId, payload }: { tripId: string; payload: AddTourImagePayload }) =>
       tripsApi.addImage(tripId, payload),
-    ({ tripId }) => [tripKeys.images(tripId), tripKeys.detail(tripId)],
+    ({ tripId }) => [
+      tripKeys.images(tripId),
+      tripKeys.detail(tripId),
+      // A gated image op on a LIVE tour lands in the pending set (client
+      // review #19) - the Review-step panel must refetch or it shows the
+      // pre-edit set (code-review #80 finding 2).
+      tripKeys.pendingChange(tripId),
+    ],
   );
 
 export const useUpdateImage = () =>
   useTripMutation(
     ({ tripId, imageId, payload }: { tripId: string; imageId: string; payload: UpdateTourImagePayload }) =>
       tripsApi.updateImage(tripId, imageId, payload),
-    ({ tripId }) => [tripKeys.images(tripId), tripKeys.detail(tripId)],
+    ({ tripId }) => [
+      tripKeys.images(tripId),
+      tripKeys.detail(tripId),
+      // A gated image op on a LIVE tour lands in the pending set (client
+      // review #19) - the Review-step panel must refetch or it shows the
+      // pre-edit set (code-review #80 finding 2).
+      tripKeys.pendingChange(tripId),
+    ],
   );
 
 export const useRemoveImage = () =>
   useTripMutation(
     ({ tripId, imageId }: { tripId: string; imageId: string }) =>
       tripsApi.removeImage(tripId, imageId),
-    ({ tripId }) => [tripKeys.images(tripId), tripKeys.detail(tripId)],
+    ({ tripId }) => [
+      tripKeys.images(tripId),
+      tripKeys.detail(tripId),
+      // A gated image op on a LIVE tour lands in the pending set (client
+      // review #19) - the Review-step panel must refetch or it shows the
+      // pre-edit set (code-review #80 finding 2).
+      tripKeys.pendingChange(tripId),
+    ],
   );
 
 // Mutations - Add-Ons
@@ -586,7 +644,13 @@ export const useUpsertTripTranslation = () =>
   useTripMutation(
     ({ tripId, locale, payload }: { tripId: string; locale: string; payload: UpsertTripTranslationPayload }) =>
       tripsApi.upsertTranslation(tripId, locale, payload),
-    ({ tripId }) => [tripKeys.translations(tripId), tripKeys.detail(tripId)],
+    ({ tripId }) => [
+      tripKeys.translations(tripId),
+      tripKeys.detail(tripId),
+      // Gated translation edits stash into the pending set (client review
+      // #19) - keep the Review-step panel fresh.
+      tripKeys.pendingChange(tripId),
+    ],
   );
 
 export const useDeleteTripTranslation = () =>

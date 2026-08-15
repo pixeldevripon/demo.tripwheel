@@ -11,7 +11,9 @@ import { makeTripColumns } from '@/components/common/trip-columns';
 import { DataTable } from '@/components/data-table/data-table';
 import { DataTableSearch } from '@/components/data-table/data-table-toolbar';
 import { useTableState } from '@/components/data-table/use-table-state';
+import { ContentUpdatesTable } from '@/components/submissions/content-updates-table';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
     Select,
     SelectContent,
@@ -20,7 +22,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { useActiveDestinations } from '@/hooks/destinations/use-destinations';
-import { useAdminTrips } from '@/hooks/trips/use-trips';
+import { useAdminTrips, usePendingChangesQueue } from '@/hooks/trips/use-trips';
 import type { TripListItem } from '@/types/trip';
 
 /** Where a submission gets decided: the tour's Review step (approve/reject). */
@@ -47,8 +49,16 @@ export function SubmissionsQueueView() {
         setLimit,
         setSearch,
         setFilter,
+        setFilters,
     } = useTableState();
     const { data: destinations } = useActiveDestinations();
+    // Two lanes (client review #19): new-tour submissions and live-tour
+    // content updates. Lane lives in the URL; switching resets pagination.
+    const lane = filters.lane === 'changes' ? 'changes' : 'tours';
+    // 1-row probes so BOTH tab labels carry their live count whichever lane
+    // is active (the inactive lane's table query is disabled).
+    const { data: changesCount } = usePendingChangesQueue({ limit: 1 });
+    const { data: loopCount } = useAdminTrips({ limit: 1, reviewLoop: true });
     // Default = the whole review loop (client 2026-08-15: All shows both In
     // review and Changes requested); either state is one tap away.
     const reviewFilter =
@@ -56,20 +66,23 @@ export function SubmissionsQueueView() {
         filters.approvalStatus === 'REJECTED'
             ? filters.approvalStatus
             : 'all';
-    const { data, isLoading } = useAdminTrips({
-        page,
-        limit,
-        ...(reviewFilter === 'all'
-            ? { reviewLoop: true }
-            : { approvalStatus: reviewFilter }),
-        sortBy: 'submittedAt',
-        sortDir: 'asc',
-        ...(debouncedSearch ? { search: debouncedSearch } : {}),
-        ...(filters.destinationId
-            ? { destinationId: filters.destinationId }
-            : {}),
-        ...(filters.operatorId ? { operatorId: filters.operatorId } : {}),
-    });
+    const { data, isLoading } = useAdminTrips(
+        {
+            page,
+            limit,
+            ...(reviewFilter === 'all'
+                ? { reviewLoop: true }
+                : { approvalStatus: reviewFilter }),
+            sortBy: 'submittedAt',
+            sortDir: 'asc',
+            ...(debouncedSearch ? { search: debouncedSearch } : {}),
+            ...(filters.destinationId
+                ? { destinationId: filters.destinationId }
+                : {}),
+            ...(filters.operatorId ? { operatorId: filters.operatorId } : {}),
+        },
+        lane === 'tours',
+    );
 
     const columns = useMemo<ColumnDef<TripListItem>[]>(() => {
         const base = makeTripColumns({
@@ -98,8 +111,47 @@ export function SubmissionsQueueView() {
         return [...base.slice(0, -1), submitted, base[base.length - 1]];
     }, []);
 
+    const laneTabs = (
+        <Tabs
+            value={lane}
+            onValueChange={v =>
+                setFilters({ lane: v === 'changes' ? 'changes' : undefined })
+            }>
+            <TabsList>
+                <TabsTrigger value='tours'>
+                    New tours
+                    {typeof loopCount?.total === 'number'
+                        ? ` (${loopCount.total})`
+                        : ''}
+                </TabsTrigger>
+                <TabsTrigger value='changes'>
+                    Content updates
+                    {typeof changesCount?.total === 'number'
+                        ? ` (${changesCount.total})`
+                        : ''}
+                </TabsTrigger>
+            </TabsList>
+        </Tabs>
+    );
+
+    if (lane === 'changes') {
+        return (
+            <div className='space-y-4'>
+                {laneTabs}
+                <ContentUpdatesTable
+                    page={page}
+                    limit={limit}
+                    onPageChange={setPage}
+                    onLimitChange={setLimit}
+                />
+            </div>
+        );
+    }
+
     return (
-        <DataTable
+        <div className='space-y-4'>
+            {laneTabs}
+            <DataTable
             columns={columns}
             data={data?.data ?? []}
             isLoading={isLoading}
@@ -173,6 +225,7 @@ export function SubmissionsQueueView() {
                 description:
                     'New operator submissions land here the moment they arrive.',
             }}
-        />
+            />
+        </div>
     );
 }

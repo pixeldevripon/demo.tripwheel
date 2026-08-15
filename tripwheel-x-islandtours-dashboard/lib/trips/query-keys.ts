@@ -52,4 +52,9 @@ export const tripKeys = {
   // scope field silently drop out of the cache key.
   rangeImpact: (params: RangeScopeParams) =>
     [...tripKeys.all, 'range-impact', params] as const,
+  // Live-tour pending content changes (client review #19 / dashboard #80).
+  pendingChange: (tripId: string) =>
+    [...tripKeys.all, 'pending-change', tripId] as const,
+  pendingChangesQueue: (params: { page?: number; limit?: number }) =>
+    [...tripKeys.all, 'pending-changes-queue', params] as const,
 };

@@ -79,6 +79,7 @@ import { tierMeta } from '@/types/tier';
 import type { TripListItem } from '@/types/trip';
 import { TripArchiveDialog } from '../../trip-archive-dialog';
 import { RejectChangesDialog } from '../../lifecycle/reject-changes-dialog';
+import { PendingChangesPanel } from './pending-changes-panel';
 import { useWizard } from '../wizard-context';
 import { WizardStepBody, WizardStepHeader } from '../wizard-step';
 
@@ -191,7 +192,7 @@ export function StepReview({ trip }: StepReviewProps) {
                 }
                 description={
                     trip.status === 'LIVE'
-                        ? 'Everything below is what travellers see. Edit any section and it updates immediately.'
+                        ? 'Everything below is what travellers see. Price and booking cutoff changes apply immediately; changes to the title, description or photos go to Island Tours for review first, and travellers keep seeing the approved version meanwhile.'
                         : allPassed
                           ? 'Everything required is in place.'
                           : `${remaining} thing${remaining === 1 ? '' : 's'} left before this tour can go live.`
@@ -240,6 +241,10 @@ export function StepReview({ trip }: StepReviewProps) {
             />
 
             <WizardStepBody>
+                {/* Live-tour content gate (client review #19): the pending
+                    change set - operator sees what waits, platform decides. */}
+                {trip.status === 'LIVE' && <PendingChangesPanel trip={trip} />}
+
                 {/* Review verdict: the admin's actionable note. */}
                 {trip.approvalStatus === 'REJECTED' && trip.reviewNote && (
                     <div className='rounded-lg border border-danger-border bg-danger-subtle px-4 py-3'>

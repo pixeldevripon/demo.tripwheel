@@ -1056,3 +1056,72 @@ export interface CreateTourExceptionPayload {
   // CLOSE_DATE / CLOSE_SLOT only — the backend rejects it on the other two.
   closureReason?: TourClosureReason;
 }
+
+// ── Live-tour pending content changes (client review #19 / dashboard #80) ──
+// Edits an operator makes to a LIVE tour's title, description content or
+// photos are HELD in one of these instead of applied - travellers keep seeing
+// the approved version. Price and booking cutoff stay instant lanes.
+
+export type PendingChangeStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+export type PendingChangeArea = 'title' | 'content' | 'photos';
+
+export interface StagedTripImage {
+  id: string;
+  url: string;
+  isHero: boolean;
+  focalX: number;
+  focalY: number;
+  altText: string | null;
+  displayOrder: number;
+  width: number;
+  height: number;
+  /** Added while staged - no real image row exists yet. */
+  isNew?: boolean;
+}
+
+export interface TripPendingChangePayload {
+  tour?: { name?: string };
+  /** Proposed TourTranslation fields per locale (defined fields only). */
+  translations?: Record<string, Record<string, unknown>>;
+  /** The staged copy of the WHOLE gallery, when photos were touched. */
+  images?: StagedTripImage[];
+}
+
+export interface TripPendingChange {
+  id: string;
+  tourId: string;
+  status: PendingChangeStatus;
+  payload: TripPendingChangePayload;
+  changedAreas: PendingChangeArea[];
+  submittedAt: string;
+  submittedById: string | null;
+  decidedAt: string | null;
+  decidedById: string | null;
+  reviewNote: string | null;
+  updatedAt: string;
+}
+
+/** Admin queue row - the change set plus the tour summary it belongs to. */
+export interface PendingChangeQueueRow extends TripPendingChange {
+  tour: {
+    id: string;
+    name: string;
+    slug: string;
+    status: TripStatus;
+    destination: { id: string; name: string; slug: string };
+    operator: {
+      id: string;
+      companyInfo: { companyName: string | null } | null;
+      user: { name: string | null; email: string } | null;
+    };
+    /** Hero image only (take 1). */
+    images: Array<{ url: string }>;
+  };
+}
+
+export interface PaginatedPendingChanges {
+  total: number;
+  page: number;
+  limit: number;
+  data: PendingChangeQueueRow[];
+}
