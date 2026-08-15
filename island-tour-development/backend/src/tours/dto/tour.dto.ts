@@ -13,6 +13,7 @@ import {
   OctoAvailabilityType,
   OnArrivalPayment,
   PaymentModel,
+  PendingChangeStatus,
   PickupModel,
   PricingModel,
   RedemptionMethod,
@@ -1348,6 +1349,74 @@ export class RejectTourDto {
   @MinLength(5)
   @MaxLength(1000)
   note!: string;
+}
+
+// ── Live-tour pending content changes (client review #19 / dashboard #80) ──
+
+export class TourPendingChangePayloadDto {
+  @ApiPropertyOptional({
+    example: { name: 'Sunset Catamaran Cruise' },
+    description: 'Proposed tour-row fields (title only today).',
+  })
+  tour?: { name?: string };
+
+  @ApiPropertyOptional({
+    example: { en: { overview: 'A rewritten overview…' } },
+    description: 'Proposed TourTranslation fields per locale (defined only).',
+  })
+  translations?: Record<string, Record<string, unknown>>;
+
+  @ApiPropertyOptional({
+    type: 'array',
+    items: { type: 'object' },
+    description:
+      'The staged copy of the WHOLE gallery when photos were touched.',
+  })
+  images?: unknown[];
+}
+
+export class TourPendingChangeDto {
+  @ApiProperty({ example: '9b2f5c1e-…' }) id!: string;
+  @ApiProperty({ example: 'a4d81f0c-…' }) tourId!: string;
+  @ApiProperty({ enum: PendingChangeStatus, example: 'PENDING' })
+  status!: PendingChangeStatus;
+  @ApiProperty({ type: TourPendingChangePayloadDto })
+  payload!: TourPendingChangePayloadDto;
+  @ApiProperty({
+    example: ['title', 'photos'],
+    description: "Which areas the set touches: 'title' | 'content' | 'photos'.",
+  })
+  changedAreas!: string[];
+  @ApiProperty() submittedAt!: Date;
+  @ApiPropertyOptional() submittedById!: string | null;
+  @ApiPropertyOptional() decidedAt!: Date | null;
+  @ApiPropertyOptional() decidedById!: string | null;
+  @ApiPropertyOptional() reviewNote!: string | null;
+}
+
+export class PendingChangesQueryDto {
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @ApiPropertyOptional({ example: 20 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit?: number;
+}
+
+export class PaginatedPendingChangesDto {
+  @ApiProperty({ example: 4 }) total!: number;
+  @ApiProperty({ example: 1 }) page!: number;
+  @ApiProperty({ example: 20 }) limit!: number;
+  @ApiProperty({ type: [TourPendingChangeDto] })
+  data!: TourPendingChangeDto[];
 }
 
 export class UpdateTourDto {

@@ -11,11 +11,13 @@ import { ApiOperation, ApiParam, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { Locale, PricingModel, TourStatus } from '@prisma/client';
 import {
   LocalsFavouriteStatsDto,
+  PaginatedPendingChangesDto,
   PaginatedToursResponseDto,
   RecomputeDemandResponseDto,
   SetLocalsFavouriteResponseDto,
   TourAlternativeResponseDto,
   TourDetailResponseDto,
+  TourPendingChangeDto,
   TourPublicDetailResponseDto,
   TourResponseDto,
   TourSort,
@@ -301,6 +303,60 @@ export function ApiSubmitTourForReviewDocs() {
       type: ConflictErrorDto,
     }),
     ...operatorErrors,
+  );
+}
+
+export function ApiListPendingChangesDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary:
+        'Admin: open live-tour content change sets, oldest submission first (client review #19)',
+    }),
+    ApiResponse({ status: 200, type: PaginatedPendingChangesDto }),
+  );
+}
+
+export function ApiGetTourPendingChangeDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary:
+        "The tour's latest content change set (open or decided) - null when none exists",
+    }),
+    tourIdParam,
+    ApiResponse({ status: 200, type: TourPendingChangeDto }),
+    ApiResponse({ status: 404, type: NotFoundErrorDto }),
+  );
+}
+
+export function ApiApprovePendingChangesDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary:
+        'Admin approves the open content change set - the payload is applied to the live tour in one transaction (slug untouched)',
+    }),
+    tourIdParam,
+    ApiResponse({ status: 200, type: TourPendingChangeDto }),
+    ApiResponse({
+      status: 404,
+      description: 'No open change set on this tour',
+      type: NotFoundErrorDto,
+    }),
+  );
+}
+
+export function ApiRejectPendingChangesDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary:
+        'Admin sends the open content change set back - live content stays untouched, note required',
+    }),
+    tourIdParam,
+    ApiResponse({ status: 200, type: TourPendingChangeDto }),
+    ApiResponse({
+      status: 404,
+      description: 'No open change set on this tour',
+      type: NotFoundErrorDto,
+    }),
   );
 }
 

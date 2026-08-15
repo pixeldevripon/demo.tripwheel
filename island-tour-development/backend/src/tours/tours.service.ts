@@ -26,6 +26,7 @@ import {
 } from '@/attributes/derived-attributes';
 import { PAID_TIER_MAX_RANK } from '@/tiers/tiers.service';
 import { cardTeaser, cardTeaserTranslationSelect } from './card-teaser';
+import { TourPendingChangesService } from './tour-pending-changes.service';
 import { isOvernightCharter } from './overnight';
 import { evaluateLikelyToSellOut } from './demand-signal';
 import { computeQualityScore, listingCompleteness } from './quality-score';
@@ -119,6 +120,7 @@ export class ToursService {
     private readonly mail: MailService,
     private readonly emailSettings: EmailSettingsService,
     private readonly inbox: InboxService,
+    private readonly pendingChanges: TourPendingChangesService,
   ) {}
 
   /**
@@ -2903,6 +2905,22 @@ export class ToursService {
       throw new BadRequestException('Cannot update an archived tour');
     }
 
+    // Live-tour content gate (client review #19): a non-platform title change
+    // on a LIVE tour is HELD for review instead of applied - travellers keep
+    // seeing the approved title and the tour never goes offline. Everything
+    // else on this DTO stays the instant lane (price and booking cutoff by
+    // explicit client rule); the free-cancellation window has its own
+    // admin-only guard below.
+    let heldName: string | undefined;
+    if (
+      dto.name !== undefined &&
+      dto.name !== tour.name &&
+      this.pendingChanges.isGated(tour.status, requesterRole)
+    ) {
+      heldName = dto.name;
+      dto = { ...dto, name: undefined };
+    }
+
     // Party size is a RANGE, and either end can arrive alone - so the guard has
     // to compare the incoming value against the stored one, not just against
     // its sibling in the same body. Unguarded, min > max produces departures
@@ -3279,6 +3297,15 @@ export class ToursService {
       dto.maxPartySize !== tour.maxPartySize
     ) {
       await this.availability.resyncTourAvailability(id);
+    }
+
+    if (heldName !== undefined) {
+      await this.pendingChanges.stash(tour, requesterId, {
+        tour: { name: heldName },
+      });
+      warnings.push(
+        'The new title was sent to Island Tours for review - travellers keep seeing the current title until it is approved.',
+      );
     }
 
     this.logger.log(`User ${requesterId} updated tour ${id}`);
@@ -3722,6 +3749,20 @@ export class ToursService {
    */
   private tourReviewPath(tourId: string): string {
     return `/trips/${tourId}/edit?step=review`;
+  }
+
+  /**
+   * The tour's latest content change set (client review #19) - the operator
+   * sees their own proposal's state, the platform sees any tour's.
+   */
+  async getPendingChangeForTour(
+    id: string,
+    requesterId: string,
+    requesterRole: Role,
+  ) {
+    const tour = await this.findTourOrThrow(id);
+    await this.assertOwnership(tour, requesterId, requesterRole);
+    return this.pendingChanges.getLatestForTour(id);
   }
 
   async publish(id: string, userId: string, userRole: Role) {

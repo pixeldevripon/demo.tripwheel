@@ -155,6 +155,7 @@ model Tour {
   hubOurPicks        HubOurPick[]
   hubComparisonTours HubComparisonTour[]
   collectionTours    CollectionTour[]
+  pendingChanges     TourPendingChange[]
 
   @@unique([destinationId, slug])
   @@index([operatorId])
@@ -528,4 +529,40 @@ model TourTranslation {
   @@unique([tourId, locale])
   @@index([tourId, locale])
   @@map("tour_translations")
+}
+
+// ── Live-tour content gate (client review #19, dashboard #80) ──
+// Edits an operator makes to a LIVE tour's title, description content or
+// photos are held here instead of being applied: travellers keep seeing the
+// last approved version and the tour never goes offline. Price and booking
+// cutoff are the deliberate exceptions - they apply instantly so operators
+// can react to the market - and the free-cancellation window is admin-only
+// on a published tour (it moves existing bookings' deadlines).
+//
+// payload shape (all keys optional):
+//   { tour?: { name },
+//     translations?: { [locale]: <UpsertTourTranslationDto fields> },
+//     images?: [{ id?, url, publicId?, altText?, sortOrder, isHero, ... }] }
+// images is a STAGED COPY of the whole gallery: the operator's image ops
+// mutate this list and their GET serves it back, so the dashboard Images tab
+// works unchanged while the real gallery stays approved-only.
+model TourPendingChange {
+  id            String              @id @default(uuid())
+  tourId        String
+  status        PendingChangeStatus @default(PENDING)
+  payload       Json
+  submittedAt   DateTime            @default(now())
+  submittedById String?
+  decidedAt     DateTime?
+  decidedById   String?
+  reviewNote    String?
+  updatedAt     DateTime            @updatedAt
+
+  tour Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  // One OPEN change set per tour - enforced by a partial unique index in the
+  // migration (Prisma cannot express `UNIQUE ... WHERE status = 'PENDING'`).
+  @@index([tourId, status])
+  @@index([status, submittedAt])
+  @@map("tour_pending_changes")
 }

@@ -211,6 +211,15 @@ enum TourApprovalStatus {
   REJECTED
 }
 
+// Lifecycle of a live-tour content change set (client review #19): PENDING is
+// the only open state - approve applies the payload, reject leaves the live
+// content untouched. One PENDING row per tour (partial unique index).
+enum PendingChangeStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 // Pricing model — maps to OCTO `pricingPer` at the boundary.
 enum PricingModel {
   PER_PERSON

@@ -6,6 +6,10 @@ import { TranslationClearMarkService } from '@/content-translation/translation-c
 import { translationUnitKeys } from '@/content-translation/translation-unit-keys';
 import { ToursService } from './tours.service';
 import {
+  TourPendingChangesService,
+  TRANSLATION_CONTENT_KEYS,
+} from './tour-pending-changes.service';
+import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
@@ -52,6 +56,7 @@ export class TourChildrenService {
     private readonly toursService: ToursService,
     private readonly contentTranslation: ContentTranslationEnqueuer,
     private readonly clearMarks: TranslationClearMarkService,
+    private readonly pendingChanges: TourPendingChangesService,
   ) {}
 
   // ── Common helper ─────────────────────────────────────────────────────────────
@@ -82,7 +87,22 @@ export class TourChildrenService {
   } as const;
 
   async getImages(tourId: string, requesterId: string, requesterRole: Role) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
+    // Live-tour content gate (client review #19): while photo changes wait
+    // for review, the operator's Images tab works on the STAGED copy - the
+    // approved gallery travellers see stays untouched underneath.
+    if (this.pendingChanges.isGated(tour.status, requesterRole)) {
+      const staged = await this.pendingChanges.getStagedImages(tourId);
+      if (staged) {
+        return [...staged]
+          .sort((a, b) => a.displayOrder - b.displayOrder)
+          .map((img) => this.pendingChanges.toImageShape(tourId, img));
+      }
+    }
     return this.prisma.tourImage.findMany({
       where: { tourId },
       select: this.imageSelect,
@@ -96,7 +116,18 @@ export class TourChildrenService {
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
+
+    if (this.pendingChanges.isGated(tour.status, requesterRole)) {
+      this.logger.log(
+        `User ${requesterId} staged an image add on live tour ${tourId}`,
+      );
+      return this.pendingChanges.stageImageAdd(tour, dto, requesterId);
+    }
 
     if (dto.isHero) {
       return this.prisma.$transaction(async (tx) => {
@@ -151,7 +182,23 @@ export class TourChildrenService {
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
+
+    if (this.pendingChanges.isGated(tour.status, requesterRole)) {
+      this.logger.log(
+        `User ${requesterId} staged an image update on live tour ${tourId}`,
+      );
+      return this.pendingChanges.stageImageUpdate(
+        tour,
+        imageId,
+        dto,
+        requesterId,
+      );
+    }
 
     const existing = await this.prisma.tourImage.findFirst({
       where: { id: imageId, tourId },
@@ -214,7 +261,18 @@ export class TourChildrenService {
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
+
+    if (this.pendingChanges.isGated(tour.status, requesterRole)) {
+      this.logger.log(
+        `User ${requesterId} staged an image removal on live tour ${tourId}`,
+      );
+      return this.pendingChanges.stageImageRemove(tour, imageId, requesterId);
+    }
 
     const existing = await this.prisma.tourImage.findFirst({
       where: { id: imageId, tourId },
@@ -1994,35 +2052,65 @@ export class TourChildrenService {
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
 
     const translation = await this.prisma.tourTranslation.findUnique({
       where: { tourId_locale: { tourId, locale } },
       select: this.tourTranslationSelect,
     });
 
-    return (
-      translation ?? {
-        locale,
-        title: null,
-        overview: null,
-        description: null,
-        shortDescription: null,
-        whatToBring: [],
-        knowBeforeYouGo: [],
-        notSuitableFor: [],
-        whatToExpectIntro: null,
-        categoryDisplay: null,
-        localTipTitle: null,
-        localTipBody: null,
-        operatorNote: null,
-        meetingPointText: null,
-        metaTitle: null,
-        metaDescription: null,
-        isMachineTranslated: false,
-        updatedAt: null,
-      }
-    );
+    const base = translation ?? {
+      locale,
+      title: null,
+      overview: null,
+      description: null,
+      shortDescription: null,
+      whatToBring: [],
+      knowBeforeYouGo: [],
+      notSuitableFor: [],
+      whatToExpectIntro: null,
+      categoryDisplay: null,
+      localTipTitle: null,
+      localTipBody: null,
+      operatorNote: null,
+      meetingPointText: null,
+      metaTitle: null,
+      metaDescription: null,
+      isMachineTranslated: false,
+      updatedAt: null,
+    };
+
+    // Live-tour content gate (client review #19): the WRITE path stashes a
+    // gated edit instead of applying it, so the READ path must overlay the
+    // stash or the form's refetch reverts the operator's "saved" text to the
+    // live copy seconds after save (code-review #80 finding 1). Mirrors the
+    // staged-gallery read in getImages.
+    if (this.pendingChanges.isGated(tour.status, requesterRole)) {
+      const open = await this.pendingChanges.getOpenForTour(tourId);
+      const staged = (
+        open?.payload as
+          | { translations?: Record<string, Record<string, unknown>> }
+          | undefined
+      )?.translations?.[locale];
+      if (staged) return { ...base, ...staged, pendingReview: true };
+    }
+
+    return base;
+  }
+
+  /** The DTO's defined content fields only - the stash must not turn an
+   *  untouched field into an explicit null when it is applied later. The key
+   *  list is the SHARED whitelist, re-enforced at apply time in approve(). */
+  private definedTranslationFields(dto: UpsertTourTranslationDto) {
+    const fields: Record<string, unknown> = {};
+    for (const key of TRANSLATION_CONTENT_KEYS) {
+      if (dto[key] !== undefined) fields[key] = dto[key];
+    }
+    return fields;
   }
 
   async upsertTranslation(
@@ -2032,7 +2120,35 @@ export class TourChildrenService {
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
+
+    // Live-tour content gate (client review #19): description content on a
+    // LIVE tour is HELD for review - the stored row (what travellers read)
+    // stays untouched and no machine re-translation is enqueued. The response
+    // echoes the proposed values so the form keeps showing what the operator
+    // typed, flagged `pendingReview`.
+    if (this.pendingChanges.isGated(tour.status, requesterRole)) {
+      const fields = this.definedTranslationFields(dto);
+      await this.pendingChanges.stash(tour, requesterId, {
+        translations: { [locale]: fields },
+      });
+      this.logger.log(
+        `User ${requesterId} staged translation [${locale}] changes on live tour ${tourId}`,
+      );
+      const current = await this.prisma.tourTranslation.findUnique({
+        where: { tourId_locale: { tourId, locale } },
+        select: this.tourTranslationSelect,
+      });
+      return {
+        ...(current ?? { locale, isMachineTranslated: false, updatedAt: null }),
+        ...fields,
+        pendingReview: true,
+      };
+    }
 
     const result = await this.prisma.tourTranslation.upsert({
       where: { tourId_locale: { tourId, locale } },
@@ -2115,7 +2231,20 @@ export class TourChildrenService {
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const tour = await this.assertTourAccess(
+      tourId,
+      requesterId,
+      requesterRole,
+    );
+
+    // Removing a whole locale from a LIVE tour is a content change too - and
+    // one the pending payload cannot express (it stashes field values, not
+    // row deletions), so it stays platform-side.
+    if (this.pendingChanges.isGated(tour.status, requesterRole)) {
+      throw new ForbiddenException(
+        'Translations on a live tour are removed by Island Tours - contact us to take one down.',
+      );
+    }
 
     if (locale === Locale.en) {
       throw new BadRequestException(

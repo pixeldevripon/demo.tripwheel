@@ -36,6 +36,7 @@ import { InboxService } from '@/inbox/inbox.service';
 import { MailService } from '@/mail/mail.service';
 import { EmailSettingsService } from '@/mail/email-settings.service';
 import { ToursService } from './tours.service';
+import { TourPendingChangesService } from './tour-pending-changes.service';
 
 // ── Mock factory ──────────────────────────────────────────────────────────────
 
@@ -185,8 +186,27 @@ describe('ToursService', () => {
     sendTourApprovedEmail: jest.Mock;
   };
 
+  let pendingChanges: {
+    isGated: jest.Mock;
+    stash: jest.Mock;
+    getLatestForTour: jest.Mock;
+  };
+
   beforeEach(async () => {
     prisma = createMockPrismaService();
+    pendingChanges = {
+      // Real predicate shape so the update() gate tests exercise the actual
+      // branch: LIVE + non-platform is gated.
+      isGated: jest.fn(
+        (status: TourStatus, role: Role) =>
+          status === TourStatus.LIVE &&
+          role !== Role.ADMIN &&
+          role !== Role.STAFF &&
+          role !== Role.EDITOR,
+      ),
+      stash: jest.fn().mockResolvedValue(undefined),
+      getLatestForTour: jest.fn().mockResolvedValue(null),
+    };
     availability = {
       computeIsBookable: jest.fn().mockResolvedValue(true),
       resyncTourAvailability: jest.fn().mockResolvedValue(undefined),
@@ -218,6 +238,7 @@ describe('ToursService', () => {
           },
         },
         { provide: InboxService, useValue: { notify: jest.fn() } },
+        { provide: TourPendingChangesService, useValue: pendingChanges },
         {
           provide: FxRatesService,
           // No conversion in unit tests (no ?currency) -> money falls back to source.
@@ -2542,6 +2563,98 @@ describe('ToursService', () => {
           Role.TOUR_OPERATOR,
         ),
       ).resolves.toBeDefined();
+    });
+
+    // ── Live-tour content gate (client review #19 / dashboard #80) ──
+    // Title changes on a LIVE tour are HELD for review; price and booking
+    // cutoff stay the instant lane so operators can react to the market.
+
+    it("holds an operator's title change on a LIVE tour for review", async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({ status: TourStatus.LIVE }),
+      );
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+      prisma.tour.update.mockResolvedValue({});
+      prisma.tour.findUniqueOrThrow.mockResolvedValue(makeTour());
+
+      const result = await service.update(
+        'tour-1',
+        { name: 'A Bolder New Title' },
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
+
+      expect(pendingChanges.stash).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'tour-1' }),
+        'user-1',
+        { tour: { name: 'A Bolder New Title' } },
+      );
+      // The stored row is untouched: no name in the applied update.
+      expect(prisma.tour.update.mock.calls[0][0].data.name).toBeUndefined();
+      expect(result.warnings.join(' ')).toContain('review');
+    });
+
+    it('applies price and booking cutoff instantly on a LIVE tour (operator)', async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({ status: TourStatus.LIVE }),
+      );
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+      prisma.tour.update.mockResolvedValue({});
+      prisma.tour.findUniqueOrThrow.mockResolvedValue(makeTour());
+
+      const result = await service.update(
+        'tour-1',
+        { basePrice: '99.00', bookingCutoffMinutes: 60 },
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
+
+      const data = prisma.tour.update.mock.calls[0][0].data;
+      expect(data.basePrice).toBe('99.00');
+      expect(data.bookingCutoffMinutes).toBe(60);
+      expect(pendingChanges.stash).not.toHaveBeenCalled();
+      expect(result.warnings).toEqual([]);
+    });
+
+    it("an ADMIN's title change on a LIVE tour applies instantly", async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({ status: TourStatus.LIVE }),
+      );
+      prisma.tour.update.mockResolvedValue({});
+      prisma.tour.findUniqueOrThrow.mockResolvedValue(makeTour());
+
+      await service.update(
+        'tour-1',
+        { name: 'Editorial Title' },
+        'admin',
+        Role.ADMIN,
+      );
+
+      expect(prisma.tour.update.mock.calls[0][0].data.name).toBe(
+        'Editorial Title',
+      );
+      expect(pendingChanges.stash).not.toHaveBeenCalled();
+    });
+
+    it("an operator's title change on a DRAFT tour applies instantly", async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({ status: TourStatus.DRAFT }),
+      );
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+      prisma.tour.update.mockResolvedValue({});
+      prisma.tour.findUniqueOrThrow.mockResolvedValue(makeTour());
+
+      await service.update(
+        'tour-1',
+        { name: 'Draft Rename' },
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
+
+      expect(prisma.tour.update.mock.calls[0][0].data.name).toBe(
+        'Draft Rename',
+      );
+      expect(pendingChanges.stash).not.toHaveBeenCalled();
     });
 
     it('lets an ADMIN change cancellationHours on a LIVE tour', async () => {

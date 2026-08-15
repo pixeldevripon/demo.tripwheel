@@ -21,6 +21,7 @@ import {
   ApproveTourDto,
   CreateTourDto,
   MyToursQueryDto,
+  PendingChangesQueryDto,
   SetLocalsFavouriteDto,
   TourAlternativesQueryDto,
   TourBySlugQueryDto,
@@ -41,7 +42,11 @@ import {
   ApiGetTourBySlugDocs,
   ApiPauseTourDocs,
   ApiApproveTourDocs,
+  ApiApprovePendingChangesDocs,
+  ApiGetTourPendingChangeDocs,
+  ApiListPendingChangesDocs,
   ApiPublishTourDocs,
+  ApiRejectPendingChangesDocs,
   ApiRejectTourDocs,
   ApiSubmitTourForReviewDocs,
   ApiRecomputeDemandDocs,
@@ -51,6 +56,7 @@ import {
   ApiUpdateTourDocs,
 } from './tours.swagger';
 import { ToursService } from './tours.service';
+import { TourPendingChangesService } from './tour-pending-changes.service';
 
 @ApiTags('Tours')
 @Controller('tours')
@@ -66,7 +72,10 @@ import { ToursService } from './tours.service';
  * - All mutations use @RequirePermissions().
  */
 export class ToursController {
-  constructor(private readonly toursService: ToursService) {}
+  constructor(
+    private readonly toursService: ToursService,
+    private readonly pendingChangesService: TourPendingChangesService,
+  ) {}
 
   // ── Public list ───────────────────────────────────────────────────────────────
 
@@ -134,6 +143,15 @@ export class ToursController {
   @ApiAdminListToursDocs()
   findAllAdmin(@Query() query: AdminToursQueryDto) {
     return this.toursService.findAllAdmin(query);
+  }
+
+  // ── Live-tour content changes (client review #19) - static before :id ─────────
+
+  @Get('admin/pending-changes')
+  @RequirePermissions(Permission.MANAGE_TRIPS)
+  @ApiListPendingChangesDocs()
+  listPendingChanges(@Query() query: PendingChangesQueryDto) {
+    return this.pendingChangesService.listOpen(query.page, query.limit);
   }
 
   /**
@@ -231,6 +249,38 @@ export class ToursController {
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
     return this.toursService.rejectTour(id, user.id, dto.note);
+  }
+
+  @Get(':id/pending-changes')
+  @RequirePermissions(Permission.EDIT_TRIP)
+  @ApiGetTourPendingChangeDocs()
+  getPendingChange(
+    @Param('id') id: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.toursService.getPendingChangeForTour(id, user.id, user.role);
+  }
+
+  @Post(':id/pending-changes/approve')
+  @RequirePermissions(Permission.MANAGE_TRIPS)
+  @ApiApprovePendingChangesDocs()
+  approvePendingChanges(
+    @Param('id') id: string,
+    @Body() dto: ApproveTourDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.pendingChangesService.approve(id, user.id, dto.note);
+  }
+
+  @Post(':id/pending-changes/reject')
+  @RequirePermissions(Permission.MANAGE_TRIPS)
+  @ApiRejectPendingChangesDocs()
+  rejectPendingChanges(
+    @Param('id') id: string,
+    @Body() dto: RejectTourDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.pendingChangesService.reject(id, user.id, dto.note);
   }
 
   @Post(':id/publish')
