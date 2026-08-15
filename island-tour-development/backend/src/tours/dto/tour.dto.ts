@@ -970,6 +970,7 @@ export class CreateTourDto {
     message: 'slug must contain only lowercase letters, numbers and hyphens',
   })
   @MinLength(2)
+  @MaxLength(120)
   slug?: string;
 
   @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' })

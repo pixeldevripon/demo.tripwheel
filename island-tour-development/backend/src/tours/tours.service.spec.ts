@@ -2470,6 +2470,29 @@ describe('ToursService', () => {
       );
     });
 
+    // The load-bearing assumption behind ignore-not-reject: every wizard
+    // step's PATCH passes the STORED slug back (tripToUpdatePayload), so an
+    // unchanged slug must be a pure no-op even on the admin path.
+    it('an unchanged slug on an ADMIN save triggers no rename and no redirect', async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({ status: TourStatus.DRAFT, slug: 'same-slug' }),
+      );
+      prisma.tour.update.mockResolvedValue({});
+      prisma.tour.findUniqueOrThrow.mockResolvedValue(
+        makeTour({ slug: 'same-slug' }),
+      );
+
+      await service.update(
+        'tour-1',
+        { slug: 'same-slug' },
+        'admin',
+        Role.ADMIN,
+      );
+
+      expect(prisma.slugRegistry.updateMany).not.toHaveBeenCalled();
+      expect(prisma.slugRedirect.upsert).not.toHaveBeenCalled();
+    });
+
     // Client review #12: a non-admin's slug is IGNORED, not rejected - the
     // wizard passes the stored slug back on every save, so a 400 here would
     // break every operator save. No rename, no redirect, save succeeds.
