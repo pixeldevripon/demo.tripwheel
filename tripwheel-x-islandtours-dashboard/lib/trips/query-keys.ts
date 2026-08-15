@@ -46,4 +46,11 @@ export const tripKeys = {
   overviewAll: () => [...tripKeys.all, 'overview'] as const,
   overview: (params: AvailabilityOverviewParams) =>
     [...tripKeys.overviewAll(), params] as const,
+  // Range-close impact preview (keyed by exact scope + bounds).
+  rangeImpact: (params: {
+    tourId?: string;
+    operatorId?: string;
+    from: string;
+    to: string;
+  }) => [...tripKeys.all, 'range-impact', params] as const,
 };

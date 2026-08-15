@@ -580,6 +580,15 @@ export interface AvailabilityOverviewResponse {
   } | null;
 }
 
+// What a range close would hit (client review #5) - the modal states these
+// before the confirm button. Guests are travellers with a committed booking
+// on a departure in the range; a close keeps all of them.
+export interface RangeImpact {
+  departures: number;
+  tours: number;
+  bookedGuests: number;
+}
+
 export interface AvailabilityOverviewParams {
   from?: string; // 'YYYY-MM-DD', defaults to the island's today
   days?: number; // default 42 (six-week grid), max 62

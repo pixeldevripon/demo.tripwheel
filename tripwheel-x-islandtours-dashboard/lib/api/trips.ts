@@ -18,6 +18,7 @@ import type {
   AvailabilitySummary,
   DepartureStatus,
   ManageCalendarDay,
+  RangeImpact,
   TourDeparture,
   CreateTripPayload,
   MyTripsQueryParams,
@@ -655,6 +656,21 @@ export const tripsApi = {
     return apiFetch<{ reopened: number; tourCount?: number }>(
       `/availability/exceptions/reopen-range`,
       { method: 'POST', body: JSON.stringify(payload) }
+    );
+  },
+
+  // Read-only preview of what a range close would hit (client review #5),
+  // rendered in the modal above the confirm button. Scoped exactly like
+  // closeRange. 404s on an older backend during the deploy window - the
+  // caller hides the counts line, never the action.
+  getRangeImpact(params: {
+    tourId?: string;
+    operatorId?: string;
+    from: string;
+    to: string;
+  }): Promise<RangeImpact> {
+    return apiFetch<RangeImpact>(
+      `/availability/exceptions/range-impact${buildQuery(params)}`
     );
   },
 
