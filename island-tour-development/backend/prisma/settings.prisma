@@ -13,8 +13,16 @@ model SiteInfo {
   logo    String? @default("")
   favicon String? @default("")
 
-  enableWhatsappChat Boolean? @default(false)
-  whatsappNumber     String?  @default("")
+  // Master 6.6 puts WhatsApp in the footer, error states, NeedHelp and
+  // post-purchase email as standing surfaces, so a fresh install ships with the
+  // support line on and pointed at the real number rather than dark and blank.
+  // The flag stays an admin kill switch - every read still gates on it, and a
+  // deliberate `false` is never overwritten.
+  //
+  // The number mirrors DEFAULT_WHATSAPP_NUMBER in
+  // src/common/utils/whatsapp.util.ts - change both together.
+  enableWhatsappChat Boolean? @default(true)
+  whatsappNumber     String?  @default("+5999 5266046")
   // Master kill switch for the Instagram grid. The feed itself lives in
   // instagram.prisma — this only decides whether the public site renders it.
   // Defaults ON: the section is intended to show once tiles exist (the public

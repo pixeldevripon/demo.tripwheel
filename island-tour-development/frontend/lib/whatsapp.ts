@@ -12,6 +12,13 @@
  * Mirrors backend/src/common/utils/whatsapp.util.ts - keep both in sync (same
  * rule as lib/config/rbac.ts mirroring roles.config.ts). Plain functions, no
  * 'use client': callers on either side of the boundary can import this.
+ *
+ * The backend's DEFAULT_WHATSAPP_NUMBER is deliberately NOT mirrored here. It is
+ * the column default for SiteInfo.whatsappNumber, not a render-time fallback:
+ * the number the public site shows must always be the one the admin can see and
+ * change in Settings, and a client-side copy would keep rendering a stale line
+ * after they changed it - or render one they had switched off. Every surface
+ * takes the number from getPublicSiteInfo() and nowhere else.
  */
 
 /**

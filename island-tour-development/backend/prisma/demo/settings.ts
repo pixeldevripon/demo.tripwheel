@@ -10,6 +10,7 @@ import {
   Role,
 } from '@prisma/client';
 import { encrypt } from '../../src/common/utils/crypto.util';
+import { DEFAULT_WHATSAPP_NUMBER } from '../../src/common/utils/whatsapp.util';
 import { DEMO_WEBHOOK_HOST, log, photo, prisma, section } from './_shared';
 
 export async function seedSettings(): Promise<void> {
@@ -41,7 +42,9 @@ export async function seedSettings(): Promise<void> {
         'Book the best Caribbean tours and activities, hand-picked by locals. Free cancellation, instant confirmation, pay as little as 20% today.',
       bookingFormStyle: 'v2',
       enableWhatsappChat: true,
-      whatsappNumber: '+59995601234',
+      // Real line, not a demo one: this is the number a demo reviewer would
+      // actually message, and it is the same value the column defaults to.
+      whatsappNumber: DEFAULT_WHATSAPP_NUMBER,
       enableInstagram: true,
       faqs: homeFaqs,
     },
@@ -90,7 +93,9 @@ export async function seedSettings(): Promise<void> {
       id: 'default',
       companyName: 'Island Tours B.V.',
       companyEmail: 'hello@islandtours.example',
-      companyPhone: '+59995601234',
+      // Matches the legal-notice seed, which prints this line as both the phone
+      // and the WhatsApp contact.
+      companyPhone: DEFAULT_WHATSAPP_NUMBER,
       companyWebsite: 'https://islandtours.example',
       companyAddress: 'Handelskade 1',
       companyCity: 'Willemstad',

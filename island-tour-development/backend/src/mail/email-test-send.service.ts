@@ -8,6 +8,7 @@ import {
   PaymentModel,
 } from '@prisma/client';
 import { emailIconBase } from '@/bookings/booking-email.context';
+import { DEFAULT_WHATSAPP_URL } from '@/common/utils/whatsapp.util';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
   EmailLogService,
@@ -108,7 +109,7 @@ function confirmationSample(iconBase: string, logo: string | null) {
     balanceAmount: '$160.00',
     totalAmount: '$220.00',
     paidAmount: '$220.00',
-    whatsappUrl: 'https://wa.me/59995601367',
+    whatsappUrl: DEFAULT_WHATSAPP_URL,
     tourUrl: 'https://example.com/en/curacao/klein-curacao-day-trip',
     calendarUrl: 'https://example.com/ics/test',
     cancelUrl: 'https://example.com/cancel/test',
@@ -206,7 +207,7 @@ function reminderSample(iconBase: string, logo: string | null) {
     operatorPhone: '+599 9 123 4567',
     operatorEmail: 'hello@example.com',
     platformIssue: 'Booking or platform issue?',
-    whatsappUrl: 'https://wa.me/59995601367',
+    whatsappUrl: DEFAULT_WHATSAPP_URL,
     whatsappUs: 'WhatsApp us',
     supportHours: ', daily 08:00 to 20:00.',
 
@@ -479,7 +480,7 @@ export class EmailTestSendService {
             agreementVersion: null,
             agreementUrl: null,
             supportEmail: 'hello@example.com',
-            whatsappUrl: 'https://wa.me/59995601367',
+            whatsappUrl: DEFAULT_WHATSAPP_URL,
           }),
         );
       case EmailTemplateKey.OB2A_APPROVED:
@@ -504,7 +505,7 @@ export class EmailTestSendService {
       case EmailTemplateKey.OB4_BUILD_IT_WITH_YOU:
         return this.send(to, OPERATOR_BUILD_WITH_YOU_SUBJECT, () =>
           operatorBuildWithYouTemplate({
-            whatsappUrl: 'https://wa.me/59995601367',
+            whatsappUrl: DEFAULT_WHATSAPP_URL,
             salesEmail: 'sales@example.com',
             addTourUrl: 'https://example.com/trips/new',
             optOutUrl,
@@ -533,7 +534,7 @@ export class EmailTestSendService {
         return this.send(to, OPERATOR_PAGE_STRONGER_SUBJECT, () =>
           operatorPageStrongerTemplate({
             includePartnerOffer: true,
-            photoShootContactUrl: 'https://wa.me/59995601367',
+            photoShootContactUrl: DEFAULT_WHATSAPP_URL,
             toursUrl: 'https://example.com/trips',
             optOutUrl,
           }),

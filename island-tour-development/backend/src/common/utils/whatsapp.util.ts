@@ -14,6 +14,18 @@
  */
 
 /**
+ * Island Tours' support WhatsApp line - the one number the platform answers on
+ * (client instruction, Pastel 81 / issue #221). It is the column default for
+ * `SiteInfo.whatsappNumber` and the value every sample/preview surface uses.
+ *
+ * It is NOT a runtime fallback: live surfaces still read SiteInfo, because an
+ * admin who switches the chat off (or changes the line) must be obeyed - master
+ * 6.6 gates every WhatsApp surface on `enableWhatsappChat`. Hardcoding a number
+ * anywhere else is the bug this constant exists to prevent.
+ */
+export const DEFAULT_WHATSAPP_NUMBER = '+5999 5266046';
+
+/**
  * wa.me accepts digits only: no '+', spaces, dashes, or parentheses. Settings
  * stores the number in human form (e.g. '+8801913509868'), so normalize before
  * building the link or WhatsApp resolves it to nothing.
@@ -50,3 +62,15 @@ export function buildWhatsappUrl(
   const text = greeting?.trim();
   return text ? `${base}?text=${encodeURIComponent(text)}` : base;
 }
+
+/**
+ * The support line as a wa.me link, for previews and test sends only.
+ *
+ * Real sends read SiteInfo and go through buildWhatsappUrl - an admin preview
+ * that showed a different number than the traveller receives would be worse
+ * than no preview. This exists so those samples stop carrying their own copy of
+ * a number.
+ */
+export const DEFAULT_WHATSAPP_URL = `https://wa.me/${normalizeWhatsappNumber(
+  DEFAULT_WHATSAPP_NUMBER,
+)}`;
