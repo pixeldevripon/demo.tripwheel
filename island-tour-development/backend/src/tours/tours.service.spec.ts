@@ -338,6 +338,41 @@ describe('ToursService', () => {
       prisma.slugRegistry.create.mockResolvedValue({});
     });
 
+    // Client review #12 / master 2.3: the slug is a destination-registry
+    // entry set by Island Tours - an operator's slug is ignored (never an
+    // error) and the address derives from the name.
+    it('ignores an operator-supplied slug - the address derives from the name', async () => {
+      prisma.tour.findFirst.mockResolvedValue(null);
+      prisma.slugRegistry.findUnique.mockResolvedValue(null);
+
+      await service.create(
+        { ...baseCreateDto, slug: 'my-custom-slug' },
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
+      expect(prisma.tour.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ slug: 'sunset-catamaran-cruise' }),
+        }),
+      );
+    });
+
+    it('honours an ADMIN-supplied slug', async () => {
+      prisma.tour.findFirst.mockResolvedValue(null);
+      prisma.slugRegistry.findUnique.mockResolvedValue(null);
+
+      await service.create(
+        { ...baseCreateDto, slug: 'admin-chosen-slug' },
+        'admin',
+        Role.ADMIN,
+      );
+      expect(prisma.tour.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ slug: 'admin-chosen-slug' }),
+        }),
+      );
+    });
+
     it('uses the base slug when nothing conflicts', async () => {
       prisma.tour.findFirst.mockResolvedValue(null);
       prisma.slugRegistry.findUnique.mockResolvedValue(null);
@@ -2431,6 +2466,35 @@ describe('ToursService', () => {
       expect(prisma.tour.update).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({ slug: 'new-slug' }),
+        }),
+      );
+    });
+
+    // Client review #12: a non-admin's slug is IGNORED, not rejected - the
+    // wizard passes the stored slug back on every save, so a 400 here would
+    // break every operator save. No rename, no redirect, save succeeds.
+    it('ignores a slug from a TOUR_OPERATOR - no rename, no redirect, save succeeds', async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({ status: TourStatus.DRAFT, slug: 'old-slug' }),
+      );
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+      prisma.tour.update.mockResolvedValue({});
+      prisma.tour.findUniqueOrThrow.mockResolvedValue(
+        makeTour({ slug: 'old-slug' }),
+      );
+
+      await service.update(
+        'tour-1',
+        { slug: 'sneaky-new-slug' },
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
+
+      expect(prisma.slugRegistry.updateMany).not.toHaveBeenCalled();
+      expect(prisma.slugRedirect.upsert).not.toHaveBeenCalled();
+      expect(prisma.tour.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.not.objectContaining({ slug: expect.anything() }),
         }),
       );
     });

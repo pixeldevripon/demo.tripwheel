@@ -957,7 +957,13 @@ export class CreateTourDto {
   @MaxLength(120)
   name!: string;
 
-  @ApiPropertyOptional({ example: 'sunset-catamaran-cruise' })
+  @ApiPropertyOptional({
+    example: 'sunset-catamaran-cruise',
+    description:
+      'ADMIN only - ignored for every other caller (client review #12: the ' +
+      'slug is a destination-registry entry set by Island Tours). Without ' +
+      'it the address derives from the name.',
+  })
   @IsOptional()
   @IsString()
   @Matches(/^[a-z0-9-]+$/, {
@@ -1295,7 +1301,10 @@ export class UpdateTourDto {
   @ApiPropertyOptional({
     example: 'sunset-catamaran-cruise',
     description:
-      'Renaming the slug issues an automatic 301 redirect from the old URL; the old slug is protected by a 90-day reuse cooldown (master slug-registry rules).',
+      'ADMIN only - ignored for every other caller (client review #12: the ' +
+      'slug is a destination-registry entry set by Island Tours). Renaming ' +
+      'issues an automatic 301 redirect from the old URL; the old slug is ' +
+      'protected by a 90-day reuse cooldown (master slug-registry rules).',
   })
   @IsOptional()
   @IsString()
