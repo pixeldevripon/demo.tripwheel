@@ -637,7 +637,7 @@ function SocialWidgetsCard() {
     return (
         <SettingsCard
             title='WhatsApp'
-            description='Chat button shown on the public site.'
+            description='The one support line. It fills every WhatsApp link on the public site - footer, Help center, Track your booking, the booking page, error pages - and the ones in booking and operator emails.'
             onSubmit={handleSubmit(v => mutate(v))}
             isSaving={isPending}>
             <CheckboxField
@@ -653,7 +653,10 @@ function SocialWidgetsCard() {
                 label='WhatsApp Number'
                 registration={register('whatsappNumber')}
                 error={errors.whatsappNumber?.message}
-                placeholder='+5999 123 4567'
+                // The real support line, not an invented sample: the old
+                // placeholder was a plausible-looking fake, and a fake number
+                // in the field that publishes the number is a trap.
+                placeholder='+5999 5266046'
             />
         </SettingsCard>
     );
