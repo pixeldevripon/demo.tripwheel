@@ -80,6 +80,9 @@ export interface OperatorsQueryParams {
   search?: string;
   isActive?: boolean;
   verificationStatus?: OperatorVerificationStatus;
+  /** Only operators with >=1 active tour on this island (the admin
+   *  calendar's Island -> Operator cascade, client review #10). */
+  destinationId?: string;
 }
 
 export interface CreateOperatorPayload {

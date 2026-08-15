@@ -589,11 +589,23 @@ export interface RangeImpact {
   bookedGuests: number;
 }
 
+// One scope shape for the three range endpoints (close / reopen / impact
+// preview): a single tour, or every active tour of an operator and/or an
+// island (client review #10). Mirrors the backend's RangeScopeDto.
+export interface RangeScopeParams {
+  tourId?: string;
+  operatorId?: string;
+  destinationId?: string;
+  from: string;
+  to: string;
+}
+
 export interface AvailabilityOverviewParams {
   from?: string; // 'YYYY-MM-DD', defaults to the island's today
   days?: number; // default 42 (six-week grid), max 62
   tourId?: string;
   operatorId?: string; // honoured for ADMIN only
+  destinationId?: string; // island narrowing, honoured for every caller
 }
 
 // open = every in-service slot sellable · partial = some slot closed/overridden ·

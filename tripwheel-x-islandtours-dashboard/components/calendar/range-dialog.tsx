@@ -78,6 +78,8 @@ export function RangeDialog({
     defaultTourId,
     defaultDate,
     operatorId,
+    destinationId,
+    islandName,
     isPlatform = false,
 }: {
     open: boolean;
@@ -90,14 +92,22 @@ export function RangeDialog({
     /** Admin scope for the all-tours option (the backend refuses a
      *  platform-wide blackout without one). */
     operatorId?: string;
+    /** Island scope (client review #10) - with it, an admin's "All tours"
+     *  means the whole island (weather day), optionally intersected with
+     *  the operator filter. */
+    destinationId?: string;
+    /** Display name for the island-scoped All-tours wording. */
+    islandName?: string;
     isPlatform?: boolean;
 }) {
     const [mode, setMode] = useState<'close' | 'reopen'>('close');
     // All tours preselected (MCK-16 §3: the range tool IS the weather-day
     // action) - unless a tour filter is active, which then scopes it. An
-    // admin without an operator filter must pick a tour: the backend refuses
-    // an unscoped platform-wide range, so the option is hidden.
-    const allToursAllowed = !isPlatform || !!operatorId;
+    // admin needs an operator OR island filter first: the backend refuses an
+    // unscoped platform-wide range, so the option is hidden without either
+    // (client review #10 - the realistic admin bulk close is a whole island
+    // or a whole operator).
+    const allToursAllowed = !isPlatform || !!operatorId || !!destinationId;
     const [tourId, setTourId] = useState(
         defaultTourId ?? (allToursAllowed ? ALL_TOURS : ''),
     );
@@ -128,14 +138,20 @@ export function RangeDialog({
         !!from &&
         !!to &&
         to >= from;
+    // The all-tours scope the writes will send - island and/or operator
+    // (client review #10). Built once so the preview and the submit can
+    // never drift apart.
+    const allToursScope = {
+        ...(operatorId ? { operatorId } : {}),
+        ...(destinationId ? { destinationId } : {}),
+    };
     const {
         data: impact,
         isError: impactUnavailable,
         isPlaceholderData: impactIsStale,
     } = useRangeImpact(
         {
-            ...(isAllTours ? {} : { tourId: effectiveTourId }),
-            ...(isAllTours && operatorId ? { operatorId } : {}),
+            ...(isAllTours ? allToursScope : { tourId: effectiveTourId }),
             from,
             to,
         },
@@ -165,7 +181,7 @@ export function RangeDialog({
         }
         setError(null);
         const tripId = isAllTours ? undefined : effectiveTourId;
-        const scope = isAllTours && operatorId ? { operatorId } : {};
+        const scope = isAllTours ? allToursScope : {};
         const bounds = { from, to };
         if (mode === 'reopen') {
             // No Undo on a bulk reopen, deliberately: re-closing the same
@@ -298,7 +314,12 @@ export function RangeDialog({
                         <SelectContent>
                             {allToursAllowed && (
                                 <SelectItem value={ALL_TOURS}>
-                                    All tours
+                                    {/* Say what the scope really is: with an
+                                        island filter and no operator, this is
+                                        the whole-island weather day. */}
+                                    {destinationId && !operatorId && islandName
+                                        ? `All tours on ${islandName}`
+                                        : 'All tours'}
                                 </SelectItem>
                             )}
                             {tours.map((t) => (

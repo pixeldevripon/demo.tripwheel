@@ -14,7 +14,8 @@ export const operatorKeys = {
   all: ['operators'] as const,
   lists: () => [...operatorKeys.all, 'list'] as const,
   list: (params: OperatorsQueryParams) => [...operatorKeys.lists(), params] as const,
-  search: (q: string) => [...operatorKeys.all, 'search', q] as const,
+  search: (q: string, destinationId?: string) =>
+    [...operatorKeys.all, 'search', q, destinationId ?? 'all'] as const,
   details: () => [...operatorKeys.all, 'detail'] as const,
   detail: (id: string) => [...operatorKeys.details(), id] as const,
 };
@@ -29,10 +30,14 @@ export function useOperators(params: OperatorsQueryParams = {}) {
   });
 }
 
-export function useOperatorSearch(q: string, enabled = true) {
+export function useOperatorSearch(
+  q: string,
+  enabled = true,
+  destinationId?: string,
+) {
   return useQuery({
-    queryKey: operatorKeys.search(q),
-    queryFn: () => operatorsApi.search(q, 30),
+    queryKey: operatorKeys.search(q, destinationId),
+    queryFn: () => operatorsApi.search(q, 30, destinationId),
     enabled,
     staleTime: 30_000,
   });

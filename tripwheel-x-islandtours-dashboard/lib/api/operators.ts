@@ -19,8 +19,16 @@ export const operatorsApi = {
     return apiFetch<PaginatedOperators>(`/operators${query}`);
   },
 
-  search(search: string, limit = 20): Promise<PaginatedOperators> {
-    return operatorsApi.getAll({ search, limit });
+  search(
+    search: string,
+    limit = 20,
+    destinationId?: string,
+  ): Promise<PaginatedOperators> {
+    return operatorsApi.getAll({
+      search,
+      limit,
+      ...(destinationId ? { destinationId } : {}),
+    });
   },
 
   getById(id: string): Promise<OperatorDetail> {
