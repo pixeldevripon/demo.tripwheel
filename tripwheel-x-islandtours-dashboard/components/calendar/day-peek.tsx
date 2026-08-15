@@ -3,6 +3,7 @@
 import { format } from 'date-fns';
 import {
     Popover,
+    PopoverCloseButton,
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
@@ -13,6 +14,9 @@ import { DepartureChip } from './departure-chip';
 /**
  * The day card's inner content - shared between the trigger-based DayPeek
  * ("+N more" buttons) and the month cell's click-anywhere controlled popover.
+ *
+ * Carries the X itself, so both owners get the same way out (pastel 9) - it
+ * closes whichever popover root renders it.
  */
 export function DayPeekContent({
     date,
@@ -27,7 +31,10 @@ export function DayPeekContent({
 }) {
     return (
         <>
-            <div className='shrink-0 border-b border-border/70 px-3 py-2'>
+            <PopoverCloseButton />
+            {/* pr-12, not px-3: this header sits flush against the card edge,
+                so it clears the X's own 42px on its own. */}
+            <div className='shrink-0 border-b border-border/70 py-2 pr-12 pl-3'>
                 <p className='text-sm font-medium'>
                     {format(keyToDate(date), 'EEEE, d MMMM')}
                 </p>

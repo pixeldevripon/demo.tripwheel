@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
     Popover,
+    PopoverCloseButton,
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
@@ -95,6 +96,9 @@ export function AddEventPopover({
  * The bare create form, for surfaces that own their Popover (the time grid's
  * click-anywhere add). `defaultTime` prefills the one-off time from the
  * clicked hour row.
+ *
+ * Renders its own X, so it must stay inside a Popover root - both callers
+ * are one.
  */
 export function AddEventForm({
     date: initialDate,
@@ -215,7 +219,8 @@ export function AddEventForm({
 
     return (
         <div className='p-4'>
-            <p className='text-sm font-medium'>Add a departure</p>
+            <PopoverCloseButton />
+            <p className='pr-8 text-sm font-medium'>Add a departure</p>
             {/* Weekly schedules are the PATTERN and stay manager+ - the
                 narrow seat sees only the date-scoped one-off (founder,
                 Aug 11 2026). */}

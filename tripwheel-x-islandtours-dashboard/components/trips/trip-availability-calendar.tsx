@@ -38,6 +38,7 @@ import { Label } from '@/components/ui/label';
 import {
     Popover,
     PopoverAnchor,
+    PopoverCloseButton,
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
@@ -1286,7 +1287,10 @@ function DayPopover({
 
     return (
         <PopoverContent align='start' sideOffset={6} className='w-80 p-0'>
-            <div className='flex items-baseline justify-between gap-2 border-b px-4 py-3'>
+            {/* Same X, same corner as every other panel (pastel 9) - pr-12 on
+                the header keeps the status line clear of its 42px. */}
+            <PopoverCloseButton />
+            <div className='flex items-baseline justify-between gap-2 border-b py-3 pr-12 pl-4'>
                 <p className='text-sm font-medium'>{formatDayLong(day.date)}</p>
                 <p className='text-xs text-muted-foreground'>
                     {STATUS_LABEL[day.status]}
@@ -1744,13 +1748,16 @@ function SlotRow({
                     </Button>
                 ) : (
                     !stopped && (
+                        /* "Stop sales", never "Close" (pastel 9): the panel's
+                           X is the way out, and no button that acts on a
+                           departure may share its word. */
                         <Button
                             size='sm'
                             variant='ghost'
                             className='h-7 shrink-0 px-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10'
                             disabled={busy}
                             onClick={onCloseSlot}>
-                            Close
+                            Stop sales
                         </Button>
                     )
                 ))}

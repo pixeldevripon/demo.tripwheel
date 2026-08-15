@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
     Popover,
+    PopoverCloseButton,
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
@@ -38,6 +39,10 @@ import {
  * status + seats + audit line (reason, who, which side), stop-sell/reopen,
  * and the two deep links (bookings pre-filtered to this tour + day, the tour
  * timetable).
+ *
+ * The card dismisses by its own X, Esc, or a click outside - never by the
+ * stop-sell button (pastel 9). That button used to read "Close", so the one
+ * control on the card that looked like a way out halted sales instead.
  *
  * No capacity control here, deliberately (MCK-16 change 3, review §5.5):
  * capacity is a set-once property on the Details tab, and the wizard's day
@@ -206,7 +211,10 @@ function DepartureCard({
 
     return (
         <div className='p-4'>
-            <div className='flex items-start justify-between gap-3'>
+            <PopoverCloseButton />
+            {/* The X owns the right 42px of the card; pr-8 on top of the
+                wrapper's p-4 keeps the state pill clear of it. */}
+            <div className='flex items-start justify-between gap-3 pr-8'>
                 <div className='min-w-0'>
                     <p className='truncate text-sm font-medium'>{dep.tourName}</p>
                     {operatorName && (
@@ -318,6 +326,9 @@ function DepartureCard({
                             Reopen
                         </Button>
                     ) : (
+                        /* Says what it does, not "Close" (pastel 9): the X
+                           above is how the panel goes away, and the two must
+                           never be confusable - one of them stops sales. */
                         <Button
                             size='sm'
                             variant='outline'
@@ -331,7 +342,7 @@ function DepartureCard({
                                 setError(null);
                                 setReasonOpen(true);
                             }}>
-                            Close
+                            Stop sales
                         </Button>
                     ))}
             </div>

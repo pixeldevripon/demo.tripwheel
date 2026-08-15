@@ -127,8 +127,10 @@ export function ClosureReasonPanel({
                 covers weather, maintenance, a day off, anything else.
             </p>
             <p className='text-xs text-muted-foreground'>{reassurance}</p>
-            {/* Tapping Close by accident must never force a choice, so the way
-                out is a full-width control rather than a small × somewhere. */}
+            {/* Tapping Stop sales by accident must never force a choice, so
+                the way out is a full-width control rather than a small ×
+                somewhere. (The panel's own × in the corner dismisses the
+                whole card - a different act, and deliberately not this one.) */}
             <Button
                 size='sm'
                 variant='ghost'
