@@ -10,7 +10,21 @@ Review completed 2026-07-19. Scope: `backend/src/staff/*`, `backend/src/config/s
 `backend/src/operators/operators.service.ts`, `backend/src/bookings/*`, plus the dashboard
 staff/team UI. Full jest suite (55/1150+) was passing at review time; no code was modified.
 
-**CRITICAL — carry forward, must fix before this ships:**
+**FIXED as of 2026-08-15 (verified during [[project_slug_ownership_it73_security]]) — the
+`PATCH /users/:id/role` half of the CRITICAL below is closed:** `user.service.ts`
+`updateUserRole()` now throws `ForbiddenException` unless `requester.role === Role.ADMIN`
+(literal role check, line ~244) — no longer reachable via a `MANAGE_USERS` permission grant
+alone. `user.controller.ts` JSDoc (line ~277) documents this as deliberate defense-in-depth.
+`dto.role === Role.ADMIN` is also hard-blocked, so ADMIN itself can never be assigned via this
+endpoint. This closes the "side-door via the *users* module" escalation path described below.
+**Not re-verified in the 2026-08-15 pass:** whether `staff.config.ts` `PLATFORM_STAFF_EXCLUDED`
+now also excludes `MANAGE_USERS`/`UPDATE_USER` from the ceiling itself (the fix above may make
+that moot for role-changes specifically, but a lingering `MANAGE_USERS` grant could still expose
+other user-mutating endpoints beyond role-change) — re-check `staff.config.ts` directly before
+assuming the ceiling question is fully closed, not just the role-endpoint.
+
+**CRITICAL (role-change half fixed, see above — re-verify ceiling half before reusing this
+entry as still-open):**
 
 - **`MANAGE_USERS` + role-flip-to-EDITOR bypasses the entire staff ceiling system.**
   `staff.config.ts` `PLATFORM_STAFF_EXCLUDED` only excludes `MANAGE_SYSTEM`/`MANAGE_STAFF`/
@@ -32,8 +46,9 @@ staff/team UI. Full jest suite (55/1150+) was passing at review time; no code wa
   `assertWithinCeiling` — this is a side-door via the *users* module, not the staff module itself.
   **Fix options:** exclude `MANAGE_USERS` (and probably `UPDATE_USER`/`DELETE_USER`) from
   `PLATFORM_STAFF_CEILING`, and/or make `updateUserRole` reject assigning `EDITOR`/`STAFF` to a
-  target unless the caller is real ADMIN (not just MANAGE_USERS-holding staff), and/or route
-  EDITOR through the same ceiling computation as STAFF in `getEffectivePermissions`.
+  target unless the caller is real ADMIN (not just MANAGE_USERS-holding staff) — **this half is
+  now done, see the FIXED note above** —, and/or route EDITOR through the same ceiling computation
+  as STAFF in `getEffectivePermissions`.
 
 **MEDIUM:**
 

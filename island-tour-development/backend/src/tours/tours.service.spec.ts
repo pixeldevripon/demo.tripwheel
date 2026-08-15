@@ -341,6 +341,37 @@ describe('ToursService', () => {
       });
     });
 
+    // Client 2026-08-15: the admin Tours list is the working catalogue -
+    // tours inside the review loop live on the Submissions queue instead.
+    it('the admin list excludes in-review and changes-requested tours by default', async () => {
+      await service.findAllAdmin({});
+
+      expect(prisma.tour.findMany.mock.calls.at(-1)?.[0].where).toEqual({
+        approvalStatus: { notIn: ['PENDING', 'REJECTED'] },
+      });
+    });
+
+    it("reviewLoop=true is the queue's All view - both review states at once", async () => {
+      await service.findAllAdmin({
+        reviewLoop: true,
+        sortBy: 'submittedAt',
+        sortDir: 'asc',
+      });
+
+      const call = prisma.tour.findMany.mock.calls.at(-1)?.[0];
+      expect(call.where).toEqual({
+        approvalStatus: { in: ['PENDING', 'REJECTED'] },
+      });
+      // FIFO for reviewers.
+      expect(call.orderBy).toEqual({ submittedAt: 'asc' });
+    });
+
+    it("approvalStatus=ANY skips the review axis - the command palette's jump-to-anything scope", async () => {
+      await service.findAllAdmin({ approvalStatus: 'ANY' });
+
+      expect(prisma.tour.findMany.mock.calls.at(-1)?.[0].where).toEqual({});
+    });
+
     it('still 400s a TOUR_OPERATOR with no operator profile', async () => {
       prisma.operator.findUnique.mockResolvedValue(null);
       prisma.staffMember.findUnique.mockResolvedValue(null);
@@ -1673,6 +1704,106 @@ describe('ToursService', () => {
       });
     });
 
+    // Client review #12 / master 2.3: Island Tours sets the slug AT REVIEW,
+    // from the FINAL approved title - but only before first publish, and a
+    // collision keeps the current slug rather than failing the approval.
+    it('approval realigns a never-published slug to the approved title', async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({
+          approvalStatus: TourApprovalStatus.PENDING,
+          name: 'Reef Diving Adventure',
+          slug: 'old-provisional-slug',
+          firstPublishedAt: null,
+        }),
+      );
+      prisma.destination.findUnique.mockResolvedValue({ slug: 'curacao' });
+      prisma.tour.findFirst.mockResolvedValue(null);
+      prisma.slugRegistry.findUnique.mockResolvedValue(null);
+      prisma.slugRegistry.findMany.mockResolvedValue([
+        { destinationSlug: 'curacao' },
+      ]);
+      prisma.tour.update.mockResolvedValue(
+        makeTour({ slug: 'reef-diving-adventure' }),
+      );
+
+      await service.approveTour('tour-1', 'admin-1');
+
+      expect(prisma.slugRegistry.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { entityType: SlugEntityType.TOUR, entityId: 'tour-1' },
+          data: { slug: 'reef-diving-adventure' },
+        }),
+      );
+      expect(prisma.tour.update.mock.calls[0][0].data.slug).toBe(
+        'reef-diving-adventure',
+      );
+    });
+
+    it('a published tour keeps its address on approval', async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({
+          status: TourStatus.PAUSED,
+          approvalStatus: TourApprovalStatus.PENDING,
+          name: 'Renamed While Paused',
+          slug: 'original-live-slug',
+          firstPublishedAt: new Date('2026-01-01'),
+        }),
+      );
+      prisma.tour.update.mockResolvedValue(makeTour());
+
+      await service.approveTour('tour-1', 'admin-1');
+
+      expect(prisma.slugRegistry.updateMany).not.toHaveBeenCalled();
+      expect(prisma.tour.update.mock.calls[0][0].data.slug).toBeUndefined();
+    });
+
+    it('a colliding approved-title slug is kept - approval never fails over an address', async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({
+          approvalStatus: TourApprovalStatus.PENDING,
+          name: 'Reef Diving Adventure',
+          slug: 'old-provisional-slug',
+          firstPublishedAt: null,
+        }),
+      );
+      prisma.destination.findUnique.mockResolvedValue({ slug: 'curacao' });
+      prisma.tour.findFirst.mockResolvedValue({ id: 'other-tour' });
+      prisma.tour.update.mockResolvedValue(makeTour());
+
+      await service.approveTour('tour-1', 'admin-1');
+
+      expect(prisma.tour.update.mock.calls[0][0].data.slug).toBeUndefined();
+      expect(prisma.tour.update.mock.calls[0][0].data.approvalStatus).toBe(
+        TourApprovalStatus.APPROVED,
+      );
+    });
+
+    it('a slug write race (P2002 past the pre-check) approves with the current slug', async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({
+          approvalStatus: TourApprovalStatus.PENDING,
+          name: 'Reef Diving Adventure',
+          slug: 'old-provisional-slug',
+          firstPublishedAt: null,
+        }),
+      );
+      prisma.destination.findUnique.mockResolvedValue({ slug: 'curacao' });
+      prisma.tour.findFirst.mockResolvedValue(null);
+      prisma.slugRegistry.findUnique.mockResolvedValue(null);
+      prisma.slugRegistry.findMany.mockResolvedValue([
+        { destinationSlug: 'curacao' },
+      ]);
+      // Both admins passed the pre-check; this transaction is the loser.
+      prisma.$transaction.mockRejectedValueOnce({ code: 'P2002' });
+      prisma.tour.update.mockResolvedValue(makeTour());
+
+      await service.approveTour('tour-1', 'admin-1');
+
+      const fallback = prisma.tour.update.mock.calls.at(-1)?.[0];
+      expect(fallback.data.approvalStatus).toBe(TourApprovalStatus.APPROVED);
+      expect(fallback.data.slug).toBeUndefined();
+    });
+
     it('approve requires PENDING; reject stores the actionable note', async () => {
       prisma.tour.findUnique.mockResolvedValue(
         makeTour({ approvalStatus: TourApprovalStatus.PENDING }),
@@ -2746,7 +2877,11 @@ describe('ToursService', () => {
       await service.findAllAdmin({ isLocalsFavourite: true });
 
       const whereArg = prisma.tour.findMany.mock.calls[0][0].where;
-      expect(whereArg).toEqual({ isLocalsFavourite: true });
+      expect(whereArg).toEqual({
+        isLocalsFavourite: true,
+        // The default admin-list exclusion (review loop lives on /submissions).
+        approvalStatus: { notIn: ['PENDING', 'REJECTED'] },
+      });
     });
 
     it('getLocalsFavouriteStats computes overall + per-destination coverage', async () => {

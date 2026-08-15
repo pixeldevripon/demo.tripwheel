@@ -263,6 +263,17 @@ Operator submits: { name, slug?, destinationId, categoryIds:[…], primaryCatego
 
 **Rows written:** 1 `Trip` + N `TourCategory` (one `isPrimary`) + M `TourHub` + **always** 1 `TOUR` registry row. The tour belongs to exactly **1 destination, 1+ categories, 0–n hubs**; categories/hubs drive discovery and filtering only — never the URL.
 
+**The create-time slug is provisional (client review #12, 2026-08-15).** The operator no longer
+edits a slug field in the wizard — the create-time slug is derived from a title that can still
+change during review. Island Tours sets the final address **at approval**: `approveTour` realigns a
+NEVER-published tour's slug to `generateSlug(finalName)` inside the approval transaction, through
+the same `renameEntitySlug` path as any rename (registry row re-pointed, 301 recorded — harmless
+for a never-live URL). Three protections: a tour that has ever been published keeps its slug (a
+live address changes only by a deliberate admin rename); a collision keeps the current slug with a
+logged warning; and a lost write race (P2002 past the pre-check) falls back to approving with the
+current slug — **approval never fails over an address**. Admins keep an editable slug field in the
+wizard for the manual-adjust case.
+
 ---
 
 ## 6. Slug collision resolution (`resolveUniqueSlug`) — implementation note

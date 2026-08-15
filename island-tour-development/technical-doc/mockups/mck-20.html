@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MCK-20 · Operator conditions at booking (two flavors, two placements)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<!--
+  MCK-20 · Operator conditions at booking: the required checkbox, both flavors, both placements.
+  Founder decision 2026-08-13: a tour whose operator attaches its own conditions carries a REQUIRED
+  checkbox before the booking can be committed. Per tour conditional, never platform wide.
+
+  MASTER CHANGE FLAGGED (DIT-10 mechanism, recorded as DIT-21 in 00-DESIGN-MASTERDOC.md): master 5.8
+  locks the commit consent moment as implied consent, quote: "(links, no checkbox)". A required
+  checkbox on flagged tours supersedes that lock FOR THOSE TOURS ONLY. Conflict-log entry queued for
+  the next master session; until then the DIT-21 row is the deviation record. Everything else in 5.8
+  stands: the implied-consent line itself still renders verbatim below the CTA on every tour.
+
+  TWO FLAVORS, TWO LEGAL OBJECTS (section 1):
+    1. Operator terms WITH a document. Powerboat Caribbean (old-site legal name: Go Fast Watersports),
+       operator of klein-curacao-speedboat-day-trip and west-coast-speedboat-trip. The old site hosts
+       a dedicated page at /terms-and-conditions/powerboat-caribbean/. The checkbox label links the
+       document; the document lives on a canonical per-operator page (new 2.1 page type) and opens
+       inside the flow as a reading layer (section 3).
+    2. Participation acknowledgment WITHOUT a document. The three dolphin tours. The live build labels
+       this Terms & Conditions, but the content is a health and participation declaration (height
+       minimums, life jackets, pregnancy). Different legal object, different pattern: short first-person
+       declarations plus a confirm checkbox. No document, no page. Classification is counsel's call
+       (legal workstream D1/D2), flagged in section 1's note.
+
+  PLACEMENT (section 2): the live build gates inside the 6.1 booking widget. Recommended: the required
+  checkbox sits in the 5.8 commit block, directly above the locked consent line, because identity
+  exists there (acceptance evidence per the P4 discipline: timestamp, identity, terms version; the
+  same posture as the affiliate-terms precedent of 2026-08-05), the commit CTA is the one gate every
+  booking crosses, the 6.1 widget and the LD5 trust strip stay untouched, and the tour page already
+  discloses early (the LD14 Supplied-by line plus the not-suitable-for and know-before-you-go blocks).
+  Works on all four payment models: on operator_full (C22) the checkbox sits above the bare CTA the
+  same way.
+
+  ALL LEGAL TEXT IN THIS FILE IS PLACEHOLDER. Legal workstream D1 (operator agreement) and D2
+  (operator and affiliate sub-terms) are open; counsel owns the final wording, the label noun and the
+  acknowledgment classification. The Powerboat excerpt reuses the old page's section skeleton as
+  realistic filler only. This file designs the pattern, not the content.
+
+  DATA (section 4, proposal): E.6 operators gains the document fields, E.3 tours the per-tour kind
+  flag plus acknowledgment items, E.8 bookings the acceptance evidence pair. No such fields exist
+  today (checked against master v1.20).
+
+  MIGRATION: two redirect rows are OPEN pending this pattern and deliberately out of redirects.csv:
+  /terms-and-conditions/powerboat-caribbean/ and the NL twin. Proposed target once the page type
+  lands: /{locale}/operators/powerboat-caribbean/conditions/ (route wording is a founder call, to be
+  checked against the conflict-114 naming rule).
+
+  Sources: master v1.20 sections 1.5 (conflict 114), 2.1, 5.8, 6.1, 6.3, 7.3, E.3, E.6, E.8; LD1,
+  LD2, LD5, LD9, LD14, LD24; mck-09 (5.8 re-skin, S3t state), mck-15 (widget review, Aug 7), mck-03;
+  the affiliate-terms precedent (DIT-17, MASTERPROMPT-affiliate-terms); founder screenshots of the
+  live dolphin widget gate and the old Powerboat page plus a live fetch of that page, 2026-08-14.
+  Register facts: West Coast Speedboat Trip $185 (mck-04), Swim with Dolphins in the Lagoon $194
+  (mck-04), dolphin cancellation 24h (live build), speedboat 48h default, demo deposit 20% inside
+  the LD24 tier range. Demo math: 2 adults x $185 = $370, pay today $74, balance later $296.
+
+  APPLIES TO (register rows, v2 addition on the founder's ask): flavor 1 = the two Powerboat
+  Caribbean tours, Speedboat Adventure Day Trip (klein-curacao-speedboat-day-trip) and West Coast
+  Speedboat Trip (west-coast-speedboat-trip); content source is the old site's dedicated page
+  /terms-and-conditions/powerboat-caribbean/. Flavor 2 = the three Dolphin Academy tours, Swim with
+  Dolphins in the Lagoon (dolphin-swim, min 1.30 m), Snorkel with Dolphins in the Lagoon
+  (dolphin-snorkel, min 1.45 m) and Dolphin Encounter for All Ages (dolphin-encounter, platform
+  visit, items differ per tour); content source is the Terms & Conditions list inside each tour's
+  old-site Gravity Forms booking widget.
+
+  PAYMENT METHODS AT THE COMMIT STEP (founder instruction 2026-08-14, flagged as DIT-22): the live
+  build pre-expands Card, which pushes iDEAL and PayPal below the fold so they are easily missed.
+  Decision: render Card, iDEAL and PayPal as three COLLAPSED rows, none pre-selected; the traveler
+  picks, the picked method expands. This supersedes two locked 5.8 sentences for the commit step:
+  "Card selected and expanded by default" and "Final CTA lives inside the expanded method" (the CTA
+  now sits below the method list, always visible). Flagged via the DIT-10 mechanism, conflict-log
+  entry queued; honest cost noted in the section-2 note (one extra tap for the card majority).
+  Side note carried in the same note: the live build renders iDEAL and PayPal as dead rows reading
+  "Not available for USD"; parked as build configuration, with a recommendation.
+  No em-dashes anywhere. LD9 swept. Desktop 1440 and mobile 390 verified.
+-->
+<style>
+:root{
+  --white:#FFFFFF; --paper:#F7F7F5; --dark:#23201B;
+  --ink:#1F2937; --soft:#6B7280; --faint:#9CA3AF;
+  --border:#E5E7EB; --divider:#F3F4F6;
+  --cta:#E8611A; --cta-deep:#C7500F; --cta-tint:#FDEEE4;
+  --green:#16A34A; --green-text:#15803D;
+  --bad:#B4341C;
+  --r-sm:10px; --r-md:12px; --r-lg:16px; --r-pill:999px;
+  --e2:0 2px 6px rgba(31,41,55,.05), 0 12px 28px rgba(31,41,55,.07);
+  --e3:0 4px 10px rgba(31,41,55,.06), 0 24px 56px rgba(31,41,55,.12);
+  --sans:'Source Sans 3',system-ui,sans-serif;
+  --display:'Bricolage Grotesque',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);color:var(--ink);background:#FBFBFA;font-size:15px;line-height:1.6}
+.wrap{max-width:1500px;margin:0 auto;padding:30px 24px 100px}
+.kicker{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:700}
+h1{font-family:var(--display);font-size:25px;font-weight:800;letter-spacing:-.02em;margin:4px 0 6px}
+.lede{color:var(--soft);font-size:14px;max-width:940px}
+h2{font-family:var(--display);font-size:17px;font-weight:800;letter-spacing:-.01em;margin:44px 0 4px;padding-top:22px;border-top:1px solid var(--border)}
+.h2sub{color:var(--soft);font-size:13.5px;margin-bottom:18px;max-width:940px}
+.pair{display:flex;gap:30px;flex-wrap:wrap;align-items:flex-start}
+.col h3{font-size:12px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px}
+.col .cap{font-size:12.5px;color:var(--soft);max-width:380px;margin-bottom:12px;min-height:56px}
+.bad h3{color:#B4341C}
+.good h3{color:#15803D}
+.w360{width:360px;max-width:100%}
+.w420{width:420px;max-width:100%}
+.livetag{display:inline-block;background:var(--cta);color:#fff;font-size:10px;font-weight:800;letter-spacing:.06em;padding:2px 7px;border-radius:var(--r-pill);margin-left:8px;vertical-align:2px}
+.warn{display:inline-flex;align-items:center;gap:6px;color:var(--cta-deep);font-weight:800}
+.warn svg{width:14px;height:14px;stroke:var(--cta);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.note{margin-top:20px;border-left:3px solid var(--cta);background:var(--white);border-radius:0 var(--r-md) var(--r-md) 0;padding:13px 17px;font-size:13px;color:var(--soft);max-width:1020px}
+.note b{color:var(--ink)}
+.note ul{margin:5px 0 0 18px}
+.note li{margin:3px 0}
+.maptab{width:100%;max-width:1020px;border-collapse:collapse;font-size:12.5px;margin-top:6px}
+.maptab th,.maptab td{border:1px solid var(--border);padding:7px 9px;text-align:left;vertical-align:top;background:var(--white)}
+.maptab th{background:var(--paper);font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--soft)}
+.maptab code{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;background:var(--paper);padding:1px 5px;border-radius:5px;white-space:nowrap}
+
+/* ===== cards: widget (mck-03 / mck-15 vocabulary) ===== */
+.widget{background:var(--white);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--e2);padding:20px;position:relative}
+.wprice{font-size:13px;color:var(--soft)}
+.wprice b{font-size:22px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.wfields{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+.wfield{display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:var(--r-sm);padding:11px 13px;background:var(--white);font-size:14px;font-weight:600}
+.wfield .icon{width:17px;height:17px;stroke:var(--soft);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.wsummary{margin-top:12px;border-top:1px solid var(--divider);padding-top:12px;font-size:13.5px}
+.wsummary .row{display:flex;justify-content:space-between;padding:3px 0;font-variant-numeric:tabular-nums}
+.wsummary .row.total b{font-size:16px}
+.wsummary .row .l{color:var(--soft)}
+.wsummary .taxline{font-size:12px;color:var(--faint);margin-top:4px}
+.pay{color:var(--cta-deep);font-weight:700}
+.wcta{width:100%;margin-top:14px;background:var(--cta);color:#fff;border:none;border-radius:var(--r-sm);font-size:16.5px;font-weight:700;padding:14px;font-family:inherit}
+.wtrust{margin-top:14px;display:flex;flex-direction:column;gap:7px}
+.wtrust span{display:flex;gap:8px;align-items:center;font-size:13px;font-weight:600;color:var(--ink)}
+.wtrust u{text-underline-offset:2px}
+.chk{width:15px;height:15px;stroke:var(--green);fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.asbuiltbox{border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 13px;margin-top:2px}
+.asbuiltbox .abh{font-size:13.5px;font-weight:800;margin-bottom:6px}
+.asbuiltbox ul{margin:0 0 4px 16px;font-size:12.5px;color:var(--soft)}
+.asbuiltbox ul li{margin:3px 0}
+
+/* ===== applies-to mini block ===== */
+.applies{margin-top:12px;border-top:1px dashed var(--border);padding-top:10px}
+.applies .al{font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);margin-bottom:4px}
+.applies ul{list-style:none;margin:0;padding:0}
+.applies li{font-size:12px;color:var(--soft);margin:3px 0;line-height:1.5}
+.applies li b{color:var(--ink);font-weight:700}
+.applies code{font-family:ui-monospace,Menlo,monospace;font-size:10.5px;background:var(--paper);padding:1px 5px;border-radius:5px}
+.applies .src{font-size:11px;color:var(--faint);margin-top:5px}
+
+/* ===== commit block (mck-09 vocabulary) ===== */
+.commitcard{background:var(--white);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--e2);padding:20px}
+.sechead{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:800;padding-bottom:12px;border-bottom:1px solid var(--divider);margin-bottom:12px}
+.sechead .num{width:22px;height:22px;border-radius:50%;background:var(--dark);color:#fff;font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.minisum{border:1px solid var(--divider);background:var(--paper);border-radius:var(--r-sm);padding:10px 13px;font-size:12.5px;margin-bottom:12px}
+.minisum b{display:block;font-size:13px}
+.minisum .mrow{display:flex;justify-content:space-between;padding:2px 0;font-variant-numeric:tabular-nums;color:var(--soft)}
+.minisum .mrow em{font-style:normal;font-weight:700;color:var(--ink)}
+.paylabel{font-size:13.5px;font-weight:800;margin-bottom:8px}
+.pmlist{border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden;margin-top:10px}
+.pm-opt{border-top:1px solid var(--divider)}
+.pm-opt:first-child{border-top:none}
+.pm-row{display:flex;align-items:center;gap:11px;padding:12px 13px;cursor:pointer;font-size:13.5px;font-weight:700;background:var(--white)}
+.pm-opt.sel .pm-row{background:var(--cta-tint)}
+.pm-radio{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--border);flex:none;display:inline-flex;align-items:center;justify-content:center;background:var(--white)}
+.pm-opt.sel .pm-radio{border-color:var(--cta)}
+.pm-radio i{width:8px;height:8px;border-radius:50%;background:var(--cta);display:none}
+.pm-opt.sel .pm-radio i{display:block}
+.pm-chips{margin-left:auto;display:flex;gap:4px}
+.pm-chips .chip{font-size:9.5px;font-weight:800;color:var(--soft);border:1px solid var(--border);background:var(--white);border-radius:4px;padding:1px 5px;letter-spacing:.03em}
+.pm-body{display:none;padding:0 13px 11px 40px;font-size:12px;color:var(--soft)}
+.pm-opt.sel .pm-body{display:block}
+.securerow{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--soft);margin-top:10px}
+.securerow svg{width:13px;height:13px;stroke:var(--soft);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.stripebadge{background:#635BFF;color:#fff;font-size:10px;font-weight:700;border-radius:4px;padding:2px 7px;letter-spacing:.02em}
+.cta{width:100%;padding:15px;background:var(--cta);color:#fff;border:none;border-radius:var(--r-sm);font:inherit;font-size:16px;font-weight:700;cursor:pointer;margin-top:14px;display:flex;align-items:center;justify-content:center;gap:9px}
+.cta:hover{background:var(--cta-deep)}
+.lock{width:15px;height:15px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.freecancel{display:flex;align-items:center;justify-content:center;gap:7px;font-size:13px;font-weight:600;color:var(--green-text);margin-top:12px}
+.freecancel svg{width:15px;height:15px;stroke:var(--green);fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.consent{font-size:12px;color:var(--soft);text-align:center;margin-top:10px;line-height:1.6}
+.consent a{color:var(--soft);text-decoration:underline;font-weight:600}
+
+/* ===== the required checkbox (extends the mck-09 checkbox-row) ===== */
+.checkbox-row{display:flex;gap:10px;align-items:flex-start;margin-top:14px;cursor:pointer;user-select:none}
+.checkbox-row .box{width:18px;height:18px;border:1.5px solid var(--border);border-radius:4px;flex-shrink:0;margin-top:2px;background:var(--white);display:flex;align-items:center;justify-content:center}
+.checkbox-row .box .icon{width:12px;height:12px;stroke:#fff;stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round;display:none}
+.checkbox-row.on .box{background:var(--cta);border-color:var(--cta)}
+.checkbox-row.on .box .icon{display:block}
+.checkbox-row .txt{font-size:13px;color:var(--ink)}
+.checkbox-row .txt a{color:var(--cta-deep);font-weight:700;text-decoration:underline;text-underline-offset:2px}
+.checkbox-row.err .box{border-color:var(--bad);box-shadow:0 0 0 3px rgba(180,52,28,.12)}
+.errline{display:none;margin-top:7px;font-size:12.5px;font-weight:700;color:var(--bad)}
+.errline.show{display:flex;align-items:center;gap:6px}
+.errline svg{width:13px;height:13px;stroke:var(--bad);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.okline{display:none;margin-top:7px;font-size:12px;color:var(--soft);font-style:italic}
+.okline.show{display:block}
+
+/* ===== acknowledgment box (flavor 2) ===== */
+.ackbox{border:1px solid var(--border);background:var(--paper);border-radius:var(--r-sm);padding:12px 14px;margin-top:14px}
+.ackbox .ah{font-size:13px;font-weight:800;margin-bottom:6px}
+.ackbox ul{list-style:none;margin:0;padding:0}
+.ackbox li{position:relative;padding-left:14px;font-size:12.5px;color:var(--ink);margin:4px 0}
+.ackbox li::before{content:"";position:absolute;left:2px;top:9px;width:4px;height:4px;border-radius:50%;background:var(--soft)}
+.ackbox .checkbox-row{margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+
+/* ===== tour-page disclosure strip (LD14 line) ===== */
+.strip{margin-top:16px;border:1px dashed var(--border);background:var(--white);border-radius:var(--r-md);padding:12px 16px;max-width:750px}
+.strip .sl{font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);margin-bottom:5px}
+.strip .supplied{font-size:13.5px;color:var(--soft)}
+.strip .supplied b{color:var(--ink)}
+.strip .supplied a{color:var(--cta-deep);font-weight:700;text-decoration:underline;text-underline-offset:2px}
+
+/* ===== reading layer (modal / mobile sheet) ===== */
+.ovl{position:fixed;inset:0;background:rgba(31,41,55,.45);z-index:80;display:none;align-items:center;justify-content:center;padding:24px}
+.ovl.open{display:flex}
+.sheet{background:var(--white);border-radius:var(--r-lg);max-width:640px;width:100%;max-height:86vh;display:flex;flex-direction:column;box-shadow:var(--e3);overflow:hidden}
+.sheet .shead{padding:16px 20px 12px;border-bottom:1px solid var(--divider);display:flex;align-items:flex-start;gap:12px}
+.sheet .shead .t{flex:1}
+.sheet .shead b{font-family:var(--display);font-size:17px;font-weight:800;display:block}
+.sheet .shead .sub{font-size:12px;color:var(--soft);margin-top:2px}
+.sheet .shead .ver{font-size:11px;color:var(--faint);margin-top:3px}
+.xbtn{border:1px solid var(--border);background:var(--white);border-radius:50%;width:30px;height:30px;font-size:15px;font-weight:700;color:var(--soft);cursor:pointer;flex:none;line-height:1;font-family:inherit}
+.xbtn:hover{border-color:var(--soft)}
+.docbody{overflow:auto;padding:16px 20px;font-size:13.5px;color:var(--ink)}
+.phband{background:var(--cta-tint);border:1px solid #F2E2D6;color:#B4470C;font-size:11.5px;font-weight:700;border-radius:8px;padding:7px 11px;margin-bottom:14px}
+.docbody h4{font-size:13px;font-weight:800;margin:14px 0 3px}
+.docbody h4:first-of-type{margin-top:0}
+.docbody p{color:var(--soft);font-size:13px;margin:0 0 6px}
+.docbody ul{margin:2px 0 8px 18px;color:var(--soft);font-size:13px}
+.sfoot{padding:12px 20px 16px;border-top:1px solid var(--divider)}
+.sfoot .agreebtn{width:100%;padding:13px;background:var(--cta);color:#fff;border:none;border-radius:var(--r-sm);font:inherit;font-size:15px;font-weight:700;cursor:pointer}
+.sfoot .agreebtn:hover{background:var(--cta-deep)}
+.sfoot .urlnote{font-size:11px;color:var(--faint);margin-top:9px;text-align:center;line-height:1.5}
+.sfoot .urlnote code{font-family:ui-monospace,Menlo,monospace;font-size:10.5px}
+
+/* ===== canonical page mini preview ===== */
+.pagemini{background:var(--white);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--e2);overflow:hidden}
+.pagemini .pnav{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--divider);font-size:11px;color:var(--faint)}
+.pagemini .pnav .plogo{font-family:var(--display);font-weight:800;font-size:12px;color:var(--ink);letter-spacing:.02em}
+.pagemini .purl{margin-left:auto;background:var(--paper);border:1px solid var(--divider);border-radius:var(--r-pill);padding:3px 10px;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:var(--soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%}
+.pagemini .pbody{padding:16px 20px 20px}
+.pagemini .pbc{font-size:10px;color:var(--faint);margin-bottom:8px}
+.pagemini .ph1{font-family:var(--display);font-size:16px;font-weight:800;letter-spacing:-.01em}
+.pagemini .psub{font-size:11.5px;color:var(--soft);margin-top:3px}
+.pagemini .pline{height:7px;background:var(--divider);border-radius:4px;margin-top:8px}
+.pagemini .pline.w80{width:80%}
+.pagemini .pline.w60{width:60%}
+.pagemini .ph4{font-size:11px;font-weight:800;margin-top:12px}
+
+@media (max-width:767px){
+  .wrap{padding:24px 16px 80px}
+  .pair{gap:22px}
+  .col .cap{min-height:0}
+  .maptab code{white-space:normal;overflow-wrap:anywhere}
+  .maptab th{width:auto!important}
+  .ovl{padding:0;align-items:flex-end}
+  .sheet{max-width:none;max-height:100dvh;height:100dvh;border-radius:0}
+}
+@media (prefers-reduced-motion: reduce){
+  *{transition:none!important;animation:none!important;scroll-behavior:auto!important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">MCK-20 · Booking flow decision</div>
+  <h1>Operator conditions at booking</h1>
+  <p class="lede">Your call of August 13: a tour whose operator attaches its own conditions gets a required checkbox before the booking can be committed. Per tour, never platform wide. This file answers the three open questions: are the two cases really the same kind of thing (section 1), where does the checkbox land (section 2), and modal or its own page for the readable document (section 3). Every legal sentence in here is placeholder: the legal workstream D1/D2 owns the words, this file owns the pattern. One live demo runs in section 2 and section 3.</p>
+
+  <!-- ============================================================ 1 -->
+  <h2>1 · Two flavors, and they are not the same thing</h2>
+  <p class="h2sub">Powerboat Caribbean has a real conditions document, the old site even gave it its own page. The dolphin tours have a checklist the live build happens to label Terms &amp; Conditions. Put side by side, they are different legal objects and earn different patterns. Both checkboxes below are tappable.</p>
+  <div class="pair">
+
+    <div class="col w420">
+      <h3 style="color:var(--ink)">Flavor 1 · Operator terms, with a document</h3>
+      <div class="cap">Powerboat Caribbean, the operator behind the Klein Cura&ccedil;ao Speedboat Day Trip and the West Coast Speedboat Trip. A genuine conditions text: risk allocation, cancellation mechanics, conduct rules. The traveler agrees to a document, so the label links the document and the document must be readable in full (section 3).</div>
+      <div class="commitcard">
+        <div class="checkbox-row" data-chk role="checkbox" aria-checked="false" tabindex="0" aria-required="true">
+          <div class="box"><svg class="icon" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></div>
+          <div class="txt">I have read and agree to <b>Powerboat Caribbean</b>'s <a href="#" class="doclink">operator conditions</a>.</div>
+        </div>
+        <div class="applies">
+          <div class="al">Applies to</div>
+          <ul>
+            <li><b>Speedboat Adventure Day Trip</b> &middot; <code>klein-curacao-speedboat-day-trip</code></li>
+            <li><b>West Coast Speedboat Trip</b> &middot; <code>west-coast-speedboat-trip</code></li>
+          </ul>
+          <div class="src">One shared document for both tours. Content source: the old site's dedicated page at /terms-and-conditions/powerboat-caribbean/.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col w420">
+      <h3 style="color:var(--ink)">Flavor 2 · Participation acknowledgment, no document</h3>
+      <div class="cap">The three dolphin tours. No conditions text exists; the checklist is about the traveler, not about the operator's liability: height, swimming, pregnancy. So the traveler does not agree to terms, they confirm facts. Short first-person declarations, right at the checkbox, nothing to open. Shown here for Swim with Dolphins in the Lagoon.</div>
+      <div class="commitcard">
+        <div class="ackbox">
+          <div class="ah">This tour asks you to confirm:</div>
+          <ul>
+            <li>Everyone swimming is at least 1.30 m tall.</li>
+            <li>Everyone wears the life jacket in the water, at all times.</li>
+            <li>Nobody in the group is pregnant.</li>
+          </ul>
+          <div class="checkbox-row" data-chk role="checkbox" aria-checked="false" tabindex="0" aria-required="true">
+            <div class="box"><svg class="icon" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></div>
+            <div class="txt">I confirm this for everyone in my group.</div>
+          </div>
+        </div>
+        <div class="applies">
+          <div class="al">Applies to</div>
+          <ul>
+            <li><b>Swim with Dolphins in the Lagoon</b> &middot; <code>dolphin-swim</code> &middot; min 1.30 m</li>
+            <li><b>Snorkel with Dolphins in the Lagoon</b> &middot; <code>dolphin-snorkel</code> &middot; min 1.45 m</li>
+            <li><b>Dolphin Encounter for All Ages</b> &middot; <code>dolphin-encounter</code> &middot; platform visit, no height rule</li>
+          </ul>
+          <div class="src">All three run at Dolphin Academy; the items differ per tour, which is why they live on the tour, not on the operator. Content source: the Terms &amp; Conditions list inside each tour's old-site Gravity Forms booking widget.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>Is it the same kind? No, and treating it as one thing would be the mistake.</b>
+    <ul>
+      <li><b>Flavor 1 is a contract text.</b> The traveler accepts the operator's conditions as a document. That needs a canonical, readable, versioned source (section 3) and an "I have read and agree" label that links it.</li>
+      <li><b>Flavor 2 is a declaration.</b> The traveler attests facts about their own group. There is no document to read, so a document link would be theater. The honest label is "I confirm", and the facts sit directly above the box.</li>
+      <li><b>It smells like a health and safety declaration because it is one.</b> Flagged to the legal workstream (D1/D2): counsel should classify it, name it, and confirm whether a checkbox declaration is the right instrument or whether some items belong in the operator's on-site waiver instead.</li>
+      <li><b>The live build's dolphin list also restates platform policy:</b> "cancel or reschedule up to 24 hours" is our own cancellation window (LD1 already renders it in five locked places). Policy restated inside an operator checklist is a second source of truth that can drift. Rule for the CMS: acknowledgment items carry participation facts only, never cancellation, deposit or payment policy.</li>
+      <li><b>Counsel flag on the old Powerboat document:</b> it bundles a photo release into the required conditions. Consent to marketing use of someone's likeness must be freely given, so it cannot ride along inside a mandatory acceptance. Carried in the D1/D2 hand-off, not reproduced in the placeholder.</li>
+      <li><b>Same mechanics, different content.</b> Both flavors use the identical required checkbox in the identical place (section 2), so dev builds one gate with two renderings, keyed on a per-tour field (section 4).</li>
+    </ul>
+  </div>
+
+  <!-- ============================================================ 2 -->
+  <h2>2 · Where the checkbox lands: widget or commit step</h2>
+  <p class="h2sub">The live build gates inside the booking widget on the tour page. The master has two candidate homes: the 6.1 widget (visible before the money step) or the 5.8 commit block (one gate, next to the existing consent line). Left is the build as it stands today, right is the recommendation, live.</p>
+  <div class="pair">
+
+    <div class="col bad w360">
+      <h3>As built · gate in the widget</h3>
+      <div class="cap">Faithful to the live dolphin widget: a Terms &amp; Conditions block between the fields and a Next button that will not fire unticked. Content abbreviated, structure as shipped.</div>
+      <div class="widget">
+        <div class="wprice">From <b>$194</b> per person</div>
+        <div class="wfields">
+          <div class="wfield"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Fri, Aug 21</div>
+          <div class="wfield"><svg class="icon" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20v-1a6 6 0 0 1 12 0v1"/></svg>2 travelers</div>
+          <div class="asbuiltbox">
+            <div class="abh">Terms &amp; Conditions</div>
+            <ul>
+              <li>Minimum height for the Dolphin Swim is 1.30m.</li>
+              <li>Life jackets are mandatory during the entire program.</li>
+              <li>Participants must be able to swim.</li>
+              <li>Pregnant guests cannot take part in the water program.</li>
+              <li>Cancel or reschedule for free up to 24 hours in advance.</li>
+            </ul>
+            <div class="checkbox-row" style="margin-top:8px" data-chk role="checkbox" aria-checked="false" tabindex="0">
+              <div class="box"><svg class="icon" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></div>
+              <div class="txt">I agree with the terms &amp; conditions</div>
+            </div>
+          </div>
+        </div>
+        <button class="wcta" type="button">Next</button>
+      </div>
+    </div>
+
+    <div class="col good w420">
+      <h3>Recommended · gate at the commit step<span class="livetag">LIVE</span></h3>
+      <div class="cap">The required checkbox joins the commit block, directly above the locked consent line. This one works: tap <b>Reserve my spot</b> with the box empty, then tick it, or open the conditions link and agree inside the reader. All three payment methods start collapsed (your August 14 call); tap one to pick it. Shown on the West Coast Speedboat Trip, 2 adults.</div>
+      <div class="commitcard" id="livecommit">
+        <div class="sechead"><span class="num">2</span>Payment</div>
+        <div class="minisum">
+          <b>West Coast Speedboat Trip</b>
+          <div class="mrow"><span>Sat, Aug 22 &middot; 2 adults</span><span></span></div>
+          <div class="mrow"><span>Total</span><em>$370</em></div>
+          <div class="mrow"><span>Pay today (20% deposit)</span><em class="pay">$74</em></div>
+          <div class="mrow"><span>Balance later</span><em>$296</em></div>
+          <div class="mrow" style="color:var(--faint)"><span>All taxes and fees included</span><span></span></div>
+        </div>
+        <div class="paylabel">Select a payment method</div>
+        <div class="securerow" style="margin-top:0;margin-bottom:10px"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Secure checkout<span class="stripebadge">Powered by Stripe</span></div>
+        <div class="pmlist" role="radiogroup" aria-label="Payment method">
+          <div class="pm-opt" data-pm="card">
+            <div class="pm-row" role="radio" aria-checked="false" tabindex="0"><span class="pm-radio"><i></i></span>Card<span class="pm-chips"><span class="chip">VISA</span><span class="chip">MC</span><span class="chip">AMEX</span></span></div>
+            <div class="pm-body">Card number, expiry, CVC and name open here (Stripe Elements).</div>
+          </div>
+          <div class="pm-opt" data-pm="ideal">
+            <div class="pm-row" role="radio" aria-checked="false" tabindex="0"><span class="pm-radio"><i></i></span>iDEAL<span class="pm-chips"><span class="chip">iDEAL</span></span></div>
+            <div class="pm-body">You pick your bank on the next screen.</div>
+          </div>
+          <div class="pm-opt" data-pm="paypal">
+            <div class="pm-row" role="radio" aria-checked="false" tabindex="0"><span class="pm-radio"><i></i></span>PayPal<span class="pm-chips"><span class="chip">PayPal</span></span></div>
+            <div class="pm-body">You approve the payment in PayPal and land back here.</div>
+          </div>
+        </div>
+
+        <div class="checkbox-row" id="livechk" data-chk role="checkbox" aria-checked="false" tabindex="0" aria-required="true">
+          <div class="box"><svg class="icon" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></div>
+          <div class="txt">I have read and agree to <b>Powerboat Caribbean</b>'s <a href="#" class="doclink">operator conditions</a>.</div>
+        </div>
+        <div class="errline" id="liveerr" role="alert"><svg viewBox="0 0 24 24"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17h.01"/></svg>To book this trip, accept Powerboat Caribbean's conditions first.</div>
+
+        <button class="cta" id="livecta" type="button"><svg class="lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Reserve my spot &middot; Pay $74</button>
+        <div class="okline" id="liveok">Demo only: with the box ticked, the tap continues exactly as on every other tour.</div>
+        <div class="freecancel"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Free cancellation up to 48h before the tour starts, full refund.</div>
+        <div class="consent">Payments are secure and encrypted.<br>By tapping Reserve my spot, you agree to Island Tours' <a href="#" onclick="return false">Terms</a> and <a href="#" onclick="return false">Privacy Policy</a>.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="strip">
+    <div class="sl">And on the tour page: disclose, don't gate</div>
+    <div class="supplied">Supplied by <b>Powerboat Caribbean</b> &middot; <a href="#" class="doclink">Operator conditions apply</a></div>
+  </div>
+
+  <div class="note">
+    <b>Why the commit step wins, honestly weighed</b>
+    <ul>
+      <li><b>The widget's real argument is visibility:</b> the traveler learns early, before any typing. That argument is already served without a checkbox: the LD14 Supplied-by line gains a conditions link (the strip above), and for the dolphin flavor the same facts already render in Not suitable for and Know before you go. Disclosure early, gate once.</li>
+      <li><b>Acceptance you can prove.</b> At the widget there is no name and no email yet, so a tick there is evidence about a session, not a person. At commit the Contact step is filled and the booking record exists to carry it: timestamp, identity, version (section 4). That is the same acceptance discipline the affiliate terms locked on August 5.</li>
+      <li><b>One gate that every booking crosses.</b> Refreshes, restored sessions and shared links all funnel through the commit CTA. Server side, the booking is refused when the tour is flagged and no acceptance is on it; the checkbox is the interface to that rule, not the rule.</li>
+      <li><b>The widget stays as locked.</b> 6.1's job is availability, party, price; LD5 locks the trust strip to exactly two lines; the LD2 CTA progression stays untouched. A legal gate before "Check availability" taxes people who are still comparing, at the moment they are least committed.</li>
+      <li><b>The cost, named:</b> it lengthens the commit block on flagged tours, and a rejection at the most expensive moment is real friction. Mitigations built in: the box is visible from the moment Payment opens (never springs on tap), the error is one calm line, agreeing inside the reader ticks the box (section 3), and the tour page disclosed it long before.</li>
+      <li><b>Works on every payment model.</b> On operator_full (C22) the checkbox sits above the bare Reserve my spot CTA the same way; nothing about the pattern assumes a charge.</li>
+      <li><b>The as-built widget gate also breaks two locks in passing:</b> its Next button sits outside the locked LD2 CTA progression, and a Terms block inside the widget adds a third element to the LD5 two-line trust area. Moving the gate to commit resolves both without a redesign.</li>
+      <li><b>Payment methods start collapsed, none pre-picked (your call of August 14, flagged as DIT-22).</b> The live build pre-expands Card, and the tall card form pushes iDEAL and PayPal below the fold where they read as fine print. Three closed rows put every method in one glance and let the traveler choose. Named cost: the card majority now taps once more before the fields appear; acceptable here because the list is short, sits above the CTA, and a returning visitor's last method can be pre-picked later (v2 option). This supersedes two locked 5.8 sentences, "Card selected and expanded by default" and "Final CTA lives inside the expanded method" (the CTA stays below the list, always visible); conflict-log entry queued, never silent.</li>
+      <li><b>Side note, parked: "Not available for USD".</b> The live build renders iDEAL and PayPal as permanently dead rows on a USD session. A dead row at the commit step is friction without information. Recommendation when the pattern is built: follow the wallets rule (a method renders only when it can process the session currency), or keep the row with a hint that switches the currency. Build configuration, not part of this checkbox pattern.</li>
+      <li><b>For the build review, observed in the same screenshots:</b> the live commit copy reads "By reserving your spot, you agree to our Terms and Privacy policy." where 5.8 locks "By tapping Reserve my spot, you agree to Island Tours' Terms and Privacy Policy.", and a label leaks its spec note ("Postal code (locale-aware)"). Noted here so it rides along to Arnav; not this file's change.</li>
+    </ul>
+  </div>
+
+  <!-- ============================================================ 3 -->
+  <h2>3 · Reading the document: modal or its own page? Both, one source</h2>
+  <p class="h2sub">The conditions live on a canonical per-operator page (a new page type in the 2.1 table). In the flow, the same document opens as a reading layer over the step, so nobody is sent away from a half-filled form. The layer is a view of the page, never a second copy. Try it: the link in the live card above opens it, or use the button here.</p>
+  <div class="pair">
+    <div class="col w420">
+      <h3 style="color:var(--ink)">In the flow · reading layer<span class="livetag">LIVE</span></h3>
+      <div class="cap">Desktop: centered dialog. Mobile 390: full-screen sheet. Escape or the cross closes it; <b>Agree and continue</b> closes it and ticks the checkbox, so reading is never punished with a second tap. Scroll inside for the full skeleton.</div>
+      <button class="cta doclink" type="button" style="margin-top:0;max-width:320px">Open the reading layer</button>
+    </div>
+    <div class="col w420">
+      <h3 style="color:var(--ink)">Canonical home · its own page</h3>
+      <div class="cap">Stable URL for email, print, counsel and the two open migration redirects. Island Tours chrome, operator named in the H1 per the old page. Route wording is your call and is checked against the conflict-114 naming rule at the next master session.</div>
+      <div class="pagemini">
+        <div class="pnav"><span class="plogo">ISLAND TOURS</span><span class="purl">island.tours/en/operators/powerboat-caribbean/conditions/</span></div>
+        <div class="pbody">
+          <div class="pbc">Home &rsaquo; Operators &rsaquo; Powerboat Caribbean</div>
+          <div class="ph1">Operator conditions: Powerboat Caribbean</div>
+          <div class="psub">Applies to the Klein Cura&ccedil;ao Speedboat Day Trip and the West Coast Speedboat Trip &middot; Version 1.0 placeholder</div>
+          <div class="ph4">1 &middot; Safety and risk</div>
+          <div class="pline"></div><div class="pline w80"></div>
+          <div class="ph4">2 &middot; Weather and technical cancellations</div>
+          <div class="pline"></div><div class="pline w60"></div>
+          <div class="ph4">3 &middot; Health</div>
+          <div class="pline w80"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>What this settles beyond the pixels</b>
+    <ul>
+      <li><b>New page type for 2.1:</b> per-operator conditions. Only operators with a document get a page; acknowledgment-flavor tours get none (nothing to host). noindex follow, out of the sitemap, linked only from the checkbox label, the LD14 line and the reader.</li>
+      <li><b>The two migration rows can close on this.</b> <code style="font-family:ui-monospace,monospace;font-size:11px">/terms-and-conditions/powerboat-caribbean/</code> and the NL twin, both deliberately held out of redirects.csv, 301 to this page once the route is confirmed. The old page is orphaned on the old site, so the redirect is for bookmarks and link equity hygiene, not traffic.</li>
+      <li><b>Versioned like the affiliate terms.</b> The page states its version and effective date; the acceptance snapshot on the booking references it. A version bump changes what NEW bookings accept; it never reaches back into old ones.</li>
+      <li><b>Reduced motion and touch:</b> the layer is opaque, scrolls natively, and mobile gets the full-screen sheet, so the document is genuinely readable on 390, not squinted at in a box.</li>
+    </ul>
+  </div>
+
+  <!-- ============================================================ 4 -->
+  <h2>4 · The data that carries it</h2>
+  <p class="h2sub">Nothing in E.3, E.6 or E.8 knows about operator conditions today (checked against master v1.20). The proposal keeps the document on the operator, the flag and the declarations on the tour, and the evidence on the booking.</p>
+  <table class="maptab">
+    <tr><th style="width:14%">Where</th><th style="width:36%">Field</th><th>Why there</th></tr>
+    <tr><td>E.6 operators</td><td><code>terms_document_{locale}</code> markdown nullable &middot; <code>terms_version</code> &middot; <code>terms_effective_date</code></td><td>One document per operator, shared by all its tours (Powerboat Caribbean covers both speedboat trips with one text). Renders the canonical page and the reading layer.</td></tr>
+    <tr><td>E.3 tours</td><td><code>operator_terms_kind</code> enum nullable: <code>document</code> / <code>acknowledgment</code></td><td>The per-tour switch you asked for. Null for the whole catalog today, so nothing changes anywhere until a tour is flagged. CMS validation: <code>document</code> requires the operator document to exist.</td></tr>
+    <tr><td>E.3 tours</td><td><code>acknowledgment_items_{locale}[]</code> string[] 2 to 6</td><td>Only with kind <code>acknowledgment</code>: first person, one fact per item, max 15 words. CMS blocks platform policy restatements (cancellation, deposit, payment) and nudges overlap with <code>not_suitable_for</code> to stay consistent.</td></tr>
+    <tr><td>E.8 bookings</td><td><code>operator_terms_accepted_at</code> timestamptz nullable &middot; <code>operator_terms_version</code> varchar nullable</td><td>The acceptance evidence pair, written at commit. Identity is the booking's own customer fields, so the record reads: who, when, which version. Same discipline as the affiliate acceptance log (P4).</td></tr>
+    <tr><td>Server rule</td><td>no field</td><td>A flagged tour's booking is refused server side when <code>accepted_at</code> is null. The checkbox is the interface to the rule; the API is the rule.</td></tr>
+    <tr><td>Re-acceptance</td><td>none stored</td><td>Every booking is a fresh acceptance of the version live at commit. The affiliate re-acceptance flow solves a standing account; a booking is a point in time, so nothing to re-accept.</td></tr>
+  </table>
+
+  <!-- ============================================================ 5 -->
+  <h2>5 · Recommendation, short</h2>
+  <div class="note" style="margin-top:14px">
+    <b>Build one gate with two renderings, at the commit step.</b>
+    <ul>
+      <li><b>Placement:</b> the required checkbox sits in the 5.8 commit block, directly above the locked consent line, for both flavors. The widget stays exactly as 6.1 locks it; the tour page discloses early via the LD14 Supplied-by line (document flavor) and the existing content blocks (acknowledgment flavor).</li>
+      <li><b>Flavor 1, document:</b> "I have read and agree to {operator}'s operator conditions", label links the canonical per-operator page (new 2.1 page type), opened in the flow as a reading layer; Agree inside the reader ticks the box. The two open migration rows 301 to that page.</li>
+      <li><b>Flavor 2, acknowledgment:</b> a different legal object, so a different rendering: 2 to 6 first-person declarations plus "I confirm this for everyone in my group". No document, no page, no platform policy inside the items. Counsel classifies and names it (D1/D2).</li>
+      <li><b>Evidence:</b> timestamp, identity and version on the booking record, refused server side without it. The affiliate-terms posture, applied to bookings.</li>
+      <li><b>Master consequences, flagged not silent:</b> the 5.8 "(links, no checkbox)" lock gains its per-tour exception (DIT-21, conflict-log entry queued), 2.1 gains the page type, E.3/E.6/E.8 gain the fields above. Until the legal workstream lands, every string here is placeholder.</li>
+    </ul>
+  </div>
+
+  <p style="margin-top:34px;font-size:11.5px;color:var(--faint)">MCK-20 v2 &middot; August 14, 2026 &middot; All conditions text is placeholder pending legal workstream D1/D2 &middot; Register facts: West Coast Speedboat Trip $185, Swim with Dolphins in the Lagoon $194, deposit demo 20% (LD24 range), dolphin cancellation 24h, speedboat 48h &middot; Payment methods collapsed per the founder call of August 14 (DIT-22).</p>
+</div>
+
+<!-- ===== reading layer ===== -->
+<div class="ovl" id="ovl" role="dialog" aria-modal="true" aria-labelledby="ovltitle">
+  <div class="sheet">
+    <div class="shead">
+      <div class="t">
+        <b id="ovltitle">Operator conditions</b>
+        <div class="sub">Powerboat Caribbean &middot; applies to the Klein Cura&ccedil;ao Speedboat Day Trip and the West Coast Speedboat Trip</div>
+        <div class="ver">Version 1.0 placeholder &middot; final text lands with legal workstream D1/D2</div>
+      </div>
+      <button class="xbtn" id="ovlx" type="button" aria-label="Close the conditions reader">&times;</button>
+    </div>
+    <div class="docbody" id="docbody">
+      <div class="phband">Placeholder text. The section order below mirrors the operator's old page; counsel writes the real document.</div>
+      <h4>1 &middot; Safety and risk</h4>
+      <p>Powerboat Caribbean takes all reasonable measures to prevent injury and property damage. Speedboat travel involves movement, spray and wave impact; by joining you accept the risks that come with an open powerboat at sea and you follow the crew's safety instructions at all times.</p>
+      <h4>2 &middot; Weather and technical cancellations</h4>
+      <p>If the operator cancels a departure for weather or technical reasons, you choose between a free reschedule and a full refund. This never narrows your Island Tours cancellation window.</p>
+      <h4>3 &middot; Health</h4>
+      <p>This trip is not suitable during pregnancy or with recent back or neck injuries. Limited mobility: message us first, so the crew can advise honestly whether boarding works for you.</p>
+      <h4>4 &middot; On board</h4>
+      <ul>
+        <li>Follow the crew's instructions at all times.</li>
+        <li>No illegal substances on board.</li>
+        <li>Do not endanger yourself, other guests or the crew.</li>
+      </ul>
+      <p>The crew can end the trip for anyone who makes it unsafe, without refund for that person.</p>
+      <h4>5 &middot; Acknowledgment</h4>
+      <p>By accepting these conditions you confirm the points above for yourself and for everyone you book for.</p>
+    </div>
+    <div class="sfoot">
+      <button class="agreebtn" id="ovlagree" type="button">Agree and continue</button>
+      <div class="urlnote">Also lives at its own page: <code>island.tours/en/operators/powerboat-caribbean/conditions/</code> (proposed route, target of the two open migration redirects)</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  var live=document.getElementById('livechk');
+  var err=document.getElementById('liveerr');
+  var ok=document.getElementById('liveok');
+  var lastFocus=null;
+
+  function setChk(row,on){
+    row.classList.toggle('on',on);
+    row.setAttribute('aria-checked',on?'true':'false');
+    if(on && row===live){err.classList.remove('show');live.classList.remove('err');}
+    if(!on && row===live){ok.classList.remove('show');}
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('[data-chk]'),function(row){
+    row.addEventListener('click',function(e){
+      if(e.target.closest('a'))return;
+      setChk(row,!row.classList.contains('on'));
+    });
+    row.addEventListener('keydown',function(e){
+      if(e.key===' '||e.key==='Enter'){e.preventDefault();setChk(row,!row.classList.contains('on'));}
+    });
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll('.pmlist .pm-row'),function(row){
+    function pick(){
+      var opt=row.parentNode, list=opt.parentNode;
+      Array.prototype.forEach.call(list.children,function(o){
+        o.classList.remove('sel');
+        o.querySelector('.pm-row').setAttribute('aria-checked','false');
+      });
+      opt.classList.add('sel');
+      row.setAttribute('aria-checked','true');
+    }
+    row.addEventListener('click',pick);
+    row.addEventListener('keydown',function(e){
+      if(e.key===' '||e.key==='Enter'){e.preventDefault();pick();}
+    });
+  });
+
+  document.getElementById('livecta').addEventListener('click',function(){
+    if(!live.classList.contains('on')){
+      err.classList.add('show');live.classList.add('err');ok.classList.remove('show');
+      live.focus();
+    }else{
+      err.classList.remove('show');live.classList.remove('err');ok.classList.add('show');
+    }
+  });
+
+  var ovl=document.getElementById('ovl');
+  function openOvl(){lastFocus=document.activeElement;ovl.classList.add('open');document.getElementById('docbody').scrollTop=0;document.getElementById('ovlx').focus();}
+  function closeOvl(){ovl.classList.remove('open');if(lastFocus)lastFocus.focus();}
+  Array.prototype.forEach.call(document.querySelectorAll('.doclink'),function(a){
+    a.addEventListener('click',function(e){e.preventDefault();openOvl();});
+  });
+  document.getElementById('ovlx').addEventListener('click',closeOvl);
+  ovl.addEventListener('click',function(e){if(e.target===ovl)closeOvl();});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&ovl.classList.contains('open'))closeOvl();});
+  document.getElementById('ovlagree').addEventListener('click',function(){
+    setChk(live,true);closeOvl();
+  });
+})();
+</script>
+</body>
+</html>

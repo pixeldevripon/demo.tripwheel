@@ -906,14 +906,50 @@ export class AdminToursQueryDto {
   status?: TourStatus;
 
   @ApiPropertyOptional({
-    enum: TourApprovalStatus,
+    enum: [...Object.values(TourApprovalStatus), 'ANY'],
     description:
       'Review-workflow filter - same separate axis as on my-tours; the ' +
-      'admin submissions view filters PENDING through this.',
+      'admin submissions view filters PENDING through this. WITHOUT it the ' +
+      'admin list excludes PENDING and REJECTED tours: the working ' +
+      'catalogue and the review queue are separate surfaces. ANY skips the ' +
+      'axis entirely - for jump-to-anything surfaces like the command ' +
+      'palette, where a tour mid-review is exactly what the admin wants.',
   })
   @IsOptional()
-  @IsEnum(TourApprovalStatus)
-  approvalStatus?: TourApprovalStatus;
+  @IsIn([...Object.values(TourApprovalStatus), 'ANY'])
+  approvalStatus?: TourApprovalStatus | 'ANY';
+
+  @ApiPropertyOptional({
+    example: true,
+    description:
+      'The whole review loop at once: PENDING and REJECTED together - the ' +
+      'Submissions queue’s "All" view. Ignored when approvalStatus is set.',
+  })
+  @IsOptional()
+  @Transform(({ value }) =>
+    value === 'true' || value === true
+      ? true
+      : value === 'false' || value === false
+        ? false
+        : undefined,
+  )
+  @IsBoolean()
+  reviewLoop?: boolean;
+
+  @ApiPropertyOptional({
+    enum: ['updatedAt', 'submittedAt'],
+    description:
+      'Sort column (default updatedAt). The Submissions queue sorts by ' +
+      'submittedAt ascending - FIFO fairness for reviews.',
+  })
+  @IsOptional()
+  @IsIn(['updatedAt', 'submittedAt'])
+  sortBy?: 'updatedAt' | 'submittedAt';
+
+  @ApiPropertyOptional({ enum: ['asc', 'desc'], description: 'Default desc.' })
+  @IsOptional()
+  @IsIn(['asc', 'desc'])
+  sortDir?: 'asc' | 'desc';
 
   @ApiPropertyOptional({
     example: '3fa85f64-5717-4562-b3fc-2c963f66afa6',

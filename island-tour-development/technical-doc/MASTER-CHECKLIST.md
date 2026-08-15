@@ -101,6 +101,8 @@
 - [x] Category page-render gate moved from **≥1** published tour to the canonical **≥3** (master §2.4). One exported constant, `common/constants/category-visibility.ts` → `CATEGORY_PAGE_MIN_TOURS`, is read by all four gates so they cannot drift: `getActiveByDestinationSlug` (hero "Popular", "Explore by type", footer, All-Tours pills, `generateStaticParams`), `getBySlugForDestination` (the page 404), `SitemapService.getEntries`, and the homepage editorial-card gate (`categoriesWithLivePages`, renamed from `categoriesWithLiveTours` — it now counts rather than `distinct`s, which is what conflict-table row 4 meant by "must change in the same commit"). Found in production: an admin-made 1-tour "Buggy Tours" was being linked from the Curaçao hero
 - [x] `ogImage` column + migration (`20260706195829_add_category_og_image`)
 - [x] Guarded deactivation — refuse to deactivate a category while active non-draft tours are still assigned (409)
+- [x] **Sub-categories = child categories (Pastel dashboard #77/#78, 2026-08-15):** `parentCategoryId` self-relation, ONE nesting level, filter-only — a sub-category writes NO slug-registry rows and renders no page; tours tag subs through the same `tour_categories` join and expose `sub_types[]` (keys only) on tour payloads. Server invariants on all three tour write paths (create, category-replacing update, `primaryCategoryId`-alone update): the primary category must be TOP-LEVEL, and a sub tag is rejected unless its parent is tagged on the same tour
+- [x] **`pnpm subcategories:sync`** (`backend/scripts/sync-sub-categories.ts` + `prisma/data/sub-categories.config.ts`): config-driven converger for production — locks the 19 top-level categories, demotes the extras to sub-types (RETAGGING their tagged tours onto the parent before the demotion, same transaction), heals orphaned subs across the whole taxonomy, `--dry` preview, per-iteration state reload, P2002-skip, and busts the public cache tags (categories / slug-registry / tours / search) at the end. Admin demotion via the dashboard runs the same retag inside its transaction
 
 ### Hubs
 
@@ -150,6 +152,8 @@
 - [x] `attachMoney` display conversion on tours list/detail/by-id with an optional `?currency` query
 - [x] Listing price filter aligned to `priceFrom` rather than `basePrice`
 - [x] `resolveUniqueSlug` collision handling — own-duplicate 409, single operator-name suffix, never a numeric suffix, atomic claim with 409 on a write race
+- [x] **Approval-time slug (Pastel dashboard #73 completion, 2026-08-15):** `approveTour` realigns a NEVER-published tour's slug to `generateSlug(finalName)` inside the approval transaction via `renameEntitySlug` (registry row re-pointed, 301 recorded); published tours are immune, a collision keeps the current slug with a warn, and a lost P2002 write race falls back to approving with the current slug — approval never fails over an address. The wizard's operator-editable slug field is gone; admins keep theirs
+- [x] **Admin list vs review queue (Pastel dashboard #79, 2026-08-15):** `GET /tours/admin/all` excludes `PENDING`/`REJECTED` by default — the working catalogue and the review queue are separate surfaces. `approvalStatus=` targets one state, `reviewLoop=true` returns the whole loop (the Submissions queue's All view), `approvalStatus=ANY` skips the axis entirely (the command palette's jump-to-anything scope), and `sortBy=updatedAt|submittedAt` + `sortDir` give the queue FIFO fairness on `submittedAt asc`. Operator `my-tours` is untouched — operators always see all their own
 - [~] The `conversion_rate` term of `quality_score` contributes effectively **0** for every tour until a pageview/tracking event store exists — there is no view counter to divide bookings by, so the 15-point component cannot discriminate between tours
 - [ ] Collapse the residual `Trip*` / `Tour*` Prisma identifier mix to a single `Tour*` naming (OCTO A7.1 — documentation-only today)
 - [ ] Currency-change guard: block or relabel a `Tour.defaultCurrency` change once priced children/bookings exist
@@ -1315,7 +1319,7 @@ its endpoints. Nothing a visitor reads says it, the URL included.
 - [x] `Translations` promoted to a top-level nav destination
 - [~] `Reviews` deliberately absent from nav with the comment "returns with its module (blocked on A2)" — restore when the module lands
 - [~] `Profile` nav entry commented out while the page still exists (see Foundation)
-- [ ] Actionable badges on nav items (bookings needing attention, pending cancellations, pending spotlight approvals) — specified in the IA but not built
+- [x] Actionable badges on nav items — `NAV_BADGES` registry in `nav-main.tsx` keyed by nav url (pending cancellations, reviews awaiting moderation, spotlight requests, submissions review loop); each badge mounts only when its row survived permission filtering, ONE badge per row, and every count mirrors its page's default view so the badge never promises work the click does not show
 - [ ] Parity #6/#7 — sidebar item-by-item diff against production per role — **user sign-off owed**
 
 ## Destinations
@@ -1334,6 +1338,7 @@ its endpoints. Nothing a visitor reads says it, the URL included.
 
 - [x] Full CRUD routes: `/categories`, `/new`, `/[id]`, `/[id]/edit`
 - [x] 12 components incl. `category-icon-picker.tsx` and `category-subcategories-manager.tsx`
+- [x] Sub-categories listed as folders under their parent (Pastel #77, 2026-08-15): the main list shows only top-level categories; a parent row expands its sub-categories in place (simple folder view, deliberately not chips). Tour wizard tags sub-types as chips with a last-chip guard (an invisible sub tag can never satisfy the ≥1-category rule)
 - [x] Page-content form, quick-edit sheet, translations, SEO, FAQs
 - [x] Per-destination listing endpoint `/categories/destination/:slug` wired
 - [x] Converted to the unified `DataTable`
@@ -1387,6 +1392,9 @@ its endpoints. Nothing a visitor reads says it, the URL included.
 - [x] Lifecycle actions: publish / pause / unpause / archive / restore
 - [x] Archive and delete dialogs, row-actions with `?tab=` deep links
 - [x] `/tours/admin/all` and `/tours/my-tours` scoping wired
+- [x] **Submissions queue (Pastel #79, 2026-08-15):** independent `/submissions` page (`MANAGE_TRIPS`, Inbox icon, own review-loop nav badge) — the review axis LEFT the Tours list: In review / Changes requested are gone from its status filter (picking a lifecycle status also clears any stale `approvalStatus` URL param) and, for an admin, those tours are not in the Tours list at all. The queue reuses `makeTripColumns` (same rich rows as Tours) plus a Submitted column and a per-row Review action into `?step=review`, sorted FIFO on `submittedAt asc`; filters: search, All Status (default — the whole loop) / In review / Changes requested, destination, operator. The ⌘K palette passes `approvalStatus=ANY` so mid-review tours stay jumpable
+- [x] Tours list status filter fixed + fast (2026-08-15): atomic multi-key `setFilters` in `use-table-state.ts` (same-tick writes no longer clobber each other) and shallow `window.history.replaceState` URL writes — no RSC round trip per filter click
+- [x] User-facing wording is **Tour**, not Trip (client 2026-08-15): role-aware list header via `useToursListCopy()` — "All Tours" for platform staff, "My Tours" for an operator — shared by page, loading skeleton and both breadcrumbs; New Tour button, Tour column, search placeholders and empty states all follow. Routes (`/trips`) and internal identifiers unchanged
 - [ ] Phase 16 — reduce create from ~30 fields to **4** (name, destination, category, slug) and delete `trip-form.tsx` (704 LOC duplicating `trip-details-tab.tsx`)
 - [ ] Phase 16 — disable Publish until readiness checks pass, name the blocking item, link each unmet item to the fixing sub-tab; **client rule must be a strict subset of backend validation** or an operator is blocked from a legal action
 - [ ] Phase 16 — surface the "to be LISTED, not just live" requirements (schedule + capacity) alongside publish requirements, ending the 6th-hidden-requirement problem
@@ -1402,6 +1410,8 @@ its endpoints. Nothing a visitor reads says it, the URL included.
 - [x] `/availability/exceptions` wired (CLOSE_DATE / CLOSE_SLOT)
 - [x] **Operator calendar rebuilt to mck-15 §4 (2026-08-09):** every FUTURE day opens (a day the weekly pattern skips was a dead cell, so a Saturday could never be added to a Mon-Fri tour); cells carry per-departure pills `07:00 34/70` (time + booked-of-capacity) instead of a "70 seats" capacity read nobody asked for, with sold-out/closed as filled pills and a quiet "No departures" on an empty day; "Close entire day" only where the day is more than one open departure; legend describes the shapes the cells actually draw; **Reset the month** removes the operator's own date-level changes from today onward behind a confirmation naming them by type and count (exceptions only - bookings are never touched, past days never rewritten)
 - [x] `/availability/check` wired, and correctly **short-circuited** in cache-revalidation (a read shaped as a POST; revalidating it loops)
+- [x] **Range-close impact preview (Pastel dashboard #67, 2026-08-15):** the close-range modal shows what the range actually hits before confirming — departure and booked-guest counts from a backend range-impact endpoint — plus the explicit "guests are not notified" line; range scope covers all tours or one tour
+- [x] **Admin calendar Island → Operator → Tour cascade (Pastel dashboard #71, 2026-08-15):** the global `/calendar` filters cascade (picking an island narrows operators, picking an operator narrows tours) and range actions carry the same island/operator/tour scope end-to-end to the backend
 - [x] `lib/trips/availability.ts` helper extracted
 - [ ] Bulk schedule endpoint adoption (A5) — see Tours
 - [ ] Standalone departures management surface (per-departure capacity/status) — no route or component

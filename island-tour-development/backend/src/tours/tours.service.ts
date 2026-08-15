@@ -1984,6 +1984,9 @@ export class ToursService {
       operatorId,
       destinationId,
       isLocalsFavourite,
+      reviewLoop,
+      sortBy = 'updatedAt',
+      sortDir = 'desc',
       page = 1,
       limit = 20,
     } = query;
@@ -1992,7 +1995,23 @@ export class ToursService {
     const where: Prisma.TourWhereInput = {};
     if (search) where.name = { contains: search, mode: 'insensitive' };
     if (status) where.status = status;
-    if (approvalStatus) where.approvalStatus = approvalStatus;
+    // The admin Tours list is the WORKING CATALOGUE; tours inside the review
+    // loop (awaiting a decision, or sent back for changes) live on the
+    // Submissions queue instead (client 2026-08-15). An explicit
+    // approvalStatus still reaches them - that is exactly how the queue asks -
+    // and reviewLoop=true is the queue's "All" view (both states at once).
+    // ANY skips the axis: the command palette jumps to ANY tour, including
+    // one mid-review. The operator my-tours list is untouched: operators
+    // always see their own.
+    if (approvalStatus !== 'ANY') {
+      where.approvalStatus =
+        approvalStatus ??
+        (reviewLoop
+          ? { in: [TourApprovalStatus.PENDING, TourApprovalStatus.REJECTED] }
+          : {
+              notIn: [TourApprovalStatus.PENDING, TourApprovalStatus.REJECTED],
+            });
+    }
     if (operatorId) where.operatorId = operatorId;
     if (destinationId) where.destinationId = destinationId;
     if (isLocalsFavourite !== undefined)
@@ -2034,7 +2053,10 @@ export class ToursService {
             },
           },
         },
-        orderBy: { updatedAt: 'desc' },
+        // Sortable so the Submissions queue can be FIFO (submittedAt asc) -
+        // a burst of new submissions must not push the earliest one past
+        // page 1 (review fairness).
+        orderBy: { [sortBy]: sortDir },
         skip,
         take: limit,
       }),
@@ -3393,14 +3415,83 @@ export class ToursService {
         'Only a tour awaiting review can be approved',
       );
     }
-    const updated = await this.prisma.tour.update({
-      where: { id },
-      data: {
-        approvalStatus: TourApprovalStatus.APPROVED,
-        reviewNote: note?.trim() || null,
-      },
-      select: this.tourSelect,
-    });
+    // Client review #12 / master 2.3: Island Tours sets the slug AT REVIEW,
+    // from the FINAL approved title - the operator's create-time slug was
+    // provisional (derived from a title that could still change). Only for
+    // tours that have never been live: a published address is a deliberate
+    // rename decision, never a review side effect. A collision keeps the
+    // current slug (the admin adjusts by hand via the wizard's slug field) -
+    // approval never fails over an address.
+    let approvedSlug = tour.slug;
+    if (!tour.firstPublishedAt) {
+      const derived = generateSlug(tour.name);
+      if (derived && derived !== tour.slug) {
+        const dest = await this.prisma.destination.findUnique({
+          where: { id: tour.destinationId },
+          select: { slug: true },
+        });
+        const tourClash = await this.prisma.tour.findFirst({
+          where: {
+            destinationId: tour.destinationId,
+            slug: derived,
+            id: { not: id },
+          },
+          select: { id: true },
+        });
+        const registryTaken = dest
+          ? await isSlugTaken(this.prisma, dest.slug, derived, id)
+          : true;
+        if (dest && !tourClash && !registryTaken) {
+          approvedSlug = derived;
+        } else {
+          this.logger.warn(
+            `Tour ${id}: approved-title slug "${derived}" is unavailable - keeping "${tour.slug}"`,
+          );
+        }
+      }
+    }
+    let updated;
+    try {
+      updated = await this.prisma.$transaction(async (tx) => {
+        if (approvedSlug !== tour.slug) {
+          // Same registry bookkeeping as a rename: re-point the TOUR row and
+          // record the 301 (harmless for a never-live URL, and the one path
+          // every slug move already takes).
+          await renameEntitySlug(tx, {
+            entityType: SlugEntityType.TOUR,
+            entityId: id,
+            fromSlug: tour.slug,
+            toSlug: approvedSlug,
+          });
+        }
+        return tx.tour.update({
+          where: { id },
+          data: {
+            approvalStatus: TourApprovalStatus.APPROVED,
+            reviewNote: note?.trim() || null,
+            ...(approvedSlug !== tour.slug && { slug: approvedSlug }),
+          },
+          select: this.tourSelect,
+        });
+      });
+    } catch (err: any) {
+      // Two same-titled tours approved in the same instant both pass the
+      // pre-check before either commits; the loser hits
+      // UNIQUE(destinationSlug, slug). The promise above still holds:
+      // approve with the current slug, never fail over an address.
+      if (approvedSlug === tour.slug || err?.code !== 'P2002') throw err;
+      this.logger.warn(
+        `Tour ${id}: slug realignment to "${approvedSlug}" lost a write race - keeping "${tour.slug}"`,
+      );
+      updated = await this.prisma.tour.update({
+        where: { id },
+        data: {
+          approvalStatus: TourApprovalStatus.APPROVED,
+          reviewNote: note?.trim() || null,
+        },
+        select: this.tourSelect,
+      });
+    }
     this.logger.log(`Admin ${adminId} approved tour ${id}`);
     this.inbox.notify({
       event: InboxEvent.TOUR_APPROVED,
