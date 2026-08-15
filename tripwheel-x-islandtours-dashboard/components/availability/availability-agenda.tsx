@@ -1,6 +1,11 @@
 'use client';
 
-import { ArrowDown01Icon, Loading03Icon } from '@hugeicons/core-free-icons';
+import {
+    ArrowDown01Icon,
+    ArrowLeft01Icon,
+    ArrowRight01Icon,
+    Loading03Icon,
+} from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { format } from 'date-fns';
 import { motion, useReducedMotion } from 'framer-motion';
@@ -51,6 +56,12 @@ import {
     useReopenRange,
 } from '@/hooks/trips/use-trips';
 import { islandTime } from '@/lib/island-time';
+import {
+    AGENDA_HORIZON_DAYS,
+    AGENDA_WINDOW_DAYS,
+    shiftDateKey,
+    stepAgendaWeek,
+} from '@/lib/trips/availability';
 import { springPop } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import type { AgendaDeparture, TourClosureReason } from '@/types/trip';
@@ -147,9 +158,13 @@ function AgendaDatePicker({
 
 export function AvailabilityAgenda() {
     // Forward paging grows the same window (7 → 14 → 21 → 28, the API cap).
-    const [days, setDays] = useState(7);
-    // Where the window starts: null = the island's today (the default view);
-    // a date = the rail moved the window there.
+    const [days, setDays] = useState(AGENDA_WINDOW_DAYS);
+    // Where the window starts, and the ONLY selection this surface has: null =
+    // the island's today (the default view), a date = the picker or the week
+    // arrows moved it. The list always opens ON this day (client review
+    // comment 11) - it used to keep the loaded window whenever the pick fell
+    // inside it and merely scroll, which left a pick two days out sitting
+    // third and reading as "the list starts two days early".
     const [from, setFrom] = useState<string | null>(null);
     const [tourFilter, setTourFilter] = useState<string | null>(null);
     const { data, isLoading, isFetching } = useAgenda(from ?? undefined, days);
@@ -187,13 +202,14 @@ export function AvailabilityAgenda() {
     const [closeSlotId, setCloseSlotId] = useState<string | null>(null);
     const [closeSlotNote, setCloseSlotNote] = useState('');
 
-    // Week-strip selection + collapsible day groups (both default to open /
-    // today). Selecting a day scrolls to its group and force-opens it.
-    const [selectedDay, setSelectedDay] = useState<string | null>(null);
+    // Collapsible day groups, open by default. There is no separate "selected
+    // day" any more: the picked day IS the window's first group.
     const [collapsedDays, setCollapsedDays] = useState<Set<string>>(
         () => new Set()
     );
-    const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
+    // Moving the window brings the top of the list back into view - otherwise
+    // a reader scrolled to Friday lands mid-window after stepping a week.
+    const listRef = useRef<HTMLDivElement>(null);
 
     const busy = isWriting || isRemoving || isClosingDay;
     // Re-derived from live data each render: a refetch that closed, filled or
@@ -223,6 +239,9 @@ export function AvailabilityAgenda() {
     }, [from, data]);
     const todayKey =
         islandToday ?? data?.days[0]?.date ?? format(new Date(), 'yyyy-MM-dd');
+    // The day the list opens on - today until something moves it.
+    const windowStart = from ?? todayKey;
+    const horizonKey = shiftDateKey(todayKey, AGENDA_HORIZON_DAYS);
     const multiTour = (data?.tours.length ?? 0) > 1;
     const filterName = data?.tours.find(t => t.id === tourFilter)?.name;
 
@@ -240,34 +259,34 @@ export function AvailabilityAgenda() {
     const todayBooked = todayRows.reduce((sum, r) => sum + r.bookedCount, 0);
     const todayTourCount = new Set(todayOpenRows.map(r => r.tourId)).size;
 
-    function jumpToDay(date: string) {
-        setSelectedDay(date);
-        const windowStart = data?.days[0]?.date;
-        const windowEnd = data?.days[data.days.length - 1]?.date;
-        if (
-            windowStart &&
-            windowEnd &&
-            date >= windowStart &&
-            date <= windowEnd
-        ) {
-            // Already loaded: just open and scroll to that day's group.
-            setCollapsedDays(prev => {
-                if (!prev.has(date)) return prev;
-                const next = new Set(prev);
-                next.delete(date);
-                return next;
-            });
-            sectionRefs.current[date]?.scrollIntoView({
-                behavior: reduceMotion ? 'auto' : 'smooth',
-                block: 'start',
-            });
-            return;
-        }
-        // Outside the loaded window: move the window there (and back to the
-        // default view when the pick is today itself). The previous list
-        // stays on screen while the new window loads (placeholderData).
+    /**
+     * Move the list so it STARTS on `date` and covers that day plus six - the
+     * 7-day rule the Calendar's week view uses (client review comment 11).
+     * The previous list stays on screen while the new window loads
+     * (placeholderData), so the surface never blanks.
+     */
+    function goToDay(date: string) {
+        // Today returns to the DEFAULT window, whose first day the backend
+        // anchors on the ISLAND clock - that is where `islandToday` is read
+        // from, and a hardcoded from=today would pin it to the browser's.
         setFrom(date === todayKey ? null : date);
-        setDays(7);
+        setDays(AGENDA_WINDOW_DAYS);
+        // A group collapsed earlier must not swallow the day just asked for.
+        setCollapsedDays(prev => {
+            if (!prev.has(date)) return prev;
+            const next = new Set(prev);
+            next.delete(date);
+            return next;
+        });
+        listRef.current?.scrollIntoView({
+            behavior: reduceMotion ? 'auto' : 'smooth',
+            block: 'start',
+        });
+    }
+
+    /** Step the window a whole week, clamped to the picker's own horizon. */
+    function stepWeek(dir: 1 | -1) {
+        goToDay(stepAgendaWeek(windowStart, dir, todayKey));
     }
 
     function toggleDay(date: string) {
@@ -457,17 +476,64 @@ export function AvailabilityAgenda() {
                 </Button>
             </div>
 
-            {/* One control row: date picker then tour filter left, colour
+            {/* One control row: date controls then tour filter left, colour
                 legend right. The filter is multi-tour operators only (matrix
                 v1.6) - a few tours read fine as chips; a fleet of sixteen
                 truncated pills wrapped into an unreadable band, so larger
                 sets collapse into one Select. */}
             <div className='flex flex-wrap items-center justify-between gap-x-4 gap-y-2'>
-                <AgendaDatePicker
-                    todayKey={todayKey}
-                    selected={selectedDay ?? todayKey}
-                    onSelect={jumpToDay}
-                />
+                {/* Date + Today + week arrows, mirroring the Calendar's
+                    toolbar (client review comment 11): with only a picker,
+                    stepping a single week cost a popover and a hunt for the
+                    right cell. The picker may drop to its own line on a
+                    phone, but Today and the arrows stay welded together so an
+                    arrow can never orphan onto a line by itself. */}
+                <div className='flex flex-wrap items-center gap-2'>
+                    <AgendaDatePicker
+                        todayKey={todayKey}
+                        selected={windowStart}
+                        onSelect={goToDay}
+                    />
+                    <div className='flex items-center gap-2'>
+                        <Button
+                            variant='outline'
+                            className='h-10 shrink-0 px-4'
+                            onClick={() => goToDay(todayKey)}>
+                            Today
+                        </Button>
+                        <div className='flex shrink-0 items-center'>
+                            {/* The agenda only ever looks FORWARD (departures
+                                behind the island's today are not editable and
+                                are not materialized), so Back goes inert at
+                                the floor rather than paging into an empty
+                                past. */}
+                            <Button
+                                variant='ghost'
+                                size='icon'
+                                className='size-10'
+                                aria-label='Previous week'
+                                disabled={windowStart <= todayKey}
+                                onClick={() => stepWeek(-1)}>
+                                <HugeiconsIcon
+                                    icon={ArrowLeft01Icon}
+                                    className='size-4'
+                                />
+                            </Button>
+                            <Button
+                                variant='ghost'
+                                size='icon'
+                                className='size-10'
+                                aria-label='Next week'
+                                disabled={windowStart >= horizonKey}
+                                onClick={() => stepWeek(1)}>
+                                <HugeiconsIcon
+                                    icon={ArrowRight01Icon}
+                                    className='size-4'
+                                />
+                            </Button>
+                        </div>
+                    </div>
+                </div>
                 {multiTour &&
                     (data.tours.length > 6 ? (
                         <Select
@@ -547,18 +613,14 @@ export function AvailabilityAgenda() {
             </div>
 
             {/* The list: day groups (collapsible, open by default), one card
-                per departure, chronological across tours. */}
-            <div className='space-y-6'>
+                per departure, chronological across tours. The first group is
+                always the picked day. */}
+            <div ref={listRef} className='scroll-mt-4 space-y-6'>
                 {data.days.map(d => {
                     const rows = visibleRows(d.departures);
                     const open = !collapsedDays.has(d.date);
                     return (
-                        <section
-                            key={d.date}
-                            ref={el => {
-                                sectionRefs.current[d.date] = el;
-                            }}
-                            className='scroll-mt-4'>
+                        <section key={d.date}>
                             <div className='mb-1.5 flex flex-wrap items-center justify-between gap-2'>
                                 <button
                                     type='button'
