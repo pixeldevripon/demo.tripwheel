@@ -1538,6 +1538,17 @@ export class AvailabilityService {
   ): Promise<RangeImpactResultDto> {
     const { tourIds } = await this.rangeScope(userId, role, query);
     assertDateRangeOrder(query.from, query.to);
+    // Same bound as closeRange/reopenRange - one validation contract for the
+    // three range endpoints, so the preview can never quote numbers for a
+    // range the close itself would reject.
+    const spanDays =
+      Math.round(
+        (dayDate(query.to).getTime() - dayDate(query.from).getTime()) /
+          MS_PER_DAY,
+      ) + 1;
+    if (spanDays > 366) {
+      throw new BadRequestException('A range preview cannot exceed 366 days');
+    }
     if (tourIds.length === 0) {
       return { departures: 0, tours: 0, bookedGuests: 0 };
     }

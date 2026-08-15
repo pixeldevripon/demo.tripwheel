@@ -1395,6 +1395,17 @@ describe('AvailabilityService', () => {
       expect(prisma.bookingUnitItem.count).not.toHaveBeenCalled();
     });
 
+    it('caps the span at 366 days, matching closeRange/reopenRange', async () => {
+      await expect(
+        svc.rangeImpact('u1', Role.TOUR_OPERATOR, {
+          tourId: 't1',
+          from: '2030-01-01',
+          to: '2031-06-01',
+        }),
+      ).rejects.toThrow(/366/);
+      expect(prisma.departure.groupBy).not.toHaveBeenCalled();
+    });
+
     it('returns zeros for an operator with no tours, without querying', async () => {
       prisma.tour.findMany.mockResolvedValue([]);
       const res = await svc.rangeImpact('u1', Role.TOUR_OPERATOR, {
