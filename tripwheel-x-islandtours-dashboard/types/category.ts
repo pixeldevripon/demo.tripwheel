@@ -41,6 +41,12 @@ export interface CategoryLocalized extends Category {
     isMachineTranslated: boolean;
 }
 
+/** A top-level category row with its filter-only sub-categories attached -
+ *  the admin list nests subs inside the parent's row (client 2026-08-15). */
+export interface CategoryWithSubs extends CategoryLocalized {
+    subCategories: CategoryLocalized[];
+}
+
 export interface CategoryDetail extends CategoryLocalized {
     overview: string | null;
     h1Override: string | null;
