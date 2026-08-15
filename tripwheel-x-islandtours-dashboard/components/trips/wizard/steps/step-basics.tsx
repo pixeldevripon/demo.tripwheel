@@ -431,9 +431,21 @@ export function StepBasics({ trip }: StepBasicsProps) {
                                     />
                                 )}
                             />
+                            {/* The breadcrumb, and ONLY the breadcrumb (client
+                                review comment 13). The primary category
+                                anchors the tour's crumb trail
+                                (Home > Destination > Category > Tour), but a
+                                tour canonical is the flat
+                                /{locale}/{destination}/{slug}/ with no
+                                category segment (master 2.2), and per 2.6 no
+                                filter, sort or sub-type state changes it
+                                either. The old "and the canonical URL" clause
+                                taught operators - and the next dev reading
+                                this file - a URL model the code has never
+                                had. */}
                             <FieldDescription>
                                 The starred category is the primary - it decides
-                                the breadcrumb and the canonical URL.
+                                the breadcrumb.
                             </FieldDescription>
                             <FieldError>
                                 {errors.categoryIds?.message}
