@@ -285,16 +285,20 @@ export function StepBasics({ trip }: StepBasicsProps) {
         : null;
     const h1Prefix = tourH1Prefix(hubName, destinationName);
 
-    // Auto-slug until the operator takes over, create only - renaming an
+    // Auto-slug until the admin takes over, create only - renaming an
     // existing slug is a 301 + a 90-day cooldown, never a side effect of
-    // editing the title.
+    // editing the title. ADMIN ONLY: this effect exists to serve the visible
+    // slug input. For an operator it would keep writing a field that never
+    // renders - and a name whose derived slug fails the schema would then
+    // dead-end the submit with no visible error to focus (the operator
+    // create payload simply omits slug; the backend derives it).
     useEffect(() => {
-        if (!slugTouched) {
+        if (isAdmin && !slugTouched) {
             setValue('slug', toSlug(nameValue), {
                 shouldValidate: !!nameValue,
             });
         }
-    }, [nameValue, slugTouched, setValue]);
+    }, [isAdmin, nameValue, slugTouched, setValue]);
 
     // Keep the starred primary inside the selected set.
     useEffect(() => {
@@ -352,10 +356,15 @@ export function StepBasics({ trip }: StepBasicsProps) {
                 } catch (err) {
                     const message =
                         err instanceof Error ? err.message : 'Failed to save.';
+                    // The fallback copy must only name a control the caller
+                    // can actually see: an operator has no slug field, so a
+                    // collision is theirs to fix through the NAME.
                     setStepError(
                         message.includes('409') ||
                             message.toLowerCase().includes('slug')
-                            ? 'A trip with this slug already exists in this destination. Pick a different slug.'
+                            ? isAdmin
+                                ? 'A trip with this slug already exists in this destination. Pick a different slug.'
+                                : 'This name clashes with an existing tour address at this destination. Adjust the tour name.'
                             : message,
                     );
                     ok = false;
@@ -367,7 +376,7 @@ export function StepBasics({ trip }: StepBasicsProps) {
             },
         )();
         return ok;
-    }, [handleSubmit, isCreate, createTrip, updateTrip, router, trip, setStepError, reset]);
+    }, [handleSubmit, isCreate, isAdmin, createTrip, updateTrip, router, trip, setStepError, reset]);
 
     useStepCommit('basics', {
         submit,
