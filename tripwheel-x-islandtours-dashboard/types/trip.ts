@@ -836,7 +836,8 @@ export interface CreateTourAgeBandPayload {
   maxAge?: number;
   price: string;
   priceOriginal?: string;
-  priceNet?: string;
+  // priceNet deliberately absent (client review #20): net = price minus tier
+  // commission, derived server-side reading - never client-written.
   isDefault?: boolean;
   displayOrder?: number;
 }
@@ -849,7 +850,7 @@ export interface UpdateTourAgeBandPayload {
   maxAge?: number;
   price?: string;
   priceOriginal?: string;
-  priceNet?: string;
+  // priceNet deliberately absent - see CreateTourAgeBandPayload.
   isDefault?: boolean;
   displayOrder?: number;
 }

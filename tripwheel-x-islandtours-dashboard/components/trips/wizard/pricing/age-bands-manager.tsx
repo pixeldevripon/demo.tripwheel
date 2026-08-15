@@ -6,9 +6,11 @@
  * Lifted out of `trip-pricing-tab.tsx` with the mutations, payloads, price
  * regex and enum option lists unchanged. Two UI changes only:
  *
- * - the strike-through price and the operator net price move behind a "More
- *   price options" disclosure. Both are optional, one is internal-only, and
- *   together they doubled the height of every band form;
+ * - the strike-through price moves behind a "More price options" disclosure,
+ *   next to the read-only "You keep" line (client review #20: what an
+ *   operator keeps is price minus their tier commission - calculated, never
+ *   typed; the editable net-price input is gone and the API refuses the
+ *   field);
  * - the empty state says what a band is FOR instead of "No age bands defined
  *   yet." - it is the first thing an operator sees on this section.
  *
@@ -42,6 +44,7 @@ import {
     useAgeBands,
     useCreateAgeBand,
     useRemoveAgeBand,
+    useTrip,
     useUpdateAgeBand,
 } from '@/hooks/trips/use-trips';
 import { formatPriceFrom } from '@/lib/currency/current';
@@ -84,11 +87,6 @@ const bandSchema = z
             .regex(priceRegex, 'Must be a valid price')
             .optional()
             .or(z.literal('')),
-        priceNet: z
-            .string()
-            .regex(priceRegex, 'Must be a valid price')
-            .optional()
-            .or(z.literal('')),
         isDefault: z.boolean(),
     })
     .refine(
@@ -107,7 +105,6 @@ type BandValues = {
     maxAge: string;
     price: string;
     priceOriginal: string;
-    priceNet: string;
     isDefault: boolean;
 };
 
@@ -119,7 +116,6 @@ const EMPTY: BandValues = {
     maxAge: '',
     price: '',
     priceOriginal: '',
-    priceNet: '',
     isDefault: false,
 };
 
@@ -137,6 +133,12 @@ interface AgeBandsManagerProps {
 
 export function AgeBandsManager({ tripId, currency }: AgeBandsManagerProps) {
     const { data: bands, isLoading } = useAgeBands(tripId);
+    // Cache-hit: the wizard already holds the trip detail. The tier rate
+    // drives the read-only "You keep" line (client review #20).
+    const { data: trip } = useTrip(tripId);
+    const commissionPct = trip?.commissionTier
+        ? Number.parseFloat(trip.commissionTier)
+        : null;
     const { mutateAsync: createBand, isPending: isCreating } =
         useCreateAgeBand();
     const [adding, setAdding] = useState(false);
@@ -155,7 +157,6 @@ export function AgeBandsManager({ tripId, currency }: AgeBandsManagerProps) {
                     values.maxAge !== '' ? Number(values.maxAge) : undefined,
                 price: values.price,
                 priceOriginal: values.priceOriginal || undefined,
-                priceNet: values.priceNet || undefined,
                 isDefault: values.isDefault,
             },
         });
@@ -213,6 +214,7 @@ export function AgeBandsManager({ tripId, currency }: AgeBandsManagerProps) {
                                 band={band}
                                 tripId={tripId}
                                 currency={currency}
+                                commissionPct={commissionPct}
                             />
                         ))}
                     </AnimatePresence>
@@ -240,6 +242,7 @@ export function AgeBandsManager({ tripId, currency }: AgeBandsManagerProps) {
                             </p>
                             <BandForm
                                 currency={currency}
+                                commissionPct={commissionPct}
                                 submitLabel={
                                     isCreating ? 'Adding...' : 'Add age band'
                                 }
@@ -273,10 +276,12 @@ function AgeBandRow({
     band,
     tripId,
     currency,
+    commissionPct,
 }: {
     band: TourAgeBand;
     tripId: string;
     currency: Currency;
+    commissionPct: number | null;
 }) {
     const { mutateAsync: updateBand, isPending: isUpdating } =
         useUpdateAgeBand();
@@ -298,7 +303,6 @@ function AgeBandRow({
                 maxAge:
                     values.maxAge !== '' ? Number(values.maxAge) : undefined,
                 priceOriginal: values.priceOriginal || undefined,
-                priceNet: values.priceNet || undefined,
             },
         });
         setEditing(false);
@@ -447,6 +451,7 @@ function AgeBandRow({
                         <div className='rounded-lg border border-line p-4 mb-6'>
                             <BandForm
                                 currency={currency}
+                                commissionPct={commissionPct}
                                 initial={{
                                     bandType: band.bandType,
                                     participation: band.participation,
@@ -461,7 +466,6 @@ function AgeBandRow({
                                             : '',
                                     price: band.price,
                                     priceOriginal: band.priceOriginal ?? '',
-                                    priceNet: band.priceNet ?? '',
                                     isDefault: band.isDefault,
                                 }}
                                 hideDefaultToggle
@@ -480,6 +484,7 @@ function AgeBandRow({
 
 function BandForm({
     currency,
+    commissionPct,
     initial,
     hideDefaultToggle,
     submitLabel,
@@ -488,6 +493,8 @@ function BandForm({
     onSubmit,
 }: {
     currency: Currency;
+    /** The tour's commission tier rate; null hides the "You keep" line. */
+    commissionPct: number | null;
     initial?: BandValues;
     hideDefaultToggle?: boolean;
     submitLabel: string;
@@ -500,11 +507,20 @@ function BandForm({
         register,
         handleSubmit,
         control,
+        watch,
         formState: { errors },
     } = useForm<BandValues>({
         resolver: zodResolver(bandSchema) as unknown as Resolver<BandValues>,
         defaultValues: initial ?? EMPTY,
     });
+
+    // Live "You keep" preview: price minus the tier commission, recomputed as
+    // the operator types. Display-only - the server never accepts a net.
+    const watchedPrice = Number.parseFloat(watch('price'));
+    const netPreview =
+        commissionPct != null && Number.isFinite(watchedPrice)
+            ? ((watchedPrice * (100 - commissionPct)) / 100).toFixed(2)
+            : null;
 
     return (
         <form
@@ -597,19 +613,25 @@ function BandForm({
                         </p>
                         <FieldError>{errors.priceOriginal?.message}</FieldError>
                     </Field>
-                    <Field>
-                        <Label>Net price ({currency})</Label>
-                        <Input
-                            {...register('priceNet')}
-                            placeholder='Optional'
-                            aria-invalid={!!errors.priceNet}
-                        />
-                        <p className='text-xs text-content-muted'>
-                            What you keep. Internal only - never shown to
-                            travellers.
-                        </p>
-                        <FieldError>{errors.priceNet?.message}</FieldError>
-                    </Field>
+                    {/* What the operator keeps is price minus their tier
+                        commission - CALCULATED, never typed (client review
+                        #20): an editable net either shows a number they will
+                        not be paid or implies a commercial model that does
+                        not exist. */}
+                    {commissionPct != null && (
+                        <Field>
+                            <Label>You keep ({currency})</Label>
+                            <p className='pt-2 text-sm font-medium text-content'>
+                                {netPreview != null
+                                    ? `${netPreview} after your ${commissionPct}% tier commission`
+                                    : 'Enter a price to see it'}
+                            </p>
+                            <p className='text-xs text-content-muted'>
+                                Price minus your commission tier. Internal only
+                                - never shown to travellers.
+                            </p>
+                        </Field>
+                    )}
                 </FieldGrid>
             </MoreOptions>
 
