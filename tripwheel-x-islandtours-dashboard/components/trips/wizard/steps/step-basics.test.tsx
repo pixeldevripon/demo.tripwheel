@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { StepBasics } from '@/components/trips/wizard/steps/step-basics'
 import type { TripListItem } from '@/types/trip'
@@ -8,7 +8,14 @@ const useActiveHubsMock = vi.fn()
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: vi.fn() }) }))
 vi.mock('@/hooks/categories/use-categories', () => ({
-  useActiveCategories: () => ({ data: [{ id: 'c1', name: 'Boat trips' }] }),
+  useActiveCategories: () => ({
+    data: [
+      { id: 'c1', name: 'Boat trips', parentCategoryId: null },
+      // A filter-only sub-category (client review #16/#17): never an option
+      // in the Basics select, but a stored tag that must survive its edits.
+      { id: 'c-sub', name: 'Catamaran Cruises', parentCategoryId: 'c1' },
+    ],
+  }),
 }))
 vi.mock('@/hooks/destinations/use-destinations', () => ({
   useActiveDestinations: () => ({
@@ -18,10 +25,13 @@ vi.mock('@/hooks/destinations/use-destinations', () => ({
 vi.mock('@/hooks/hubs/use-hubs', () => ({
   useActiveHubs: (...args: unknown[]) => useActiveHubsMock(...args),
 }))
-const { createTripMock } = vi.hoisted(() => ({ createTripMock: vi.fn() }))
+const { createTripMock, updateTripMock } = vi.hoisted(() => ({
+  createTripMock: vi.fn(),
+  updateTripMock: vi.fn(),
+}))
 vi.mock('@/hooks/trips/use-trips', () => ({
   useCreateTrip: () => ({ mutateAsync: createTripMock, isPending: false }),
-  useUpdateTrip: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateTrip: () => ({ mutateAsync: updateTripMock, isPending: false }),
 }))
 vi.mock('@/components/trips/wizard/wizard-context', () => ({
   useWizard: () => ({ setStepError: vi.fn(), registerCommit: () => () => {} }),
@@ -180,5 +190,55 @@ describe('StepBasics — Tour title (client review comments 14 + 15)', () => {
   it('the counter is quiet on an empty field', () => {
     render(<StepBasics trip={trip({ name: '' })} />)
     expect(screen.queryByText(/\/ 35-60/)).not.toBeInTheDocument()
+  })
+})
+
+describe('StepBasics — sub-categories (client review comments 16 + 17)', () => {
+  it('the Categories select offers top-level categories only', async () => {
+    const user = userEvent.setup()
+    render(<StepBasics trip={trip()} />)
+    // Open the multi-select and look at its option list. The top-level name
+    // appears at least once (chip and/or option row); the sub-category name
+    // appears NOWHERE - not an option, and with only 'c1' selected, no chip.
+    await user.click(screen.getByText('1 selected'))
+    expect(screen.getAllByText('Boat trips').length).toBeGreaterThan(0)
+    expect(screen.queryByText('Catamaran Cruises')).not.toBeInTheDocument()
+  })
+
+  it('a stored sub-category tag survives a Basics save untouched', async () => {
+    updateTripMock.mockReset()
+    updateTripMock.mockResolvedValue({})
+    render(
+      <StepBasics
+        trip={trip({ categoryIds: ['c1', 'c-sub'], primaryCategoryId: 'c1' })}
+      />,
+    )
+    const form = document.querySelector('form') as HTMLFormElement
+    fireEvent.submit(form)
+    await waitFor(() => expect(updateTripMock).toHaveBeenCalled())
+    const payload = updateTripMock.mock.calls[0][0].payload
+    expect(payload.categoryIds).toEqual(expect.arrayContaining(['c1', 'c-sub']))
+    expect(payload.primaryCategoryId).toBe('c1')
+  })
+
+  it('the primary never lands on a sub-category', async () => {
+    updateTripMock.mockReset()
+    updateTripMock.mockResolvedValue({})
+    // Pathological stored state: the sub is primary (pre-sync data).
+    render(
+      <StepBasics
+        trip={trip({
+          categoryIds: ['c-sub', 'c1'],
+          primaryCategoryId: 'c-sub',
+        })}
+      />,
+    )
+    const form = document.querySelector('form') as HTMLFormElement
+    fireEvent.submit(form)
+    await waitFor(() => expect(updateTripMock).toHaveBeenCalled())
+    const payload = updateTripMock.mock.calls[0][0].payload
+    // The keep-primary effect re-points onto the first TOP-LEVEL selection.
+    expect(payload.primaryCategoryId).toBe('c1')
+    expect(payload.categoryIds).toEqual(expect.arrayContaining(['c1', 'c-sub']))
   })
 })

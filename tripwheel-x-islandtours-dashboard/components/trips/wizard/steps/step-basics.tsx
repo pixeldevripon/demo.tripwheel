@@ -20,7 +20,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -262,6 +262,22 @@ export function StepBasics({ trip }: StepBasicsProps) {
         null;
     const categoryIds = watch('categoryIds');
     const primaryCategoryId = watch('primaryCategoryId');
+    // The category CHOICE is the locked top-level set (master 2.4); anything
+    // with a parent is a filter-only sub-category (review #16/#17) - hidden
+    // from the select, preserved through its edits, never a valid primary.
+    const topLevelCategories = useMemo(
+        () => (categories ?? []).filter(c => !c.parentCategoryId),
+        [categories],
+    );
+    const subCategoryIds = useMemo(
+        () =>
+            new Set(
+                (categories ?? [])
+                    .filter(c => c.parentCategoryId)
+                    .map(c => c.id),
+            ),
+        [categories],
+    );
 
     /*
      * The H1 prefix, resolved the way the PUBLIC page resolves it
@@ -300,14 +316,19 @@ export function StepBasics({ trip }: StepBasicsProps) {
         }
     }, [isAdmin, nameValue, slugTouched, setValue]);
 
-    // Keep the starred primary inside the selected set.
+    // Keep the starred primary inside the selected set - and always on a
+    // TOP-LEVEL category: a sub-category has no page, so a breadcrumb
+    // anchored on it would 404 (the sync script enforces the same on data).
     useEffect(() => {
-        if (categoryIds.length === 0) {
+        const topLevelSelected = categoryIds.filter(
+            id => !subCategoryIds.has(id),
+        );
+        if (topLevelSelected.length === 0) {
             if (primaryCategoryId) setValue('primaryCategoryId', '');
-        } else if (!categoryIds.includes(primaryCategoryId ?? '')) {
-            setValue('primaryCategoryId', categoryIds[0]);
+        } else if (!topLevelSelected.includes(primaryCategoryId ?? '')) {
+            setValue('primaryCategoryId', topLevelSelected[0]);
         }
-    }, [categoryIds, primaryCategoryId, setValue]);
+    }, [categoryIds, subCategoryIds, primaryCategoryId, setValue]);
 
     const submit = useCallback(async () => {
         let ok = false;
@@ -560,12 +581,33 @@ export function StepBasics({ trip }: StepBasicsProps) {
                                 control={control}
                                 render={({ field }) => (
                                     <MultiSelect
-                                        options={(categories ?? []).map(c => ({
+                                        // Top-level only (client review #16 /
+                                        // master 2.4): the locked 19 are the
+                                        // category choice; sub-categories are
+                                        // filter-only refinements picked
+                                        // through the sub-type control
+                                        // (review #17), never here.
+                                        options={topLevelCategories.map(c => ({
                                             value: c.id,
                                             label: c.name,
                                         }))}
-                                        value={field.value}
-                                        onChange={field.onChange}
+                                        // The form value may carry sub-category
+                                        // tags (Row-2 chip data). They are
+                                        // invisible to this control and MUST
+                                        // survive its edits untouched - a
+                                        // Basics save must never strip a
+                                        // tour's sub-type tags.
+                                        value={field.value.filter(
+                                            id => !subCategoryIds.has(id),
+                                        )}
+                                        onChange={next =>
+                                            field.onChange([
+                                                ...next,
+                                                ...field.value.filter(id =>
+                                                    subCategoryIds.has(id),
+                                                ),
+                                            ])
+                                        }
                                         placeholder='Select categories…'
                                         searchPlaceholder='Search categories…'
                                         primaryValue={primaryCategoryId || null}
