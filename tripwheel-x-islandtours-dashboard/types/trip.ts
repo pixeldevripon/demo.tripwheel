@@ -635,6 +635,11 @@ export interface MyTripsQueryParams {
    * the backend ANDs the two.
    */
   approvalStatus?: TripApprovalStatus;
+  /** The operator's whole review loop (PENDING + REJECTED) at once - the
+   *  operator Submissions view. Ignored when approvalStatus is set. */
+  reviewLoop?: boolean;
+  sortBy?: 'updatedAt' | 'submittedAt';
+  sortDir?: 'asc' | 'desc';
   destinationId?: string;
   page?: number;
   limit?: number;
@@ -1064,7 +1069,30 @@ export interface CreateTourExceptionPayload {
 // the approved version. Price and booking cutoff stay instant lanes.
 
 export type PendingChangeStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
-export type PendingChangeArea = 'title' | 'content' | 'photos';
+export type PendingChangeArea =
+  | 'title'
+  | 'content'
+  | 'photos'
+  | 'highlights'
+  | 'inclusions'
+  | 'exclusions'
+  | 'features'
+  | 'locations';
+
+/** One staged list item - the list GET's shape (flat base columns plus a
+ *  translations array carrying EVERY locale). */
+export interface StagedTripListItem extends Record<string, unknown> {
+  id: string;
+  translations: Array<{ locale: string } & Record<string, unknown>>;
+  isNew?: boolean;
+}
+
+export type StagedListKind =
+  | 'highlights'
+  | 'inclusions'
+  | 'exclusions'
+  | 'features'
+  | 'locations';
 
 export interface StagedTripImage {
   id: string;
@@ -1086,6 +1114,11 @@ export interface TripPendingChangePayload {
   translations?: Record<string, Record<string, unknown>>;
   /** The staged copy of the WHOLE gallery, when photos were touched. */
   images?: StagedTripImage[];
+  /** Staged copies of the itemized content lists - whole state per kind. */
+  lists?: Partial<Record<StagedListKind, StagedTripListItem[]>>;
+  /** Bookkeeping: per-unit "last staged" ISO stamps, keyed
+   *  'title' | 'photos' | `tr:{locale}:{field}` | `list:{kind}`. */
+  meta?: { fieldTimes?: Record<string, string> };
 }
 
 export interface TripPendingChange {
@@ -1094,6 +1127,15 @@ export interface TripPendingChange {
   status: PendingChangeStatus;
   payload: TripPendingChangePayload;
   changedAreas: PendingChangeArea[];
+  /** LIVE counterparts of every kept field (open sets only) - the server
+   *  collects these during its read-time prune so BOTH roles diff against
+   *  one consistent snapshot (the operator's own reads are overlaid). */
+  current?: {
+    tour?: { name: string | null };
+    translations?: Record<string, Record<string, unknown>>;
+    images?: StagedTripImage[];
+    lists?: Partial<Record<StagedListKind, StagedTripListItem[]>>;
+  };
   submittedAt: string;
   submittedById: string | null;
   decidedAt: string | null;
@@ -1110,7 +1152,8 @@ export interface PendingChangeQueueRow extends TripPendingChange {
     slug: string;
     status: TripStatus;
     destination: { id: string; name: string; slug: string };
-    operator: {
+    /** Present on the admin queue only - the operator lane omits it. */
+    operator?: {
       id: string;
       companyInfo: { companyName: string | null } | null;
       user: { name: string | null; email: string } | null;

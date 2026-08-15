@@ -146,12 +146,13 @@ const dashboardNav: NavGroup[] = [
                 // 2026-08-15), same actionable-count badge pattern as
                 // Cancellations/Reviews/Spotlight, and its own icon - the
                 // checkmark badge belongs to Operator Verification.
-                // MANAGE_TRIPS = the approve/reject permission, so operators
-                // never see the row.
+                // VIEW_TRIPS: both sides of the review desk live here - the
+                // platform decides, the operator tracks what they sent and
+                // where it stands (UX round 3). The PAGE branches by role.
                 title: 'Submissions',
                 url: 'submissions',
                 icon: InboxIcon,
-                permissions: [Permission.MANAGE_TRIPS],
+                permissions: [Permission.VIEW_TRIPS],
             },
             {
                 title: 'Media',

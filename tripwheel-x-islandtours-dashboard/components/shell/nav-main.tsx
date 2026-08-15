@@ -18,7 +18,13 @@ import {
 } from '@/components/ui/sidebar';
 import { useBookings } from '@/hooks/bookings/use-bookings';
 import { usePendingReviewCount } from '@/hooks/reviews/use-reviews';
-import { useAdminTrips, usePendingChangesQueue } from '@/hooks/trips/use-trips';
+import { useRole } from '@/contexts/role-context';
+import {
+    useAdminTrips,
+    useMyPendingChangesQueue,
+    useMyTrips,
+    usePendingChangesQueue,
+} from '@/hooks/trips/use-trips';
 import { useSpotlightQueue } from '@/hooks/tiers/use-tiers';
 import type { NavGroup } from '@/lib/rbac-utils';
 import { cn } from '@/lib/utils';
@@ -75,15 +81,22 @@ function SpotlightBadge() {
  * Tour submissions in the review loop (client review #18) PLUS live-tour
  * content change sets awaiting a decision (client review #19).
  *
- * `reviewLoop: true` mirrors the queue page's default "All Status" view -
- * In review AND Changes requested (client 2026-08-15) - and the pending
- * content updates are the page's second lane, so the badge is the sum of
- * both lanes or it promises different work than the click shows.
+ * The badge is the sum of the page's two lanes - whichever SIDE of the
+ * review desk this session is on (UX round 3): the platform counts the
+ * whole queue, an operator counts what THEY have in flight. Anything else
+ * promises different work than the click shows.
  */
 function SubmissionsBadge() {
-    const { data } = useAdminTrips({ limit: 1, reviewLoop: true });
-    const { data: changes } = usePendingChangesQueue({ limit: 1 });
-    return <CountChip count={(data?.total ?? 0) + (changes?.total ?? 0)} />;
+    const { can } = useRole();
+    const isPlatform = can('MANAGE_TRIPS');
+    const adminLoop = useAdminTrips({ limit: 1, reviewLoop: true }, isPlatform);
+    const adminChanges = usePendingChangesQueue({ limit: 1 }, isPlatform);
+    const myLoop = useMyTrips({ limit: 1, reviewLoop: true }, !isPlatform);
+    const myChanges = useMyPendingChangesQueue({ limit: 1 }, !isPlatform);
+    const total = isPlatform
+        ? (adminLoop.data?.total ?? 0) + (adminChanges.data?.total ?? 0)
+        : (myLoop.data?.total ?? 0) + (myChanges.data?.total ?? 0);
+    return <CountChip count={total} />;
 }
 
 /**

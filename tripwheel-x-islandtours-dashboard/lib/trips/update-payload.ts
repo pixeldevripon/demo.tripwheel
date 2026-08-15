@@ -69,7 +69,13 @@ export function numberOrNull(
 
 export function tripToUpdatePayload(trip: TripListItem): UpdateTripPayload {
     return {
-        name: trip.name,
+        // `name` is deliberately ABSENT: only the Basics step owns the title
+        // and sets it explicitly. Every other step spreading this payload
+        // used to resend the cached name, and on a LIVE tour a stale cache
+        // (the refetch window right after a gated title save) resent the OLD
+        // live title - which the backend's withdraw-on-live-retype heuristic
+        // read as the operator reverting, silently discarding the held title
+        // (code-review CRITICAL, UX round 3).
         slug: trip.slug,
         categoryIds: trip.categoryIds,
         primaryCategoryId: trip.primaryCategoryId ?? trip.categoryIds[0],

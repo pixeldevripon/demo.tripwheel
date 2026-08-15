@@ -57,4 +57,6 @@ export const tripKeys = {
     [...tripKeys.all, 'pending-change', tripId] as const,
   pendingChangesQueue: (params: { page?: number; limit?: number }) =>
     [...tripKeys.all, 'pending-changes-queue', params] as const,
+  myPendingChangesQueue: (params: { page?: number; limit?: number }) =>
+    [...tripKeys.all, 'my-pending-changes-queue', params] as const,
 };

@@ -19,6 +19,6 @@ describe('Submissions nav row', () => {
     // Its own route (client 2026-08-15: not a filtered Tours link).
     // NAV_BADGES keys off this exact string - change both together.
     expect(item?.url).toBe('submissions')
-    expect(item?.permissions).toEqual([Permission.MANAGE_TRIPS])
+    expect(item?.permissions).toEqual([Permission.VIEW_TRIPS])
   })
 })

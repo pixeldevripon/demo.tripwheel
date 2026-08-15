@@ -19,7 +19,8 @@
 import { CheckmarkCircle02Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 
-import { useImages } from '@/hooks/trips/use-trips';
+import { useRole } from '@/contexts/role-context';
+import { useImages, useTripPendingChange } from '@/hooks/trips/use-trips';
 import { cn } from '@/lib/utils';
 import type { TripListItem } from '@/types/trip';
 import { TripImagesTab } from '../../trip-images-tab';
@@ -44,9 +45,38 @@ export function StepMedia({ trip }: StepMediaProps) {
         <>
             <WizardStepHeader step='media' aside={<GateLine count={count} hasCover={hasHero} />} />
             <WizardStepBody>
+                <StagedGalleryNote trip={trip} />
                 <TripImagesTab trip={trip} />
             </WizardStepBody>
         </>
+    );
+}
+
+/**
+ * While photo changes wait for review, this tab shows the operator's
+ * PROPOSED gallery, not what travellers see (client review #19) - without
+ * this line the two are indistinguishable and edits feel silently ignored.
+ */
+function StagedGalleryNote({ trip }: { trip: TripListItem }) {
+    const { can } = useRole();
+    const { data: change } = useTripPendingChange(trip.id);
+    // REJECTED counts too: a rejection sends the proposal back, it does not
+    // erase it - this tab keeps serving the operator's draft gallery.
+    if (
+        trip.status !== 'LIVE' ||
+        can('MANAGE_TRIPS') ||
+        (change?.status !== 'PENDING' && change?.status !== 'REJECTED') ||
+        !change.payload.images
+    ) {
+        return null;
+    }
+    return (
+        <p className='rounded-md bg-warning-subtle px-3 py-2 text-xs text-warning-fg'>
+            These photos are your proposed gallery
+            {change.status === 'REJECTED'
+                ? ' - Island Tours sent this proposal back; editing and saving resubmits it.'
+                : ', waiting for Island Tours review - travellers keep seeing the approved photos until then.'}
+        </p>
     );
 }
 

@@ -54,7 +54,10 @@ export function RejectChangesDialog({
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
-            <DialogContent className='sm:max-w-md'>
+            {/* Wide enough for a REAL note (client 2026-08-15): the admin
+                writes field-by-field guidance here, not one line. Caps at
+                the viewport on small screens. */}
+            <DialogContent className='max-h-[85vh] w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-xl lg:max-w-2xl'>
                 <DialogHeader>
                     <DialogTitle>
                         Request changes on &ldquo;{tripName}&rdquo;?
@@ -68,9 +71,13 @@ export function RejectChangesDialog({
                     value={note}
                     onChange={e => setNote(e.target.value)}
                     maxLength={1000}
-                    rows={4}
+                    rows={8}
+                    className='min-h-40 resize-y'
                     placeholder='e.g. The hero photo is blurry and the overview needs at least two paragraphs.'
                 />
+                <p className='text-right text-2xs text-content-subtle'>
+                    {note.length}/1000
+                </p>
                 <DialogFooter>
                     <Button
                         variant='outline'

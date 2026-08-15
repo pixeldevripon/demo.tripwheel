@@ -190,6 +190,16 @@ export const tripsApi = {
     );
   },
 
+  /** Operator lane: THEIR tours' latest change sets (open + sent back). */
+  getMyPendingChanges(
+    params: { page?: number; limit?: number } = {},
+  ): Promise<PaginatedPendingChanges> {
+    const query = buildQuery(params);
+    return apiFetch<PaginatedPendingChanges>(
+      `/tours/my/pending-changes${query}`,
+    );
+  },
+
   /** Admin applies the open set to the live tour (slug untouched). */
   approvePendingChanges(id: string, note?: string): Promise<TripPendingChange> {
     return apiFetch<TripPendingChange>(`/tours/${id}/pending-changes/approve`, {

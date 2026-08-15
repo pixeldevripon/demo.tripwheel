@@ -1,24 +1,11 @@
-import { SubmissionsQueueView } from '@/components/submissions/submissions-queue-view';
+import { SubmissionsView } from '@/components/submissions/submissions-view';
 
 /**
- * The publish gate's queue (client review #18): operators submit, Island
- * Tours approves - this page is where pending submissions get spotted and
- * decided. Independent of the Tours list on purpose (client 2026-08-15):
- * its own route, its own content, its own nav row.
+ * The publish gate's review desk (client review #18/#19). Role decides the
+ * side: the platform sees the deciding queue, an operator sees everything
+ * THEY have in flight and where it stands. Independent of the Tours list on
+ * purpose (client 2026-08-15): its own route, content and nav row.
  */
 export default function SubmissionsPage() {
-    return (
-        <div>
-            <div className='mb-6 flex flex-wrap items-center justify-between gap-4'>
-                <div>
-                    <h1 className='text-2xl font-medium'>Submissions</h1>
-                    <p className='text-sm text-muted-foreground mt-1'>
-                        Tours submitted for review - approve or request changes
-                        before anything goes live
-                    </p>
-                </div>
-            </div>
-            <SubmissionsQueueView />
-        </div>
-    );
+    return <SubmissionsView />;
 }

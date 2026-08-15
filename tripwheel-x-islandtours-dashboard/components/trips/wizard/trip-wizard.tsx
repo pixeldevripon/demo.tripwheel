@@ -56,6 +56,7 @@ import {
     type WizardStepId,
 } from '@/lib/trips/wizard-steps';
 import type { TripListItem } from '@/types/trip';
+import { PendingReviewBanner } from './pending-review-banner';
 import { useWizard, WizardProvider, type WizardMode } from './wizard-context';
 import { WizardFooter } from './wizard-footer';
 import { WizardProgress } from './wizard-progress';
@@ -228,6 +229,18 @@ export function TripWizard({ tripId }: TripWizardProps) {
                 <div className='sticky top-0 z-20 -mx-2 mb-6 bg-shell-content/95 px-2 py-2 backdrop-blur-sm'>
                     <WizardProgress trip={trip ?? null} />
                 </div>
+
+                {/* Standing review-state signal for live tours (UX round 2) -
+                    the Review step carries the full panel instead. Navigation
+                    goes through onStepChange so the unsaved-changes guard
+                    fires like it does for the rail (code review, round 3). */}
+                {trip && (
+                    <PendingReviewBanner
+                        trip={trip}
+                        hidden={step === 'review'}
+                        onView={() => onStepChange('review')}
+                    />
+                )}
 
                 {/* Same width as the rail above and the footer below. The
                     narrower column left a dead strip down the right of every

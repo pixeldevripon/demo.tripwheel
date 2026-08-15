@@ -260,6 +260,18 @@ export function usePendingChangesQueue(
   });
 }
 
+/** The operator's own change sets (open + sent back), oldest first. */
+export function useMyPendingChangesQueue(
+  params: { page?: number; limit?: number } = {},
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: tripKeys.myPendingChangesQueue(params),
+    queryFn: () => tripsApi.getMyPendingChanges(params),
+    enabled,
+  });
+}
+
 export const useApprovePendingChanges = () =>
   useTripMutation(
     ({ id, note }: { id: string; note?: string }) =>
@@ -428,35 +440,47 @@ export const useAddHighlight = () =>
   useTripMutation(
     ({ tripId, payload }: { tripId: string; payload: CreateTourHighlightPayload }) =>
       tripsApi.addHighlight(tripId, payload),
-    ({ tripId }) => [tripKeys.highlights(tripId), tripKeys.detail(tripId)],
+    ({ tripId }) => [
+      tripKeys.highlights(tripId),
+      tripKeys.detail(tripId),
+      // Gated list edits on a LIVE tour land in the pending set (client
+      // review #19) - keep the review surfaces fresh.
+      tripKeys.pendingChange(tripId),
+    ],
   );
 
 export const useUpdateHighlight = () =>
   useTripMutation(
     ({ tripId, highlightId, payload }: { tripId: string; highlightId: string; payload: UpdateTourHighlightPayload }) =>
       tripsApi.updateHighlight(tripId, highlightId, payload),
-    ({ tripId }) => [tripKeys.highlights(tripId)],
+    ({ tripId }) => [tripKeys.highlights(tripId), tripKeys.pendingChange(tripId)],
   );
 
 export const useRemoveHighlight = () =>
   useTripMutation(
     ({ tripId, highlightId }: { tripId: string; highlightId: string }) =>
       tripsApi.removeHighlight(tripId, highlightId),
-    ({ tripId }) => [tripKeys.highlights(tripId), tripKeys.detail(tripId)],
+    ({ tripId }) => [
+      tripKeys.highlights(tripId),
+      tripKeys.detail(tripId),
+      // Gated list edits on a LIVE tour land in the pending set (client
+      // review #19) - keep the review surfaces fresh.
+      tripKeys.pendingChange(tripId),
+    ],
   );
 
 export const useUpsertHighlightTranslation = () =>
   useTripMutation(
     ({ tripId, highlightId, locale, payload }: { tripId: string; highlightId: string; locale: string; payload: UpsertHighlightTranslationPayload }) =>
       tripsApi.upsertHighlightTranslation(tripId, highlightId, locale, payload),
-    ({ tripId }) => [tripKeys.highlights(tripId)],
+    ({ tripId }) => [tripKeys.highlights(tripId), tripKeys.pendingChange(tripId)],
   );
 
 export const useDeleteHighlightTranslation = () =>
   useTripMutation(
     ({ tripId, highlightId, locale }: { tripId: string; highlightId: string; locale: string }) =>
       tripsApi.deleteHighlightTranslation(tripId, highlightId, locale),
-    ({ tripId }) => [tripKeys.highlights(tripId)],
+    ({ tripId }) => [tripKeys.highlights(tripId), tripKeys.pendingChange(tripId)],
   );
 
 // Mutations - Inclusions
@@ -464,35 +488,47 @@ export const useAddInclusion = () =>
   useTripMutation(
     ({ tripId, payload }: { tripId: string; payload: CreateTourInclusionPayload }) =>
       tripsApi.addInclusion(tripId, payload),
-    ({ tripId }) => [tripKeys.inclusions(tripId), tripKeys.detail(tripId)],
+    ({ tripId }) => [
+      tripKeys.inclusions(tripId),
+      tripKeys.detail(tripId),
+      // Gated list edits on a LIVE tour land in the pending set (client
+      // review #19) - keep the review surfaces fresh.
+      tripKeys.pendingChange(tripId),
+    ],
   );
 
 export const useUpdateInclusion = () =>
   useTripMutation(
     ({ tripId, inclusionId, payload }: { tripId: string; inclusionId: string; payload: UpdateTourInclusionPayload }) =>
       tripsApi.updateInclusion(tripId, inclusionId, payload),
-    ({ tripId }) => [tripKeys.inclusions(tripId)],
+    ({ tripId }) => [tripKeys.inclusions(tripId), tripKeys.pendingChange(tripId)],
   );
 
 export const useRemoveInclusion = () =>
   useTripMutation(
     ({ tripId, inclusionId }: { tripId: string; inclusionId: string }) =>
       tripsApi.removeInclusion(tripId, inclusionId),
-    ({ tripId }) => [tripKeys.inclusions(tripId), tripKeys.detail(tripId)],
+    ({ tripId }) => [
+      tripKeys.inclusions(tripId),
+      tripKeys.detail(tripId),
+      // Gated list edits on a LIVE tour land in the pending set (client
+      // review #19) - keep the review surfaces fresh.
+      tripKeys.pendingChange(tripId),
+    ],
   );
 
 export const useUpsertInclusionTranslation = () =>
   useTripMutation(
     ({ tripId, inclusionId, locale, payload }: { tripId: string; inclusionId: string; locale: string; payload: UpsertInclusionTranslationPayload }) =>
       tripsApi.upsertInclusionTranslation(tripId, inclusionId, locale, payload),
-    ({ tripId }) => [tripKeys.inclusions(tripId)],
+    ({ tripId }) => [tripKeys.inclusions(tripId), tripKeys.pendingChange(tripId)],
   );
 
 export const useDeleteInclusionTranslation = () =>
   useTripMutation(
     ({ tripId, inclusionId, locale }: { tripId: string; inclusionId: string; locale: string }) =>
       tripsApi.deleteInclusionTranslation(tripId, inclusionId, locale),
-    ({ tripId }) => [tripKeys.inclusions(tripId)],
+    ({ tripId }) => [tripKeys.inclusions(tripId), tripKeys.pendingChange(tripId)],
   );
 
 // Mutations - Exclusions
@@ -500,35 +536,47 @@ export const useAddExclusion = () =>
   useTripMutation(
     ({ tripId, payload }: { tripId: string; payload: CreateTourExclusionPayload }) =>
       tripsApi.addExclusion(tripId, payload),
-    ({ tripId }) => [tripKeys.exclusions(tripId), tripKeys.detail(tripId)],
+    ({ tripId }) => [
+      tripKeys.exclusions(tripId),
+      tripKeys.detail(tripId),
+      // Gated list edits on a LIVE tour land in the pending set (client
+      // review #19) - keep the review surfaces fresh.
+      tripKeys.pendingChange(tripId),
+    ],
   );
 
 export const useUpdateExclusion = () =>
   useTripMutation(
     ({ tripId, exclusionId, payload }: { tripId: string; exclusionId: string; payload: UpdateTourExclusionPayload }) =>
       tripsApi.updateExclusion(tripId, exclusionId, payload),
-    ({ tripId }) => [tripKeys.exclusions(tripId)],
+    ({ tripId }) => [tripKeys.exclusions(tripId), tripKeys.pendingChange(tripId)],
   );
 
 export const useRemoveExclusion = () =>
   useTripMutation(
     ({ tripId, exclusionId }: { tripId: string; exclusionId: string }) =>
       tripsApi.removeExclusion(tripId, exclusionId),
-    ({ tripId }) => [tripKeys.exclusions(tripId), tripKeys.detail(tripId)],
+    ({ tripId }) => [
+      tripKeys.exclusions(tripId),
+      tripKeys.detail(tripId),
+      // Gated list edits on a LIVE tour land in the pending set (client
+      // review #19) - keep the review surfaces fresh.
+      tripKeys.pendingChange(tripId),
+    ],
   );
 
 export const useUpsertExclusionTranslation = () =>
   useTripMutation(
     ({ tripId, exclusionId, locale, payload }: { tripId: string; exclusionId: string; locale: string; payload: UpsertExclusionTranslationPayload }) =>
       tripsApi.upsertExclusionTranslation(tripId, exclusionId, locale, payload),
-    ({ tripId }) => [tripKeys.exclusions(tripId)],
+    ({ tripId }) => [tripKeys.exclusions(tripId), tripKeys.pendingChange(tripId)],
   );
 
 export const useDeleteExclusionTranslation = () =>
   useTripMutation(
     ({ tripId, exclusionId, locale }: { tripId: string; exclusionId: string; locale: string }) =>
       tripsApi.deleteExclusionTranslation(tripId, exclusionId, locale),
-    ({ tripId }) => [tripKeys.exclusions(tripId)],
+    ({ tripId }) => [tripKeys.exclusions(tripId), tripKeys.pendingChange(tripId)],
   );
 
 // Mutations - Features
@@ -536,35 +584,35 @@ export const useAddFeature = () =>
   useTripMutation(
     ({ tripId, payload }: { tripId: string; payload: CreateTourFeaturePayload }) =>
       tripsApi.addFeature(tripId, payload),
-    ({ tripId }) => [tripKeys.features(tripId)],
+    ({ tripId }) => [tripKeys.features(tripId), tripKeys.pendingChange(tripId)],
   );
 
 export const useUpdateFeature = () =>
   useTripMutation(
     ({ tripId, featureId, payload }: { tripId: string; featureId: string; payload: UpdateTourFeaturePayload }) =>
       tripsApi.updateFeature(tripId, featureId, payload),
-    ({ tripId }) => [tripKeys.features(tripId)],
+    ({ tripId }) => [tripKeys.features(tripId), tripKeys.pendingChange(tripId)],
   );
 
 export const useRemoveFeature = () =>
   useTripMutation(
     ({ tripId, featureId }: { tripId: string; featureId: string }) =>
       tripsApi.removeFeature(tripId, featureId),
-    ({ tripId }) => [tripKeys.features(tripId)],
+    ({ tripId }) => [tripKeys.features(tripId), tripKeys.pendingChange(tripId)],
   );
 
 export const useUpsertFeatureTranslation = () =>
   useTripMutation(
     ({ tripId, featureId, locale, payload }: { tripId: string; featureId: string; locale: string; payload: UpsertFeatureTranslationPayload }) =>
       tripsApi.upsertFeatureTranslation(tripId, featureId, locale, payload),
-    ({ tripId }) => [tripKeys.features(tripId)],
+    ({ tripId }) => [tripKeys.features(tripId), tripKeys.pendingChange(tripId)],
   );
 
 export const useDeleteFeatureTranslation = () =>
   useTripMutation(
     ({ tripId, featureId, locale }: { tripId: string; featureId: string; locale: string }) =>
       tripsApi.deleteFeatureTranslation(tripId, featureId, locale),
-    ({ tripId }) => [tripKeys.features(tripId)],
+    ({ tripId }) => [tripKeys.features(tripId), tripKeys.pendingChange(tripId)],
   );
 
 // Mutations - Locations
@@ -572,35 +620,35 @@ export const useAddLocation = () =>
   useTripMutation(
     ({ tripId, payload }: { tripId: string; payload: CreateTourLocationPayload }) =>
       tripsApi.addLocation(tripId, payload),
-    ({ tripId }) => [tripKeys.locations(tripId)],
+    ({ tripId }) => [tripKeys.locations(tripId), tripKeys.pendingChange(tripId)],
   );
 
 export const useUpdateLocation = () =>
   useTripMutation(
     ({ tripId, locationId, payload }: { tripId: string; locationId: string; payload: UpdateTourLocationPayload }) =>
       tripsApi.updateLocation(tripId, locationId, payload),
-    ({ tripId }) => [tripKeys.locations(tripId)],
+    ({ tripId }) => [tripKeys.locations(tripId), tripKeys.pendingChange(tripId)],
   );
 
 export const useRemoveLocation = () =>
   useTripMutation(
     ({ tripId, locationId }: { tripId: string; locationId: string }) =>
       tripsApi.removeLocation(tripId, locationId),
-    ({ tripId }) => [tripKeys.locations(tripId)],
+    ({ tripId }) => [tripKeys.locations(tripId), tripKeys.pendingChange(tripId)],
   );
 
 export const useUpsertLocationTranslation = () =>
   useTripMutation(
     ({ tripId, locationId, locale, payload }: { tripId: string; locationId: string; locale: string; payload: UpsertLocationTranslationPayload }) =>
       tripsApi.upsertLocationTranslation(tripId, locationId, locale, payload),
-    ({ tripId }) => [tripKeys.locations(tripId)],
+    ({ tripId }) => [tripKeys.locations(tripId), tripKeys.pendingChange(tripId)],
   );
 
 export const useDeleteLocationTranslation = () =>
   useTripMutation(
     ({ tripId, locationId, locale }: { tripId: string; locationId: string; locale: string }) =>
       tripsApi.deleteLocationTranslation(tripId, locationId, locale),
-    ({ tripId }) => [tripKeys.locations(tripId)],
+    ({ tripId }) => [tripKeys.locations(tripId), tripKeys.pendingChange(tripId)],
   );
 
 // Mutations - Pickup Locations
