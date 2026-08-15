@@ -128,7 +128,7 @@ interface SelectFieldProps<T extends FieldValues> {
     control: Control<T>;
     name: FieldPath<T>;
     label: string;
-    options: { value: string; label: string }[];
+    options: { value: string; label: string; disabled?: boolean }[];
     placeholder?: string;
     description?: ReactNode;
     error?: string;
@@ -178,7 +178,10 @@ export function SelectField<T extends FieldValues>({
                         </SelectTrigger>
                         <SelectContent>
                             {options.map(o => (
-                                <SelectItem key={o.value} value={o.value}>
+                                <SelectItem
+                                    key={o.value}
+                                    value={o.value}
+                                    disabled={o.disabled}>
                                     {o.label}
                                 </SelectItem>
                             ))}
