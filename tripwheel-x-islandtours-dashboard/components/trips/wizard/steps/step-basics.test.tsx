@@ -25,6 +25,12 @@ vi.mock('@/hooks/trips/use-trips', () => ({
 vi.mock('@/components/trips/wizard/wizard-context', () => ({
   useWizard: () => ({ setStepError: vi.fn(), registerCommit: () => () => {} }),
 }))
+// The slug input is role-split (client review comment 12): admins keep it,
+// operators see a stated-fact address instead.
+let mockRole = 'TOUR_OPERATOR'
+vi.mock('@/contexts/role-context', () => ({
+  useRole: () => ({ role: mockRole, can: () => true, canAny: () => true }),
+}))
 
 // A LIVE tour on Curacao, attached to one hub.
 function trip(over: Partial<TripListItem> = {}): TripListItem {
@@ -43,9 +49,47 @@ function trip(over: Partial<TripListItem> = {}): TripListItem {
 }
 
 beforeEach(() => {
+  mockRole = 'TOUR_OPERATOR'
   useActiveHubsMock.mockReset()
   useActiveHubsMock.mockReturnValue({
     data: [{ id: 'h1', name: 'Klein Curacao' }],
+  })
+})
+
+describe('StepBasics — Slug ownership (client review comment 12)', () => {
+  it('an operator gets no slug input - the address is a stated fact', () => {
+    render(<StepBasics trip={trip()} />)
+    expect(screen.queryByLabelText('Slug')).not.toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('sunset-catamaran-cruise')).not.toBeInTheDocument()
+    expect(screen.getByText('Web address')).toBeInTheDocument()
+    expect(
+      screen.getByText('Set by Island Tours at review, from the final title.'),
+    ).toBeInTheDocument()
+  })
+
+  it('a LIVE tour tells the operator renames redirect automatically', () => {
+    render(<StepBasics trip={trip({ status: 'LIVE' })} />)
+    expect(
+      screen.getByText(
+        'Set by Island Tours. If it ever changes, the old address redirects automatically.',
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('an ADMIN keeps the editable slug field', () => {
+    mockRole = 'ADMIN'
+    render(<StepBasics trip={trip()} />)
+    expect(
+      screen.getByPlaceholderText('sunset-catamaran-cruise'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Web address')).not.toBeInTheDocument()
+  })
+
+  it('the operator address still previews the URL from the stored slug', () => {
+    render(<StepBasics trip={trip()} />)
+    // UrlPreview renders "<site>/curacao/sunset-catamaran-cruise" split into
+    // muted head + readable slug tail.
+    expect(screen.getByText(/sunset-catamaran-cruise/)).toBeInTheDocument()
   })
 })
 

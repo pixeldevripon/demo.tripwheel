@@ -40,6 +40,7 @@ import { useActiveCategories } from '@/hooks/categories/use-categories';
 import { useActiveDestinations } from '@/hooks/destinations/use-destinations';
 import { useActiveHubs } from '@/hooks/hubs/use-hubs';
 import { useCreateTrip, useUpdateTrip } from '@/hooks/trips/use-trips';
+import { useRole } from '@/contexts/role-context';
 import { tripToUpdatePayload } from '@/lib/trips/update-payload';
 import { tourUrl } from '@/lib/public-site';
 import {
@@ -192,6 +193,12 @@ export function StepBasics({ trip }: StepBasicsProps) {
     // Failures render in place, above the step, instead of as a toast.
     const { setStepError } = useWizard();
 
+    // The slug input is Island Tours' alone (client review #12): admins keep
+    // it, operators see the resulting address as a stated fact. The backend
+    // enforces the same split - hiding the input is presentation, not the gate.
+    const { role } = useRole();
+    const isAdmin = role === 'ADMIN';
+
     const { data: destinations } = useActiveDestinations();
     const { data: categories } = useActiveCategories();
 
@@ -243,6 +250,10 @@ export function StepBasics({ trip }: StepBasicsProps) {
 
     const nameValue = watch('name');
     const slugValue = watch('slug');
+    // What the operator's read-only address shows: the stored slug once the
+    // tour exists, else the name-derived slug the backend will assign at
+    // create (same derivation, so the preview never lies).
+    const operatorSlug = trip?.slug ?? toSlug(nameValue ?? '');
     const destinationIdValue = watch('destinationId');
     // From the list already fetched for the Select - no extra request, and it
     // tracks the picker live while creating.
@@ -415,40 +426,63 @@ export function StepBasics({ trip }: StepBasicsProps) {
                             <FieldError>{errors.name?.message}</FieldError>
                         </Field>
 
-                        <Field>
-                            <Label>Slug</Label>
-                            <Input
-                                {...register('slug')}
-                                placeholder='sunset-catamaran-cruise'
-                                aria-invalid={!!errors.slug}
-                                onChange={e => {
-                                    setSlugTouched(true);
-                                    setValue('slug', e.target.value, {
-                                        shouldValidate: true,
-                                        shouldDirty: true,
-                                    });
-                                }}
-                            />
-                            {/* The URL itself, live. Three fields on this
-                                screen exist to build ONE address - the slug,
-                                the destination and the primary category - and
-                                each explained itself with a different sentence
-                                about "the URL" that the operator could never
-                                see. Showing it collapses all three into one
-                                visible fact, and makes "fixed after creation"
-                                self-evident rather than a warning. */}
-                            <UrlPreview
-                                destinationSlug={destinationSlug}
-                                slug={slugValue ?? ''}
-                                live={trip?.status === 'LIVE'}
-                            />
-                            <FieldDescription>
-                                {isCreate
-                                    ? 'Auto-generated from the name, but you can customise it.'
-                                    : 'Renaming issues an automatic 301 redirect, and the old slug is reserved for 90 days before it can be reused.'}
-                            </FieldDescription>
-                            <FieldError>{errors.slug?.message}</FieldError>
-                        </Field>
+                        {isAdmin ? (
+                            <Field>
+                                <Label>Slug</Label>
+                                <Input
+                                    {...register('slug')}
+                                    placeholder='sunset-catamaran-cruise'
+                                    aria-invalid={!!errors.slug}
+                                    onChange={e => {
+                                        setSlugTouched(true);
+                                        setValue('slug', e.target.value, {
+                                            shouldValidate: true,
+                                            shouldDirty: true,
+                                        });
+                                    }}
+                                />
+                                {/* The URL itself, live. Three fields on this
+                                    screen exist to build ONE address - the
+                                    slug, the destination and the primary
+                                    category - and each explained itself with a
+                                    different sentence about "the URL" that the
+                                    editor could never see. Showing it collapses
+                                    all three into one visible fact. */}
+                                <UrlPreview
+                                    destinationSlug={destinationSlug}
+                                    slug={slugValue ?? ''}
+                                    live={trip?.status === 'LIVE'}
+                                />
+                                <FieldDescription>
+                                    {isCreate
+                                        ? 'Auto-generated from the name, but you can customise it.'
+                                        : 'Renaming issues an automatic 301 redirect, and the old slug is reserved for 90 days before it can be reused.'}
+                                </FieldDescription>
+                                <FieldError>{errors.slug?.message}</FieldError>
+                            </Field>
+                        ) : (
+                            // Client review #12 / master 2.3: the slug is a
+                            // destination-wide registry entry set by Island
+                            // Tours at review, from the final title - never
+                            // operator-authored (the backend ignores an
+                            // operator slug outright). The ADDRESS stays
+                            // visible - the preview pattern this screen
+                            // already uses - but it is a stated fact, like
+                            // the locked Destination below, not an input.
+                            <Field>
+                                <Label>Web address</Label>
+                                <UrlPreview
+                                    destinationSlug={destinationSlug}
+                                    slug={operatorSlug}
+                                    live={trip?.status === 'LIVE'}
+                                />
+                                <FieldDescription>
+                                    {trip?.status === 'LIVE'
+                                        ? 'Set by Island Tours. If it ever changes, the old address redirects automatically.'
+                                        : 'Set by Island Tours at review, from the final title.'}
+                                </FieldDescription>
+                            </Field>
+                        )}
 
                         <Field>
                             <Label>
