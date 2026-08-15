@@ -3184,12 +3184,23 @@ export class ToursService {
               categoryId: dto.primaryCategoryId,
             },
           },
-          select: { id: true },
+          select: {
+            id: true,
+            category: { select: { parentCategoryId: true } },
+          },
         });
         if (!existing)
           throw new BadRequestException(
             'primaryCategoryId must be one of the tour categories',
           );
+        // Same rule as assertCategorySetShape - this branch re-points the
+        // primary WITHOUT replacing the set, and was the one door where a
+        // sub-category could still become the primary (security review #78).
+        if (existing.category.parentCategoryId) {
+          throw new BadRequestException(
+            'primaryCategoryId must be a top-level category - sub-categories are filter tags, not pages',
+          );
+        }
         await tx.tourCategory.updateMany({
           where: { tourId: id },
           data: { isPrimary: false },

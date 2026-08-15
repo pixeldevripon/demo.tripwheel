@@ -443,6 +443,28 @@ describe('ToursService', () => {
       ).rejects.toThrow(/parent category on the same tour/);
     });
 
+    // The third door (security review #78): primaryCategoryId sent ALONE
+    // re-points the primary through its own branch and must hit the same rule.
+    it('rejects a sub-category as the primary when sent alone', async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({ status: TourStatus.DRAFT }),
+      );
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+      prisma.tourCategory.findUnique.mockResolvedValue({
+        id: 'link-1',
+        category: { parentCategoryId: 'cat-1' },
+      });
+      await expect(
+        service.update(
+          'tour-1',
+          { primaryCategoryId: 'cat-sub' },
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
+      ).rejects.toThrow(/top-level/);
+      expect(prisma.tourCategory.updateMany).not.toHaveBeenCalled();
+    });
+
     it('rejects a sub-category as the primary on update', async () => {
       prisma.tour.findUnique.mockResolvedValue(
         makeTour({ status: TourStatus.DRAFT }),
@@ -2321,7 +2343,10 @@ describe('ToursService', () => {
       prisma.tour.findUnique.mockResolvedValue(
         makeTour({ status: TourStatus.DRAFT }),
       );
-      prisma.tourCategory.findUnique.mockResolvedValue({ id: 'tc-2' });
+      prisma.tourCategory.findUnique.mockResolvedValue({
+        id: 'tc-2',
+        category: { parentCategoryId: null },
+      });
       prisma.tour.update.mockResolvedValue({});
       prisma.tour.findUniqueOrThrow.mockResolvedValue(makeTour());
 
