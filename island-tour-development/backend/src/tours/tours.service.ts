@@ -1980,6 +1980,7 @@ export class ToursService {
     const {
       search,
       status,
+      approvalStatus,
       operatorId,
       destinationId,
       isLocalsFavourite,
@@ -1991,6 +1992,7 @@ export class ToursService {
     const where: Prisma.TourWhereInput = {};
     if (search) where.name = { contains: search, mode: 'insensitive' };
     if (status) where.status = status;
+    if (approvalStatus) where.approvalStatus = approvalStatus;
     if (operatorId) where.operatorId = operatorId;
     if (destinationId) where.destinationId = destinationId;
     if (isLocalsFavourite !== undefined)
@@ -2061,12 +2063,20 @@ export class ToursService {
     const operatorId = isPlatformWideRole(userRole)
       ? null
       : await this.resolveOperatorId(userId, userRole);
-    const { search, status, destinationId, page = 1, limit = 20 } = query;
+    const {
+      search,
+      status,
+      approvalStatus,
+      destinationId,
+      page = 1,
+      limit = 20,
+    } = query;
     const skip = (page - 1) * limit;
 
     const where: Prisma.TourWhereInput = operatorId ? { operatorId } : {};
     if (search) where.name = { contains: search, mode: 'insensitive' };
     if (status) where.status = status;
+    if (approvalStatus) where.approvalStatus = approvalStatus;
     if (destinationId) where.destinationId = destinationId;
 
     const [total, data] = await Promise.all([
