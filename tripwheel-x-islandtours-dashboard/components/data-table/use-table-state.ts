@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 
 /**
  * URL-synced list state: page, limit, debounced search, named filters (R10,
@@ -31,11 +31,18 @@ export interface TableState {
     setSearch: (value: string) => void;
     /** Setting a filter resets to page 1. `undefined` clears the key. */
     setFilter: (key: string, value: string | undefined) => void;
+    /**
+     * Set SEVERAL filters in one URL write. Two same-tick setFilter calls
+     * clobber each other - each builds its params from the render-time
+     * searchParams snapshot, so the second write starts without the first's
+     * key and silently reverts it (the /trips status filter bug). Any
+     * handler that must touch two keys at once goes through this.
+     */
+    setFilters: (patch: Record<string, string | undefined>) => void;
 }
 
 export function useTableState(options?: { defaultLimit?: number }): TableState {
     const defaultLimit = options?.defaultLimit ?? 20;
-    const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
@@ -60,11 +67,19 @@ export function useTableState(options?: { defaultLimit?: number }): TableState {
             const params = new URLSearchParams(searchParams.toString());
             mutate(params);
             const qs = params.toString();
-            router.replace(qs ? `${pathname}?${qs}` : pathname, {
-                scroll: false,
-            });
+            // SHALLOW on purpose: every list here is client-fetched (TanStack),
+            // so router.replace's RSC round-trip on each filter/page/search
+            // write was pure overhead - it dominated the perceived filter
+            // latency (user report 2026-08-15). The native History API keeps
+            // useSearchParams/usePathname in sync (Next 14.1+), and no list
+            // page reads searchParams on the server.
+            window.history.replaceState(
+                null,
+                '',
+                qs ? `${pathname}?${qs}` : pathname,
+            );
         },
-        [router, pathname, searchParams],
+        [pathname, searchParams],
     );
 
     const setPage = React.useCallback(
@@ -86,14 +101,21 @@ export function useTableState(options?: { defaultLimit?: number }): TableState {
         [write, defaultLimit],
     );
 
-    const setFilter = React.useCallback(
-        (key: string, value: string | undefined) =>
+    const setFilters = React.useCallback(
+        (patch: Record<string, string | undefined>) =>
             write((p) => {
-                if (value == null || value === '') p.delete(key);
-                else p.set(key, value);
+                for (const [key, value] of Object.entries(patch)) {
+                    if (value == null || value === '') p.delete(key);
+                    else p.set(key, value);
+                }
                 p.delete('page');
             }),
         [write],
+    );
+
+    const setFilter = React.useCallback(
+        (key: string, value: string | undefined) => setFilters({ [key]: value }),
+        [setFilters],
     );
 
     // Debounce the typed value into the URL.
@@ -121,5 +143,6 @@ export function useTableState(options?: { defaultLimit?: number }): TableState {
         setLimit,
         setSearch: setSearchState,
         setFilter,
+        setFilters,
     };
 }

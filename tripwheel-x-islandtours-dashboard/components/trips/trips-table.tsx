@@ -25,11 +25,7 @@ import { useActiveDestinations } from '@/hooks/destinations/use-destinations';
 import { useRole } from '@/contexts/role-context';
 import { useSession } from '@/lib/auth-client';
 import { settleAll } from '@/lib/async/settle-all';
-import type {
-  TripApprovalStatus,
-  TripListItem,
-  TripStatus,
-} from '@/types/trip';
+import type { TripListItem } from '@/types/trip';
 
 interface TripsTableProps {
   data: TripListItem[];
@@ -43,6 +39,10 @@ interface TripsTableProps {
   onPageChange: (page: number) => void;
   onLimitChange: (limit: number) => void;
   onFilterChange: (key: string, value: string | undefined) => void;
+  /** Atomic multi-key filter write - the status control must set `status`
+   *  and `approvalStatus` in ONE URL update or the writes clobber each
+   *  other (see useTableState.setFilters). */
+  onFiltersChange: (patch: Record<string, string | undefined>) => void;
   /** Current filter values (URL-derived; empty string = all). */
   filters?: Record<string, string | undefined>;
 }
@@ -59,6 +59,7 @@ export function TripsTable({
   onPageChange,
   onLimitChange,
   onFilterChange,
+  onFiltersChange,
   filters = {},
 }: TripsTableProps) {
   const { mutateAsync: removeTripAsync } = useRemoveTrip();
@@ -116,14 +117,15 @@ export function TripsTable({
             value={filters.approvalStatus ?? filters.status ?? 'all'}
             onValueChange={(v) => {
               const isReview = v === 'PENDING' || v === 'REJECTED';
-              onFilterChange(
-                'status',
-                v === 'all' || isReview ? undefined : (v as TripStatus)
-              );
-              onFilterChange(
-                'approvalStatus',
-                isReview ? (v as TripApprovalStatus) : undefined
-              );
+              // ONE atomic write for the two keys. Two setFilter calls in the
+              // same tick clobber each other (each starts from the render-time
+              // URL snapshot, so the second reverts the first) - which made
+              // this filter do nothing at all: ?status=DRAFT flashed into the
+              // URL and was immediately replaced away.
+              onFiltersChange({
+                status: v === 'all' || isReview ? undefined : v,
+                approvalStatus: isReview ? v : undefined,
+              });
             }}
           >
             <SelectTrigger className='w-40 shrink-0'>
