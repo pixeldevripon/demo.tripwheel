@@ -60,6 +60,8 @@ export function TourFilterPopover({
     // operatorId exists only on the admin list query - my-trips would 400 on
     // the unknown param (global ValidationPipe forbids non-whitelisted keys).
     ...(isAdmin && operatorId ? { operatorId } : {}),
+    // destinationId is whitelisted on BOTH list queries (MyTripsQueryParams
+    // and AdminTripsQueryParams), so unlike operatorId it needs no role gate.
     ...(destinationId ? { destinationId } : {}),
   };
   const adminQuery = useAdminTrips(params, open && isAdmin);

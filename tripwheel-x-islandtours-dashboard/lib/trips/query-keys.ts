@@ -8,6 +8,7 @@ import type {
   AdminTripsQueryParams,
   AvailabilityOverviewParams,
   MyTripsQueryParams,
+  RangeScopeParams,
 } from '@/types/trip';
 
 export const tripKeys = {
@@ -46,11 +47,9 @@ export const tripKeys = {
   overviewAll: () => [...tripKeys.all, 'overview'] as const,
   overview: (params: AvailabilityOverviewParams) =>
     [...tripKeys.overviewAll(), params] as const,
-  // Range-close impact preview (keyed by exact scope + bounds).
-  rangeImpact: (params: {
-    tourId?: string;
-    operatorId?: string;
-    from: string;
-    to: string;
-  }) => [...tripKeys.all, 'range-impact', params] as const,
+  // Range-close impact preview (keyed by exact scope + bounds). The SHARED
+  // scope type, deliberately: a hand-copied shape here would let a future
+  // scope field silently drop out of the cache key.
+  rangeImpact: (params: RangeScopeParams) =>
+    [...tripKeys.all, 'range-impact', params] as const,
 };
