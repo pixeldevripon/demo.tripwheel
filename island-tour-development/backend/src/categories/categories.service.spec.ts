@@ -77,6 +77,10 @@ function createMockPrismaService() {
     },
     tourCategory: {
       groupBy: jest.fn(),
+      // The demotion retag pass (review #78).
+      findMany: jest.fn().mockResolvedValue([]),
+      upsert: jest.fn(),
+      update: jest.fn(),
     },
     slugRegistry: {
       createMany: jest.fn(),
@@ -222,6 +226,8 @@ describe('CategoryService', () => {
     prisma.$transaction.mockImplementation(
       (fn: (tx: typeof prisma) => unknown) => fn(prisma),
     );
+    // Default: no tours tagged on a demoted category (the retag pass no-ops).
+    prisma.tourCategory.findMany.mockResolvedValue([]);
   });
 
   // ── getAll ─────────────────────────────────────────────────────────────────
@@ -722,6 +728,54 @@ describe('CategoryService', () => {
       expect(prisma.slugRegistry.updateMany).toHaveBeenCalledWith({
         where: { entityType: SlugEntityType.CATEGORY, entityId: 'cat-1' },
         data: { isActive: false, deletedAt: expect.any(Date) },
+      });
+    });
+
+    // Review #78: a demotion must never manufacture ORPHAN sub tags - every
+    // tagged tour gains the parent link, and a primary held on the demoted
+    // category moves onto the parent.
+    it('demotion retags tagged tours: parent link added, primary moved off the sub', async () => {
+      prisma.category.findUnique
+        .mockResolvedValueOnce({ parentCategoryId: null }) // requested parent
+        .mockResolvedValueOnce({ parentCategoryId: null, isSeeded: false }); // self
+      prisma.category.count.mockResolvedValue(0);
+      prisma.category.update.mockResolvedValue(makeCategoryRecord());
+      prisma.tourCategory.findMany.mockResolvedValue([
+        { tourId: 't1', isPrimary: true },
+        { tourId: 't2', isPrimary: false },
+      ]);
+
+      await service.update(
+        'cat-1',
+        { parentCategoryId: 'top-parent', confirmPageRemoval: true },
+        'admin-1',
+      );
+
+      // Both tours gain the parent link (idempotent upsert).
+      expect(prisma.tourCategory.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            tourId_categoryId: { tourId: 't1', categoryId: 'top-parent' },
+          },
+        }),
+      );
+      expect(prisma.tourCategory.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            tourId_categoryId: { tourId: 't2', categoryId: 'top-parent' },
+          },
+        }),
+      );
+      // t1's primary moves onto the parent; t2's untouched.
+      expect(prisma.tourCategory.update).toHaveBeenCalledWith({
+        where: { tourId_categoryId: { tourId: 't1', categoryId: 'cat-1' } },
+        data: { isPrimary: false },
+      });
+      expect(prisma.tourCategory.update).toHaveBeenCalledWith({
+        where: {
+          tourId_categoryId: { tourId: 't1', categoryId: 'top-parent' },
+        },
+        data: { isPrimary: true },
       });
     });
 
