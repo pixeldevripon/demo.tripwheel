@@ -33,6 +33,7 @@ export function TripsListView() {
         setLimit,
         setSearch,
         setFilter,
+        setFilters,
     } = useTableState();
 
     const operatorQueryParams = {
@@ -77,6 +78,7 @@ export function TripsListView() {
                 onPageChange={setPage}
                 onLimitChange={setLimit}
                 onFilterChange={setFilter}
+                onFiltersChange={setFilters}
             />
         </div>
     );

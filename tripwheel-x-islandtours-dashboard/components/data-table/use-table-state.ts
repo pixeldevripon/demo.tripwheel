@@ -31,6 +31,14 @@ export interface TableState {
     setSearch: (value: string) => void;
     /** Setting a filter resets to page 1. `undefined` clears the key. */
     setFilter: (key: string, value: string | undefined) => void;
+    /**
+     * Set SEVERAL filters in one URL write. Two same-tick setFilter calls
+     * clobber each other - each builds its params from the render-time
+     * searchParams snapshot, so the second write starts without the first's
+     * key and silently reverts it (the /trips status filter bug). Any
+     * handler that must touch two keys at once goes through this.
+     */
+    setFilters: (patch: Record<string, string | undefined>) => void;
 }
 
 export function useTableState(options?: { defaultLimit?: number }): TableState {
@@ -86,14 +94,21 @@ export function useTableState(options?: { defaultLimit?: number }): TableState {
         [write, defaultLimit],
     );
 
-    const setFilter = React.useCallback(
-        (key: string, value: string | undefined) =>
+    const setFilters = React.useCallback(
+        (patch: Record<string, string | undefined>) =>
             write((p) => {
-                if (value == null || value === '') p.delete(key);
-                else p.set(key, value);
+                for (const [key, value] of Object.entries(patch)) {
+                    if (value == null || value === '') p.delete(key);
+                    else p.set(key, value);
+                }
                 p.delete('page');
             }),
         [write],
+    );
+
+    const setFilter = React.useCallback(
+        (key: string, value: string | undefined) => setFilters({ [key]: value }),
+        [setFilters],
     );
 
     // Debounce the typed value into the URL.
@@ -121,5 +136,6 @@ export function useTableState(options?: { defaultLimit?: number }): TableState {
         setLimit,
         setSearch: setSearchState,
         setFilter,
+        setFilters,
     };
 }
