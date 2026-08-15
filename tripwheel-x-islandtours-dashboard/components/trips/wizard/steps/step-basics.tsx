@@ -209,6 +209,7 @@ export function StepBasics({ trip }: StepBasicsProps) {
         handleSubmit,
         watch,
         setValue,
+        setError,
         control,
         reset,
         formState: { errors, isDirty },
@@ -334,8 +335,26 @@ export function StepBasics({ trip }: StepBasicsProps) {
         let ok = false;
         await handleSubmit(
             async values => {
+                // Invisible sub-category tags can satisfy the schema's
+                // min(1) after the operator clears every visible chip - the
+                // required marker would show nothing selected while the form
+                // still submits, and the primary fallback would land on a
+                // page-less sub-category (the backend now 400s that). Guard
+                // on what the SELECT shows, and pick the primary fallback
+                // from the top-level ids only.
+                const topLevelSelected = values.categoryIds.filter(
+                    id => !subCategoryIds.has(id),
+                );
+                if (topLevelSelected.length === 0) {
+                    setError('categoryIds', {
+                        message: 'Select at least one category',
+                    });
+                    focusFirstInvalid();
+                    ok = false;
+                    return;
+                }
                 const primary =
-                    values.primaryCategoryId || values.categoryIds[0];
+                    values.primaryCategoryId || topLevelSelected[0];
                 try {
                     if (isCreate) {
                         const created = await createTrip({
@@ -397,7 +416,7 @@ export function StepBasics({ trip }: StepBasicsProps) {
             },
         )();
         return ok;
-    }, [handleSubmit, isCreate, isAdmin, createTrip, updateTrip, router, trip, setStepError, reset]);
+    }, [handleSubmit, isCreate, isAdmin, subCategoryIds, setError, createTrip, updateTrip, router, trip, setStepError, reset]);
 
     useStepCommit('basics', {
         submit,

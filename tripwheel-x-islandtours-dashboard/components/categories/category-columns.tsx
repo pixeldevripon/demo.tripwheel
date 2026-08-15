@@ -1,6 +1,7 @@
 'use client';
 
 import { HugeiconsIcon } from '@hugeicons/react';
+import { Folder01Icon } from '@hugeicons/core-free-icons';
 
 import { type ColumnDef } from '@tanstack/react-table';
 import Link from 'next/link';
@@ -8,7 +9,7 @@ import { StatusBadge } from '@/components/common/status-badge';
 import { ACTIVE_STATUS } from '@/components/common/status-maps';
 import { Checkbox } from '@/components/ui/checkbox';
 import { getCategoryIconName, getCategoryIconComponent } from '@/lib/constants/category-icons';
-import type { CategoryLocalized } from '@/types/category';
+import type { CategoryWithSubs } from '@/types/category';
 import { CategoryRowActions } from './category-row-actions';
 
 function CategoryLucideIcon({ slug, icon }: { slug: string; icon: string | null }) {
@@ -20,7 +21,7 @@ function CategoryLucideIcon({ slug, icon }: { slug: string; icon: string | null 
   );
 }
 
-export const categoryColumns: ColumnDef<CategoryLocalized>[] = [
+export const categoryColumns: ColumnDef<CategoryWithSubs>[] = [
   {
     id: 'select',
     header: ({ table }) => (
@@ -86,6 +87,40 @@ export const categoryColumns: ColumnDef<CategoryLocalized>[] = [
       </span>
     ),
     enableSorting: true,
+  },
+  {
+    id: 'subCategories',
+    header: 'Sub-categories',
+    // The list shows PARENT rows only; each parent presents as a FOLDER
+    // holding its filter-only sub-categories (client 2026-08-15 - a flat
+    // mixed list hid what was a sub-category at a glance).
+    cell: ({ row }) => {
+      const subs = row.original.subCategories;
+      if (subs.length === 0) {
+        return <span className="text-xs text-muted-foreground">—</span>;
+      }
+      return (
+        <div className="flex max-w-72 items-start gap-1.5">
+          <span className="mt-0.5 flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+            <HugeiconsIcon icon={Folder01Icon} className="size-3.5" />
+            {subs.length}
+          </span>
+          <div className="flex flex-wrap gap-1">
+            {subs.map((sub) => (
+              <Link
+                key={sub.id}
+                href={`/categories/${sub.id}`}
+                onClick={(e) => e.stopPropagation()}
+                className="rounded-full border border-border bg-muted/60 px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground hover:underline underline-offset-2"
+              >
+                {sub.name}
+              </Link>
+            ))}
+          </div>
+        </div>
+      );
+    },
+    enableSorting: false,
   },
   {
     accessorKey: 'isActive',

@@ -221,6 +221,25 @@ describe('StepBasics — sub-categories (client review comments 16 + 17)', () =>
     expect(payload.primaryCategoryId).toBe('c1')
   })
 
+  it('blocks a save whose only remaining tags are invisible sub-categories', async () => {
+    updateTripMock.mockReset()
+    // Pathological but reachable pre-guard: every visible chip cleared while
+    // a sub-tag rides invisibly - the schema's min(1) alone would pass this.
+    render(
+      <StepBasics
+        trip={trip({ categoryIds: ['c-sub'], primaryCategoryId: '' })}
+      />,
+    )
+    const form = document.querySelector('form') as HTMLFormElement
+    fireEvent.submit(form)
+    await waitFor(() =>
+      expect(
+        screen.getByText('Select at least one category'),
+      ).toBeInTheDocument(),
+    )
+    expect(updateTripMock).not.toHaveBeenCalled()
+  })
+
   it('the primary never lands on a sub-category', async () => {
     updateTripMock.mockReset()
     updateTripMock.mockResolvedValue({})

@@ -24,10 +24,10 @@ import {
   useDeleteCategory,
 } from '@/hooks/categories/use-categories';
 import { useRole } from '@/contexts/role-context';
-import type { CategoryLocalized } from '@/types/category';
+import type { CategoryWithSubs } from '@/types/category';
 
 interface CategoriesTableProps {
-  data: CategoryLocalized[];
+  data: CategoryWithSubs[];
   total: number;
   page: number;
   limit: number;
