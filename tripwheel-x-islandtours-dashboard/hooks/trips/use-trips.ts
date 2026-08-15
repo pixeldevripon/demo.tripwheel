@@ -722,8 +722,10 @@ export const useReopenRange = () =>
 
 // Live impact preview for the range dialog (client review #5) - what the
 // close would hit, updating as the scope and bounds change. keepPrevious so
-// the line doesn't blink away between keystrokes; no retry so an older
-// backend's 404 fails fast and the dialog simply hides the counts.
+// the line doesn't blink away between keystrokes - but callers MUST gate on
+// isPlaceholderData: a kept number belongs to the PREVIOUS scope, and this
+// dialog's whole job is stating the consequence of the current one. No retry
+// so an older backend's 404 fails fast and the dialog simply hides the counts.
 export function useRangeImpact(
   params: Parameters<typeof tripsApi.getRangeImpact>[0],
   enabled: boolean,
@@ -732,7 +734,7 @@ export function useRangeImpact(
     queryKey: tripKeys.rangeImpact(params),
     queryFn: () => tripsApi.getRangeImpact(params),
     enabled,
-    placeholderData: (prev) => prev,
+    placeholderData: keepPreviousData,
     staleTime: 30_000,
     retry: false,
   });

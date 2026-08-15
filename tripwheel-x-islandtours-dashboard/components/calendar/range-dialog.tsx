@@ -128,7 +128,11 @@ export function RangeDialog({
         !!from &&
         !!to &&
         to >= from;
-    const { data: impact, isError: impactUnavailable } = useRangeImpact(
+    const {
+        data: impact,
+        isError: impactUnavailable,
+        isPlaceholderData: impactIsStale,
+    } = useRangeImpact(
         {
             ...(isAllTours ? {} : { tourId: effectiveTourId }),
             ...(isAllTours && operatorId ? { operatorId } : {}),
@@ -350,14 +354,15 @@ export function RangeDialog({
                             />
                         </Field>
                         <div className='space-y-1 rounded-md bg-muted/50 px-3 py-2 text-xs'>
+                            {/* Never render a kept-previous number here: it
+                                describes the LAST scope, and this line exists
+                                to state the consequence of the current one. */}
                             {previewEnabled &&
                                 impact &&
-                                !impactUnavailable && (
+                                !impactUnavailable &&
+                                !impactIsStale && (
                                     <p className='text-foreground'>
-                                        {impactSentence(
-                                            impact,
-                                            isAllTours || impact.tours > 1,
-                                        )}
+                                        {impactSentence(impact, isAllTours)}
                                     </p>
                                 )}
                             {/* Locked line (client review #5): stated on every
