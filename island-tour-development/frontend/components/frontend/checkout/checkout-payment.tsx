@@ -133,26 +133,32 @@ function PaymentInner({
         (['card', 'ideal', 'paypal'] as PayMethod[]).find(isEligible) ?? 'card';
     const [method, setMethod] = useState<PayMethod>(firstEligible);
 
-    const [card, setCard] = useState({ postal: '', name: '' });
+    /**
+     * The name is the ONLY card field we own - number, expiry and CVC are
+     * Stripe Elements, and we deliberately ask for no postal code (master 3,
+     * "billing data from Stripe, no extra booking-form friction").
+     */
+    const [cardName, setCardName] = useState('');
     const [errors, setErrors] = useState<Record<string, string>>({});
 
     /**
-     * Write a card field and drop any error sitting on it.
+     * Write the name and drop any error sitting on it.
      *
      * The errors map is only ever rebuilt by `handleReserve`, so without this a
      * "This field is required" message survived the traveller filling the field
-     * in - the postal code read 3724 with a red border and the required error
-     * still under it, until they pressed Pay again (test report 2026-08-01).
+     * in - a filled box kept its red border and the required error under it
+     * until they pressed Pay again (test report 2026-08-01, first seen on the
+     * card postal code we no longer collect).
      *
      * Clears rather than re-validates, matching the rest of the site: checking
      * on every keystroke flashes the error back while a value is half-typed.
      * The submit path is still the authority on whether the field is valid.
      */
-    const setCardField = (key: 'postal' | 'name', value: string) => {
-        setCard(p => ({ ...p, [key]: value }));
+    const setCardNameField = (value: string) => {
+        setCardName(value);
         setErrors(p => {
-            if (!p[key]) return p;
-            const { [key]: _cleared, ...rest } = p;
+            if (!p.name) return p;
+            const { name: _cleared, ...rest } = p;
             return rest;
         });
     };
@@ -187,8 +193,7 @@ function PaymentInner({
         if (method === 'card') {
             if (!elements) return;
             const next: Record<string, string> = {};
-            if (!card.postal.trim()) next.postal = dict.requiredError;
-            if (!card.name.trim()) next.name = dict.requiredError;
+            if (!cardName.trim()) next.name = dict.requiredError;
             setErrors(next);
             if (Object.keys(next).length > 0) return;
 
@@ -200,12 +205,16 @@ function PaymentInner({
                 payment_method: {
                     card: cardNumber,
                     billing_details: {
-                        name: card.name || contact.fullName,
+                        name: cardName || contact.fullName,
                         email: contact.email,
-                        address: {
-                            postal_code: card.postal,
-                            country: contact.country || undefined,
-                        },
+                        // No postal code: we never ask for one. The billing
+                        // snapshot (country / postal / city) is read back off
+                        // the Stripe payment method at webhook time, so the
+                        // only address part we pass is the country the contact
+                        // step already had.
+                        ...(contact.country
+                            ? { address: { country: contact.country } }
+                            : {}),
                     },
                 },
             });
@@ -344,18 +353,19 @@ function PaymentInner({
                                 />
                             </FieldShell>
                         </div>
+                        {/* Name on card is the last field we own - there is no
+                            postal code input by design (Pastel 82). It carries
+                            the asterisk the postal code used to: the name has
+                            always been rejected empty by `handleReserve`, and
+                            the contact step marks every required field, so
+                            without it this panel now enforces a rule it does
+                            not state. */}
                         <Field
                             label={dict.nameOnCard}
-                            value={card.name}
-                            onChange={v => setCardField('name', v)}
-                            error={errors.name}
-                        />
-                        <Field
-                            label={dict.postalCode}
                             required
-                            value={card.postal}
-                            onChange={v => setCardField('postal', v)}
-                            error={errors.postal}
+                            value={cardName}
+                            onChange={setCardNameField}
+                            error={errors.name}
                         />
                     </div>
                 </MethodRow>

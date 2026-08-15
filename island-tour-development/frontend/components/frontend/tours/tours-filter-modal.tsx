@@ -29,7 +29,6 @@ export type ToursFilterModalDict = {
     /** Sub-copy under the pickup toggle - expectation-setting line. */
     pickupNote: string;
     ratings: string;
-    ratingsNote: string;
     clearAll: string;
     applyFilters: string;
 };

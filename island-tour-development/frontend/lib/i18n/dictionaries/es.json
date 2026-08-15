@@ -302,7 +302,6 @@
                 "pickupAvailable": "Recogida disponible",
                 "pickupNote": "Tours donde la recogida se puede añadir o está incluida en el precio. Nunca una expectativa de recogida gratuita.",
                 "ratings": "Valoraciones",
-                "ratingsNote": "(oculto hasta que haya reseñas)",
                 "clearAll": "Restablecer todo",
                 "applyFilters": "Aplicar filtros"
             }
@@ -739,8 +738,6 @@
         "expiry": "Caducidad",
         "expiryPlaceholder": "MM/YY",
         "cvv": "CVV",
-        "postalCode": "Código postal (según región)",
-        "postalCodePlaceholder": "Código postal",
         "nameOnCard": "Nombre en la tarjeta",
         "nameOnCardPlaceholder": "Nombre en la tarjeta",
         "consent": "Al tocar Reservar mi plaza, aceptas los {terms} y la {privacy} de Island Tours.",

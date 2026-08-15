@@ -302,7 +302,6 @@
                 "pickupAvailable": "Ophalen beschikbaar",
                 "pickupNote": "Tours waar ophalen kan worden toegevoegd of bij de prijs is inbegrepen. Nooit een verwachting van gratis ophalen.",
                 "ratings": "Beoordelingen",
-                "ratingsNote": "(verborgen tot er reviews zijn)",
                 "clearAll": "Alles resetten",
                 "applyFilters": "Filters toepassen"
             }
@@ -739,8 +738,6 @@
         "expiry": "Vervaldatum",
         "expiryPlaceholder": "MM/YY",
         "cvv": "CVV",
-        "postalCode": "Postcode (locatieafhankelijk)",
-        "postalCodePlaceholder": "Postcode",
         "nameOnCard": "Naam op kaart",
         "nameOnCardPlaceholder": "Naam op kaart",
         "consent": "Door op Reserveer mijn plek te tikken, ga je akkoord met de {terms} en het {privacy} van Island Tours.",

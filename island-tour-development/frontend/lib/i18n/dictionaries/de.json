@@ -302,7 +302,6 @@
                 "pickupAvailable": "Abholung verfügbar",
                 "pickupNote": "Touren, bei denen Abholung hinzugefügt werden kann oder im Preis enthalten ist. Niemals ein Anspruch auf kostenlose Abholung.",
                 "ratings": "Bewertungen",
-                "ratingsNote": "(ausgeblendet bis Bewertungen vorliegen)",
                 "clearAll": "Alles zurücksetzen",
                 "applyFilters": "Filter anwenden"
             }
@@ -739,8 +738,6 @@
         "expiry": "Gültig bis",
         "expiryPlaceholder": "MM/YY",
         "cvv": "CVV",
-        "postalCode": "Postleitzahl (regionsabhängig)",
-        "postalCodePlaceholder": "Postleitzahl",
         "nameOnCard": "Name auf der Karte",
         "nameOnCardPlaceholder": "Name auf der Karte",
         "consent": "Indem du auf Platz reservieren tippst, stimmst du den {terms} und der {privacy} von Island Tours zu.",

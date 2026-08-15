@@ -302,7 +302,6 @@
                 "pickupAvailable": "Pickup available",
                 "pickupNote": "Tours where pickup can be added or is part of the price. Never an expectation of free pickup.",
                 "ratings": "Ratings",
-                "ratingsNote": "(hidden until reviews exist)",
                 "clearAll": "Reset all",
                 "applyFilters": "Apply filters"
             }
@@ -741,8 +740,6 @@
         "expiry": "Expiry",
         "expiryPlaceholder": "MM/YY",
         "cvv": "CVV",
-        "postalCode": "Postal code (locale-aware)",
-        "postalCodePlaceholder": "Postal code",
         "nameOnCard": "Name on card",
         "nameOnCardPlaceholder": "Name on card",
         "consent": "By reserving your spot, you agree to our {terms} and {privacy}.",

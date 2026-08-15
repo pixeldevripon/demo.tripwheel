@@ -302,7 +302,6 @@
                 "pickupAvailable": "提供接送",
                 "pickupNote": "可加购接送或接送已含在价格中的行程。绝不默认提供免费接送。",
                 "ratings": "评分",
-                "ratingsNote": "（有评价后显示）",
                 "clearAll": "重置全部",
                 "applyFilters": "应用筛选"
             }
@@ -739,8 +738,6 @@
         "expiry": "有效期",
         "expiryPlaceholder": "MM/YY",
         "cvv": "CVV",
-        "postalCode": "邮政编码（因地区而异）",
-        "postalCodePlaceholder": "邮政编码",
         "nameOnCard": "持卡人姓名",
         "nameOnCardPlaceholder": "持卡人姓名",
         "consent": "点击“预订我的名额”即表示您同意 Island Tours 的{terms}和{privacy}。",

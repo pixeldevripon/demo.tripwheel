@@ -74,9 +74,18 @@ async function openCheckout(
     );
 }
 
-/** Complete the contact step with valid details and wait for Payment to open. */
+/**
+ * Complete the contact step with valid details and wait for Payment to open.
+ *
+ * First/last name, not "Full name": the form split the name in two (dev spec §2
+ * - split names raise the Enhanced Conversions match rate 20-40%) and this
+ * helper was never updated, so every test that calls it - including the two
+ * payment-step ones and the pay-through - had been failing on a selector that
+ * matches nothing. Found while verifying Pastel 82.
+ */
 async function completeContactStep(page: Page): Promise<void> {
-    await page.getByLabel(/full name/i).fill('E2E Traveller');
+    await page.getByLabel(/first name/i).fill('E2E');
+    await page.getByLabel(/last name/i).fill('Traveller');
     await page
         .getByLabel(/email address/i)
         .fill(`e2e+${Date.now()}@example.test`);
@@ -107,7 +116,8 @@ test.describe('checkout - contact step', () => {
             page.getByRole('heading', { name: 'Confirming your booking' }),
         ).toHaveCount(0);
         await expect(page.getByText('Contact details')).toBeVisible();
-        await expect(page.getByLabel(/full name/i)).toBeVisible();
+        await expect(page.getByLabel(/first name/i)).toBeVisible();
+        await expect(page.getByLabel(/last name/i)).toBeVisible();
         await expect(page.getByLabel(/email address/i)).toBeVisible();
         await expect(page.getByLabel(/phone number/i)).toBeVisible();
         // The summary is server-rendered beside the form; the tour name is the
@@ -133,7 +143,8 @@ test.describe('checkout - contact step', () => {
     test('rejects a malformed email', async ({ page }) => {
         await openCheckout(page, fixture!);
 
-        await page.getByLabel(/full name/i).fill('E2E Traveller');
+        await page.getByLabel(/first name/i).fill('E2E');
+        await page.getByLabel(/last name/i).fill('Traveller');
         await page.getByLabel(/email address/i).fill('not-an-email');
         await page.getByLabel(/phone number/i).fill('612345678');
         await page.getByRole('button', { name: /^continue$/i }).click();
@@ -202,7 +213,7 @@ test.describe('checkout - payment step', () => {
         await expect(cardFrame).toBeAttached();
 
         await page.getByRole('button', { name: /^edit$/i }).click();
-        await expect(page.getByLabel(/full name/i)).toBeVisible();
+        await expect(page.getByLabel(/first name/i)).toBeVisible();
         // Still attached - collapsed, never unmounted.
         await expect(cardFrame).toBeAttached();
     });
@@ -245,9 +256,13 @@ test.describe('checkout - pay through to the thank-you page', () => {
             .locator('input[name="cvc"]')
             .fill('123');
 
-        // Our own fields, outside the iframes.
-        await page.getByLabel(/postal code/i).fill('1011AB');
+        // The only field of our own, outside the iframes. There is deliberately
+        // no postal code input - Pastel 82 - and no Stripe one either: the split
+        // Elements cannot render a postal field and Stripe ships no standalone
+        // postal Element (verified against the `StripeElementType` union in
+        // @stripe/stripe-js 9.x, which has no `postalCode` member).
         await page.getByLabel(/name on card/i).fill('E2E Traveller');
+        await expect(page.getByLabel(/postal code/i)).toHaveCount(0);
 
         // Watch for a throttled settle BEFORE clicking, so the race below can
         // tell "the hand-off is broken" apart from "this environment is out of

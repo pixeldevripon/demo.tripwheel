@@ -475,7 +475,7 @@ element maps to a data source below. **Bold = new, added above.**
 | "Apply" promo field | **Booking module: `Coupon`/promo entity (NEW, not tour)** |
 | Pay today 20% / Balance later, "All taxes and fees included" | `depositPct` (tier-driven) + `paymentModel` |
 | Contact: full name, email, country (+599), phone (E.164), special requests (<=500), newsletter opt-in | **Booking module (E.8): `Booking` customer fields + newsletter flag** |
-| Payment: card / PayPal / Apple Pay / Google Pay, postal code, name on card | **Payments module: Stripe/Mollie** |
+| Payment: card / PayPal / Apple Pay / Google Pay, name on card (no postal-code field of ours - Stripe owns card entry; the billing snapshot is read off the payment method at webhook time) | **Payments module: Stripe/Mollie** |
 | TYP: "Reserved!", "Paid today", "View booking", "Add to calendar", "pairs well" cross-sell | **Booking (E.8)** `public_ref`/`display_ref`; ICS from `Departure` + meeting point |
 
 ### 9.3 New entities the booking frame implies (other modules - flagged, not in tour scope)

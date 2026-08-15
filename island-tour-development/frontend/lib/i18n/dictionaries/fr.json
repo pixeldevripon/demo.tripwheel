@@ -302,7 +302,6 @@
                 "pickupAvailable": "Prise en charge disponible",
                 "pickupNote": "Tours où la prise en charge peut être ajoutée ou est incluse dans le prix. Jamais une promesse de prise en charge gratuite.",
                 "ratings": "Avis",
-                "ratingsNote": "(masqué jusqu'à ce qu'il y ait des avis)",
                 "clearAll": "Tout réinitialiser",
                 "applyFilters": "Appliquer les filtres"
             }
@@ -739,8 +738,6 @@
         "expiry": "Expiration",
         "expiryPlaceholder": "MM/YY",
         "cvv": "CVV",
-        "postalCode": "Code postal (selon la région)",
-        "postalCodePlaceholder": "Code postal",
         "nameOnCard": "Nom sur la carte",
         "nameOnCardPlaceholder": "Nom sur la carte",
         "consent": "En appuyant sur Réserver ma place, vous acceptez les {terms} et la {privacy} d'Island Tours.",

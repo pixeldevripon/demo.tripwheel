@@ -260,7 +260,7 @@ block, `paymentModel` snapshot, split contact name + E.164 phone + locale, billi
 | "Apply" promo | **`couponCode`/`discountAmount` (gap #9)** |
 | Pay today 20% / Balance later, "taxes included" | `depositPct`+`paymentModel`; `depositAmount`/`balanceAmount`/`taxes` |
 | Contact: name, email, country (+599), phone (E.164), special requests (<=500), newsletter | `contact*`; `notes`; **`newsletterOptIn` (gap #4)** |
-| Payment: Card / PayPal / Apple Pay / Google Pay, name on card, postal | `Payment` (+ **`methodType` gap #7**); billing snapshot |
+| Payment: Card / PayPal / Apple Pay / Google Pay, name on card (postal never asked - Pastel #82; the split Card Elements cannot render one and Stripe has no standalone postal Element) | `Payment` (+ **`methodType` gap #7**); billing snapshot |
 
 ### 8.2 Thank-you page (`47744:9184`)
 
