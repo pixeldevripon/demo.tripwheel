@@ -731,6 +731,7 @@
         "requiredError": "Este campo é obrigatório",
         "emailError": "Introduza um e-mail válido",
         "selectPaymentMethod": "Escolha um método de pagamento",
+        "selectMethodError": "Escolhe um método de pagamento para continuar.",
         "secureCheckout": "Pagamento seguro",
         "poweredBy": "Fornecido por",
         "card": "Cartão",

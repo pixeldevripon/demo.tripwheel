@@ -731,6 +731,7 @@
         "requiredError": "Dieses Feld ist erforderlich",
         "emailError": "Gib eine gültige E-Mail-Adresse ein",
         "selectPaymentMethod": "Zahlungsmethode auswählen",
+        "selectMethodError": "Bitte wähle eine Zahlungsmethode, um fortzufahren.",
         "secureCheckout": "Sicherer Checkout",
         "poweredBy": "Bereitgestellt von",
         "card": "Karte",

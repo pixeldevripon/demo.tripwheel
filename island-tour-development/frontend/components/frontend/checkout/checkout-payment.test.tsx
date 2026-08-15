@@ -1,0 +1,158 @@
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import type { ReactNode } from 'react';
+import { describe, expect, it, vi } from 'vitest';
+
+import en from '@/lib/i18n/dictionaries/en.json';
+import { CheckoutPayment } from './checkout-payment';
+
+/**
+ * Pastel #84 · every payment method collapsed, none pre-selected.
+ *
+ * Card arrived expanded and its form pushed iDEAL and PayPal below the fold.
+ * The client watched a test booker with no card find iDEAL only much later -
+ * a conversion loss that never looked like a bug, because the page was doing
+ * exactly what it was written to do.
+ *
+ * These tests hold the three halves of the fix: all three rows render, none is
+ * selected (so nothing is expanded and no Stripe Element is mounted), picking
+ * one expands ONLY it, and pressing Pay without a choice says so instead of
+ * swallowing the click. The e2e spec covers the same ground against a real
+ * Stripe account, but it skips wherever no PSP key is configured - which is
+ * most runs - so the regression guard has to live here too.
+ */
+
+const stripeApi = vi.hoisted(() => ({
+    confirmCardPayment: vi.fn(),
+    confirmPayPalPayment: vi.fn(),
+    confirmIdealPayment: vi.fn(),
+}));
+
+vi.mock('@stripe/stripe-js', () => ({
+    loadStripe: () => Promise.resolve(null),
+}));
+
+// The Elements are cross-origin iframes with no jsdom equivalent. Their
+// IDENTITY is what matters here: a test-id per Element is enough to prove the
+// panel mounted (or did not), which is the whole question this file asks.
+vi.mock('@stripe/react-stripe-js', () => ({
+    Elements: ({ children }: { children: ReactNode }) => <>{children}</>,
+    useStripe: () => stripeApi,
+    useElements: () => ({ getElement: () => ({}) }),
+    CardNumberElement: () => <div data-testid='stripe-card-number' />,
+    CardExpiryElement: () => <div data-testid='stripe-card-expiry' />,
+    CardCvcElement: () => <div data-testid='stripe-card-cvc' />,
+}));
+
+const dict = en.checkout;
+
+function renderPanel() {
+    return render(
+        <CheckoutPayment
+            dict={dict}
+            locale='en'
+            publishableKey='pk_test_panel'
+            clientSecret='pi_test_secret'
+            contact={{
+                fullName: 'E2E Traveller',
+                email: 'traveller@example.test',
+                country: 'NL',
+            }}
+            payToday={39}
+            currency='EUR'
+            eligibleMethods={['card', 'ideal', 'paypal']}
+            freeCancelLabel='Free cancellation up to 48h'
+            processingHref='/curacao/payment/processing?ref=IT-2026-ABC'
+        />
+    );
+}
+
+const methodRow = (name: string) => screen.getByRole('button', { name });
+const payButton = () =>
+    screen.getByRole('button', { name: new RegExp(dict.reserve, 'i') });
+
+describe('CheckoutPayment - method selection', () => {
+    it('offers all three methods with none pre-selected', () => {
+        renderPanel();
+
+        for (const name of [dict.card, 'iDEAL', dict.paypal]) {
+            expect(methodRow(name)).toHaveAttribute('aria-pressed', 'false');
+        }
+    });
+
+    it('mounts no card fields until Card is picked', () => {
+        renderPanel();
+
+        // The load-bearing assertion. A row can look collapsed while its
+        // content sits in the DOM; the Elements being absent is what proves
+        // Card is not selected - and it is what fails the instant anything
+        // pre-selects a method again.
+        expect(screen.queryByTestId('stripe-card-number')).toBeNull();
+        expect(screen.queryByLabelText(/name on card/i)).toBeNull();
+
+        fireEvent.click(methodRow(dict.card));
+
+        expect(screen.getByTestId('stripe-card-number')).toBeInTheDocument();
+        expect(screen.getByTestId('stripe-card-expiry')).toBeInTheDocument();
+        expect(screen.getByTestId('stripe-card-cvc')).toBeInTheDocument();
+        expect(screen.getByLabelText(/name on card/i)).toBeInTheDocument();
+        expect(methodRow(dict.card)).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('selects one method at a time', () => {
+        renderPanel();
+
+        fireEvent.click(methodRow(dict.card));
+        fireEvent.click(methodRow(dict.paypal));
+
+        expect(methodRow(dict.paypal)).toHaveAttribute('aria-pressed', 'true');
+        expect(methodRow(dict.card)).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    it('keeps the card fields alive across a look at PayPal', () => {
+        renderPanel();
+
+        fireEvent.click(methodRow(dict.card));
+        const name = screen.getByLabelText(/name on card/i);
+        fireEvent.change(name, { target: { value: 'E2E Traveller' } });
+
+        fireEvent.click(methodRow(dict.paypal));
+        fireEvent.click(methodRow(dict.card));
+
+        // Unmounting the panel would DESTROY the Stripe Elements and wipe a
+        // half-typed card, so the row collapses instead - the same contract
+        // the contact step's Edit round trip honours.
+        expect(screen.getByLabelText(/name on card/i)).toHaveValue(
+            'E2E Traveller'
+        );
+    });
+});
+
+describe('CheckoutPayment - paying without a choice', () => {
+    it('prompts for a method instead of swallowing the click', () => {
+        renderPanel();
+
+        fireEvent.click(payButton());
+
+        expect(screen.getByText(dict.selectMethodError)).toBeInTheDocument();
+        expect(stripeApi.confirmCardPayment).not.toHaveBeenCalled();
+        expect(stripeApi.confirmPayPalPayment).not.toHaveBeenCalled();
+        expect(stripeApi.confirmIdealPayment).not.toHaveBeenCalled();
+    });
+
+    it('drops the prompt as soon as a method is picked', async () => {
+        renderPanel();
+
+        fireEvent.click(payButton());
+        expect(screen.getByText(dict.selectMethodError)).toBeInTheDocument();
+
+        fireEvent.click(methodRow('iDEAL'));
+
+        // The message is answered by the click that answers it - leaving it up
+        // would accuse iDEAL of a failure that was never its own. Awaited
+        // because `FormError` fades out: the node lingers, already invisible,
+        // until `AnimatePresence` finishes the exit and unmounts it.
+        await waitFor(() =>
+            expect(screen.queryByText(dict.selectMethodError)).toBeNull()
+        );
+    });
+});

@@ -731,6 +731,7 @@
         "requiredError": "Dit veld is verplicht",
         "emailError": "Voer een geldig e-mailadres in",
         "selectPaymentMethod": "Kies een betaalmethode",
+        "selectMethodError": "Kies een betaalmethode om verder te gaan.",
         "secureCheckout": "Veilig afrekenen",
         "poweredBy": "Mogelijk gemaakt door",
         "card": "Kaart",

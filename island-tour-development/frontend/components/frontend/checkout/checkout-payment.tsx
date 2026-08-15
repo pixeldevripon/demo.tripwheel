@@ -17,10 +17,11 @@ import {
     type StripeCardNumberElementOptions,
     type StripeElementsOptions,
 } from '@stripe/stripe-js';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import Image from 'next/image';
-import { memo, useMemo, useState, type ReactNode } from 'react';
+import { memo, useId, useMemo, useState, type ReactNode } from 'react';
 import {
+    Collapse,
     ConsentLine,
     Field,
     FieldShell,
@@ -89,6 +90,10 @@ interface CheckoutPaymentProps {
  * REDIRECT to the provider (return_url -> /payment/processing) - those methods have
  * no fields to collect by design. Methods not in `eligibleMethods` (account /
  * currency ineligible - e.g. iDEAL is EUR-only) render disabled with a hint.
+ *
+ * NOTHING is pre-selected: all three rows render collapsed so the traveller
+ * sees every method they can pay with before choosing one (Pastel 84). Picking
+ * one is therefore a real validation step - see `handleReserve`.
  */
 export const CheckoutPayment = memo(function CheckoutPayment(
     props: CheckoutPaymentProps
@@ -121,6 +126,7 @@ function PaymentInner({
 }: CheckoutPaymentProps) {
     const stripe = useStripe();
     const elements = useElements();
+    const methodsLabelId = useId();
 
     // Card is always offered when eligible; if the intent didn't report methods
     // (older/edge response) fall back to card-only.
@@ -129,9 +135,32 @@ function PaymentInner({
             ? m === 'card'
             : eligibleMethods.includes(m);
 
-    const firstEligible: PayMethod =
-        (['card', 'ideal', 'paypal'] as PayMethod[]).find(isEligible) ?? 'card';
-    const [method, setMethod] = useState<PayMethod>(firstEligible);
+    /**
+     * No method is chosen until the traveller chooses one (Pastel 84).
+     *
+     * Card used to be pre-selected, and its expanded form pushed iDEAL and
+     * PayPal below the fold - a client watched a test booker with no card find
+     * iDEAL only much later. All three rows now start collapsed, so the choice
+     * is visible before it is made, and `null` is a state the pay path has to
+     * answer for rather than one it can assume away.
+     */
+    const [method, setMethod] = useState<PayMethod | null>(null);
+
+    /**
+     * The card panel is rendered from the first time Card is picked, and stays
+     * rendered afterwards - `MethodRow` collapses it rather than unmounting it.
+     *
+     * It is not rendered up front because the Stripe Elements would mount into
+     * a zero-height collapsed box, and because a traveller paying by iDEAL has
+     * no use for them at all (the deferred mount the issue itself allows for).
+     *
+     * It is not unmounted on switching away because unmounting DESTROYS the
+     * Elements: a half-typed card number would not survive a look at PayPal,
+     * and the remount would land inside a box that is animating open. The
+     * contact step's Edit round trip keeps its fields alive for the same
+     * reason.
+     */
+    const [cardPanelMounted, setCardPanelMounted] = useState(false);
 
     /**
      * The name is the ONLY card field we own - number, expiry and CVC are
@@ -165,6 +194,21 @@ function PaymentInner({
     const [formError, setFormError] = useState<string | null>(null);
     const [processing, setProcessing] = useState(false);
 
+    /**
+     * Choose a method, and drop the form-level message the last one left.
+     *
+     * It always belongs to the method that raised it - "choose a method" is
+     * answered by this very click, and a decline describes a charge on the
+     * method being navigated away from. Field errors are deliberately NOT
+     * cleared: the card inputs survive the switch, so their errors are still
+     * true when the traveller comes back to them.
+     */
+    const selectMethod = (next: PayMethod) => {
+        setMethod(next);
+        setFormError(null);
+        if (next === 'card') setCardPanelMounted(true);
+    };
+
     const elementStyle: StripeCardNumberElementOptions = useMemo(
         () => ({
             style: {
@@ -188,6 +232,14 @@ function PaymentInner({
     async function handleReserve() {
         if (processing || !stripe) return;
         setFormError(null);
+
+        // Nothing is pre-selected any more, so "which method?" is a question
+        // the traveller can actually reach the Pay button without answering.
+        // Say so instead of swallowing the click.
+        if (!method) {
+            setFormError(dict.selectMethodError);
+            return;
+        }
 
         // ── Card: confirm inline (no redirect); 3DS handled by an inline modal. ──
         if (method === 'card') {
@@ -269,22 +321,31 @@ function PaymentInner({
             {/* .pm-label + the two trust cues of the payment moment (5.8):
                 the secure-checkout row with the slate Stripe badge here, and
                 the free-cancellation line at the commit button below. */}
-            <span className='mt-0.5 mb-2.5 text-[13.5px] font-bold leading-[1.5] text-it-ink'>
+            <span
+                id={methodsLabelId}
+                className='mt-0.5 mb-2.5 text-[13.5px] font-bold leading-[1.5] text-it-ink'>
                 {dict.selectPaymentMethod}
             </span>
             <SecureCheckoutRow psp='Stripe' dict={dict} />
 
             {/* Payment methods - ONE bordered radio list (design v2 .pm):
                 hairline-divided rows, tinted selected row, methods expand in
-                place under their row. */}
-            <div className='overflow-hidden rounded-it-md border-[1.5px] border-it-border bg-it-white'>
+                place under their row. All start collapsed (Pastel 84). */}
+            <div
+                role='group'
+                aria-labelledby={methodsLabelId}
+                className='overflow-hidden rounded-it-md border-[1.5px] border-it-border bg-it-white'>
                 {/* Card */}
                 <MethodRow
                     selected={method === 'card'}
                     eligible={isEligible('card')}
                     hint={unavailable}
-                    onSelect={() => setMethod('card')}
+                    onSelect={() => selectMethod('card')}
                     label={dict.card}
+                    // The only row holding Stripe Elements: they are created on
+                    // the render that opens it, and kept from then on.
+                    mounted={cardPanelMounted}
+                    instant
                     logos={
                         <>
                             <BrandMark src='/icons/payments/pay-1.svg' />
@@ -293,7 +354,8 @@ function PaymentInner({
                         </>
                     }>
                     {/* Card fields (Stripe Card Elements, styled to the mockup;
-                        brand auto-detected from the number). */}
+                        brand auto-detected from the number). Mounted from the
+                        first time Card is picked - see `cardPanelMounted`. */}
                     <div className='flex flex-col gap-3.5 px-4 pb-[18px] pt-1.5'>
                         <FieldShell
                             label={dict.cardNumber}
@@ -375,7 +437,7 @@ function PaymentInner({
                     selected={method === 'ideal'}
                     eligible={isEligible('ideal')}
                     hint={unavailable}
-                    onSelect={() => setMethod('ideal')}
+                    onSelect={() => selectMethod('ideal')}
                     label='iDEAL'
                     logos={
                         <BrandMark
@@ -393,7 +455,7 @@ function PaymentInner({
                     selected={method === 'paypal'}
                     eligible={isEligible('paypal')}
                     hint={unavailable}
-                    onSelect={() => setMethod('paypal')}
+                    onSelect={() => selectMethod('paypal')}
                     label={dict.paypal}
                     logos={
                         <BrandMark
@@ -446,6 +508,8 @@ function MethodRow({
     onSelect,
     label,
     logos,
+    mounted = true,
+    instant = false,
     children,
 }: {
     selected: boolean;
@@ -455,7 +519,24 @@ function MethodRow({
     label: string;
     /** Passive network chips at the row's right edge. */
     logos?: ReactNode;
-    /** Expanded content under the row while selected. */
+    /**
+     * Put the children in the DOM at all. Defaults to true, which is right for
+     * a row whose content is one line of text. The Card row passes its
+     * "opened at least once" latch instead, so the Stripe Elements are created
+     * ONCE, and never at all for a traveller paying by iDEAL - see
+     * `cardPanelMounted`.
+     */
+    mounted?: boolean;
+    /**
+     * Snap open at full height instead of growing into it (the fade still
+     * carries the motion). Same rule as `Collapse`'s own `instant`: a PSP
+     * iframe must not mount inside a zero-height, clipped, still-animating box,
+     * because it settles its layout against a container that is still moving.
+     * Set it on any row whose children mount Stripe Elements - and on no
+     * others, so a row holding one line of text keeps its slide.
+     */
+    instant?: boolean;
+    /** Content under the row - collapsed while unselected, never unmounted. */
     children?: ReactNode;
 }) {
     const open = selected && eligible;
@@ -490,23 +571,16 @@ function MethodRow({
                     {hint}
                 </p>
             )}
-            {children && (
-                <AnimatePresence initial={false}>
-                    {open && (
-                        <motion.div
-                            key='expand'
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{
-                                duration: 0.3,
-                                ease: [0.4, 0, 0.2, 1],
-                            }}
-                            className='overflow-hidden'>
-                            {children}
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+            {/* `Collapse`, not an unmount: collapsed children stay in the DOM
+                and inert, so a card entered before a look at PayPal is still
+                there on the way back. An `instant` row snaps OPEN and still
+                animates CLOSED - opening is the direction that matters, since
+                nothing mounts on the way out. Same contract the payment
+                section itself uses in `checkout-form`. */}
+            {children && mounted && (
+                <Collapse open={open} instant={instant && open}>
+                    {children}
+                </Collapse>
             )}
         </div>
     );

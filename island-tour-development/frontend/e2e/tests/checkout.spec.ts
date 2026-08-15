@@ -97,6 +97,19 @@ async function completeContactStep(page: Page): Promise<void> {
     });
 }
 
+/**
+ * Pick Card in the Stripe method list.
+ *
+ * Nothing is pre-selected (Pastel 84): Card, iDEAL and PayPal all render
+ * collapsed so every option is visible before one is chosen, and the Card
+ * Elements only mount once Card is picked. The Mollie panel has no method list
+ * at all - it is card-only - so this is a no-op there.
+ */
+async function selectCardMethod(page: Page): Promise<void> {
+    const cardRow = page.getByRole('button', { name: 'Card', exact: true });
+    if ((await cardRow.count()) > 0) await cardRow.click();
+}
+
 test.beforeEach(() => {
     // An environment without a bookable departure is a data gap, not a
     // regression - fail loudly as a SKIP rather than a misleading red.
@@ -177,7 +190,7 @@ test.describe('checkout - payment step', () => {
         );
     });
 
-    test('reserves the booking and reveals the card fields', async ({
+    test('reserves the booking and reveals the card fields once Card is picked', async ({
         page,
     }) => {
         await openCheckout(page, fixture!);
@@ -195,6 +208,38 @@ test.describe('checkout - payment step', () => {
         const cardFrame = page.locator(
             'iframe[name^="__privateStripeFrame"], iframe[src*="mollie"]',
         );
+
+        if (payments.provider === 'STRIPE') {
+            // Pastel 84: all three methods on screen at a glance, NONE
+            // pre-selected. Card used to arrive expanded and pushed iDEAL and
+            // PayPal below the fold - a test booker with no card found iDEAL
+            // only much later. The absent iframe is the load-bearing assertion:
+            // a re-selected Card would mount its Elements immediately, and no
+            // amount of visibility checking on the other two rows would catch
+            // it.
+            for (const name of ['Card', 'iDEAL', 'PayPal']) {
+                await expect(
+                    page.getByRole('button', { name, exact: true }),
+                ).toBeVisible();
+            }
+            await expect(
+                page.getByRole('button', { name: 'Card', exact: true }),
+            ).toHaveAttribute('aria-pressed', 'false');
+            await expect(cardFrame).toHaveCount(0);
+
+            // And Pay must SAY the choice is missing rather than swallow the
+            // click - the same silent-CTA class of defect as the widget's.
+            const pay = page.getByRole('button', {
+                name: /reserve my spot/i,
+            });
+            await expect(pay).toBeEnabled({ timeout: 30_000 });
+            await pay.click();
+            await expect(
+                page.getByText(/choose a payment method/i),
+            ).toBeVisible();
+        }
+
+        await selectCardMethod(page);
         await expect(cardFrame.first()).toBeAttached({ timeout: 30_000 });
     });
 
@@ -206,6 +251,7 @@ test.describe('checkout - payment step', () => {
         // the iframes inside a collapsing box - the original bug.
         await openCheckout(page, fixture!);
         await completeContactStep(page);
+        await selectCardMethod(page);
 
         const cardFrame = page
             .locator('iframe[name^="__privateStripeFrame"], iframe[src*="mollie"]')
@@ -240,6 +286,9 @@ test.describe('checkout - pay through to the thank-you page', () => {
 
         await openCheckout(page, fixture!);
         await completeContactStep(page);
+        // Card is no longer pre-selected, so the Elements below do not exist
+        // until this click (Pastel 84).
+        await selectCardMethod(page);
 
         // Stripe splits the card into one iframe per Element; the `title`
         // attributes are Stripe's own stable, documented handles.

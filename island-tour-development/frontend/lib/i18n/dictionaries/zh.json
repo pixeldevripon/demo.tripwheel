@@ -731,6 +731,7 @@
         "requiredError": "此项为必填",
         "emailError": "请输入有效的电子邮箱",
         "selectPaymentMethod": "选择付款方式",
+        "selectMethodError": "请先选择付款方式，然后继续。",
         "secureCheckout": "安全结账",
         "poweredBy": "技术支持：",
         "card": "银行卡",

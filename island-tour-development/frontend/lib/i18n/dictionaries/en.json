@@ -733,6 +733,7 @@
         "requiredError": "This field is required",
         "emailError": "Enter a valid email address",
         "selectPaymentMethod": "Select a payment method",
+        "selectMethodError": "Please choose a payment method to continue.",
         "secureCheckout": "Secure checkout",
         "poweredBy": "Powered by",
         "card": "Card",
