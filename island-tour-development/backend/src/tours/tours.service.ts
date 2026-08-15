@@ -2624,7 +2624,16 @@ export class ToursService {
   async create(dto: CreateTourDto, userId: string, userRole: Role) {
     const operatorId = await this.resolveOperatorId(userId, userRole);
 
-    const baseSlug = dto.slug ? generateSlug(dto.slug) : generateSlug(dto.name);
+    // Client review #12 / master 2.3: the slug is a destination-registry
+    // entry set by Island Tours, never operator-authored. A non-admin's slug
+    // is IGNORED rather than rejected - older dashboards send an auto-derived
+    // slug on every create, and a 400 would break them for a copy decision -
+    // and the address derives from the name instead (provisional until the
+    // review flow sets it from the final title).
+    const baseSlug =
+      userRole === Role.ADMIN && dto.slug
+        ? generateSlug(dto.slug)
+        : generateSlug(dto.name);
 
     // Validate destination
     const destination = await this.prisma.destination.findUnique({
@@ -2932,9 +2941,13 @@ export class ToursService {
 
     // ── Slug rename → 301 redirect + 90-day cooldown (master slug-registry rules) ──
     // Resolve the rename target up-front (cooldown-aware, excluding this tour's own row).
+    // ADMIN only (client review #12): the slug is Island Tours' registry
+    // entry. A non-admin's slug is ignored, not rejected - the operator
+    // wizard passes the stored slug back on every byte-identical save, and
+    // rejecting it would break every operator save during the deploy window.
     let renameFrom: string | undefined;
     let renameTo: string | undefined;
-    if (dto.slug !== undefined) {
+    if (dto.slug !== undefined && requesterRole === Role.ADMIN) {
       const normalized = generateSlug(dto.slug);
       if (normalized !== tour.slug) {
         const dest = await this.prisma.destination.findUnique({
