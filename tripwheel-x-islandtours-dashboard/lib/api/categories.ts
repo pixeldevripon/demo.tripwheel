@@ -86,7 +86,11 @@ export const categoriesApi = {
       { credentials: 'include', headers: { 'Content-Type': 'application/json' } },
     );
     if (res.status === 404) return null;
-    if (!res.ok) throw new Error(`Category fetch failed (${res.status})`);
+    if (!res.ok) {
+      throw new Error(
+        'Could not load that category page right now. Try again shortly.',
+      );
+    }
     return res.json() as Promise<CategoryDetailByDestination>;
   },
 

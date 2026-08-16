@@ -261,7 +261,13 @@ export function useRefreshPlatformReviews() {
           `Fetched ${result.reviewCount ?? '?'} reviews (rating ${result.rating ?? '?'})`,
         );
       } else {
-        toast.error(result.error || 'Fetch failed');
+        // result.error is the raw upstream provider text - useful for
+        // diagnosis, but it needs a lead sentence to be actionable.
+        toast.error(
+          result.error
+            ? `Could not fetch reviews from the platform: ${result.error}`
+            : 'Could not fetch reviews from the platform - check the reviews source settings and try again.',
+        );
       }
     },
     onError,

@@ -1,5 +1,6 @@
 'use server';
 
+import { humaneMessage } from '@/lib/api/humane-error';
 import { authClient } from '@/lib/auth-client';
 import { serverAuthHeaders } from '@/lib/server/auth-headers';
 import { headers } from 'next/headers';
@@ -20,12 +21,10 @@ export async function setPasswordAction(newPassword: string): Promise<void> {
     });
 
     if (!res.ok) {
-        let message = `Failed to set password (${res.status})`;
-        try {
-            const body = await res.json();
-            if (body?.message) message = Array.isArray(body.message) ? body.message.join(', ') : body.message;
-        } catch { /* ignore */ }
-        throw new Error(message);
+        const body = await safeJson(res);
+        throw Object.assign(new Error(humaneMessage(res.status, body)), {
+            status: res.status,
+        });
     }
 }
 
@@ -52,10 +51,9 @@ export async function requestPasswordChangeAction(
 
     if (!res.ok) {
         const body = await safeJson(res);
-        const message = Array.isArray(body?.message)
-            ? body.message.join(', ')
-            : (body?.message ?? `Failed to start the password change (${res.status})`);
-        throw Object.assign(new Error(message), { status: res.status });
+        throw Object.assign(new Error(humaneMessage(res.status, body)), {
+            status: res.status,
+        });
     }
 }
 
@@ -73,10 +71,9 @@ export async function confirmPasswordChangeAction(token: string): Promise<void> 
 
     if (!res.ok) {
         const body = await safeJson(res);
-        const message = Array.isArray(body?.message)
-            ? body.message.join(', ')
-            : (body?.message ?? `Failed to confirm the password change (${res.status})`);
-        throw Object.assign(new Error(message), { status: res.status });
+        throw Object.assign(new Error(humaneMessage(res.status, body)), {
+            status: res.status,
+        });
     }
 }
 

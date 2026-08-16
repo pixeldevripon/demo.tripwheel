@@ -36,8 +36,16 @@ export function useSendReviewRequest() {
         void qc.invalidateQueries({ queryKey: customerKeys.all });
       } else if (res.reason === 'no_booking_awaiting_review') {
         toast.info('Nothing to ask about - every completed trip is reviewed.');
+      } else if (res.reason === 'no_email_on_file') {
+        toast.error('Not sent - this customer has no email address on file.');
       } else {
-        toast.error(`Not sent (${res.reason ?? 'unknown'})`);
+        // Unknown backend reason enum: de-snake it so at least readable words
+        // reach the toast instead of `no_email_on_file`-style codes.
+        toast.error(
+          res.reason
+            ? `Not sent - ${res.reason.replaceAll('_', ' ')}.`
+            : 'Not sent - the review request could not be delivered.',
+        );
       }
     },
     onError: (e: Error) => toast.error(e.message || 'Could not send'),

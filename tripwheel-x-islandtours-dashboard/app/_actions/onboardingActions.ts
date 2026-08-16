@@ -1,6 +1,10 @@
 'use server';
 
 import { getUserProfile } from '@/app/_actions/userActions';
+import {
+  humaneMessage,
+  NETWORK_MESSAGE,
+} from '@/lib/api/humane-error';
 import { serverAuthHeaders } from '@/lib/server/auth-headers';
 import { headers } from 'next/headers';
 import { OnboardingData } from '@/lib/validations/onboarding';
@@ -51,12 +55,12 @@ export async function onboardOperator(data: OnboardingData) {
 
     if (!response.ok) {
       const errorData = await safeJson(response);
-      return { success: false, error: errorData?.message || 'Failed to onboard' };
+      return { success: false, error: humaneMessage(response.status, errorData) };
     }
 
     return { success: true };
   } catch (error) {
     console.error('Error onboarding operator:', error);
-    return { success: false, error: 'Internal server error' };
+    return { success: false, error: NETWORK_MESSAGE };
   }
 }
