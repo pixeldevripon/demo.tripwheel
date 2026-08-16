@@ -571,6 +571,21 @@ export const tripsApi = {
     });
   },
 
+  /** Translation Console write for the operator-conditions content
+   *  (Pastel #80): one locale's confirm-list facts and/or document HTML.
+   *  English is wizard-owned; on a LIVE tour an operator's write is HELD
+   *  for review (`held: true`). */
+  upsertOperatorTermsTranslation(
+    tripId: string,
+    locale: string,
+    payload: { acknowledgmentItems?: string[]; termsDocument?: string },
+  ): Promise<{ held: boolean }> {
+    return apiFetch<{ held: boolean }>(
+      `/tours/${tripId}/operator-terms/translation/${locale}`,
+      { method: 'PUT', body: JSON.stringify(payload) },
+    );
+  },
+
   deleteTranslation(tripId: string, locale: string): Promise<{ message: string }> {
     return apiFetch<{ message: string }>(`/tours/${tripId}/translations/${locale}`, { method: 'DELETE' });
   },

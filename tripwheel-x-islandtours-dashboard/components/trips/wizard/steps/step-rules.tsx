@@ -22,11 +22,13 @@
  */
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useForm, type Resolver } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
+import { RichTextEditor } from '@/components/pages/rich-text-editor';
+import { Button } from '@/components/ui/button';
 import { Field, FieldDescription, FieldError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -98,6 +100,12 @@ const rulesSchema = z
     wheelchairAccessible: z.boolean(),
     familyFriendly: z.boolean(),
     suitableForBeginners: z.boolean(),
+    // Operator-conditions gate (Pastel #80 / MCK-20). 'NONE' is a real
+    // option, not a placeholder - clearing the gate is a choice.
+    operatorTermsKind: z.enum(['NONE', 'DOCUMENT', 'ACKNOWLEDGMENT']),
+    acknowledgmentItems: z.array(z.string()),
+    // TipTap HTML from the shared rich-text editor (the pages one, reused).
+    operatorTermsDocument: z.string(),
     })
     // "minimum 8, maximum 2" saved cleanly before this - each field was valid
     // on its own and nothing compared them, on either side of the wire. The
@@ -111,6 +119,33 @@ const rulesSchema = z
                 code: 'custom',
                 path: ['maxPartySize'],
                 message: 'Maximum party size cannot be below the minimum.',
+            });
+        }
+        // The confirm-list IS the legal object of the acknowledgment gate -
+        // 2 to 6 non-blank first-person facts, same bounds the backend
+        // enforces (Pastel #80).
+        if (v.operatorTermsKind === 'ACKNOWLEDGMENT') {
+            const facts = v.acknowledgmentItems
+                .map(s => s.trim())
+                .filter(Boolean);
+            if (facts.length < 2 || facts.length > 6) {
+                ctx.addIssue({
+                    code: 'custom',
+                    path: ['acknowledgmentItems'],
+                    message: 'Add 2 to 6 facts travellers must confirm.',
+                });
+            }
+        }
+        // The document IS the legal object of the document gate: an empty
+        // editor (a lone <p></p>) is not a document.
+        if (
+            v.operatorTermsKind === 'DOCUMENT' &&
+            v.operatorTermsDocument.replace(/<[^>]*>/g, '').trim().length === 0
+        ) {
+            ctx.addIssue({
+                code: 'custom',
+                path: ['operatorTermsDocument'],
+                message: 'Write the conditions travellers agree to.',
             });
         }
     });
@@ -134,6 +169,9 @@ type RulesValues = {
     wheelchairAccessible: boolean;
     familyFriendly: boolean;
     suitableForBeginners: boolean;
+    operatorTermsKind: 'NONE' | 'DOCUMENT' | 'ACKNOWLEDGMENT';
+    acknowledgmentItems: string[];
+    operatorTermsDocument: string;
 };
 
 const CANCELLATION_VALUES = ['24', '48', '72', '168'] as const;
@@ -164,6 +202,11 @@ function toDefaults(trip: TripListItem): RulesValues {
         wheelchairAccessible: trip.wheelchairAccessible,
         familyFriendly: trip.familyFriendly,
         suitableForBeginners: trip.suitableForBeginners,
+        // On a gated LIVE tour the read is already overlaid with any STAGED
+        // change, so the form edits what the operator proposed.
+        operatorTermsKind: trip.operatorTermsKind ?? 'NONE',
+        acknowledgmentItems: trip.acknowledgmentItems?.en ?? [],
+        operatorTermsDocument: trip.operatorTermsDocument?.en ?? '',
     };
 }
 
@@ -286,6 +329,27 @@ export function StepRules({ trip }: StepRulesProps) {
                             wheelchairAccessible: values.wheelchairAccessible,
                             familyFriendly: values.familyFriendly,
                             suitableForBeginners: values.suitableForBeginners,
+                            // Kind + facts travel as ONE unit (Pastel #80);
+                            // null clears the gate. On a LIVE tour the
+                            // backend HOLDS the change for review.
+                            operatorTermsKind:
+                                values.operatorTermsKind === 'NONE'
+                                    ? null
+                                    : values.operatorTermsKind,
+                            ...(values.operatorTermsKind === 'ACKNOWLEDGMENT'
+                                ? {
+                                      acknowledgmentItems:
+                                          values.acknowledgmentItems
+                                              .map(s => s.trim())
+                                              .filter(Boolean),
+                                  }
+                                : {}),
+                            ...(values.operatorTermsKind === 'DOCUMENT'
+                                ? {
+                                      operatorTermsDocument:
+                                          values.operatorTermsDocument,
+                                  }
+                                : {}),
                         },
                     });
                     // Pristine at the values just persisted, so the
@@ -595,7 +659,186 @@ export function StepRules({ trip }: StepRulesProps) {
                         </ToggleGrid>
                     </div>
                 </WizardSection>
+
+                <WizardSection
+                    id='operator-conditions'
+                    title='Operator conditions'
+                    description='A required checkbox travellers tick at checkout before paying.'
+                    summary={
+                        v.operatorTermsKind === 'ACKNOWLEDGMENT'
+                            ? `Confirm-list · ${
+                                  v.acknowledgmentItems.filter(s => s.trim())
+                                      .length
+                              } facts`
+                            : v.operatorTermsKind === 'DOCUMENT'
+                              ? 'Conditions document'
+                              : 'None'
+                    }
+                    invalid={
+                        !!(
+                            errors.acknowledgmentItems ||
+                            errors.operatorTermsDocument
+                        )
+                    }>
+                    <div className='space-y-6'>
+                        <SelectField
+                            control={control}
+                            name='operatorTermsKind'
+                            label='Conditions gate'
+                            options={CONDITIONS_OPTIONS}
+                            error={errors.operatorTermsKind?.message}
+                            description={
+                                v.operatorTermsKind === 'DOCUMENT'
+                                    ? 'Travellers read and accept your operator conditions document at checkout. ONE document covers all your tours - editing it here changes it for every tour that uses it.'
+                                    : v.operatorTermsKind === 'ACKNOWLEDGMENT'
+                                      ? 'Travellers confirm the facts below for their whole group at checkout. Participation facts only - never cancellation, deposit or payment policy.'
+                                      : undefined
+                            }
+                        />
+
+                        {v.operatorTermsKind === 'DOCUMENT' && (
+                            <Field>
+                                <Label>Your operator conditions (English)</Label>
+                                <RichTextEditor
+                                    value={v.operatorTermsDocument}
+                                    onChange={html =>
+                                        setValue(
+                                            'operatorTermsDocument',
+                                            html,
+                                            { shouldDirty: true }
+                                        )
+                                    }
+                                />
+                                <FieldDescription>
+                                    Safety rules, weather policy, health notes,
+                                    on-board conduct. Translations are added in
+                                    the Translation Console.
+                                </FieldDescription>
+                                <FieldError>
+                                    {
+                                        (
+                                            errors.operatorTermsDocument as
+                                                | { message?: string }
+                                                | undefined
+                                        )?.message
+                                    }
+                                </FieldError>
+                            </Field>
+                        )}
+
+                        {v.operatorTermsKind === 'ACKNOWLEDGMENT' && (
+                            <AcknowledgmentFactsEditor
+                                items={v.acknowledgmentItems}
+                                error={
+                                    (
+                                        errors.acknowledgmentItems as
+                                            | { message?: string }
+                                            | undefined
+                                    )?.message
+                                }
+                                onChange={items =>
+                                    setValue('acknowledgmentItems', items, {
+                                        shouldDirty: true,
+                                    })
+                                }
+                            />
+                        )}
+
+                        {trip.status === 'LIVE' && (
+                            <ConsequenceText>
+                                This tour is live, so a change here goes to
+                                Island Tours for review first - travellers keep
+                                seeing the current conditions until it is
+                                approved.
+                            </ConsequenceText>
+                        )}
+                    </div>
+                </WizardSection>
             </WizardStepBody>
         </>
+    );
+}
+
+const CONDITIONS_OPTIONS = [
+    { value: 'NONE', label: 'None' },
+    { value: 'ACKNOWLEDGMENT', label: 'Participation confirm-list' },
+    { value: 'DOCUMENT', label: 'Operator conditions document' },
+];
+
+/**
+ * The 2-6 first-person facts of the ACKNOWLEDGMENT flavor (Pastel #80) -
+ * inline bullets with one quiet delete each, per the entity-form language.
+ */
+function AcknowledgmentFactsEditor({
+    items,
+    error,
+    onChange,
+}: {
+    items: string[];
+    error?: string;
+    onChange: (items: string[]) => void;
+}) {
+    const [draft, setDraft] = useState('');
+    const add = () => {
+        const fact = draft.trim();
+        // Duplicates add nothing legally and would give a screen-reader two
+        // identically-announced Remove buttons - refuse them quietly.
+        if (!fact || items.length >= 6 || items.includes(fact)) return;
+        onChange([...items, fact]);
+        setDraft('');
+    };
+    return (
+        <Field>
+            <Label>Facts travellers confirm</Label>
+            <ul className='m-0 flex list-none flex-col gap-1.5 p-0'>
+                {items.map((item, i) => (
+                    <li
+                        key={`${i}-${item}`}
+                        className='flex items-start gap-2 text-sm'>
+                        <span className='mt-2 size-1 shrink-0 rounded-full bg-foreground/60' />
+                        <span className='min-w-0 flex-1 break-words'>
+                            {item}
+                        </span>
+                        <button
+                            type='button'
+                            aria-label={`Remove "${item}"`}
+                            onClick={() =>
+                                onChange(items.filter((_, idx) => idx !== i))
+                            }
+                            className='cursor-pointer text-xs text-muted-foreground underline-offset-2 hover:underline'>
+                            Remove
+                        </button>
+                    </li>
+                ))}
+            </ul>
+            <div className='flex gap-2'>
+                <Input
+                    value={draft}
+                    onChange={e => setDraft(e.target.value)}
+                    onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            add();
+                        }
+                    }}
+                    placeholder='e.g. Everyone in my group can swim.'
+                    aria-invalid={!!error}
+                    maxLength={160}
+                />
+                <Button
+                    type='button'
+                    variant='outline'
+                    size='sm'
+                    onClick={add}
+                    disabled={!draft.trim() || items.length >= 6}>
+                    Add
+                </Button>
+            </div>
+            <FieldDescription>
+                First person, one fact per line, 2 to 6 lines. English here -
+                translations follow through the platform.
+            </FieldDescription>
+            <FieldError>{error}</FieldError>
+        </Field>
     );
 }

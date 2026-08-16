@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { CollapsibleCard } from '@/components/common/collapsible-card';
 import { useGenerateTranslation } from '@/hooks/translations/use-generate-translation';
 import { useInlineTranslate } from '@/hooks/translations/use-inline-translate';
+import { RichTextEditor } from '@/components/pages/rich-text-editor';
 import {
     useDeleteExclusionTranslation,
     useDeleteFeatureTranslation,
@@ -38,6 +39,7 @@ import {
     useUpsertHighlightTranslation,
     useUpsertInclusionTranslation,
     useUpsertLocationTranslation,
+    useUpsertOperatorTermsTranslation,
     useUpsertPickupLocationTranslation,
     useUpsertTripTranslation,
 } from '@/hooks/trips/use-trips';
@@ -88,6 +90,7 @@ export function TourWorkspace({ id, locale }: { id: string; locale: Locale }) {
     const pickups = usePickupLocations(id);
 
     const upsertCore = useUpsertTripTranslation();
+    const upsertConditions = useUpsertOperatorTermsTranslation();
     const generate = useGenerateTranslation('tour', id, locale);
     const translateField = useInlineTranslate(locale);
 
@@ -285,8 +288,19 @@ export function TourWorkspace({ id, locale }: { id: string; locale: Locale }) {
                 }
             }
         }
+        // Operator conditions (Pastel #80): English is WIZARD-owned, so the
+        // card exists only on the other locales.
+        if (locale !== 'en' && trip?.operatorTermsKind === 'ACKNOWLEDGMENT') {
+            d['conditions__facts'] = (
+                trip.acknowledgmentItems?.[locale] ?? []
+            ).join('\n');
+        }
+        if (locale !== 'en' && trip?.operatorTermsKind === 'DOCUMENT') {
+            d['conditions__document'] =
+                trip.operatorTermsDocument?.[locale] ?? '';
+        }
         return d;
-    }, [target, subData]);
+    }, [target, subData, trip, locale]);
 
     const {
         register,
@@ -309,6 +323,7 @@ export function TourWorkspace({ id, locale }: { id: string; locale: Locale }) {
         tripLoading || sourceLoading || (locale !== 'en' && targetLoading);
     const isSaving =
         upsertCore.isPending ||
+        upsertConditions.isPending ||
         upsertHighlight.isPending ||
         upsertInclusion.isPending ||
         upsertExclusion.isPending ||
@@ -399,6 +414,48 @@ export function TourWorkspace({ id, locale }: { id: string; locale: Locale }) {
                 const payload: Record<string, string> = {};
                 for (const f of sub.fields) payload[f.name] = valueOf(f.name);
                 jobs.push({ label, run: () => ops.upsert(item.id, payload) });
+            }
+        }
+
+        // 3) Operator conditions (Pastel #80): one locale per save, English is
+        //    wizard-owned. On a LIVE tour an operator's write is HELD for
+        //    review - the endpoint says so and the toast relays it.
+        if (trip?.operatorTermsKind && locale !== 'en') {
+            const conditionsPayload: {
+                acknowledgmentItems?: string[];
+                termsDocument?: string;
+            } = {};
+            if (trip.operatorTermsKind === 'ACKNOWLEDGMENT') {
+                const now = (v['conditions__facts'] ?? '')
+                    .split('\n')
+                    .map(l => l.trim())
+                    .filter(Boolean);
+                const before = trip.acknowledgmentItems?.[locale] ?? [];
+                if (JSON.stringify(now) !== JSON.stringify(before)) {
+                    conditionsPayload.acknowledgmentItems = now;
+                }
+            }
+            if (trip.operatorTermsKind === 'DOCUMENT') {
+                const now = v['conditions__document'] ?? '';
+                const before = trip.operatorTermsDocument?.[locale] ?? '';
+                if (now !== before) conditionsPayload.termsDocument = now;
+            }
+            if (Object.keys(conditionsPayload).length > 0) {
+                jobs.push({
+                    label: 'Booking conditions',
+                    run: async () => {
+                        const res = await upsertConditions.mutateAsync({
+                            tripId: id,
+                            locale,
+                            payload: conditionsPayload,
+                        });
+                        if (res.held) {
+                            toast.info(
+                                'The conditions translation was sent to Island Tours for review.'
+                            );
+                        }
+                    },
+                });
             }
         }
 
@@ -570,6 +627,105 @@ export function TourWorkspace({ id, locale }: { id: string; locale: Locale }) {
                         </CollapsibleCard>
                     );
                 })}
+
+                {/* Operator conditions (Pastel #80): the checkout gate's
+                    content. English is WIZARD-owned (the backend refuses it
+                    here), so the card exists only on the other locales. On a
+                    LIVE tour an operator's save is HELD for review. */}
+                {locale !== 'en' && trip?.operatorTermsKind && (
+                    <CollapsibleCard
+                        title='Booking conditions'
+                        actions={
+                            <SectionAiTranslateButton
+                                locale={locale}
+                                fields={
+                                    trip.operatorTermsKind === 'ACKNOWLEDGMENT'
+                                        ? [
+                                              {
+                                                  name: 'conditions__facts',
+                                                  source: (
+                                                      trip.acknowledgmentItems
+                                                          ?.en ?? []
+                                                  ).join('\n'),
+                                              },
+                                          ]
+                                        : [
+                                              // TipTap HTML rides the same
+                                              // provider as page bodies - the
+                                              // prompt preserves tags verbatim,
+                                              // and the save re-sanitizes.
+                                              {
+                                                  name: 'conditions__document',
+                                                  source:
+                                                      trip
+                                                          .operatorTermsDocument
+                                                          ?.en ?? '',
+                                              },
+                                          ]
+                                }
+                                onFill={fillField}
+                            />
+                        }>
+                        <div>
+                            {trip.operatorTermsKind === 'ACKNOWLEDGMENT' ? (
+                                <FieldPair
+                                    field={{
+                                        name: 'conditions__facts',
+                                        label: 'Facts travellers confirm',
+                                        kind: 'lines',
+                                    }}
+                                    source={(
+                                        trip.acknowledgmentItems?.en ?? []
+                                    ).join('\n')}
+                                    register={register}
+                                    targetLabel={LOCALE_LABELS[locale]}
+                                    onAiTranslate={aiFillFor(
+                                        'conditions__facts',
+                                        (
+                                            trip.acknowledgmentItems?.en ?? []
+                                        ).join('\n')
+                                    )}
+                                />
+                            ) : (
+                                <div className='space-y-3 py-3'>
+                                    <div>
+                                        <p className='mb-1.5 text-xs font-medium text-content-muted'>
+                                            English source
+                                        </p>
+                                        <div
+                                            className='it-page-prose max-h-64 overflow-y-auto rounded-md border bg-muted/30 p-3 text-sm'
+                                            // Trusted: sanitized at write time
+                                            // by the shared pages pipeline.
+                                            dangerouslySetInnerHTML={{
+                                                __html:
+                                                    trip.operatorTermsDocument
+                                                        ?.en ?? '',
+                                            }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <p className='mb-1.5 text-xs font-medium text-content-muted'>
+                                            {LOCALE_LABELS[locale]}
+                                        </p>
+                                        <RichTextEditor
+                                            value={
+                                                values['conditions__document'] ??
+                                                ''
+                                            }
+                                            onChange={html =>
+                                                setValue(
+                                                    'conditions__document',
+                                                    html,
+                                                    { shouldDirty: true }
+                                                )
+                                            }
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </CollapsibleCard>
+                )}
             </div>
         </WorkspaceShell>
     );

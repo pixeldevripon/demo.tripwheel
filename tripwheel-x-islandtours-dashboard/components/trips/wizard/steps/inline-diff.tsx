@@ -87,13 +87,18 @@ export function InlineDiff({
 }
 
 /** Item-level variant for bullet-list fields (what to bring, know before
- *  you go, ...): kept items plain, removed struck, added highlighted. */
+ *  you go, ...): kept items plain, removed struck, added highlighted.
+ *  `variant='bullets'` renders the same ops as a real list - fields whose
+ *  items ARE structured bullets (the conditions confirm-list) review as the
+ *  traveller sees them, not as a dot-joined line. */
 export function InlineListDiff({
     current,
     proposed,
+    variant,
 }: {
     current: string[];
     proposed: string[];
+    variant?: 'bullets';
 }) {
     const removed = current.filter(item => !proposed.includes(item));
     const items: Array<{ type: 'same' | 'del' | 'add'; text: string }> = [
@@ -103,6 +108,24 @@ export function InlineListDiff({
         })),
         ...removed.map(item => ({ type: 'del' as const, text: item })),
     ];
+    if (variant === 'bullets') {
+        return (
+            <ul className='min-w-0 list-disc space-y-0.5 pl-4 text-sm leading-relaxed text-content'>
+                {items.map((item, idx) => (
+                    <li
+                        key={idx}
+                        className={cn(
+                            item.type === 'del' &&
+                                'text-danger-fg line-through decoration-danger-fg/60',
+                            item.type === 'add' &&
+                                'font-medium text-success-fg'
+                        )}>
+                        {item.text}
+                    </li>
+                ))}
+            </ul>
+        );
+    }
     return (
         <p className='min-w-0 text-sm leading-relaxed text-content'>
             {items.map((item, idx) => (

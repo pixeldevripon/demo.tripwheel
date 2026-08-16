@@ -14,8 +14,9 @@ beforeAll(() => {
   Element.prototype.scrollIntoView ??= () => {}
 })
 
+const mutateAsync = vi.hoisted(() => vi.fn())
 vi.mock('@/hooks/trips/use-trips', () => ({
-  useUpdateTrip: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateTrip: () => ({ mutateAsync, isPending: false }),
 }))
 // Sections render open, so the Payment fields are in the tree without a click.
 vi.mock('@/components/trips/wizard/wizard-context', () => ({
@@ -28,6 +29,20 @@ vi.mock('@/components/trips/wizard/wizard-context', () => ({
     revealSection: vi.fn(),
   }),
 }))
+
+// The wizard footer owns the Save button; the step hands its SUBMIT to
+// useStepCommit. Capture it so the payload-shape test can invoke a real save.
+const commitRef = vi.hoisted(() => ({
+  current: null as null | (() => Promise<boolean>),
+}))
+vi.mock('@/components/trips/wizard/use-step-commit', () => ({
+  useStepCommit: (
+    _step: string,
+    opts: { submit: () => Promise<boolean> },
+  ) => {
+    commitRef.current = opts.submit
+  },
+}))
 vi.mock('@/contexts/role-context', () => ({
   useRole: () => ({ role: 'ADMIN', can: () => true, canAny: () => true }),
 }))
@@ -36,9 +51,21 @@ function trip(over: Partial<TripListItem> = {}): TripListItem {
   return {
     id: 't1',
     status: 'DRAFT',
+    // The pass-through payload rebuilds the full trip-core body from these -
+    // the payload-shape test runs a REAL submit, so they must exist.
+    slug: 'powerboat-adventure',
+    categoryIds: ['cat-1'],
+    primaryCategoryId: 'cat-1',
+    hubIds: [],
+    pickupModel: 'NONE',
+    pickupRequired: false,
+    deliveryFormats: [],
+    deliveryMethods: [],
     minPartySize: 1,
     maxPartySize: 10,
     bookingType: 'SHARED',
+    operatorTermsKind: null,
+    acknowledgmentItems: null,
     bookingCutoffMinutes: 120,
     checkInMinutesBefore: 15,
     cancellationHours: 48,
@@ -64,6 +91,92 @@ async function openPaymentModel() {
   )!
   await user.click(within(section).getAllByRole('combobox')[0])
 }
+
+/**
+ * Pastel #80 · the operator-conditions gate enters the wizard here: the
+ * operator picks the flavor and owns the per-tour confirm-list; on a LIVE
+ * tour the backend HOLDS the change for review (the step only sends it).
+ */
+describe('StepRules — Operator conditions (client review comment 80)', () => {
+  it('renders the section with None as the resting summary', () => {
+    render(<StepRules trip={trip()} />)
+    expect(screen.getByText('Operator conditions')).toBeInTheDocument()
+    expect(screen.getByText('None')).toBeInTheDocument()
+    // Ungated tour: no facts editor on screen.
+    expect(screen.queryByText('Facts travellers confirm')).toBeNull()
+  })
+
+  it('an acknowledgment tour reads back its flavor and facts', () => {
+    render(
+      <StepRules
+        trip={trip({
+          operatorTermsKind: 'ACKNOWLEDGMENT',
+          acknowledgmentItems: {
+            en: ['Everyone in my group can swim.', 'Nobody is pregnant.'],
+          },
+        })}
+      />,
+    )
+    expect(
+      screen.getByText('Participation confirm-list'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('Everyone in my group can swim.'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Nobody is pregnant.')).toBeInTheDocument()
+  })
+
+  it('the PATCH sends kind+facts as one unit, and NONE clears without items', async () => {
+    // The omission-vs-empty-array distinction is load-bearing: an []
+    // alongside a non-ACKNOWLEDGMENT kind would trip the backend's
+    // 2-6-facts bound on saves that never touched the gate.
+    mutateAsync.mockResolvedValue({})
+
+    const { unmount } = render(
+      <StepRules
+        trip={trip({
+          operatorTermsKind: 'ACKNOWLEDGMENT',
+          acknowledgmentItems: {
+            en: ['Everyone in my group can swim.', '  Nobody is pregnant. '],
+          },
+        })}
+      />,
+    )
+    await commitRef.current?.()
+    const ackPayload = mutateAsync.mock.calls.at(-1)?.[0]?.payload
+    expect(ackPayload.operatorTermsKind).toBe('ACKNOWLEDGMENT')
+    // Trimmed, blanks dropped.
+    expect(ackPayload.acknowledgmentItems).toEqual([
+      'Everyone in my group can swim.',
+      'Nobody is pregnant.',
+    ])
+    unmount()
+
+    render(<StepRules trip={trip()} />)
+    await commitRef.current?.()
+    const nonePayload = mutateAsync.mock.calls.at(-1)?.[0]?.payload
+    expect(nonePayload.operatorTermsKind).toBeNull()
+    expect('acknowledgmentItems' in nonePayload).toBe(false)
+  })
+
+  it('a live tour says a change here goes to review first', () => {
+    // ACKNOWLEDGMENT fixture: the consequence line is kind-independent, and
+    // the DOCUMENT flavor would mount the TipTap editor (Tooltip toolbar),
+    // which happy-dom cannot host without a provider tree.
+    render(
+      <StepRules
+        trip={trip({
+          status: 'LIVE',
+          operatorTermsKind: 'ACKNOWLEDGMENT',
+          acknowledgmentItems: { en: ['a', 'b'] },
+        })}
+      />,
+    )
+    expect(
+      screen.getByText(/goes to\s+Island Tours for review/),
+    ).toBeInTheDocument()
+  })
+})
 
 describe('StepRules — Instant confirmation (client review comment 22)', () => {
   // The toggle let an operator untick a promise every consumer surface makes

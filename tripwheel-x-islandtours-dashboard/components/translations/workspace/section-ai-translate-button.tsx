@@ -19,6 +19,10 @@ export interface SectionAiField {
 /** Backend cap is 30k chars / 100 keys per request - stay under both. */
 const MAX_CHARS_PER_REQUEST = 25_000;
 const MAX_KEYS_PER_REQUEST = 100;
+/** A SINGLE field longer than the backend's hard 30k cap cannot be batched
+ *  around (it is one form field - there is nothing to split). The conditions
+ *  document is the first field that can legally reach 50k. */
+const MAX_SINGLE_FIELD_CHARS = 30_000;
 
 /** Split fields into request-sized batches (a single batch in practice). */
 function toBatches(fields: SectionAiField[]): SectionAiField[][] {
@@ -75,6 +79,17 @@ export function SectionAiTranslateButton({
 
     async function run() {
         if (runningRef.current) return;
+        // An unsplittable oversized field would ride alone in one batch and
+        // be REJECTED by the backend with a "split the request" message the
+        // user cannot act on - refuse up front with an actionable one.
+        if (
+            translatable.some(f => f.source.length > MAX_SINGLE_FIELD_CHARS)
+        ) {
+            toast.error(
+                'One field is longer than the 30,000-character translation limit - translate it manually.'
+            );
+            return;
+        }
         runningRef.current = true;
         setBusy(true);
         const batches = toBatches(translatable);

@@ -688,6 +688,24 @@ export const useDeletePickupLocationTranslation = () =>
   );
 
 // Mutations - Translations
+export const useUpsertOperatorTermsTranslation = () =>
+  useTripMutation(
+    ({
+      tripId,
+      locale,
+      payload,
+    }: {
+      tripId: string;
+      locale: string;
+      payload: { acknowledgmentItems?: string[]; termsDocument?: string };
+    }) => tripsApi.upsertOperatorTermsTranslation(tripId, locale, payload),
+    ({ tripId }) => [
+      tripKeys.detail(tripId),
+      // A gated operator's write stashes into the pending set (Pastel #80).
+      tripKeys.pendingChange(tripId),
+    ],
+  );
+
 export const useUpsertTripTranslation = () =>
   useTripMutation(
     ({ tripId, locale, payload }: { tripId: string; locale: string; payload: UpsertTripTranslationPayload }) =>

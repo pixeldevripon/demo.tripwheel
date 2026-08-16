@@ -88,6 +88,16 @@ export interface TripListItem {
   cancellationHours: number;
   checkInMinutesBefore: number | null;
   instantConfirmation: boolean;
+  /** Operator-conditions gate (Pastel #80): null = ungated. On a LIVE tour
+   *  the gated owner's read overlays any STAGED change, so the wizard edits
+   *  what the operator proposed, not what travellers see. */
+  operatorTermsKind: 'DOCUMENT' | 'ACKNOWLEDGMENT' | null;
+  /** {locale: string[]} confirm-list facts; the wizard edits the EN entry,
+   *  the Translation Console the rest. */
+  acknowledgmentItems: Record<string, string[]> | null;
+  /** {locale: sanitized TipTap HTML} conditions document - lives on the
+   *  OPERATOR (one per operator); the wizard edits EN, the console the rest. */
+  operatorTermsDocument: Record<string, string> | null;
 
   // OCTO product attributes (master E.3 §1.4)
   timeZone: string;
@@ -758,6 +768,14 @@ export interface UpdateTripPayload {
   onArrivalPayment?: OnArrivalPayment;
   // instantConfirmation is not writable (Pastel #22) - the backend rejects it.
   bookingType?: TourBookingType | null;
+  // Operator-conditions gate (Pastel #80): kind + EN facts + EN document
+  // travel together and ONLY the Booking rules step sends them. On a LIVE
+  // tour the backend HOLDS the change for review instead of applying it.
+  operatorTermsKind?: 'DOCUMENT' | 'ACKNOWLEDGMENT' | null;
+  acknowledgmentItems?: string[];
+  /** TipTap HTML from the rich-text editor; sanitized server-side with the
+   *  PAGES pipeline before storage. */
+  operatorTermsDocument?: string;
   // OCTO product attributes (master E.3 §1.4)
   timeZone?: string;
   availabilityType?: OctoAvailabilityType;
@@ -1073,11 +1091,26 @@ export type PendingChangeArea =
   | 'title'
   | 'content'
   | 'photos'
+  | 'conditions'
   | 'highlights'
   | 'inclusions'
   | 'exclusions'
   | 'features'
   | 'locations';
+
+/** Operator-conditions gate flavors (Pastel #80 / MCK-20). */
+export type OperatorTermsKind = 'DOCUMENT' | 'ACKNOWLEDGMENT';
+
+/** The staged operator-conditions unit - the WHOLE desired state. */
+export interface StagedConditions {
+  kind: OperatorTermsKind | null;
+  acknowledgmentItems: Record<string, string[]> | null;
+  /** {locale: sanitized HTML} - lives on the OPERATOR row when applied. */
+  document: Record<string, string> | null;
+  /** Bookkeeping, never rendered: the operator's document as it stood when
+   *  this unit was staged - the backend CAS-checks the approval against it. */
+  documentBase?: Record<string, string> | null;
+}
 
 /** One staged list item - the list GET's shape (flat base columns plus a
  *  translations array carrying EVERY locale). */
@@ -1116,8 +1149,11 @@ export interface TripPendingChangePayload {
   images?: StagedTripImage[];
   /** Staged copies of the itemized content lists - whole state per kind. */
   lists?: Partial<Record<StagedListKind, StagedTripListItem[]>>;
+  /** The staged operator-conditions gate change (Pastel #80). */
+  conditions?: StagedConditions;
   /** Bookkeeping: per-unit "last staged" ISO stamps, keyed
-   *  'title' | 'photos' | `tr:{locale}:{field}` | `list:{kind}`. */
+   *  'title' | 'photos' | 'conditions' | `tr:{locale}:{field}` |
+   *  `list:{kind}`. */
   meta?: { fieldTimes?: Record<string, string> };
 }
 
@@ -1135,6 +1171,7 @@ export interface TripPendingChange {
     translations?: Record<string, Record<string, unknown>>;
     images?: StagedTripImage[];
     lists?: Partial<Record<StagedListKind, StagedTripListItem[]>>;
+    conditions?: StagedConditions;
   };
   submittedAt: string;
   submittedById: string | null;

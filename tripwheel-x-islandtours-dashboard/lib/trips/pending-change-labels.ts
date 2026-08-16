@@ -6,6 +6,7 @@ export const PENDING_AREA_LABELS: Record<PendingChangeArea, string> = {
     title: 'Title',
     content: 'Description',
     photos: 'Photos',
+    conditions: 'Booking conditions',
     highlights: 'Highlights',
     inclusions: "What's included",
     exclusions: 'Not included',
