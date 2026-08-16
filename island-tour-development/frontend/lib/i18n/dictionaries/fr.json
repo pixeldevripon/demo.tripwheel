@@ -774,6 +774,7 @@
         "processingViewBooking": "Voir ma réservation",
         "processingFailed": "Nous n'avons pas pu confirmer votre paiement. Veuillez contacter le support avec votre référence {ref}.",
         "methodUnavailable": "Non disponible pour {currency}",
+        "methodTemporarilyUnavailable": "Temporairement indisponible",
         "redirectNote": "Vous serez redirigé en toute sécurité pour finaliser votre paiement, puis ramené ici.",
         "operatorTermsAgree": "J'ai lu et j'accepte les {conditions} de {operator}.",
         "operatorTermsConditionsWord": "conditions de l'opérateur",

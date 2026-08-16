@@ -60,8 +60,10 @@ function renderPanel(
                 country: 'NL',
             }}
             payToday={39}
-            currency='EUR'
-            eligibleMethods={['card', 'ideal', 'paypal']}
+            currency={over.currency ?? 'EUR'}
+            eligibleMethods={
+                over.eligibleMethods ?? ['card', 'ideal', 'paypal']
+            }
             freeCancelLabel='Free cancellation up to 48h'
             processingHref='/curacao/payment/processing?ref=IT-2026-ABC'
             {...over}
@@ -127,6 +129,66 @@ describe('CheckoutPayment - method selection', () => {
         expect(screen.getByLabelText(/name on card/i)).toHaveValue(
             'E2E Traveller'
         );
+    });
+});
+
+/**
+ * Pastel #83 · iDEAL said "Not available for EUR" on an EUR checkout.
+ *
+ * iDEAL settles exclusively in euro, so the one currency that CAN pay by iDEAL
+ * was named as the reason it could not. The cause: every method the intent
+ * didn't offer got the same currency-blaming hint, even when the real reason
+ * was the Stripe account's method configuration. The currency is now blamed
+ * only when the currency rule IS the reason, and iDEAL is additionally
+ * hard-gated to EUR whatever the intent claims.
+ */
+describe('CheckoutPayment - method availability by currency (Pastel 83)', () => {
+    const notAvailableFor = (c: 'EUR' | 'USD') =>
+        dict.methodUnavailable.replace('{currency}', c);
+
+    it('EUR checkout: iDEAL is selectable when the intent offers it', () => {
+        renderPanel({ currency: 'EUR' });
+
+        expect(methodRow('iDEAL')).toBeEnabled();
+        fireEvent.click(methodRow('iDEAL'));
+        expect(methodRow('iDEAL')).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('USD checkout: iDEAL is disabled and the currency is the stated reason', () => {
+        renderPanel({ currency: 'USD', eligibleMethods: ['card', 'paypal'] });
+
+        expect(methodRow('iDEAL')).toBeDisabled();
+        expect(screen.getByText(notAvailableFor('USD'))).toBeInTheDocument();
+    });
+
+    it('EUR checkout with iDEAL not offered: never blames the euro', () => {
+        // The reported bug verbatim: intent offers card only, checkout is EUR.
+        renderPanel({ currency: 'EUR', eligibleMethods: ['card'] });
+
+        expect(methodRow('iDEAL')).toBeDisabled();
+        expect(methodRow(dict.paypal)).toBeDisabled();
+        expect(screen.queryByText(notAvailableFor('EUR'))).toBeNull();
+        expect(
+            screen.getAllByText(dict.methodTemporarilyUnavailable).length
+        ).toBe(2);
+    });
+
+    it('USD checkout: iDEAL stays disabled even if the intent claims to offer it', () => {
+        renderPanel({
+            currency: 'USD',
+            eligibleMethods: ['card', 'ideal', 'paypal'],
+        });
+
+        expect(methodRow('iDEAL')).toBeDisabled();
+        expect(screen.getByText(notAvailableFor('USD'))).toBeInTheDocument();
+    });
+
+    it('empty method list falls back to card-only with the honest hint', () => {
+        renderPanel({ currency: 'EUR', eligibleMethods: [] });
+
+        expect(methodRow(dict.card)).toBeEnabled();
+        expect(methodRow('iDEAL')).toBeDisabled();
+        expect(screen.queryByText(notAvailableFor('EUR'))).toBeNull();
     });
 });
 

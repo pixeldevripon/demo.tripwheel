@@ -341,21 +341,29 @@ export function SelectField({
 export function Radio({ selected }: { selected: boolean }) {
     return (
         <span
-            className={`grid size-[18px] shrink-0 place-items-center rounded-full border-[1.5px] bg-it-white transition-colors duration-300 ${
+            className={`relative size-[18px] shrink-0 rounded-full border-[1.5px] bg-it-white transition-colors duration-300 ${
                 selected ? 'border-it-primary' : 'border-it-border'
             }`}>
             <AnimatePresence>
                 {selected && (
+                    // Centered by transform, not grid: a grid item snaps to
+                    // whole CSS pixels while the 1.5px ring border paints
+                    // fractionally, so at non-100% browser zoom the dot and
+                    // the ring land on different pixel grids and the dot
+                    // reads off-centre. The x/y halves live INSIDE the motion
+                    // values - framer-motion owns `transform`, so a
+                    // -translate-x-1/2 class would be overwritten on the
+                    // first animation frame.
                     <motion.span
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        exit={{ scale: 0 }}
+                        initial={{ scale: 0, x: '-50%', y: '-50%' }}
+                        animate={{ scale: 1, x: '-50%', y: '-50%' }}
+                        exit={{ scale: 0, x: '-50%', y: '-50%' }}
                         transition={{
                             type: 'spring',
                             stiffness: 500,
                             damping: 30,
                         }}
-                        className='size-[9px] rounded-full bg-it-primary'
+                        className='absolute left-1/2 top-1/2 size-[9px] rounded-full bg-it-primary'
                     />
                 )}
             </AnimatePresence>

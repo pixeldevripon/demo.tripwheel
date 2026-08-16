@@ -774,6 +774,7 @@
         "processingViewBooking": "查看我的预订",
         "processingFailed": "我们无法确认您的付款。请凭参考编号 {ref} 联系客服。",
         "methodUnavailable": "不支持 {currency}",
+        "methodTemporarilyUnavailable": "暂时无法使用",
         "redirectNote": "我们会安全地将您跳转至支付页面完成付款，随后带您返回。",
         "operatorTermsAgree": "我已阅读并同意{operator}的{conditions}。",
         "operatorTermsConditionsWord": "运营方条款",

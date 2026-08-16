@@ -774,6 +774,7 @@
         "processingViewBooking": "Meine Buchung ansehen",
         "processingFailed": "Wir konnten deine Zahlung nicht bestätigen. Bitte kontaktiere den Support mit deiner Referenz {ref}.",
         "methodUnavailable": "Nicht verfügbar für {currency}",
+        "methodTemporarilyUnavailable": "Vorübergehend nicht verfügbar",
         "redirectNote": "Du wirst sicher weitergeleitet, um deine Zahlung abzuschließen, und danach direkt zurückgebracht.",
         "operatorTermsAgree": "Ich habe die {conditions} von {operator} gelesen und stimme zu.",
         "operatorTermsConditionsWord": "Veranstalterbedingungen",

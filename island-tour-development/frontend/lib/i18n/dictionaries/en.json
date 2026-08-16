@@ -776,6 +776,7 @@
         "processingViewBooking": "View my booking",
         "processingFailed": "We couldn't confirm your payment. Please contact support with your reference {ref}.",
         "methodUnavailable": "Not available for {currency}",
+        "methodTemporarilyUnavailable": "Temporarily unavailable",
         "redirectNote": "You'll be securely redirected to complete your payment, then brought right back.",
         "operatorTermsAgree": "I have read and agree to {operator}'s {conditions}.",
         "operatorTermsConditionsWord": "operator conditions",

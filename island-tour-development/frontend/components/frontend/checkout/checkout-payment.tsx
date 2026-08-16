@@ -141,12 +141,22 @@ function PaymentInner({
     const elements = useElements();
     const methodsLabelId = useId();
 
+    /**
+     * Hard scheme fact, independent of what the Stripe account has enabled:
+     * iDEAL settles exclusively in euro. Card and PayPal take both platform
+     * currencies. This is a belt on eligibility AND what picks a truthful
+     * disabled-row hint (Pastel 83).
+     */
+    const currencyAllows = (m: PayMethod) =>
+        m !== 'ideal' || currency === 'EUR';
+
     // Card is always offered when eligible; if the intent didn't report methods
     // (older/edge response) fall back to card-only.
     const isEligible = (m: PayMethod) =>
-        eligibleMethods.length === 0
+        currencyAllows(m) &&
+        (eligibleMethods.length === 0
             ? m === 'card'
-            : eligibleMethods.includes(m);
+            : eligibleMethods.includes(m));
 
     /**
      * No method is chosen until the traveller chooses one (Pastel 84).
@@ -241,6 +251,15 @@ function PaymentInner({
 
     const money = (n: number) => formatCheckoutMoney(n, currency, locale);
     const unavailable = dict.methodUnavailable.replace('{currency}', currency);
+    /**
+     * Blame the currency ONLY when the currency rule is the reason (Pastel 83:
+     * an EUR checkout read "iDEAL - Not available for EUR", inverting a scheme
+     * fact, because ANY method the intent didn't offer got the currency
+     * blamed). A method the currency allows but the account doesn't offer
+     * reads the honest copy instead.
+     */
+    const hintFor = (m: PayMethod) =>
+        currencyAllows(m) ? dict.methodTemporarilyUnavailable : unavailable;
 
     async function handleReserve() {
         if (processing || !stripe) return;
@@ -363,7 +382,7 @@ function PaymentInner({
                 <MethodRow
                     selected={method === 'card'}
                     eligible={isEligible('card')}
-                    hint={unavailable}
+                    hint={hintFor('card')}
                     onSelect={() => selectMethod('card')}
                     label={dict.card}
                     // The only row holding Stripe Elements: they are created on
@@ -456,11 +475,12 @@ function PaymentInner({
                     </div>
                 </MethodRow>
 
-                {/* iDEAL (EUR-only; auto-disabled for USD via eligibility). */}
+                {/* iDEAL (EUR-only by scheme rule; the currency is only ever
+                    blamed when it IS the reason - Pastel 83). */}
                 <MethodRow
                     selected={method === 'ideal'}
                     eligible={isEligible('ideal')}
-                    hint={unavailable}
+                    hint={hintFor('ideal')}
                     onSelect={() => selectMethod('ideal')}
                     label='iDEAL'
                     logos={
@@ -478,7 +498,7 @@ function PaymentInner({
                 <MethodRow
                     selected={method === 'paypal'}
                     eligible={isEligible('paypal')}
-                    hint={unavailable}
+                    hint={hintFor('paypal')}
                     onSelect={() => selectMethod('paypal')}
                     label={dict.paypal}
                     logos={
