@@ -158,8 +158,26 @@ function ExperiencesCurationCard() {
         create.mutate(
             { ...payload, displayOrder: ordered.length },
             {
-                onSuccess: () => {
-                    toast.success('Added to the homepage.');
+                onSuccess: created => {
+                    toast.success('Added to the homepage.', {
+                        duration: 10_000,
+                        action: {
+                            label: 'Undo',
+                            onClick: () =>
+                                remove.mutate(created.id, {
+                                    onSuccess: () =>
+                                        toast.success(
+                                            'Card removed from the homepage.'
+                                        ),
+                                    onError: err =>
+                                        toast.error(
+                                            err instanceof Error
+                                                ? err.message
+                                                : 'Undo failed - the card is still on the homepage.'
+                                        ),
+                                }),
+                        },
+                    });
                     setAddOpen(false);
                 },
                 onError: err =>

@@ -1,7 +1,10 @@
 'use client';
 
 import { toast } from 'sonner';
-import { useDeleteDestination } from '@/hooks/destinations/use-destinations';
+import {
+  useDeleteDestination,
+  useUpdateDestination,
+} from '@/hooks/destinations/use-destinations';
 import type { DestinationLocalized } from '@/types/destination';
 import { DeactivateDialog } from '@/components/common/deactivate-dialog';
 
@@ -19,11 +22,31 @@ export function DestinationDeleteDialog({
   onSuccess,
 }: DestinationDeleteDialogProps) {
   const { mutate: deleteDestination, isPending } = useDeleteDestination();
+  const { mutate: updateDestination } = useUpdateDestination();
 
   function handleConfirm() {
     deleteDestination(destination.id, {
       onSuccess: () => {
-        toast.success(`"${destination.name}" deactivated successfully.`);
+        toast.success(`"${destination.name}" deactivated successfully.`, {
+          duration: 10_000,
+          action: {
+            label: 'Undo',
+            onClick: () =>
+              updateDestination(
+                { id: destination.id, payload: { isActive: true } },
+                {
+                  onSuccess: () =>
+                    toast.success(`"${destination.name}" reactivated.`),
+                  onError: (err) =>
+                    toast.error(
+                      err instanceof Error
+                        ? err.message
+                        : 'Undo failed - the destination is still inactive.',
+                    ),
+                },
+              ),
+          },
+        });
         onOpenChange(false);
         onSuccess?.();
       },

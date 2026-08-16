@@ -635,7 +635,33 @@ export function StepReview({ trip }: StepReviewProps) {
                                                 pauseTrip(trip.id, {
                                                     onSuccess: () =>
                                                         toast.success(
-                                                            'Trip paused.'
+                                                            'Trip paused.',
+                                                            {
+                                                                duration: 10_000,
+                                                                action: {
+                                                                    label: 'Undo',
+                                                                    onClick:
+                                                                        () =>
+                                                                            unpauseTrip(
+                                                                                trip.id,
+                                                                                {
+                                                                                    onSuccess:
+                                                                                        () =>
+                                                                                            toast.success(
+                                                                                                'Trip resumed.'
+                                                                                            ),
+                                                                                    onError:
+                                                                                        err =>
+                                                                                            toast.error(
+                                                                                                err instanceof
+                                                                                                    Error
+                                                                                                    ? err.message
+                                                                                                    : 'Undo failed - the tour is still paused.'
+                                                                                            ),
+                                                                                }
+                                                                            ),
+                                                                },
+                                                            }
                                                         ),
                                                     onError: err =>
                                                         toast.error(
@@ -670,7 +696,26 @@ export function StepReview({ trip }: StepReviewProps) {
                                 onClick={() =>
                                     unpauseTrip(trip.id, {
                                         onSuccess: () =>
-                                            toast.success('Trip resumed.'),
+                                            toast.success('Trip resumed.', {
+                                                duration: 10_000,
+                                                action: {
+                                                    label: 'Undo',
+                                                    onClick: () =>
+                                                        pauseTrip(trip.id, {
+                                                            onSuccess: () =>
+                                                                toast.success(
+                                                                    'Trip paused again.'
+                                                                ),
+                                                            onError: err =>
+                                                                toast.error(
+                                                                    err instanceof
+                                                                        Error
+                                                                        ? err.message
+                                                                        : 'Undo failed - the tour is still live.'
+                                                                ),
+                                                        }),
+                                                },
+                                            }),
                                         onError: err =>
                                             toast.error(
                                                 err instanceof Error

@@ -2,13 +2,13 @@
 
 import {
     Alert02Icon,
+    Cancel01Icon,
     CancelCircleIcon,
     CheckmarkCircle02Icon,
     InformationCircleIcon,
     Loading03Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-
 import { useTheme } from 'next-themes';
 import { Toaster as Sonner, type ToasterProps } from 'sonner';
 
@@ -20,10 +20,11 @@ import { Toaster as Sonner, type ToasterProps } from 'sonner';
  * still unmistakable at a glance, which was the original point; the default
  * hairline at 16px is what looked like a scratch, not the size.
  *
- * These carry the ONLY semantic colour on a toast (`.cn-toast [data-icon]` in
- * globals.css). `richColors` is deliberately NOT enabled: it tints the entire
- * toast, turning any multi-line message into a block of solid colour, and it
- * draws its own coloured left border on top of the surface.
+ * Severity colour is RICH (2026-08-16, user call): the whole toast carries the
+ * type's subtle wash, border and text ramp, and the glyph renders bare in the
+ * solid accent colour - see `.cn-toast` in globals.css. Sonner's own `richColors`
+ * prop stays OFF on purpose: it paints sonner's baked palette, which ignores
+ * the app's design tokens and fights the `.cn-toast` rules for specificity.
  */
 const ICON_CLASS = 'size-4';
 
@@ -33,21 +34,21 @@ const Toaster = ({ ...props }: ToasterProps) => {
     return (
         <Sonner
             theme={theme as ToasterProps['theme']}
-            // The status ribbon anchors here (2026-07-30, user call; see
-            // `.cn-toast` in globals.css - alignment CSS follows this prop via
-            // data-x-position, so any of the six values Just Works). Prefer a
-            // TOP position: every long dashboard form has a sticky Save bar at
-            // the bottom and a toast must never sit on it. Width hugs content
-            // (350px floor) inside a viewport-wide lane.
-            position='top-right'
+            // Alignment CSS in `.cn-toast` follows this prop via
+            // data-x-position, so any of the six values Just Works. Width hugs
+            // content (350px floor) inside a viewport-wide lane.
+            position='bottom-right'
             offset={12}
             gap={8}
+            // Every toast is explicitly dismissable. The disc is restyled in
+            // `.cn-toast [data-close-button]` - pinned right-centre instead of
+            // sonner's floating top-left corner.
             closeButton
             // No `text-sm!` here: it forced 14px onto the whole toast and beat
             // the per-element sizes in `.cn-toast [data-title] / [data-description]`,
             // so the type scale could only ever be set from one of the two
             // places. globals.css owns it.
-            className='toaster group [--normal-bg:var(--popover)] [--normal-text:var(--popover-foreground)]'
+            className='toaster group'
             icons={{
                 success: (
                     <HugeiconsIcon
@@ -84,6 +85,13 @@ const Toaster = ({ ...props }: ToasterProps) => {
                         className={`${ICON_CLASS} animate-spin`}
                     />
                 ),
+                close: (
+                    <HugeiconsIcon
+                        icon={Cancel01Icon}
+                        strokeWidth={2}
+                        className='size-3.5'
+                    />
+                ),
             }}
             toastOptions={{ classNames: { toast: 'cn-toast' } }}
             {...props}
@@ -92,4 +100,3 @@ const Toaster = ({ ...props }: ToasterProps) => {
 };
 
 export { Toaster };
-

@@ -155,14 +155,42 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
   function handlePause() {
     setPauseOpen(false);
     pauseTrip(trip.id, {
-      onSuccess: () => toast.success(`"${trip.name}" paused.`),
+      onSuccess: () =>
+        toast.success(`"${trip.name}" paused.`, {
+          duration: 10_000,
+          action: {
+            label: 'Undo',
+            onClick: () =>
+              unpauseTrip(trip.id, {
+                onSuccess: () => toast.success(`"${trip.name}" resumed.`),
+                onError: (err) =>
+                  toast.error(
+                    err instanceof Error ? err.message : 'Undo failed - the tour is still paused.',
+                  ),
+              }),
+          },
+        }),
       onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to pause.'),
     });
   }
 
   function handleUnpause() {
     unpauseTrip(trip.id, {
-      onSuccess: () => toast.success(`"${trip.name}" resumed.`),
+      onSuccess: () =>
+        toast.success(`"${trip.name}" resumed.`, {
+          duration: 10_000,
+          action: {
+            label: 'Undo',
+            onClick: () =>
+              pauseTrip(trip.id, {
+                onSuccess: () => toast.success(`"${trip.name}" paused again.`),
+                onError: (err) =>
+                  toast.error(
+                    err instanceof Error ? err.message : 'Undo failed - the tour is still live.',
+                  ),
+              }),
+          },
+        }),
       onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to unpause.'),
     });
   }

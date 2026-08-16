@@ -50,7 +50,24 @@ export function HubRowActions({ hub }: HubRowActionsProps) {
       { id: hub.id, payload: { isActive: !hub.isActive } },
       {
         onSuccess: () => {
-          toast.success(`Hub ${!hub.isActive ? 'activated' : 'deactivated'} successfully.`);
+          toast.success(`Hub ${!hub.isActive ? 'activated' : 'deactivated'} successfully.`, {
+            duration: 10_000,
+            action: {
+              label: 'Undo',
+              onClick: () =>
+                updateHub(
+                  { id: hub.id, payload: { isActive: hub.isActive } },
+                  {
+                    onSuccess: () =>
+                      toast.success(
+                        `Hub restored to ${hub.isActive ? 'active' : 'inactive'}.`
+                      ),
+                    onError: (err) =>
+                      toast.error(err instanceof Error ? err.message : 'Undo failed.'),
+                  }
+                ),
+            },
+          });
         },
         onError: (err) => {
           toast.error(err instanceof Error ? err.message : 'Failed to update hub.');

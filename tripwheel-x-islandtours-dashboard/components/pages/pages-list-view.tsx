@@ -66,6 +66,26 @@ export function PagesListView() {
             next === 'PUBLISHED'
               ? `"${page.title ?? page.slug}" is live at /${page.slug}`
               : `"${page.title ?? page.slug}" unpublished - the URL now 404s`,
+            {
+              duration: 10_000,
+              action: {
+                label: 'Undo',
+                onClick: () =>
+                  setStatus(
+                    { id: page.id, status: page.status },
+                    {
+                      onSuccess: () =>
+                        toast.success(
+                          `"${page.title ?? page.slug}" is ${
+                            page.status === 'PUBLISHED' ? 'live again' : 'back to draft'
+                          }.`,
+                        ),
+                      onError: (err) =>
+                        toast.error(`Undo failed - ${err.message}`),
+                    },
+                  ),
+              },
+            },
           ),
         onError: (err) => toast.error(err.message),
       },

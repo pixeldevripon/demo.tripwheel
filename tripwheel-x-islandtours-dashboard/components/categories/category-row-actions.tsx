@@ -51,7 +51,25 @@ export function CategoryRowActions({ category }: CategoryRowActionsProps) {
       {
         onSuccess: () => {
           toast.success(
-            `Category ${!category.isActive ? 'activated' : 'deactivated'} successfully.`
+            `Category ${!category.isActive ? 'activated' : 'deactivated'} successfully.`,
+            {
+              duration: 10_000,
+              action: {
+                label: 'Undo',
+                onClick: () =>
+                  updateCategory(
+                    { id: category.id, payload: { isActive: category.isActive } },
+                    {
+                      onSuccess: () =>
+                        toast.success(
+                          `Category restored to ${category.isActive ? 'active' : 'inactive'}.`
+                        ),
+                      onError: (err) =>
+                        toast.error(err instanceof Error ? err.message : 'Undo failed.'),
+                    }
+                  ),
+              },
+            }
           );
         },
         onError: (err) => {

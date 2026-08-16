@@ -51,7 +51,25 @@ export function DestinationRowActions({ destination }: DestinationRowActionsProp
       {
         onSuccess: () => {
           toast.success(
-            `Destination ${!destination.isActive ? 'activated' : 'deactivated'} successfully.`
+            `Destination ${!destination.isActive ? 'activated' : 'deactivated'} successfully.`,
+            {
+              duration: 10_000,
+              action: {
+                label: 'Undo',
+                onClick: () =>
+                  updateDestination(
+                    { id: destination.id, payload: { isActive: destination.isActive } },
+                    {
+                      onSuccess: () =>
+                        toast.success(
+                          `Destination restored to ${destination.isActive ? 'active' : 'inactive'}.`
+                        ),
+                      onError: (err) =>
+                        toast.error(err instanceof Error ? err.message : 'Undo failed.'),
+                    }
+                  ),
+              },
+            }
           );
         },
         onError: (err) => {

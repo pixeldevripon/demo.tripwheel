@@ -69,7 +69,35 @@ export function PageEditView({ pageId }: { pageId: string }) {
                                         toast.success(
                                             published
                                                 ? 'Unpublished - the URL now 404s'
-                                                : `Published at /${page.slug}`
+                                                : `Published at /${page.slug}`,
+                                            {
+                                                duration: 10_000,
+                                                action: {
+                                                    label: 'Undo',
+                                                    onClick: () =>
+                                                        setStatus(
+                                                            {
+                                                                id: page.id,
+                                                                status: published
+                                                                    ? 'PUBLISHED'
+                                                                    : 'DRAFT',
+                                                            },
+                                                            {
+                                                                onSuccess:
+                                                                    () =>
+                                                                        toast.success(
+                                                                            published
+                                                                                ? 'Published again.'
+                                                                                : 'Back to draft.'
+                                                                        ),
+                                                                onError: err =>
+                                                                    toast.error(
+                                                                        `Undo failed - ${err.message}`
+                                                                    ),
+                                                            }
+                                                        ),
+                                                },
+                                            }
                                         ),
                                     onError: err => toast.error(err.message),
                                 }

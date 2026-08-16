@@ -37,7 +37,24 @@ export function OperatorRowActions({ operator }: OperatorRowActionsProps) {
       { id: operator.id, payload: { isActive: !operator.isActive } },
       {
         onSuccess: () => {
-          toast.success(`Operator ${!operator.isActive ? 'activated' : 'deactivated'} successfully.`);
+          toast.success(`Operator ${!operator.isActive ? 'activated' : 'deactivated'} successfully.`, {
+            duration: 10_000,
+            action: {
+              label: 'Undo',
+              onClick: () =>
+                updateOperator(
+                  { id: operator.id, payload: { isActive: operator.isActive } },
+                  {
+                    onSuccess: () =>
+                      toast.success(
+                        `Operator restored to ${operator.isActive ? 'active' : 'inactive'}.`
+                      ),
+                    onError: (err) =>
+                      toast.error(err instanceof Error ? err.message : 'Undo failed.'),
+                  }
+                ),
+            },
+          });
         },
         onError: (err) => {
           toast.error(err instanceof Error ? err.message : 'Failed to update operator.');

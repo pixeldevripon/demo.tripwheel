@@ -39,10 +39,34 @@ export function useMarkSettlementPaid() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: (id: string) => settlementsDashboardApi.markPaid(id),
-        onSuccess: () => {
+        onSuccess: (_data, id) => {
             queryClient.invalidateQueries({ queryKey: settlementKeys.all });
             queryClient.invalidateQueries({ queryKey: bookingKeys.all });
-            toast.success('Payout marked as paid.');
+            toast.success('Payout marked as paid.', {
+                duration: 10_000,
+                action: {
+                    label: 'Undo',
+                    onClick: () =>
+                        settlementsDashboardApi
+                            .markUnpaid(id)
+                            .then(() => {
+                                queryClient.invalidateQueries({
+                                    queryKey: settlementKeys.all,
+                                });
+                                queryClient.invalidateQueries({
+                                    queryKey: bookingKeys.all,
+                                });
+                                toast.success('Payout is due again.');
+                            })
+                            .catch((err: unknown) =>
+                                toast.error(
+                                    err instanceof Error
+                                        ? err.message
+                                        : 'Undo failed - the payout is still marked paid.',
+                                ),
+                            ),
+                },
+            });
         },
         onError: err =>
             toast.error(
@@ -58,10 +82,34 @@ export function useMarkSettlementUnpaid() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: (id: string) => settlementsDashboardApi.markUnpaid(id),
-        onSuccess: () => {
+        onSuccess: (_data, id) => {
             queryClient.invalidateQueries({ queryKey: settlementKeys.all });
             queryClient.invalidateQueries({ queryKey: bookingKeys.all });
-            toast.success('Payout reverted to due.');
+            toast.success('Payout reverted to due.', {
+                duration: 10_000,
+                action: {
+                    label: 'Undo',
+                    onClick: () =>
+                        settlementsDashboardApi
+                            .markPaid(id)
+                            .then(() => {
+                                queryClient.invalidateQueries({
+                                    queryKey: settlementKeys.all,
+                                });
+                                queryClient.invalidateQueries({
+                                    queryKey: bookingKeys.all,
+                                });
+                                toast.success('Payout marked as paid again.');
+                            })
+                            .catch((err: unknown) =>
+                                toast.error(
+                                    err instanceof Error
+                                        ? err.message
+                                        : 'Undo failed - the payout is still due.',
+                                ),
+                            ),
+                },
+            });
         },
         onError: err =>
             toast.error(

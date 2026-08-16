@@ -26,7 +26,11 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useActiveDestinations } from '@/hooks/destinations/use-destinations';
-import { useCollectionsByDestination, useDeleteCollection } from '@/hooks/collections/use-collections';
+import {
+  useCollectionsByDestination,
+  useDeleteCollection,
+  useUpdateCollectionStatus,
+} from '@/hooks/collections/use-collections';
 import { useRole } from '@/contexts/role-context';
 import type { Collection } from '@/types/collection';
 import { CollectionsTable } from './collections-table';
@@ -39,6 +43,7 @@ export function CollectionsListView() {
 
   const { data: collections, isLoading } = useCollectionsByDestination(destSlug);
   const { mutate: remove, isPending: removing } = useDeleteCollection();
+  const { mutate: setStatus } = useUpdateCollectionStatus();
   const [target, setTarget] = useState<Collection | null>(null);
 
   return (
@@ -97,9 +102,29 @@ export function CollectionsListView() {
               disabled={removing}
               onClick={() => {
                 if (!target) return;
-                remove(target.id, {
+                const { id, status: prevStatus } = target;
+                remove(id, {
                   onSuccess: () => {
-                    toast.success('Collection deactivated.');
+                    toast.success('Collection deactivated.', {
+                      duration: 10_000,
+                      action: {
+                        label: 'Undo',
+                        onClick: () =>
+                          setStatus(
+                            { id, status: prevStatus },
+                            {
+                              onSuccess: () =>
+                                toast.success('Collection restored.'),
+                              onError: err =>
+                                toast.error(
+                                  err instanceof Error
+                                    ? err.message
+                                    : 'Undo failed - the collection is still inactive.',
+                                ),
+                            },
+                          ),
+                      },
+                    });
                     setTarget(null);
                   },
                   onError: err => toast.error(err instanceof Error ? err.message : 'Failed.'),

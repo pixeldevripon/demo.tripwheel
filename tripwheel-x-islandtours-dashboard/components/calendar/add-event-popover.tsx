@@ -22,7 +22,11 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DatePickerField } from '@/components/date-picker-field';
 import { useRole } from '@/contexts/role-context';
-import { useCreateException, useCreateSchedule } from '@/hooks/trips/use-trips';
+import {
+    useCreateException,
+    useCreateSchedule,
+    useRemoveException,
+} from '@/hooks/trips/use-trips';
 import type { OverviewTour } from '@/types/trip';
 import { keyToDate } from './calendar-utils';
 
@@ -137,6 +141,7 @@ export function AddEventForm({
 
     const createException = useCreateException();
     const createSchedule = useCreateSchedule();
+    const removeException = useRemoveException();
     const busy = createException.isPending || createSchedule.isPending;
 
     const weekday = mondayZeroWeekday(date);
@@ -172,9 +177,34 @@ export function AddEventForm({
                     },
                 },
                 {
-                    onSuccess: () => {
+                    onSuccess: (created) => {
                         toast.success(
                             `Extra departure added: ${tour.name} · ${format(keyToDate(date), 'd MMM')} · ${time}.`,
+                            {
+                                duration: 10_000,
+                                action: {
+                                    label: 'Undo',
+                                    onClick: () =>
+                                        removeException.mutate(
+                                            {
+                                                tripId: tour.id,
+                                                exceptionId: created.id,
+                                            },
+                                            {
+                                                onSuccess: () =>
+                                                    toast.success(
+                                                        'Extra departure removed.',
+                                                    ),
+                                                onError: (e) =>
+                                                    toast.error(
+                                                        e instanceof Error
+                                                            ? e.message
+                                                            : 'Undo failed - the extra departure is still on the calendar.',
+                                                    ),
+                                            },
+                                        ),
+                                },
+                            },
                         );
                         onDone();
                     },

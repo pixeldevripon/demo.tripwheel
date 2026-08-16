@@ -209,7 +209,33 @@ function SectionGroupCard({
             { groupId: group.sectionGroupId, payload: { isActive: next } },
             {
                 onSuccess: () =>
-                    toast.success(next ? 'Section shown.' : 'Section hidden.'),
+                    toast.success(next ? 'Section shown.' : 'Section hidden.', {
+                        duration: 10_000,
+                        action: {
+                            label: 'Undo',
+                            onClick: () =>
+                                updateGroup(
+                                    {
+                                        groupId: group.sectionGroupId,
+                                        payload: { isActive: !next },
+                                    },
+                                    {
+                                        onSuccess: () =>
+                                            toast.success(
+                                                next
+                                                    ? 'Section hidden again.'
+                                                    : 'Section shown again.'
+                                            ),
+                                        onError: err =>
+                                            toast.error(
+                                                err instanceof Error
+                                                    ? err.message
+                                                    : 'Undo failed.'
+                                            ),
+                                    }
+                                ),
+                        },
+                    }),
                 onError: err =>
                     toast.error(
                         err instanceof Error ? err.message : 'Failed to update.'
@@ -283,7 +309,8 @@ function SectionGroupCard({
                         <DisplayOrderField
                             current={group.displayOrder}
                             disabled={isUpdating}
-                            onSave={displayOrder =>
+                            onSave={displayOrder => {
+                                const prevOrder = group.displayOrder;
                                 updateGroup(
                                     {
                                         groupId: group.sectionGroupId,
@@ -291,7 +318,37 @@ function SectionGroupCard({
                                     },
                                     {
                                         onSuccess: () =>
-                                            toast.success('Order updated.'),
+                                            toast.success('Order updated.', {
+                                                duration: 10_000,
+                                                action: {
+                                                    label: 'Undo',
+                                                    onClick: () =>
+                                                        updateGroup(
+                                                            {
+                                                                groupId:
+                                                                    group.sectionGroupId,
+                                                                payload: {
+                                                                    displayOrder:
+                                                                        prevOrder,
+                                                                },
+                                                            },
+                                                            {
+                                                                onSuccess:
+                                                                    () =>
+                                                                        toast.success(
+                                                                            'Order restored.'
+                                                                        ),
+                                                                onError: err =>
+                                                                    toast.error(
+                                                                        err instanceof
+                                                                            Error
+                                                                            ? err.message
+                                                                            : 'Undo failed.'
+                                                                    ),
+                                                            }
+                                                        ),
+                                                },
+                                            }),
                                         onError: err =>
                                             toast.error(
                                                 err instanceof Error
@@ -299,8 +356,8 @@ function SectionGroupCard({
                                                     : 'Failed to update.'
                                             ),
                                     }
-                                )
-                            }
+                                );
+                            }}
                         />
                         <div className='flex items-center gap-2 pb-2'>
                             <Checkbox

@@ -210,7 +210,33 @@ function FaqGroupCard({ basePath, entityId, group }: FaqGroupCardProps) {
             { groupId: group.faqGroupId, payload: { isActive: next } },
             {
                 onSuccess: () =>
-                    toast.success(next ? 'FAQ activated.' : 'FAQ hidden.'),
+                    toast.success(next ? 'FAQ activated.' : 'FAQ hidden.', {
+                        duration: 10_000,
+                        action: {
+                            label: 'Undo',
+                            onClick: () =>
+                                updateGroup(
+                                    {
+                                        groupId: group.faqGroupId,
+                                        payload: { isActive: !next },
+                                    },
+                                    {
+                                        onSuccess: () =>
+                                            toast.success(
+                                                next
+                                                    ? 'FAQ hidden again.'
+                                                    : 'FAQ active again.'
+                                            ),
+                                        onError: err =>
+                                            toast.error(
+                                                err instanceof Error
+                                                    ? err.message
+                                                    : 'Undo failed.'
+                                            ),
+                                    }
+                                ),
+                        },
+                    }),
                 onError: err =>
                     toast.error(
                         err instanceof Error ? err.message : 'Failed to update.'
@@ -284,7 +310,8 @@ function FaqGroupCard({ basePath, entityId, group }: FaqGroupCardProps) {
                         <DisplayOrderField
                             current={group.displayOrder}
                             disabled={isUpdating}
-                            onSave={displayOrder =>
+                            onSave={displayOrder => {
+                                const prevOrder = group.displayOrder;
                                 updateGroup(
                                     {
                                         groupId: group.faqGroupId,
@@ -292,7 +319,37 @@ function FaqGroupCard({ basePath, entityId, group }: FaqGroupCardProps) {
                                     },
                                     {
                                         onSuccess: () =>
-                                            toast.success('Order updated.'),
+                                            toast.success('Order updated.', {
+                                                duration: 10_000,
+                                                action: {
+                                                    label: 'Undo',
+                                                    onClick: () =>
+                                                        updateGroup(
+                                                            {
+                                                                groupId:
+                                                                    group.faqGroupId,
+                                                                payload: {
+                                                                    displayOrder:
+                                                                        prevOrder,
+                                                                },
+                                                            },
+                                                            {
+                                                                onSuccess:
+                                                                    () =>
+                                                                        toast.success(
+                                                                            'Order restored.'
+                                                                        ),
+                                                                onError: err =>
+                                                                    toast.error(
+                                                                        err instanceof
+                                                                            Error
+                                                                            ? err.message
+                                                                            : 'Undo failed.'
+                                                                    ),
+                                                            }
+                                                        ),
+                                                },
+                                            }),
                                         onError: err =>
                                             toast.error(
                                                 err instanceof Error
@@ -300,8 +357,8 @@ function FaqGroupCard({ basePath, entityId, group }: FaqGroupCardProps) {
                                                     : 'Failed to update.'
                                             ),
                                     }
-                                )
-                            }
+                                );
+                            }}
                         />
                         <div className='flex items-center gap-2 pb-2'>
                             <Checkbox

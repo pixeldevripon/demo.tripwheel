@@ -672,6 +672,13 @@
  * instead of wrapping; splash entrance reduced to a gentle content rise (the
  * icon drop/ripple drew the eye to the icon instead of the words).
  *
+ * Rich colour (2026-08-16, user call): the severity now paints the WHOLE
+ * toast - subtle wash as the background, the matching border token, the fg
+ * token on the text - and the icon rides a solid accent chip. All of it comes
+ * from the app's own colour ramps (both themes), NOT sonner's `richColors`
+ * prop, which ships a baked palette that ignores these tokens. Untyped and
+ * loading toasts keep the neutral overlay surface via the var() fallbacks.
+ *
  * SPECIFICITY NOTE: sonner ships its own styles at up to
  * `[data-sonner-toast][data-styled='true'] [data-x]` = (0,3,0), and its
  * stylesheet loads AFTER globals.css, so ties lose. Every rule here rides the
@@ -704,9 +711,9 @@
     overflow: hidden;
     /* Wider right padding reserves the edge for the pinned dismiss button. */
     padding: 0.875rem 3rem 0.875rem 1rem;
-    border: 1px solid var(--line);
+    border: 1px solid var(--cn-toast-border, var(--line));
     border-radius: var(--radius-lg);
-    background: var(--surface-overlay);
+    background: var(--cn-toast-wash, var(--surface-overlay));
     box-shadow: var(--elevation-lg);
 }
 .cn-toast[data-sonner-toast][data-styled='true'][data-x-position='center'] {
@@ -721,49 +728,54 @@
     margin-right: auto;
 }
 
-/* The wash: severity colour entering from the left, gone by a third of the
- * toast. A static paint layer. */
-.cn-toast[data-sonner-toast][data-styled='true']::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background: linear-gradient(
-        90deg,
-        var(--cn-toast-wash, transparent),
-        transparent 28%
-    );
-}
-
+/* The severity ramp, one block per type: wash (background), border, fg (text),
+ * accent (solid chip + action button) and the accent's own readable
+ * foreground. `--cn-toast-desc` pre-mixes the description tint so the rule
+ * below stays a one-liner. */
 .cn-toast[data-type='error'] {
     --cn-toast-wash: var(--danger-subtle);
+    --cn-toast-border: var(--danger-border);
+    --cn-toast-fg: var(--danger-fg);
+    --cn-toast-desc: color-mix(in oklab, var(--danger-fg) 80%, transparent);
     --cn-toast-accent: var(--danger-solid);
+    --cn-toast-accent-fg: var(--destructive-foreground);
 }
 .cn-toast[data-type='success'] {
     --cn-toast-wash: var(--success-subtle);
+    --cn-toast-border: var(--success-border);
+    --cn-toast-fg: var(--success-fg);
+    --cn-toast-desc: color-mix(in oklab, var(--success-fg) 80%, transparent);
     --cn-toast-accent: var(--success-solid);
+    --cn-toast-accent-fg: var(--success-foreground);
 }
 .cn-toast[data-type='warning'] {
     --cn-toast-wash: var(--warning-subtle);
+    --cn-toast-border: var(--warning-border);
+    --cn-toast-fg: var(--warning-fg);
+    --cn-toast-desc: color-mix(in oklab, var(--warning-fg) 80%, transparent);
     --cn-toast-accent: var(--warning-solid);
+    --cn-toast-accent-fg: var(--warning-foreground);
 }
 .cn-toast[data-type='info'] {
     --cn-toast-wash: var(--info-subtle);
-    --cn-toast-accent: var(--primary);
+    --cn-toast-border: var(--info-border);
+    --cn-toast-fg: var(--info-fg);
+    --cn-toast-desc: color-mix(in oklab, var(--info-fg) 80%, transparent);
+    --cn-toast-accent: var(--info-solid);
+    --cn-toast-accent-fg: var(--info-foreground);
 }
 
-/* Icon chip: a 28px tile carrying the severity colour on its own wash - the
- * one solid semantic mark on the toast. */
+/* Icon: the bare glyph in solid severity colour, sized to sit on the title's
+ * first line. No chip behind it - a filled tile around an already-circular
+ * glyph read as a box-in-a-box on the tinted body (user call 2026-08-16). */
 .cn-toast[data-sonner-toast][data-styled='true'] [data-icon] {
     position: relative;
     display: grid;
     place-items: center;
-    width: 1.75rem;
-    height: 1.75rem;
+    width: 1.25rem;
+    height: 1.25rem;
     margin: 0;
     flex-shrink: 0;
-    border-radius: var(--radius-md);
-    background: var(--cn-toast-wash, var(--surface-inset));
     color: var(--cn-toast-accent, var(--content-subtle));
 }
 
@@ -777,34 +789,56 @@
     font-size: 0.875rem;
     font-weight: 500;
     line-height: 1.45;
-    color: var(--content);
+    color: var(--cn-toast-fg, var(--content));
 }
 
-/* Detail reads as body copy. Never coloured - colour is the chip's job. */
+/* Detail reads as body copy: same hue as the title, mixed towards transparent
+ * so the hierarchy survives on the tinted background. */
 .cn-toast[data-sonner-toast][data-styled='true'] [data-description] {
     margin-top: 0.125rem;
     font-size: 0.8125rem;
     font-weight: 400;
     line-height: 1.5;
-    color: var(--content-muted);
+    color: var(--cn-toast-desc, var(--content-muted));
 }
 
-/* Action (e.g. Undo) rides the right edge, just inside the dismiss. */
+/* Action (e.g. Undo) rides the right edge, just inside the dismiss - a solid
+ * accent button so it reads as THE thing to click before the toast leaves. */
 .cn-toast[data-sonner-toast][data-styled='true'] [data-button] {
     position: relative;
     height: 1.75rem;
     margin-left: auto;
     align-self: center;
     flex-shrink: 0;
+    border: none;
     border-radius: var(--radius-sm);
     padding-inline: 0.625rem;
     font-size: 0.75rem;
     font-weight: 500;
+    background: var(--cn-toast-accent, var(--content));
+    color: var(--cn-toast-accent-fg, var(--surface-overlay));
+    cursor: pointer;
+    transition: filter 0.15s ease;
+}
+.cn-toast[data-sonner-toast][data-styled='true'] [data-button]:hover {
+    filter: brightness(1.08);
+}
+/* A cancel button stays quiet next to the solid action. `.toaster` prefix:
+ * sonner's dark theme styles [data-cancel] at (0,5,0), which ties without it. */
+.toaster
+    .cn-toast[data-sonner-toast][data-styled='true']
+    [data-button][data-cancel] {
+    background: transparent;
+    color: var(--cn-toast-fg, var(--content-muted));
 }
 
 /* Dismiss: pinned right-centre. Sonner floats its close disc off the TOP-LEFT
- * corner via inline-start vars + its own transform - hence the !importants. */
-.cn-toast[data-sonner-toast][data-styled='true'] [data-close-button] {
+ * corner via inline-start vars + its own transform - hence the !importants.
+ * The `.toaster` prefix is load-bearing: sonner's DARK theme ships
+ * `[data-sonner-toaster][data-sonner-theme='dark'] [data-sonner-toast]
+ * [data-close-button]` at (0,4,0), which ties the usual prefix and wins by
+ * load order - that was the solid black disc in dark mode. */
+.toaster .cn-toast[data-sonner-toast][data-styled='true'] [data-close-button] {
     position: absolute;
     left: auto !important;
     right: 0.75rem !important;
@@ -818,13 +852,54 @@
     border: none;
     border-radius: 9999px;
     background: transparent;
-    color: var(--content-subtle);
+    color: color-mix(
+        in oklab,
+        var(--cn-toast-fg, var(--content-subtle)) 70%,
+        transparent
+    );
     cursor: pointer;
     pointer-events: auto;
 }
-.cn-toast[data-sonner-toast][data-styled='true'] [data-close-button]:hover {
-    background: var(--surface-inset);
-    color: var(--content);
+.toaster
+    .cn-toast[data-sonner-toast][data-styled='true']
+    [data-close-button]:hover {
+    background: color-mix(
+        in oklab,
+        var(--cn-toast-accent, var(--content)) 12%,
+        transparent
+    );
+    color: var(--cn-toast-fg, var(--content));
+}
+
+/* Dark: the ramp's border tokens are tuned for badge-sized chips; across a
+ * full toast edge they read neon, so blend them back toward the wash. */
+.dark .cn-toast[data-type='error'] {
+    --cn-toast-border: color-mix(
+        in oklab,
+        var(--danger-border) 50%,
+        var(--danger-subtle)
+    );
+}
+.dark .cn-toast[data-type='success'] {
+    --cn-toast-border: color-mix(
+        in oklab,
+        var(--success-border) 50%,
+        var(--success-subtle)
+    );
+}
+.dark .cn-toast[data-type='warning'] {
+    --cn-toast-border: color-mix(
+        in oklab,
+        var(--warning-border) 50%,
+        var(--warning-subtle)
+    );
+}
+.dark .cn-toast[data-type='info'] {
+    --cn-toast-border: color-mix(
+        in oklab,
+        var(--info-border) 50%,
+        var(--info-subtle)
+    );
 }
 
 /* Entrance: one gentle rise on the content while sonner slides the toast in.

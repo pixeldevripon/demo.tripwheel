@@ -378,11 +378,36 @@ export function AvailabilityAgenda() {
                 },
             },
             {
-                onSuccess: () => {
+                onSuccess: created => {
                     setCloseSlotId(null);
                     setCloseSlotNote('');
                     toast.success(
-                        `Closed the ${row.startTime} ${row.tourName} departure · ${CLOSURE_REASON_LABEL[closureReason]}. New sales stopped; booked guests keep their bookings.`
+                        `Closed the ${row.startTime} ${row.tourName} departure · ${CLOSURE_REASON_LABEL[closureReason]}. New sales stopped; booked guests keep their bookings.`,
+                        {
+                            duration: 10_000,
+                            action: {
+                                label: 'Undo',
+                                onClick: () =>
+                                    removeException(
+                                        {
+                                            tripId: row.tourId,
+                                            exceptionId: created.id,
+                                        },
+                                        {
+                                            onSuccess: () =>
+                                                toast.success(
+                                                    `Reopened the ${row.startTime} ${row.tourName} departure.`
+                                                ),
+                                            onError: err =>
+                                                toast.error(
+                                                    err instanceof Error
+                                                        ? err.message
+                                                        : 'Undo failed - the departure is still closed.'
+                                                ),
+                                        }
+                                    ),
+                            },
+                        }
                     );
                 },
                 onError: err =>

@@ -18,7 +18,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useAttributes, useDeactivateAttribute } from '@/hooks/attributes/use-attributes';
+import {
+  useAttributes,
+  useDeactivateAttribute,
+  useUpdateAttribute,
+} from '@/hooks/attributes/use-attributes';
 import { useRole } from '@/contexts/role-context';
 import type { AttributeDefinition } from '@/types/attribute';
 import { AttributesTable } from './attributes-table';
@@ -27,6 +31,7 @@ import Link from 'next/link';
 export function AttributesListView() {
   const { data: attributes, isLoading } = useAttributes();
   const { mutate: deactivate, isPending: deactivating } = useDeactivateAttribute();
+  const { mutate: updateAttribute } = useUpdateAttribute();
   const { can } = useRole();
   const canManage = can('MANAGE_SYSTEM');
   const [target, setTarget] = useState<AttributeDefinition | null>(null);
@@ -75,9 +80,29 @@ export function AttributesListView() {
               disabled={deactivating}
               onClick={() => {
                 if (!target) return;
-                deactivate(target.key, {
+                const { key } = target;
+                deactivate(key, {
                   onSuccess: () => {
-                    toast.success('Attribute deactivated.');
+                    toast.success('Attribute deactivated.', {
+                      duration: 10_000,
+                      action: {
+                        label: 'Undo',
+                        onClick: () =>
+                          updateAttribute(
+                            { key, payload: { isActive: true } },
+                            {
+                              onSuccess: () =>
+                                toast.success('Attribute reactivated.'),
+                              onError: err =>
+                                toast.error(
+                                  err instanceof Error
+                                    ? err.message
+                                    : 'Undo failed - the attribute is still inactive.',
+                                ),
+                            },
+                          ),
+                      },
+                    });
                     setTarget(null);
                   },
                   onError: err => toast.error(err instanceof Error ? err.message : 'Failed.'),

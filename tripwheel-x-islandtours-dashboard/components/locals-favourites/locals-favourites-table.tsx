@@ -73,6 +73,30 @@ export function LocalsFavouritesTable({
             value
               ? `Marked "${tour.name}" as Locals' favourite`
               : `Removed "${tour.name}" from Locals' favourites`,
+            {
+              duration: 10_000,
+              action: {
+                label: 'Undo',
+                onClick: () =>
+                  setFlag(
+                    { tourId: tour.id, value: !value },
+                    {
+                      onSuccess: () =>
+                        toast.success(
+                          value
+                            ? `"${tour.name}" is no longer a Locals' favourite.`
+                            : `"${tour.name}" is a Locals' favourite again.`,
+                        ),
+                      onError: (err) =>
+                        toast.error(
+                          err instanceof Error
+                            ? err.message
+                            : 'Undo failed - the flag was not restored.',
+                        ),
+                    },
+                  ),
+              },
+            },
           ),
         onError: (err) =>
           toast.error(err instanceof Error ? err.message : 'Failed to update.'),

@@ -44,13 +44,31 @@ interface AllowedCategoryCardProps {
 function AllowedCategoryCard({ item, hubId }: AllowedCategoryCardProps) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const { mutate: removeCategory, isPending } = useRemoveHubAllowedCategory();
+  const { mutate: readdCategory } = useAddHubAllowedCategory();
 
   function handleRemove() {
     removeCategory(
       { id: hubId, categoryId: item.categoryId },
       {
         onSuccess: () => {
-          toast.success(`${item.category.name} removed from allowed categories.`);
+          toast.success(`${item.category.name} removed from allowed categories.`, {
+            duration: 10_000,
+            action: {
+              label: 'Undo',
+              onClick: () =>
+                readdCategory(
+                  { id: hubId, categoryId: item.categoryId },
+                  {
+                    onSuccess: () =>
+                      toast.success(`${item.category.name} re-added to allowed categories.`),
+                    onError: (err) =>
+                      toast.error(
+                        err instanceof Error ? err.message : 'Undo failed - the category was not re-added.',
+                      ),
+                  }
+                ),
+            },
+          });
           setDeleteOpen(false);
         },
         onError: (err) =>
@@ -127,17 +145,35 @@ export function HubAllowedCategoriesManager({ hubId }: HubAllowedCategoriesManag
   const { data: allowedCategories, isLoading } = useHubAllowedCategories(hubId);
   const { data: allCategories = [], isLoading: isLoadingCategories } = useActiveCategories('en');
   const { mutate: addCategory, isPending: isAdding } = useAddHubAllowedCategory();
+  const { mutate: removeCategory } = useRemoveHubAllowedCategory();
 
   const allowedIds = new Set((allowedCategories ?? []).map((a) => a.categoryId));
   const availableCategories = allCategories.filter((c) => !allowedIds.has(c.id));
 
   function handleAdd() {
     if (!selectedCategoryId) return;
+    const categoryId = selectedCategoryId;
     addCategory(
-      { id: hubId, categoryId: selectedCategoryId },
+      { id: hubId, categoryId },
       {
         onSuccess: () => {
-          toast.success('Category added to allowed list.');
+          toast.success('Category added to allowed list.', {
+            duration: 10_000,
+            action: {
+              label: 'Undo',
+              onClick: () =>
+                removeCategory(
+                  { id: hubId, categoryId },
+                  {
+                    onSuccess: () => toast.success('Category removed again.'),
+                    onError: (err) =>
+                      toast.error(
+                        err instanceof Error ? err.message : 'Undo failed - the category is still allowed.',
+                      ),
+                  }
+                ),
+            },
+          });
           setSelectedCategoryId('');
         },
         onError: (err) =>

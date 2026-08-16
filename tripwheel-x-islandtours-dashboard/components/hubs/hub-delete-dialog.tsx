@@ -1,7 +1,7 @@
 'use client';
 
 import { toast } from 'sonner';
-import { useDeleteHub } from '@/hooks/hubs/use-hubs';
+import { useDeleteHub, useUpdateHub } from '@/hooks/hubs/use-hubs';
 import type { HubLocalized } from '@/types/hub';
 import { DeactivateDialog } from '@/components/common/deactivate-dialog';
 
@@ -19,11 +19,30 @@ export function HubDeleteDialog({
   onSuccess,
 }: HubDeleteDialogProps) {
   const { mutate: deleteHub, isPending } = useDeleteHub();
+  const { mutate: updateHub } = useUpdateHub();
 
   function handleConfirm() {
     deleteHub(hub.id, {
       onSuccess: () => {
-        toast.success(`"${hub.name}" deactivated successfully.`);
+        toast.success(`"${hub.name}" deactivated successfully.`, {
+          duration: 10_000,
+          action: {
+            label: 'Undo',
+            onClick: () =>
+              updateHub(
+                { id: hub.id, payload: { isActive: true } },
+                {
+                  onSuccess: () => toast.success(`"${hub.name}" reactivated.`),
+                  onError: (err) =>
+                    toast.error(
+                      err instanceof Error
+                        ? err.message
+                        : 'Undo failed - the hub is still inactive.',
+                    ),
+                },
+              ),
+          },
+        });
         onOpenChange(false);
         onSuccess?.();
       },
