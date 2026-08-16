@@ -249,6 +249,22 @@ export interface PublicTourDetail {
 
   /** Operator display name (company name, else account name). */
   operatorName: string | null;
+  /** Public operator slug - the canonical conditions page address
+   *  (/{locale}/operators/{operatorSlug}/conditions). Null = no public page. */
+  operatorSlug: string | null;
+
+  /**
+   * Operator-conditions gate (Pastel #80 / MCK-20): null for the ungated
+   * catalog. The checkout renders the required checkbox from this - DOCUMENT
+   * links the reading layer (body fetched lazily), ACKNOWLEDGMENT lists the
+   * locale-resolved first-person items right at the box.
+   */
+  operatorTerms: {
+    kind: 'DOCUMENT' | 'ACKNOWLEDGMENT';
+    items: string[];
+    version: string | null;
+    hasDocument: boolean;
+  } | null;
 
   // Relations (localized, EN fallback applied server-side)
   translation: PublicTourTranslation | null;

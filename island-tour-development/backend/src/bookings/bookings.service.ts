@@ -24,6 +24,7 @@ import {
   EmailTemplateKey,
   InboxEvent,
   Locale,
+  OperatorTermsKind,
   PaymentKind,
   PaymentModel,
   PaymentProvider,
@@ -1746,6 +1747,7 @@ export class BookingsService {
         select: {
           contactEmail: true,
           contactPhone: true,
+          slug: true,
           companyInfo: {
             select: {
               companyName: true,
@@ -2210,6 +2212,7 @@ export class BookingsService {
           checkInMinutesBefore: true,
           meetingPointLat: true,
           meetingPointLng: true,
+          operatorTermsKind: true,
           destinationId: true,
           destination: { select: { name: true, slug: true } },
           ageBands: { select: { id: true, label: true } },
@@ -2248,6 +2251,7 @@ export class BookingsService {
         select: {
           contactEmail: true,
           contactPhone: true,
+          slug: true,
           companyInfo: {
             select: {
               companyName: true,
@@ -2357,6 +2361,16 @@ export class BookingsService {
         name: tour.destination.name,
         slug: tour.destination.slug,
       },
+      // Operator-conditions recap (Pastel #80): only when the booking carries
+      // the acceptance stamp - every ungated email stays wireframe-identical.
+      operatorTerms:
+        tour.operatorTermsKind && booking.operatorTermsAcceptedAt
+          ? {
+              kind: tour.operatorTermsKind,
+              version: booking.operatorTermsVersion ?? null,
+              operatorSlug: operator?.slug ?? null,
+            }
+          : null,
       relatedTours: related,
       // Up to a few cards; an empty list hides the email's recommendation block.
       recommendations: featuredRecs.map((r) => ({
@@ -3876,6 +3890,94 @@ export class BookingsService {
   // ════════════════════════════════════════════════════════════════════════
   // Extend / Update
   // ════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Operator-conditions acceptance (Pastel #80 / MCK-20 §4). The checkout's
+   * required checkbox calls this on tick: the stamp is WHEN, the snapshotted
+   * operator termsVersion is WHICH (null for the ACKNOWLEDGMENT flavor - no
+   * versioned document exists), and the booking's own contact is WHO.
+   * Idempotent - a re-tick returns the first stamp. Only an ON_HOLD booking
+   * accepts: after commit the evidence is frozen history, and the
+   * payment-intent endpoint is the enforcing half of this rule.
+   */
+  async acceptOperatorTerms(id: string) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        status: true,
+        contactEmail: true,
+        operatorTermsAcceptedAt: true,
+        operatorTermsVersion: true,
+        tour: {
+          select: {
+            operatorTermsKind: true,
+            operator: { select: { termsVersion: true } },
+          },
+        },
+      },
+    });
+    if (!booking) throw new NotFoundException('Booking not found');
+    const kind = booking.tour?.operatorTermsKind;
+    if (!kind) {
+      throw new ConflictException(
+        'This tour has no operator conditions to accept',
+      );
+    }
+    if (booking.operatorTermsAcceptedAt) {
+      return {
+        acceptedAt: booking.operatorTermsAcceptedAt,
+        version: booking.operatorTermsVersion,
+      };
+    }
+    if (booking.status !== BookingStatus.ON_HOLD) {
+      throw new ConflictException(
+        `Cannot accept conditions on a ${booking.status} booking`,
+      );
+    }
+    // Evidence needs a WHO before a WHEN (security review): the checkout saves
+    // contact before the box even renders, so only a direct API caller can hit
+    // this - and an acceptance stamped on a contact-less booking would predate
+    // the identity it is supposed to be evidence for.
+    if (!booking.contactEmail) {
+      throw new ConflictException(
+        'Save contact details before accepting the conditions',
+      );
+    }
+    // Atomic first-writer-wins guard: two near-simultaneous ticks must land
+    // exactly one stamp - the acceptance timestamp is legal evidence, so even
+    // the harmless-looking double-write is not written.
+    await this.prisma.booking.updateMany({
+      where: {
+        id: booking.id,
+        status: BookingStatus.ON_HOLD,
+        operatorTermsAcceptedAt: null,
+      },
+      data: {
+        operatorTermsAcceptedAt: new Date(),
+        operatorTermsVersion:
+          kind === OperatorTermsKind.DOCUMENT
+            ? (booking.tour?.operator?.termsVersion ?? null)
+            : null,
+      },
+    });
+    const stamped = await this.prisma.booking.findUnique({
+      where: { id: booking.id },
+      select: { operatorTermsAcceptedAt: true, operatorTermsVersion: true },
+    });
+    // A missing stamp after the guarded write means the booking left ON_HOLD
+    // between the read and the write (expiry/cancel race) - say so instead of
+    // returning a null acceptance the caller would have to interpret.
+    if (!stamped?.operatorTermsAcceptedAt) {
+      throw new ConflictException(
+        'This booking can no longer accept conditions - the hold has ended',
+      );
+    }
+    return {
+      acceptedAt: stamped.operatorTermsAcceptedAt,
+      version: stamped.operatorTermsVersion,
+    };
+  }
 
   async extend(id: string, dto: ExtendBookingDto) {
     // Per-BOOKING cap on top of the per-IP throttle. The global tier (3000/hr)

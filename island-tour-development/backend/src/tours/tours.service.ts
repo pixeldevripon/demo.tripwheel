@@ -26,8 +26,18 @@ import {
 } from '@/attributes/derived-attributes';
 import { PAID_TIER_MAX_RANK } from '@/tiers/tiers.service';
 import { cardTeaser, cardTeaserTranslationSelect } from './card-teaser';
-import { TourPendingChangesService } from './tour-pending-changes.service';
+import {
+  TourPendingChangesService,
+  type PendingChangePayload,
+  type StagedConditions,
+} from './tour-pending-changes.service';
 import { isOvernightCharter } from './overnight';
+import {
+  htmlHasText,
+  resolveLocaleStrings,
+  resolveLocaleText,
+} from './operator-terms.util';
+import { sanitizePageHtml } from '@/common/utils/page-html.util';
 import { evaluateLikelyToSellOut } from './demand-signal';
 import { computeQualityScore, listingCompleteness } from './quality-score';
 import {
@@ -43,6 +53,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import {
   BandParticipation,
@@ -51,6 +62,7 @@ import {
   DepartureStatus,
   HubStatus,
   InboxEvent,
+  OperatorTermsKind,
   PickupModel,
   PricingModel,
   Prisma,
@@ -75,6 +87,7 @@ import {
   TourQueryDto,
   TourSort,
   UpdateTourDto,
+  UpsertOperatorTermsTranslationDto,
 } from './dto/tour.dto';
 
 /**
@@ -2190,7 +2203,10 @@ export class ToursService {
       categoryNames: cats.map((c: any) => c.category?.name).filter(Boolean),
       hubIds: tourHubs.map((h: any) => h.hubId),
       hubNames: tourHubs.map((h: any) => h.hub?.name).filter(Boolean),
-      ...(operator !== undefined && {
+      // Guard on operator.user, not on operator alone: a caller with a
+      // narrower operator select (findOne's terms-only shape) must degrade to
+      // "no operatorInfo", never crash on operator.user.name.
+      ...(operator?.user && {
         operatorInfo: {
           id: operator.id,
           companyName: operator.companyInfo?.companyName ?? null,
@@ -2211,6 +2227,14 @@ export class ToursService {
       where: { id },
       select: {
         ...this.tourSelect,
+        // Operator-conditions gate (Pastel #80): the wizard's Booking rules
+        // step reads and edits these; the Translation Console reads the full
+        // locale maps; the gated owner's read overlays any staged change
+        // below. The document map rides the operator relation (one document
+        // per operator).
+        operatorTermsKind: true,
+        acknowledgmentItems: true,
+        operator: { select: { termsDocument: true } },
         images: {
           where: { isHero: true },
           select: { id: true, url: true, altText: true },
@@ -2251,7 +2275,17 @@ export class ToursService {
       }
     }
 
-    const result = this.flattenCounts(tour);
+    // Operator-conditions document map (one per operator) for the wizard's
+    // rich-text editor and the Translation Console - exposed flat. The raw
+    // relation must be pulled off BEFORE flattenCounts, whose operatorInfo
+    // branch assumes the list query's full operator select (user/companyInfo)
+    // and would throw on this terms-only shape.
+    const { operator: termsOperator, ...tourSansOperator } = tour as {
+      operator?: { termsDocument: unknown };
+    } & Record<string, unknown>;
+    const result = this.flattenCounts(tourSansOperator);
+    (result as Record<string, unknown>).operatorTermsDocument =
+      termsOperator?.termsDocument ?? null;
     await this.attachMoney([result], target);
     // Strip the review fields for everyone who is NOT platform staff or the
     // owning operator - "not anonymous" is a much bigger set than
@@ -2284,11 +2318,34 @@ export class ToursService {
       this.pendingChanges.isGated(tour.status, requesterRole)
     ) {
       const working = await this.pendingChanges.getWorkingSetForTour(id);
-      const heldName = (
-        working?.payload as { tour?: { name?: string } } | undefined
-      )?.tour?.name;
+      const payload = working?.payload as PendingChangePayload | undefined;
+      const heldName = payload?.tour?.name;
       if (heldName !== undefined) {
         (result as { name: string }).name = heldName;
+      }
+      // Same overlay for a staged conditions change (Pastel #80): the wizard's
+      // Booking rules step must read back what the operator proposed, or its
+      // resend-on-save would echo the LIVE values and silently withdraw the
+      // staged unit through the update() revert path.
+      if (payload?.conditions) {
+        (
+          result as {
+            operatorTermsKind: unknown;
+            acknowledgmentItems: unknown;
+          }
+        ).operatorTermsKind = payload.conditions.kind;
+        (result as { acknowledgmentItems: unknown }).acknowledgmentItems =
+          payload.conditions.acknowledgmentItems;
+        // The staged DOCUMENT text too - but only when the staged flavor IS
+        // the document, so switching to the confirm-list never blanks the
+        // operator's standing text in the editor.
+        if (
+          payload.conditions.kind === OperatorTermsKind.DOCUMENT &&
+          payload.conditions.document
+        ) {
+          (result as { operatorTermsDocument: unknown }).operatorTermsDocument =
+            payload.conditions.document;
+        }
       }
     }
     return result;
@@ -2310,13 +2367,23 @@ export class ToursService {
       },
       select: {
         ...this.tourSelect,
+        // Operator-conditions gate (Pastel #80 / MCK-20): kind + items ride the
+        // detail payload so the checkout can render the right checkbox flavor;
+        // the document body itself is fetched lazily by the reading layer via
+        // GET /tours/:id/operator-terms.
+        operatorTermsKind: true,
+        acknowledgmentItems: true,
         // Operator display name for the public detail page (review response
         // author, "Supplied by" on the cancellation policy). companyName wins,
-        // else the account name.
+        // else the account name. termsVersion/termsDocument feed the
+        // operator-conditions summary (existence only - never the body here).
         operator: {
           select: {
             companyInfo: { select: { companyName: true } },
             user: { select: { name: true } },
+            slug: true,
+            termsVersion: true,
+            termsDocument: true,
           },
         },
         images: {
@@ -2498,6 +2565,8 @@ export class ToursService {
       features,
       languages,
       operator,
+      operatorTermsKind,
+      acknowledgmentItems,
       ...rest
     } = tour;
 
@@ -2579,6 +2648,29 @@ export class ToursService {
       ...this.flattenTour(rest),
       operatorName:
         operator?.companyInfo?.companyName ?? operator?.user?.name ?? null,
+      // The canonical conditions page address (Pastel #80 / MCK-20 §3):
+      // /{locale}/operators/{operatorSlug}/conditions - the tour page's
+      // disclosure link and the checkout compose it from this.
+      operatorSlug: operator?.slug ?? null,
+      // Operator-conditions gate summary (Pastel #80): null for the whole
+      // ungated catalog. DOCUMENT ships existence only - the reading layer
+      // fetches the body via GET /tours/:id/operator-terms.
+      operatorTerms: operatorTermsKind
+        ? {
+            kind: operatorTermsKind,
+            items:
+              operatorTermsKind === OperatorTermsKind.ACKNOWLEDGMENT
+                ? resolveLocaleStrings(acknowledgmentItems, locale)
+                : [],
+            version:
+              operatorTermsKind === OperatorTermsKind.DOCUMENT
+                ? (operator?.termsVersion ?? null)
+                : null,
+            hasDocument:
+              operatorTermsKind === OperatorTermsKind.DOCUMENT &&
+              resolveLocaleText(operator?.termsDocument, locale) !== null,
+          }
+        : null,
       translation: resolvedTranslation,
       ageBands: rest.ageBands,
       highlights: resolvedHighlights,
@@ -2597,6 +2689,54 @@ export class ToursService {
     // (Pastel #41).
     await this.fx.attachDetailMoney(detail, query.currency);
     return detail;
+  }
+
+  /**
+   * The operator-conditions body for the checkout reading layer (Pastel #80 /
+   * MCK-20 §3). Public, by tour id, locale-resolved with EN fallback. DOCUMENT
+   * returns the operator's conditions text (sanitized HTML - the write side
+   * owns sanitization, seed today / CMS later); ACKNOWLEDGMENT returns the
+   * per-tour items so the layer never exists for it, but the shape stays
+   * uniform for the client. 404 when the tour is not live or carries no gate.
+   */
+  async getOperatorTerms(id: string, locale: Locale = Locale.en) {
+    const tour = await this.prisma.tour.findFirst({
+      where: { id, status: TourStatus.LIVE, isActive: true },
+      select: {
+        operatorTermsKind: true,
+        acknowledgmentItems: true,
+        operator: {
+          select: {
+            termsDocument: true,
+            termsVersion: true,
+            termsEffectiveDate: true,
+            companyInfo: { select: { companyName: true } },
+            user: { select: { name: true } },
+          },
+        },
+      },
+    });
+    if (!tour?.operatorTermsKind) {
+      throw new NotFoundException('This tour has no operator conditions');
+    }
+    const isDocument = tour.operatorTermsKind === OperatorTermsKind.DOCUMENT;
+    return {
+      kind: tour.operatorTermsKind,
+      operatorName:
+        tour.operator?.companyInfo?.companyName ??
+        tour.operator?.user?.name ??
+        null,
+      version: isDocument ? (tour.operator?.termsVersion ?? null) : null,
+      effectiveDate: isDocument
+        ? (tour.operator?.termsEffectiveDate ?? null)
+        : null,
+      items: isDocument
+        ? []
+        : resolveLocaleStrings(tour.acknowledgmentItems, locale),
+      document: isDocument
+        ? resolveLocaleText(tour.operator?.termsDocument, locale)
+        : null,
+    };
   }
 
   // ── Slug uniqueness resolution ────────────────────────────────────────────────
@@ -2957,6 +3097,85 @@ export class ToursService {
       }
     }
 
+    // Operator-conditions gate change (Pastel #80): validated as ONE unit
+    // (kind + items travel together), then either applied instantly (platform
+    // roles / non-live tours) or HELD for review exactly like the title -
+    // legal conditions must never change silently under travellers.
+    // `undefined` = untouched; `null` = withdraw the staged unit (typed back
+    // to live); an object = stage it.
+    let stagedConditions: StagedConditions | null | undefined;
+    let conditionsData: Prisma.TourUpdateInput | undefined;
+    let instantDocumentEn: string | undefined;
+    if (
+      dto.operatorTermsKind !== undefined ||
+      dto.acknowledgmentItems !== undefined ||
+      dto.operatorTermsDocument !== undefined
+    ) {
+      const live = await this.prisma.tour.findUniqueOrThrow({
+        where: { id },
+        select: { operatorTermsKind: true, acknowledgmentItems: true },
+      });
+      const gated = this.pendingChanges.isGated(tour.status, requesterRole);
+      // The wizard resends only the EN entry; the other locales live on the
+      // maps. A gated operator's in-progress translations sit in the WORKING
+      // set - merging over the live row would silently drop every held
+      // translation on the next wizard save (user-reported loss).
+      let mergeBase: {
+        operatorTermsKind: OperatorTermsKind | null;
+        acknowledgmentItems: Prisma.JsonValue | null;
+      } = live;
+      let workingDocument: Record<string, string> | null | undefined;
+      if (gated) {
+        const working = (
+          (await this.pendingChanges.getWorkingSetForTour(id))?.payload as
+            | PendingChangePayload
+            | undefined
+        )?.conditions;
+        if (working) {
+          mergeBase = {
+            operatorTermsKind: working.kind,
+            acknowledgmentItems: working.acknowledgmentItems,
+          };
+          workingDocument = working.document;
+        }
+      }
+      const desired = await this.resolveDesiredConditions(
+        tour,
+        mergeBase,
+        dto,
+        workingDocument,
+      );
+      if (gated) {
+        const liveUnit = await this.pendingChanges.loadLiveConditions(id);
+        stagedConditions = this.pendingChanges.conditionsEqual(
+          desired,
+          liveUnit,
+        )
+          ? null
+          : desired;
+      } else {
+        conditionsData = {
+          operatorTermsKind: desired.kind,
+          acknowledgmentItems: desired.acknowledgmentItems ?? Prisma.DbNull,
+        };
+        // The document half lives on the OPERATOR row and is written after
+        // the tour transaction; switching AWAY from DOCUMENT never clears it
+        // (the operator's standing text stays reusable on re-select). Only
+        // an AUTHORED text writes - the EN value re-merges onto the fresh
+        // row inside the locked write, so a concurrent save from another of
+        // the operator's tours can never be lost (security review, wave 3).
+        if (dto.operatorTermsDocument !== undefined) {
+          instantDocumentEn = desired.document?.en;
+        }
+      }
+      dto = {
+        ...dto,
+        operatorTermsKind: undefined,
+        acknowledgmentItems: undefined,
+        operatorTermsDocument: undefined,
+      };
+    }
+
     // Party size is a RANGE, and either end can arrive alone - so the guard has
     // to compare the incoming value against the stored one, not just against
     // its sibling in the same body. Unguarded, min > max produces departures
@@ -3091,6 +3310,9 @@ export class ToursService {
         data: {
           ...(renameTo && { slug: renameTo }),
           ...(dto.name !== undefined && { name: dto.name }),
+          // Operator-conditions gate: pre-validated as one unit above;
+          // present only on the instant lane (platform roles / non-live).
+          ...(conditionsData ?? {}),
           ...(dto.pricingModel !== undefined && {
             pricingModel: dto.pricingModel,
           }),
@@ -3340,9 +3562,276 @@ export class ToursService {
     } else if (revertHeldName) {
       await this.pendingChanges.setStashedName(tour, requesterId, null);
     }
+    if (stagedConditions !== undefined) {
+      await this.pendingChanges.setStagedConditions(
+        tour,
+        requesterId,
+        stagedConditions,
+      );
+      if (stagedConditions !== null) {
+        warnings.push(
+          'The booking-conditions change was sent to Island Tours for review - travellers keep seeing the current conditions until it is approved.',
+        );
+      }
+    }
+    // Instant lane's document half (platform roles / non-live tours): the
+    // OPERATOR row carries it.
+    if (instantDocumentEn !== undefined) {
+      await this.writeOperatorDocument(tour.operatorId, (current) => ({
+        ...(current ?? {}),
+        en: instantDocumentEn,
+      }));
+    }
 
     this.logger.log(`User ${requesterId} updated tour ${id}`);
     return { tour: this.flattenTour(updated), warnings };
+  }
+
+  /**
+   * The desired operator-conditions unit for an update (Pastel #80): kind and
+   * items always travel together. ACKNOWLEDGMENT needs 2-6 non-blank facts
+   * (English entry; the Translation Console owns the other locales);
+   * DOCUMENT needs a conditions document to exist; null/no kind clears both.
+   *
+   * `base` is what the author is EDITING ON TOP OF - the working (staged)
+   * unit for a gated operator, the live row otherwise - so a wizard resend
+   * of the EN entry never drops held translations. `workingDocument`
+   * likewise overrides the operator row's document as the doc merge base.
+   */
+  private async resolveDesiredConditions(
+    tour: { operatorId: string },
+    base: {
+      operatorTermsKind: OperatorTermsKind | null;
+      acknowledgmentItems: Prisma.JsonValue | null;
+    },
+    dto: UpdateTourDto,
+    workingDocument?: Record<string, string> | null,
+  ): Promise<StagedConditions> {
+    // NOTE: with the kind omitted, it inherits from `base` - for a gated
+    // operator that is the WORKING set, so an items-only payload sent while
+    // a kind SWITCH sits pending would resolve to the pending kind. Fine
+    // today (the wizard always sends the kind explicitly); a future caller
+    // that omits it must send the kind it believes it is editing.
+    const kind =
+      dto.operatorTermsKind !== undefined
+        ? dto.operatorTermsKind
+        : (base.operatorTermsKind ?? null);
+
+    let items: Record<string, string[]> | null = null;
+    if (kind === OperatorTermsKind.ACKNOWLEDGMENT) {
+      if (dto.acknowledgmentItems !== undefined) {
+        const cleaned = dto.acknowledgmentItems
+          .map((s) => s.trim())
+          .filter(Boolean);
+        if (cleaned.length < 2 || cleaned.length > 6) {
+          throw new BadRequestException(
+            'The confirm-list needs 2 to 6 participation facts',
+          );
+        }
+        // Non-EN entries survive an EN edit - the Translation Console owns them.
+        const baseItems =
+          (base.acknowledgmentItems as Record<string, string[]> | null) ?? null;
+        items = { ...(baseItems ?? {}), en: cleaned };
+      } else {
+        items =
+          (base.acknowledgmentItems as Record<string, string[]> | null) ?? null;
+        if (!items?.en || items.en.length < 2) {
+          throw new BadRequestException(
+            'The confirm-list needs 2 to 6 participation facts',
+          );
+        }
+      }
+    }
+
+    let document: Record<string, string> | null = null;
+    if (kind === OperatorTermsKind.DOCUMENT) {
+      // A non-null staged document (the working set's) is the truer merge
+      // base than the operator row - it carries held translations. The
+      // operator-row read only runs when there is no staged map to win.
+      const liveDoc =
+        workingDocument ??
+        ((
+          await this.prisma.operator.findUnique({
+            where: { id: tour.operatorId },
+            select: { termsDocument: true },
+          })
+        )?.termsDocument as Record<string, string> | null) ??
+        null;
+      if (dto.operatorTermsDocument !== undefined) {
+        // The wizard's rich-text editor authors the ENGLISH text. The PAGES
+        // sanitizer is the single write gate for every HTML column the public
+        // site renders with dangerouslySetInnerHTML - same contract, same
+        // allowlist, reused as-is so the two can never drift.
+        const sanitized = sanitizePageHtml(dto.operatorTermsDocument);
+        if (!htmlHasText(sanitized)) {
+          throw new BadRequestException(
+            'The conditions document cannot be empty',
+          );
+        }
+        // Non-EN entries survive an EN edit - the Translation Console owns them.
+        document = { ...(liveDoc ?? {}), en: sanitized };
+      } else {
+        document = liveDoc;
+        if (!resolveLocaleText(document, 'en')) {
+          throw new UnprocessableEntityException(
+            'No conditions document is on file yet - write it in the Operator conditions section before selecting the document gate',
+          );
+        }
+      }
+    }
+
+    return { kind, acknowledgmentItems: items, document };
+  }
+
+  /**
+   * Translation Console write for the operator-conditions content
+   * (Pastel #80): ONE locale's confirm-list facts and/or document text.
+   * English is wizard-owned (400 here). The document is TipTap HTML through
+   * the PAGES sanitizer - the same single write gate as page bodies - and a
+   * translation NEVER bumps the version: acceptance evidence names the
+   * ENGLISH text. Platform roles write instantly; a gated operator's write
+   * stages into the conditions unit exactly like the wizard's.
+   */
+  async upsertOperatorTermsTranslation(
+    id: string,
+    locale: Locale,
+    dto: UpsertOperatorTermsTranslationDto,
+    requesterId: string,
+    requesterRole: Role,
+  ) {
+    if (locale === Locale.en) {
+      throw new BadRequestException(
+        'English is edited in the tour wizard, not the Translation Console',
+      );
+    }
+    const tour = await this.findTourOrThrow(id);
+    await this.assertOwnership(tour, requesterId, requesterRole);
+
+    // Merge into what the operator is actually editing: the open proposal
+    // when one exists (gated), else the live unit.
+    const gated = this.pendingChanges.isGated(tour.status, requesterRole);
+    const live = await this.pendingChanges.loadLiveConditions(id);
+    const working = gated
+      ? ((
+          (await this.pendingChanges.getWorkingSetForTour(id))?.payload as
+            | PendingChangePayload
+            | undefined
+        )?.conditions ?? live)
+      : live;
+    if (!working.kind) {
+      throw new ConflictException(
+        'This tour has no operator conditions to translate',
+      );
+    }
+
+    const desired: StagedConditions = { ...working };
+    if (dto.acknowledgmentItems !== undefined) {
+      if (working.kind !== OperatorTermsKind.ACKNOWLEDGMENT) {
+        throw new BadRequestException(
+          'This tour has no confirm-list to translate',
+        );
+      }
+      const cleaned = dto.acknowledgmentItems
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const map = { ...(working.acknowledgmentItems ?? {}) };
+      // Clearing a translation falls back to English at render time.
+      if (cleaned.length === 0) delete map[locale];
+      else if (cleaned.length < 2 || cleaned.length > 6) {
+        throw new BadRequestException(
+          'The confirm-list needs 2 to 6 participation facts',
+        );
+      } else map[locale] = cleaned;
+      desired.acknowledgmentItems = Object.keys(map).length ? map : null;
+    }
+    if (dto.termsDocument !== undefined) {
+      if (working.kind !== OperatorTermsKind.DOCUMENT) {
+        throw new BadRequestException(
+          'This tour has no conditions document to translate',
+        );
+      }
+      const sanitized = sanitizePageHtml(dto.termsDocument);
+      const map = { ...(working.document ?? {}) };
+      if (htmlHasText(sanitized)) map[locale] = sanitized;
+      else delete map[locale];
+      desired.document = Object.keys(map).length ? map : null;
+    }
+
+    if (gated) {
+      const staged = this.pendingChanges.conditionsEqual(desired, live)
+        ? null
+        : desired;
+      await this.pendingChanges.setStagedConditions(tour, requesterId, staged);
+      return { held: staged !== null };
+    }
+
+    if (dto.acknowledgmentItems !== undefined) {
+      await this.prisma.tour.update({
+        where: { id },
+        data: {
+          acknowledgmentItems: desired.acknowledgmentItems
+            ? (desired.acknowledgmentItems as Prisma.InputJsonValue)
+            : Prisma.DbNull,
+        },
+      });
+    }
+    if (dto.termsDocument !== undefined) {
+      // Re-merge the one locale onto the FRESH row inside the locked write -
+      // never blind-write the map computed from the earlier read.
+      const sanitized = sanitizePageHtml(dto.termsDocument);
+      await this.writeOperatorDocument(tour.operatorId, (current) => {
+        const map = { ...(current ?? {}) };
+        if (htmlHasText(sanitized)) map[locale] = sanitized;
+        else delete map[locale];
+        return Object.keys(map).length ? map : null;
+      });
+    }
+    this.logger.log(
+      `User ${requesterId} updated operator-conditions ${locale} translation on tour ${id}`,
+    );
+    return { held: false };
+  }
+
+  /**
+   * Every INSTANT write to `operators.termsDocument` funnels here. The
+   * document is one row per operator shared by all their tours, so the row is
+   * locked (SELECT ... FOR UPDATE) and the merge re-applies onto the fresh
+   * value - two concurrent writers (another tour's save, a console
+   * translation, an approval) serialize instead of losing each other's merge
+   * (security review, wave 3). A changed ENGLISH text is a new legal object,
+   * so the version stamps to today; any other merge keeps it (acceptance
+   * evidence names the EN text - MCK-20 §4).
+   */
+  private async writeOperatorDocument(
+    operatorId: string,
+    merge: (
+      current: Record<string, string> | null,
+    ) => Record<string, string> | null,
+  ) {
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM operators WHERE id = ${operatorId} FOR UPDATE`;
+      const op = await tx.operator.findUnique({
+        where: { id: operatorId },
+        select: { termsDocument: true },
+      });
+      const current =
+        (op?.termsDocument as Record<string, string> | null) ?? null;
+      const next = merge(current);
+      if (JSON.stringify(next ?? null) === JSON.stringify(current)) return;
+      const enChanged = (next?.en ?? null) !== (current?.en ?? null);
+      await tx.operator.update({
+        where: { id: operatorId },
+        data: {
+          termsDocument: next ? (next as Prisma.InputJsonValue) : Prisma.DbNull,
+          ...(enChanged
+            ? {
+                termsVersion: `v${new Date().toISOString().slice(0, 10)}`,
+                termsEffectiveDate: new Date(),
+              }
+            : {}),
+        },
+      });
+    });
   }
 
   // ── Lifecycle transitions ─────────────────────────────────────────────────────

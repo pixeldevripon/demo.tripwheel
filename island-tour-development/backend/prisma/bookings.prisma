@@ -55,6 +55,15 @@ model Booking {
   pickupUnitPrice    Decimal? @db.Decimal(10, 2) // per-person zone price at booking time
   pickupTotalPrice   Decimal? @db.Decimal(10, 2) // unitPrice × pax (the charged line)
 
+  // Operator-conditions acceptance evidence (Pastel #80 / MCK-20 §4): the
+  // stamp is the when, the booking's own contact fields are the who, and
+  // operatorTermsVersion is the operator's termsVersion at acceptance (null
+  // for the ACKNOWLEDGMENT flavor - there is no versioned document). A flagged
+  // tour's booking cannot take a payment intent while acceptedAt is null:
+  // the checkbox is the interface to that rule, the API is the rule.
+  operatorTermsAcceptedAt DateTime?
+  operatorTermsVersion    String?
+
   // UNIT + PRIVATE exclusivity (master E.3 "one booking takes the whole departure").
   // True when a private, unit-priced charter claims the entire departure; release
   // then frees the whole departure rather than the guest headcount.

@@ -13,6 +13,7 @@ import {
   OperatorCompanyInfoResponseDto,
   OperatorMollieConfigResponseDto,
   OperatorPaymentProviderResponseDto,
+  OperatorPublicTermsDto,
   OperatorResponseDto,
   OperatorSocialMediaResponseDto,
   OperatorStripeConfigResponseDto,
@@ -64,6 +65,28 @@ export function ApiGetAllOperatorsDocs() {
       type: PaginatedOperatorsResponseDto,
     }),
     ...adminErrors,
+  );
+}
+
+export function ApiGetOperatorPublicTermsDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Public operator conditions document (canonical page + reader)',
+      description:
+        'The canonical per-operator conditions text (Pastel #80 / MCK-20 §3) - ' +
+        'one source behind /{locale}/operators/{slug}/conditions, the checkout ' +
+        'reading layer and the confirmation email link. Sanitized HTML, ' +
+        'locale-resolved with EN fallback. 404 when the operator has no ' +
+        'document.',
+    }),
+    ApiParam({ name: 'slug', description: 'Public operator slug' }),
+    ApiQuery({
+      name: 'locale',
+      required: false,
+      description: 'Content locale - falls back to EN',
+    }),
+    ApiResponse({ status: 200, type: OperatorPublicTermsDto }),
+    ApiResponse({ status: 404, type: NotFoundErrorDto }),
   );
 }
 

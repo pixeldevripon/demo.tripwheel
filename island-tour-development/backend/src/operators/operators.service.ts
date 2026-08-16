@@ -13,6 +13,7 @@ import { MailService } from '@/mail/mail.service';
 import { OnboardingEmailsService } from '@/mail/onboarding-emails.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import { StaffPermissionsService } from '@/staff/staff-permissions.service';
+import { resolveLocaleText } from '@/tours/operator-terms.util';
 import {
   BadRequestException,
   ConflictException,
@@ -931,6 +932,40 @@ export class OperatorsService {
     return {
       activeProvider: updated.activePaymentProvider,
       updatedAt: updated.updatedAt,
+    };
+  }
+
+  /**
+   * The canonical operator-conditions read (Pastel #80 / MCK-20 §3): the page
+   * at /{locale}/operators/{slug}/conditions, the tour-page reading layer and
+   * the confirmation email's link all resolve here - one source. Public; 404
+   * when the operator has no document (the ACKNOWLEDGMENT flavor lives on
+   * tours, never here). The document is sanitized HTML from a trusted write
+   * path (seed today, the platform CMS later).
+   */
+  async getPublicTermsBySlug(slug: string, locale: string = 'en') {
+    const operator = await this.prisma.operator.findFirst({
+      where: { slug, isActive: true },
+      select: {
+        termsDocument: true,
+        termsVersion: true,
+        termsEffectiveDate: true,
+        companyInfo: { select: { companyName: true } },
+        user: { select: { name: true } },
+      },
+    });
+    const document = resolveLocaleText(operator?.termsDocument, locale);
+    if (!operator || !document) {
+      throw new NotFoundException(
+        'This operator has no public conditions document',
+      );
+    }
+    return {
+      operatorName:
+        operator.companyInfo?.companyName ?? operator.user?.name ?? null,
+      version: operator.termsVersion ?? null,
+      effectiveDate: operator.termsEffectiveDate ?? null,
+      document,
     };
   }
 }

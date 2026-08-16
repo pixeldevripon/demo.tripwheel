@@ -13,7 +13,7 @@ import {
     type MollieInstance,
 } from '@/lib/mollie/mollie-js';
 import Image from 'next/image';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
     ConsentLine,
     FieldShell,
@@ -49,6 +49,9 @@ export function CheckoutPaymentMollie({
     currency,
     freeCancelLabel,
     processingHref,
+    termsGate,
+    termsSatisfied,
+    onTermsUnsatisfied,
 }: {
     dict: CheckoutDict;
     locale: Locale;
@@ -62,6 +65,10 @@ export function CheckoutPaymentMollie({
     freeCancelLabel: string;
     /** Relative processing path (with ?ref&tour) - Mollie's returnUrl is built from it. */
     processingHref: string;
+    /** Operator-conditions gate (Pastel #80) - same contract as CheckoutPayment. */
+    termsGate?: ReactNode;
+    termsSatisfied?: boolean;
+    onTermsUnsatisfied?: () => void;
 }) {
     // 'loading' while mollie.js + the field iframes come up; 'unavailable'
     // (no profileId / blocked script) falls back to the hosted page.
@@ -179,6 +186,12 @@ export function CheckoutPaymentMollie({
     async function handlePay() {
         if (processing) return;
         setFormError(null);
+        // Operator-conditions gate (Pastel #80): same rule as the Stripe leg -
+        // the box above this CTA must be ticked before anything charges.
+        if (termsSatisfied === false) {
+            onTermsUnsatisfied?.();
+            return;
+        }
         setProcessing(true);
         try {
             if (cardState === 'ready') {
@@ -292,6 +305,10 @@ export function CheckoutPaymentMollie({
                     </div>
                 </div>
             )}
+
+            {/* Operator-conditions gate (Pastel #80): above the CTA, directly
+                above the consent line - same placement as the Stripe leg. */}
+            {termsGate}
 
             {/* Form-level error (tokenization / payment-creation failure). */}
             <FormError error={formError} />

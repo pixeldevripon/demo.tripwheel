@@ -46,6 +46,7 @@ import {
   ApiReportNonPaymentDocs,
   ApiClaimConversionDocs,
   ApiConfirmDocs,
+  ApiAcceptOperatorTermsDocs,
   ApiExtendDocs,
   ApiGetBookingDocs,
   ApiListBookingsDocs,
@@ -214,6 +215,21 @@ export class BookingsController {
   @ApiExtendDocs()
   extend(@Param('id') id: string, @Body() dto: ExtendBookingDto) {
     return this.bookings.extend(id, dto);
+  }
+
+  /**
+   * POST /bookings/:id/accept-operator-terms
+   *
+   * The checkout's required operator-conditions checkbox (Pastel #80 /
+   * MCK-20): tick = accept. Public like every checkout action, keyed on the
+   * booking uuid; the payment-intent endpoint is the enforcing half - a
+   * flagged tour's booking takes no intent without this stamp.
+   */
+  @Post(':id/accept-operator-terms')
+  @Public()
+  @ApiAcceptOperatorTermsDocs()
+  acceptOperatorTerms(@Param('id') id: string) {
+    return this.bookings.acceptOperatorTerms(id);
   }
 
   @Patch(':id')

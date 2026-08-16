@@ -24,6 +24,22 @@ model Operator {
   contactEmail String?
   contactPhone String?
 
+  // Public operator URL slug - the canonical conditions page lives at
+  // /{locale}/operators/{slug}/conditions (Pastel #80 / MCK-20 §3). Backfilled
+  // by the seed; the operator CMS owns it later. Nullable: an operator with no
+  // public surface needs none.
+  slug String? @unique
+
+  // Operator conditions document (Pastel #80 / MCK-20 §4): ONE document per
+  // operator, shared by all its tours (Powerboat Caribbean covers both
+  // speedboat trips with one text). {locale: sanitized HTML}, EN the fallback.
+  // Version + effective date anchor the acceptance evidence snapshotted onto
+  // bookings. All current text is PLACEHOLDER pending the legal workstream
+  // (D1/D2) - counsel owns the final wording.
+  termsDocument      Json?
+  termsVersion       String?
+  termsEffectiveDate DateTime?
+
   // Eligibility engine (master)
   cancellationRate90d Decimal @default(0) @db.Decimal(5, 2) // % over trailing 90d
   totalBookings       Int     @default(0)

@@ -8,19 +8,23 @@ import {
   Delete,
   Get,
   Param,
+  ParseEnumPipe,
   Patch,
   Post,
+  Put,
   Query,
   Req,
   ValidationPipe,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { Currency, Permission, Role } from '@prisma/client';
+import { Currency, Locale, Permission, Role } from '@prisma/client';
 import {
   AdminToursQueryDto,
   ApproveTourDto,
   CreateTourDto,
   MyToursQueryDto,
+  OperatorTermsQueryDto,
+  UpsertOperatorTermsTranslationDto,
   PendingChangesQueryDto,
   SetLocalsFavouriteDto,
   TourAlternativesQueryDto,
@@ -37,6 +41,8 @@ import {
   ApiGetAllToursDocs,
   ApiGetLocalsFavouriteStatsDocs,
   ApiGetMyToursDocs,
+  ApiGetOperatorTermsDocs,
+  ApiUpsertOperatorTermsTranslationDocs,
   ApiGetTourAlternativesDocs,
   ApiGetTourByIdDocs,
   ApiGetTourBySlugDocs,
@@ -122,6 +128,44 @@ export class ToursController {
     @Query() query: TourAlternativesQueryDto,
   ) {
     return this.toursService.findDeadEndAlternatives(id, query);
+  }
+
+  // ── Operator conditions - the checkout gate's reading layer (public) ──────────
+
+  @Get(':id/operator-terms')
+  @Public()
+  @ApiGetOperatorTermsDocs()
+  getOperatorTerms(
+    @Param('id') id: string,
+    @Query() query: OperatorTermsQueryDto,
+  ) {
+    return this.toursService.getOperatorTerms(id, query.locale);
+  }
+
+  /**
+   * PUT /tours/:id/operator-terms/translation/:locale
+   *
+   * Translation Console write for the operator-conditions content (Pastel
+   * #80): one locale's confirm-list facts and/or document text. English is
+   * wizard-owned; a gated operator's write is HELD for review like the
+   * wizard's own conditions change.
+   */
+  @Put(':id/operator-terms/translation/:locale')
+  @RequirePermissions(Permission.EDIT_TRIP)
+  @ApiUpsertOperatorTermsTranslationDocs()
+  upsertOperatorTermsTranslation(
+    @Param('id') id: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
+    @Body() dto: UpsertOperatorTermsTranslationDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.toursService.upsertOperatorTermsTranslation(
+      id,
+      locale,
+      dto,
+      user.id,
+      user.role,
+    );
   }
 
   // ── Operator "my tours" - static route before :id ─────────────────────────────

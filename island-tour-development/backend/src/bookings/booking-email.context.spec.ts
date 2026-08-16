@@ -98,6 +98,7 @@ function input(
       ...over.site,
     },
     destination: { name: 'Curacao', slug: 'curacao', ...over.destination },
+    operatorTerms: over.operatorTerms ?? null,
     relatedTours: over.relatedTours ?? [
       {
         name: 'Blue Room Snorkel',

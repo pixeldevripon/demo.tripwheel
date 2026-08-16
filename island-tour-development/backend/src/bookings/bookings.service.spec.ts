@@ -2882,6 +2882,108 @@ describe('BookingsService', () => {
     });
   });
 
+  // Operator-conditions acceptance (Pastel #80 / MCK-20 §4): the checkout
+  // checkbox's write half. The payment-intent endpoint is the enforcing half
+  // (payments.service.spec covers the 422).
+  describe('acceptOperatorTerms', () => {
+    const gated = (over: Record<string, unknown> = {}) =>
+      fakeBooking({
+        contactEmail: 'traveller@example.test',
+        operatorTermsAcceptedAt: null,
+        operatorTermsVersion: null,
+        tour: {
+          operatorTermsKind: 'DOCUMENT',
+          operator: { termsVersion: '1.0' },
+        },
+        ...over,
+      });
+
+    const stampedRow = (version: string | null) => ({
+      operatorTermsAcceptedAt: new Date('2030-06-01T09:00:00.000Z'),
+      operatorTermsVersion: version,
+    });
+
+    it('stamps acceptedAt and snapshots the document version (atomic first-writer-wins)', async () => {
+      m.booking.findUnique
+        .mockResolvedValueOnce(gated())
+        .mockResolvedValueOnce(stampedRow('1.0'));
+      m.booking.updateMany.mockResolvedValue({ count: 1 });
+      const res = await svc.acceptOperatorTerms('b1');
+      expect(m.booking.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          // The guard IS the atomicity: only an ON_HOLD row that is still
+          // unstamped takes the write - a concurrent tick loses cleanly.
+          where: expect.objectContaining({
+            status: BookingStatus.ON_HOLD,
+            operatorTermsAcceptedAt: null,
+          }),
+          data: expect.objectContaining({
+            operatorTermsAcceptedAt: expect.any(Date),
+            operatorTermsVersion: '1.0',
+          }),
+        }),
+      );
+      expect(res.version).toBe('1.0');
+    });
+
+    it('snapshots NO version for the acknowledgment flavor (no document exists)', async () => {
+      m.booking.findUnique
+        .mockResolvedValueOnce(
+          gated({
+            tour: {
+              operatorTermsKind: 'ACKNOWLEDGMENT',
+              operator: { termsVersion: '1.0' },
+            },
+          }),
+        )
+        .mockResolvedValueOnce(stampedRow(null));
+      m.booking.updateMany.mockResolvedValue({ count: 1 });
+      await svc.acceptOperatorTerms('b1');
+      expect(m.booking.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ operatorTermsVersion: null }),
+        }),
+      );
+    });
+
+    it('is idempotent - a re-tick returns the FIRST stamp, never rewrites it', async () => {
+      const first = new Date('2030-06-01T08:00:00.000Z');
+      m.booking.findUnique.mockResolvedValue(
+        gated({ operatorTermsAcceptedAt: first, operatorTermsVersion: '1.0' }),
+      );
+      const res = await svc.acceptOperatorTerms('b1');
+      expect(res).toEqual({ acceptedAt: first, version: '1.0' });
+      expect(m.booking.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('409s on an ungated tour (client bug surfaced, not swallowed)', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        gated({ tour: { operatorTermsKind: null, operator: null } }),
+      );
+      await expect(svc.acceptOperatorTerms('b1')).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+    });
+
+    it('409s once the booking has left ON_HOLD (evidence is frozen history)', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        gated({ status: BookingStatus.CONFIRMED }),
+      );
+      await expect(svc.acceptOperatorTerms('b1')).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+      expect(m.booking.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('409s before contact exists - evidence needs a WHO before a WHEN', async () => {
+      m.booking.findUnique.mockResolvedValue(gated({ contactEmail: null }));
+      await expect(svc.acceptOperatorTerms('b1')).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+      expect(m.booking.updateMany).not.toHaveBeenCalled();
+    });
+  });
+
   describe('extend', () => {
     it('pushes the hold window for an ON_HOLD booking', async () => {
       m.booking.findUnique.mockResolvedValue(fakeBooking());

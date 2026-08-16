@@ -15,6 +15,7 @@ import {
   FeatureType,
   FitnessLevel,
   Locale,
+  OperatorTermsKind,
   PaymentModel,
   PickupModel,
   PricingModel,
@@ -654,6 +655,11 @@ interface Blueprint {
   attrOverrides?: Record<string, AttrValue>;
   languages?: string[];
   maxPartySize?: number;
+  // Operator-conditions gate (Pastel #80 / MCK-20): DOCUMENT links the
+  // operator's own conditions text (seeded in users-operators.ts, one per
+  // operator); ACKNOWLEDGMENT renders the per-tour first-person items below.
+  operatorTermsKind?: OperatorTermsKind;
+  acknowledgmentItems?: Record<string, string[]>;
   // ── Badge showcase (master §3.6/§3.7) - lets the demo surface every badge.
   // `publishedDaysAgo` overrides the default -45d publish date: < 30 with 0 reviews
   // -> "New"; >= 90 is a prerequisite for the "Likely to sell out" demand signal. The
@@ -993,6 +999,22 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
     cancellationHours: 48,
     tierKey: 'organic',
     flags: { suitableForBeginners: true, weatherDependent: true },
+    // Pastel #80 demo: the ACKNOWLEDGMENT flavor - first-person participation
+    // facts, one per line, confirmed at the checkout commit step. Placeholder
+    // pending legal (D1/D2); participation facts ONLY, never platform policy.
+    operatorTermsKind: OperatorTermsKind.ACKNOWLEDGMENT,
+    acknowledgmentItems: {
+      en: [
+        'Everyone in my group can swim.',
+        'Nobody in the group is pregnant.',
+        'Nobody has recent back or neck injuries.',
+      ],
+      nl: [
+        'Iedereen in mijn groep kan zwemmen.',
+        'Niemand in de groep is zwanger.',
+        'Niemand heeft recente rug- of nekklachten.',
+      ],
+    },
     attrOverrides: {
       boat_type: 'speedboat',
       open_bar_included: false,
@@ -1110,6 +1132,10 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
     cancellationHours: 72,
     tierKey: 'boosted',
     flags: { familyFriendly: true, weatherDependent: true },
+    // Pastel #80 demo: the DOCUMENT flavor - the checkbox links the
+    // operator's conditions text (Miss Ann's, seeded in users-operators.ts)
+    // and the reading layer opens it in the flow.
+    operatorTermsKind: OperatorTermsKind.DOCUMENT,
     attrOverrides: {
       boat_type: 'speedboat',
       snorkeling_stop_count: 2,
@@ -2262,6 +2288,10 @@ export async function seedTours(): Promise<void> {
       minAgeYears: bp.minAgeYears ?? null,
       fitnessLevel: bp.fitnessLevel ?? FitnessLevel.EASY,
       bookingType: bp.bookingType,
+      // Operator-conditions gate (Pastel #80): explicit null/DbNull on the
+      // unflagged majority so a re-seed clears a stale flag in place.
+      operatorTermsKind: bp.operatorTermsKind ?? null,
+      acknowledgmentItems: bp.acknowledgmentItems ?? Prisma.DbNull,
       sleepAboard: bp.flags?.sleepAboard ?? false,
       weatherDependent: bp.flags?.weatherDependent ?? false,
       wheelchairAccessible: bp.flags?.wheelchairAccessible ?? false,

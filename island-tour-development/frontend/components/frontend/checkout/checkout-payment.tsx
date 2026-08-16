@@ -79,6 +79,16 @@ interface CheckoutPaymentProps {
     freeCancelLabel: string;
     /** Relative TYP-processing path (with ?ref); redirect return_url is built from it. */
     processingHref: string;
+    /**
+     * Operator-conditions gate (Pastel #80 / MCK-20): rendered between the
+     * method list and the CTA, directly above the consent line. The checkout
+     * form owns the node and its state; this component only places it and
+     * refuses to pay while `termsSatisfied` is false.
+     */
+    termsGate?: ReactNode;
+    termsSatisfied?: boolean;
+    /** Called by a Pay tap with the box empty - the gate shows its error line. */
+    onTermsUnsatisfied?: () => void;
 }
 
 /**
@@ -123,6 +133,9 @@ function PaymentInner({
     eligibleMethods,
     freeCancelLabel,
     processingHref,
+    termsGate,
+    termsSatisfied,
+    onTermsUnsatisfied,
 }: CheckoutPaymentProps) {
     const stripe = useStripe();
     const elements = useElements();
@@ -232,6 +245,17 @@ function PaymentInner({
     async function handleReserve() {
         if (processing || !stripe) return;
         setFormError(null);
+
+        // Operator-conditions gate (Pastel #80): the required box sits above
+        // this CTA and must be ticked before anything charges. The gate
+        // component owns the calm error line; this only asks for it. Checked
+        // FIRST - the mockup's demo is exactly "tap Reserve with the box
+        // empty", and the backend refuses the charge without acceptance
+        // anyway, so no method work should start.
+        if (termsSatisfied === false) {
+            onTermsUnsatisfied?.();
+            return;
+        }
 
         // Nothing is pre-selected any more, so "which method?" is a question
         // the traveller can actually reach the Pay button without answering.
@@ -468,6 +492,10 @@ function PaymentInner({
                     </p>
                 </MethodRow>
             </div>
+
+            {/* Operator-conditions gate (Pastel #80): between the methods and
+                the CTA, directly above the locked consent line. */}
+            {termsGate}
 
             {/* Form-level error (charge failure / unavailable). */}
             <FormError error={formError} />

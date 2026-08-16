@@ -68,6 +68,10 @@ function ctx(overrides: EmailTemplateContext = {}): EmailTemplateContext {
   return {
     emailIconBase: ICON_BASE,
     siteLogoUrl: 'https://cdn.test/logo.png',
+    // Operator-conditions recap (Pastel #80): empty on the ungated catalog -
+    // the wireframe-pinned rendering must stay byte-identical without it.
+    termsLine: '',
+    termsUrl: '',
     firstName: 'Denley',
     bookingRef: 'IT-2026-04821',
     tourName: 'Klein Curacao Day Trip',
@@ -208,6 +212,37 @@ describe('booking-confirmation-email.template.html', () => {
         '<tr><td colspan="2" style="border-top:1px solid #E8EAED;padding-top:8px;margin-top:4px"></td></tr>',
       );
     });
+  });
+
+  it('renders the operator-conditions recap ONLY for a flagged booking (Pastel #80)', () => {
+    // Ungated (the whole catalog): the block must not exist at all.
+    expect(renderEmailTemplate(TEMPLATE, ctx())).not.toContain(
+      'Read the conditions',
+    );
+
+    const flagged = renderEmailTemplate(
+      TEMPLATE,
+      ctx({
+        termsLine:
+          "You accepted Miss Ann Boat Trips's operator conditions (version 1.0).",
+        termsUrl:
+          'https://island.tours/en/operators/miss-ann-boat-trips/conditions',
+      }),
+    );
+    expect(flagged).toContain('operator conditions (version 1.0)');
+    expect(flagged).toContain('/operators/miss-ann-boat-trips/conditions');
+    expect(flagged).toContain('Read the conditions');
+
+    // ACKNOWLEDGMENT flavor: a line with no document has no link either.
+    const ack = renderEmailTemplate(
+      TEMPLATE,
+      ctx({
+        termsLine:
+          "At checkout you confirmed Miss Ann Boat Trips's participation requirements for everyone in your group.",
+      }),
+    );
+    expect(ack).toContain('participation requirements');
+    expect(ack).not.toContain('Read the conditions');
   });
 
   it('resolves every token for a full operator_link booking', () => {

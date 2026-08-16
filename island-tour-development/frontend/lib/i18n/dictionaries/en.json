@@ -606,7 +606,8 @@
             "cancellation": {
                 "title": "Plans change. No problem.",
                 "body": "Free cancellation up to {hours} hours before your tour starts. Full refund, no forms, no questions asked.\n\nIf you cancel less than {hours} hours before the tour start time, unfortunately we can't refund or change the booking.",
-                "suppliedBy": "Supplied by"
+                "suppliedBy": "Supplied by",
+                "operatorConditionsApply": "Operator conditions apply"
             },
             "related": {
                 "moreInCategory": "More {category} in {destination}",
@@ -776,6 +777,18 @@
         "processingFailed": "We couldn't confirm your payment. Please contact support with your reference {ref}.",
         "methodUnavailable": "Not available for {currency}",
         "redirectNote": "You'll be securely redirected to complete your payment, then brought right back.",
+        "operatorTermsAgree": "I have read and agree to {operator}'s {conditions}.",
+        "operatorTermsConditionsWord": "operator conditions",
+        "operatorTermsConfirmHeading": "This tour asks you to confirm:",
+        "operatorTermsConfirmLabel": "I confirm this for everyone in my group.",
+        "operatorTermsError": "To book this trip, accept {operator}'s conditions first.",
+        "operatorTermsFallbackName": "the operator",
+        "operatorTermsReaderTitle": "Operator conditions",
+        "operatorTermsReaderVersion": "Version {version}",
+        "operatorTermsReaderAgree": "Agree and continue",
+        "operatorTermsReaderClose": "Close",
+        "operatorTermsReaderLoading": "Loading the conditions...",
+        "operatorTermsReaderUnavailable": "The conditions couldn't be loaded right now. Please try again in a moment.",
         "hostedCheckoutTitle": "Pay securely online"
     },
     "cancelBooking": {

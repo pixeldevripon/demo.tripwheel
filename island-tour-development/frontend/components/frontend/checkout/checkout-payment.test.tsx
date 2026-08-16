@@ -45,7 +45,9 @@ vi.mock('@stripe/react-stripe-js', () => ({
 
 const dict = en.checkout;
 
-function renderPanel() {
+function renderPanel(
+    over: Partial<Parameters<typeof CheckoutPayment>[0]> = {}
+) {
     return render(
         <CheckoutPayment
             dict={dict}
@@ -62,6 +64,7 @@ function renderPanel() {
             eligibleMethods={['card', 'ideal', 'paypal']}
             freeCancelLabel='Free cancellation up to 48h'
             processingHref='/curacao/payment/processing?ref=IT-2026-ABC'
+            {...over}
         />
     );
 }
@@ -124,6 +127,37 @@ describe('CheckoutPayment - method selection', () => {
         expect(screen.getByLabelText(/name on card/i)).toHaveValue(
             'E2E Traveller'
         );
+    });
+});
+
+/**
+ * Pastel #80 · the operator-conditions gate. `termsSatisfied === false` must
+ * stop the Pay handler BEFORE any method work - the server 422s the charge
+ * without acceptance anyway, but this one-line client guard is exactly what a
+ * later handlePay refactor could silently drop.
+ */
+describe('CheckoutPayment - operator-conditions gate (Pastel 80)', () => {
+    it('refuses to pay while the gate is unsatisfied, even with a method picked', () => {
+        const onTermsUnsatisfied = vi.fn();
+        renderPanel({ termsSatisfied: false, onTermsUnsatisfied });
+
+        fireEvent.click(methodRow('iDEAL'));
+        fireEvent.click(payButton());
+
+        expect(onTermsUnsatisfied).toHaveBeenCalled();
+        expect(stripeApi.confirmIdealPayment).not.toHaveBeenCalled();
+        expect(stripeApi.confirmCardPayment).not.toHaveBeenCalled();
+    });
+
+    it('a satisfied gate falls through to the normal validation', () => {
+        const onTermsUnsatisfied = vi.fn();
+        renderPanel({ termsSatisfied: true, onTermsUnsatisfied });
+
+        fireEvent.click(payButton());
+
+        // Past the gate: the next stop is "choose a method".
+        expect(onTermsUnsatisfied).not.toHaveBeenCalled();
+        expect(screen.getByText(dict.selectMethodError)).toBeInTheDocument();
     });
 });
 

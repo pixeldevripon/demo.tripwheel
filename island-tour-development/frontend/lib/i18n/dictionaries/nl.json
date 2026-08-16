@@ -606,7 +606,8 @@
             "cancellation": {
                 "title": "Plannen veranderen. Geen probleem.",
                 "body": "Gratis annuleren tot {hours} uur voor aanvang van je tour. Volledige terugbetaling, geen formulieren, geen vragen.\n\nAnnuleer je minder dan {hours} uur voor de starttijd, dan kunnen we de boeking helaas niet terugbetalen of wijzigen.",
-                "suppliedBy": "Aangeboden door"
+                "suppliedBy": "Aangeboden door",
+                "operatorConditionsApply": "Operatorvoorwaarden van toepassing"
             },
             "related": {
                 "moreInCategory": "Meer {category} in {destination}",
@@ -774,6 +775,18 @@
         "processingFailed": "We konden je betaling niet bevestigen. Neem contact op met support met je referentie {ref}.",
         "methodUnavailable": "Niet beschikbaar voor {currency}",
         "redirectNote": "Je wordt veilig doorgestuurd om je betaling te voltooien en daarna weer teruggebracht.",
+        "operatorTermsAgree": "Ik heb de {conditions} van {operator} gelezen en ga akkoord.",
+        "operatorTermsConditionsWord": "operatorvoorwaarden",
+        "operatorTermsConfirmHeading": "Deze tour vraagt je te bevestigen:",
+        "operatorTermsConfirmLabel": "Ik bevestig dit voor iedereen in mijn groep.",
+        "operatorTermsError": "Accepteer eerst de voorwaarden van {operator} om deze trip te boeken.",
+        "operatorTermsFallbackName": "de operator",
+        "operatorTermsReaderTitle": "Operatorvoorwaarden",
+        "operatorTermsReaderVersion": "Versie {version}",
+        "operatorTermsReaderAgree": "Akkoord en doorgaan",
+        "operatorTermsReaderClose": "Sluiten",
+        "operatorTermsReaderLoading": "Voorwaarden laden...",
+        "operatorTermsReaderUnavailable": "De voorwaarden konden nu niet worden geladen. Probeer het zo weer.",
         "hostedCheckoutTitle": "Betaal veilig online",
         "countryPopular": "Populair",
         "countryAll": "Alle landen"

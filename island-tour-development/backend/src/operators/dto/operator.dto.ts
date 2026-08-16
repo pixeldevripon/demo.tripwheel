@@ -1,5 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { OperatorVerificationStatus, PaymentProvider } from '@prisma/client';
+import {
+  Locale,
+  OperatorVerificationStatus,
+  PaymentProvider,
+} from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsBoolean,
@@ -185,6 +189,33 @@ export class PaginatedOperatorsResponseDto {
 }
 
 // ── Query & Input DTOs ────────────────────────────────────────────────────────
+
+// ── Public operator conditions (Pastel #80 / MCK-20 §3) ───────────────────────
+
+export class OperatorPublicTermsQueryDto {
+  @ApiPropertyOptional({ enum: Locale, default: 'en' })
+  @IsOptional()
+  @IsEnum(Locale)
+  locale?: Locale = Locale.en;
+}
+
+/** The canonical conditions page's body - ONE source with the checkout reader. */
+export class OperatorPublicTermsDto {
+  @ApiPropertyOptional({ example: 'Miss Ann Boat Trips', nullable: true })
+  operatorName!: string | null;
+
+  @ApiPropertyOptional({ example: '1.0', nullable: true })
+  version!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  effectiveDate!: Date | null;
+
+  @ApiProperty({
+    description:
+      'Sanitized-HTML conditions text, locale-resolved with EN fallback',
+  })
+  document!: string;
+}
 
 export class OperatorQueryDto {
   @ApiPropertyOptional({

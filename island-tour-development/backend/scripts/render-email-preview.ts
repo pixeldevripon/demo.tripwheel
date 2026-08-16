@@ -122,6 +122,7 @@ const ctx = buildConfirmationEmailContext({
     whatsappEnabled: true,
   },
   destination: { name: 'Curacao', slug: 'curacao' },
+  operatorTerms: null,
   relatedTours: [
     {
       name: 'Blue Room Snorkel Tour',

@@ -38,7 +38,9 @@ vi.mock('@/lib/checkout/countries', () => ({
     composePhone: (country: string, phone: string) => `${country}${phone}`,
 }));
 
-const { reserveAndPay, userFacingError } = await import('./reserve-and-pay');
+const { reserveAndPay, intentForBooking, userFacingError } = await import(
+    './reserve-and-pay'
+);
 
 const INPUT = {
     bookingId: 'bk-idem-1',
@@ -296,6 +298,60 @@ describe('reserveAndPay - failure branches', () => {
         reserveBooking.mockRejectedValue(new Error('boom'));
         await reserveAndPay(INPUT);
         expect(createPaymentIntent).not.toHaveBeenCalled();
+    });
+});
+
+/**
+ * Pastel #80: a flagged tour's intent is DEFERRED behind the operator-
+ * conditions tick - the backend 422s it without the recorded acceptance, so
+ * the reserve stops early and the gate arms the intent leg on its own.
+ */
+describe('reserveAndPay - operator-conditions gate (Pastel #80)', () => {
+    it('deferIntent stops before the intent leg and returns termsPending', async () => {
+        const result = await reserveAndPay({ ...INPUT, deferIntent: true });
+
+        expect(result).toEqual({
+            kind: 'termsPending',
+            publicRef: 'BK-PUB-1',
+            bookingId: 'booking-1',
+        });
+        expect(createPaymentIntent).not.toHaveBeenCalled();
+        // The reserve/contact/session legs still ran in full - the traveller
+        // is signed in and the seats are held either way.
+        expect(reserveBooking).toHaveBeenCalled();
+        expect(storeTravelerSession).toHaveBeenCalled();
+    });
+});
+
+describe('intentForBooking - the deferred intent leg', () => {
+    it('maps the Stripe intent exactly like the inline tail', async () => {
+        const result = await intentForBooking('booking-1', 'BK-PUB-1');
+
+        expect(result).toEqual({
+            kind: 'stripe',
+            publicRef: 'BK-PUB-1',
+            clientSecret: 'cs_1',
+            publishableKey: 'pk_1',
+            methodTypes: ['card'],
+            amount: 150,
+        });
+        // The intent leg alone: it must never re-reserve or touch contact.
+        expect(reserveBooking).not.toHaveBeenCalled();
+        expect(updateBookingContact).not.toHaveBeenCalled();
+    });
+
+    it('relays a thrown intent refusal (the 422 without acceptance)', async () => {
+        createPaymentIntent.mockRejectedValue(
+            new Error(
+                'Accept the operator conditions before paying for this booking',
+            ),
+        );
+        const result = await intentForBooking('booking-1', 'BK-PUB-1');
+        expect(result).toEqual({
+            kind: 'error',
+            message:
+                'Accept the operator conditions before paying for this booking',
+        });
     });
 });
 

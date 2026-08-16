@@ -17,6 +17,7 @@ import {
   SetLocalsFavouriteResponseDto,
   TourAlternativeResponseDto,
   TourDetailResponseDto,
+  TourOperatorTermsDto,
   TourPendingChangeDto,
   TourPublicDetailResponseDto,
   TourResponseDto,
@@ -131,6 +132,58 @@ export function ApiGetTourAlternativesDocs() {
         'Shopper display currency; adds the converted `money` object',
     }),
     ApiResponse({ status: 200, type: [TourAlternativeResponseDto] }),
+    ApiResponse({ status: 404, type: NotFoundErrorDto }),
+    ...publicErrors,
+  );
+}
+
+// ── Public operator conditions (Pastel #80 / MCK-20) ──────────────────────────
+
+export function ApiGetOperatorTermsDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary:
+        'Operator conditions for the checkout gate (public - reading layer)',
+      description: [
+        'The body behind the required operator-conditions checkbox at the',
+        'checkout commit step. DOCUMENT tours return the operator’s',
+        'conditions text (sanitized HTML, one document per operator, shared by',
+        'all its tours); ACKNOWLEDGMENT tours return the per-tour first-person',
+        'declarations. Locale-resolved with EN fallback.',
+        '',
+        '404 when the tour is not live or carries no gate - the whole catalog',
+        'defaults to ungated. All conditions text is placeholder pending the',
+        'legal workstream (D1/D2).',
+      ].join('\n'),
+    }),
+    tourIdParam,
+    ApiQuery({
+      name: 'locale',
+      required: false,
+      enum: Locale,
+      description: 'Content locale - falls back to EN',
+    }),
+    ApiResponse({ status: 200, type: TourOperatorTermsDto }),
+    ApiResponse({ status: 404, type: NotFoundErrorDto }),
+    ...publicErrors,
+  );
+}
+
+export function ApiUpsertOperatorTermsTranslationDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: "Translation Console write for a tour's operator conditions",
+      description:
+        "One locale's confirm-list facts and/or conditions-document text " +
+        '(Pastel #80). English is wizard-owned (400 here). The document is ' +
+        'TipTap HTML, sanitized server-side with the PAGES pipeline; a ' +
+        'translation never bumps the document version. On a LIVE tour an ' +
+        "operator's write is HELD for review (`held: true`) exactly like the " +
+        "wizard's own conditions change; platform roles apply instantly.",
+    }),
+    tourIdParam,
+    ApiParam({ name: 'locale', enum: Locale }),
+    ApiResponse({ status: 200, description: '{ held: boolean }' }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...publicErrors,
   );

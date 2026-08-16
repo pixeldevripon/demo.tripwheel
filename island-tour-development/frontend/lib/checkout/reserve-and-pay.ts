@@ -62,6 +62,13 @@ export interface ReserveAndPayInput {
         country: string;
         special: string;
     };
+    /**
+     * Operator-conditions gate (Pastel #80): stop BEFORE the payment-intent
+     * leg. Set for a flagged tour whose acceptance is not recorded yet - the
+     * backend 422s the intent without it, so the checkout collects the tick
+     * first and then runs `intentForBooking` on its own.
+     */
+    deferIntent?: boolean;
 }
 
 export type ReserveAndPayResult =
@@ -85,6 +92,9 @@ export type ReserveAndPayResult =
     | { kind: 'noPayment'; publicRef: string }
     /** A charge IS due but the PSP payload was unusable - show `paymentUnavailable`. */
     | { kind: 'paymentUnavailable' }
+    /** Reserved + contact saved, intent DEFERRED behind the operator-conditions
+     *  tick (Pastel #80). The checkout runs `intentForBooking` after acceptance. */
+    | { kind: 'termsPending'; publicRef: string; bookingId: string }
     /** `message` is null when the raw error is not worth showing a traveller. */
     | { kind: 'error'; message: string | null };
 
@@ -143,17 +153,44 @@ export async function reserveAndPay(
         }
         reconcileTravellerIdentity(bookerEmail);
 
-        const pi = await createPaymentIntent(booking.id);
+        if (input.deferIntent) {
+            return {
+                kind: 'termsPending',
+                publicRef: booking.publicRef,
+                bookingId: booking.id,
+            };
+        }
+
+        return await intentForBooking(booking.id, booking.publicRef);
+    } catch (err) {
+        // Logged raw for debugging; the caller decides what the traveller reads.
+        console.error('[checkout] reserve/pay failed:', err);
+        return { kind: 'error', message: userFacingError(err) };
+    }
+}
+
+/**
+ * The payment-intent leg alone - `reserveAndPay`'s own tail, exported so the
+ * operator-conditions gate can run it AFTER the acceptance tick (the reserve
+ * and contact legs already ran with `deferIntent`). One implementation: the
+ * result mapping cannot drift between the two entry points.
+ */
+export async function intentForBooking(
+    bookingId: string,
+    publicRef: string
+): Promise<ReserveAndPayResult> {
+    try {
+        const pi = await createPaymentIntent(bookingId);
         const amount = pi.amount != null ? Number(pi.amount) : null;
 
         if (!pi.paymentRequired) {
-            return { kind: 'noPayment', publicRef: booking.publicRef };
+            return { kind: 'noPayment', publicRef };
         }
         if (pi.provider === 'MOLLIE') {
             return {
                 kind: 'mollie',
-                publicRef: booking.publicRef,
-                bookingId: booking.id,
+                publicRef,
+                bookingId,
                 profileId: pi.profileId ?? null,
                 testmode: pi.testmode ?? false,
                 amount,
@@ -164,15 +201,14 @@ export async function reserveAndPay(
         }
         return {
             kind: 'stripe',
-            publicRef: booking.publicRef,
+            publicRef,
             clientSecret: pi.clientSecret,
             publishableKey: pi.publishableKey,
             methodTypes: pi.paymentMethodTypes ?? [],
             amount,
         };
     } catch (err) {
-        // Logged raw for debugging; the caller decides what the traveller reads.
-        console.error('[checkout] reserve/pay failed:', err);
+        console.error('[checkout] intent failed:', err);
         return { kind: 'error', message: userFacingError(err) };
     }
 }

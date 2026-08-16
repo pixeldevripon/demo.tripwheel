@@ -13,10 +13,12 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Permission, Role } from '@prisma/client';
+import { Public } from '@/auth/decorators/public.decorator';
 import {
   CreateOperatorDto,
   DecideVerificationDto,
   OnboardOperatorDto,
+  OperatorPublicTermsQueryDto,
   OperatorQueryDto,
   UpdateOperatorCompanyInfoDto,
   UpdateOperatorDto,
@@ -32,6 +34,7 @@ import {
   ApiDeleteOperatorDocs,
   ApiGetAllOperatorsDocs,
   ApiGetOperatorByIdDocs,
+  ApiGetOperatorPublicTermsDocs,
   ApiGetOperatorCompanyInfoDocs,
   ApiGetOperatorMollieConfigDocs,
   ApiGetOperatorPaymentProviderDocs,
@@ -83,6 +86,22 @@ export class OperatorsController {
   @ApiGetAllOperatorsDocs()
   findAll(@Query() query: OperatorQueryDto) {
     return this.operatorsService.findAll(query);
+  }
+
+  /**
+   * GET /operators/slug/:slug/terms - the canonical conditions read
+   * (Pastel #80 / MCK-20 §3). Public: the /operators/{slug}/conditions page,
+   * the tour-page reading layer and the confirmation email all render it.
+   * Static segment first, so it can never shadow (or be shadowed by) `:id`.
+   */
+  @Get('slug/:slug/terms')
+  @Public()
+  @ApiGetOperatorPublicTermsDocs()
+  getPublicTerms(
+    @Param('slug') slug: string,
+    @Query() query: OperatorPublicTermsQueryDto,
+  ) {
+    return this.operatorsService.getPublicTermsBySlug(slug, query.locale);
   }
 
   @Get(':id')

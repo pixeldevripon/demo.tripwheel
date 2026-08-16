@@ -220,6 +220,15 @@ enum PendingChangeStatus {
   REJECTED
 }
 
+// Operator-conditions gate at checkout (Pastel #80 / MCK-20). A flagged tour
+// either carries a contract DOCUMENT (one per-operator text the traveller
+// reads and agrees to) or an ACKNOWLEDGMENT (2-6 first-person participation
+// facts confirmed at the box, no document). Null on the tour = no gate.
+enum OperatorTermsKind {
+  DOCUMENT
+  ACKNOWLEDGMENT
+}
+
 // Pricing model — maps to OCTO `pricingPer` at the boundary.
 enum PricingModel {
   PER_PERSON

@@ -40,6 +40,13 @@ interface CheckoutClientProps {
     /** Server-rendered booking summary (right rail). */
     summary: ReactNode;
 
+    /** Operator-conditions gate (Pastel #80) - null for the ungated catalog. */
+    operatorTerms: {
+        kind: 'DOCUMENT' | 'ACKNOWLEDGMENT';
+        items: string[];
+    } | null;
+    operatorName: string | null;
+
     // ── Live booking inputs (widget selection, carried in the URL) ──
     tourId: string;
     departureId: string | null;
@@ -90,6 +97,8 @@ export function CheckoutClient({
     totals,
     freeCancelLabel,
     summary,
+    operatorTerms,
+    operatorName,
     tourId,
     departureId,
     currency,
@@ -224,6 +233,8 @@ export function CheckoutClient({
                             pickupRequired={pickupRequired}
                             payToday={payToday}
                             freeCancelLabel={freeCancelLabel}
+                            operatorTerms={operatorTerms}
+                            operatorName={operatorName}
                             tourId={tourId}
                             departureId={departureId}
                             currency={currency}

@@ -12,6 +12,7 @@ import {
   FitnessLevel,
   OctoAvailabilityType,
   OnArrivalPayment,
+  OperatorTermsKind,
   PaymentModel,
   PendingChangeStatus,
   PickupModel,
@@ -47,6 +48,7 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
 
 /** Master rule #20 / §6.2 - free-cancellation window is enum-bound, NOT NULL, default 48. */
@@ -837,6 +839,72 @@ export class TourAlternativesQueryDto {
   @IsOptional()
   @IsEnum(Currency)
   currency?: Currency;
+}
+
+// ── Operator conditions (Pastel #80 / MCK-20) ─────────────────────────────────
+
+/** Translation Console write for ONE locale (English is wizard-owned). */
+export class UpsertOperatorTermsTranslationDto {
+  @ApiPropertyOptional({
+    type: [String],
+    description:
+      "This locale's confirm-list facts (ACKNOWLEDGMENT tours). Empty array clears the translation - render falls back to English.",
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(6)
+  @IsString({ each: true })
+  @MaxLength(160, { each: true })
+  acknowledgmentItems?: string[];
+
+  @ApiPropertyOptional({
+    description:
+      "This locale's conditions document (DOCUMENT tours), TipTap HTML - sanitized server-side with the PAGES pipeline. Empty clears the translation.",
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50000)
+  termsDocument?: string;
+}
+
+export class OperatorTermsQueryDto {
+  @ApiPropertyOptional({ enum: Locale, default: 'en' })
+  @IsOptional()
+  @IsEnum(Locale)
+  locale?: Locale = Locale.en;
+}
+
+export class TourOperatorTermsDto {
+  @ApiProperty({ enum: OperatorTermsKind, example: 'DOCUMENT' })
+  kind!: OperatorTermsKind;
+
+  @ApiPropertyOptional({ example: 'Powerboat Caribbean', nullable: true })
+  operatorName!: string | null;
+
+  @ApiPropertyOptional({
+    example: '1.0',
+    nullable: true,
+    description:
+      'Document version snapshotted onto acceptances (DOCUMENT kind only)',
+  })
+  version!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  effectiveDate!: Date | null;
+
+  @ApiProperty({
+    type: [String],
+    description:
+      'First-person declarations (ACKNOWLEDGMENT kind only), locale-resolved with EN fallback',
+  })
+  items!: string[];
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'Sanitized-HTML conditions text (DOCUMENT kind only), locale-resolved with EN fallback',
+  })
+  document!: string | null;
 }
 
 export class MyToursQueryDto {
@@ -1705,6 +1773,43 @@ export class UpdateTourDto {
 
   // instantConfirmation removed - never client-writable (Pastel #22, see
   // CreateTourDto).
+
+  // ── Operator-conditions gate (Pastel #80 / MCK-20) ──
+  // Null clears the gate. On a LIVE tour a non-platform change is HELD for
+  // review like title/description/photos - legal conditions must never change
+  // silently under travellers. DOCUMENT requires the operator to have a
+  // conditions document on file (the text itself is platform-managed).
+  @ApiPropertyOptional({
+    enum: OperatorTermsKind,
+    nullable: true,
+    description:
+      'Operator-conditions gate flavor; null removes the gate. DOCUMENT requires the operator conditions document to exist.',
+  })
+  @IsOptional()
+  @ValidateIf((o: UpdateTourDto) => o.operatorTermsKind !== null)
+  @IsEnum(OperatorTermsKind)
+  operatorTermsKind?: OperatorTermsKind | null;
+
+  @ApiPropertyOptional({
+    type: [String],
+    description:
+      'ACKNOWLEDGMENT only: 2-6 first-person participation facts (English; other locales via the Translation Console). Never platform policy.',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(6)
+  @IsString({ each: true })
+  @MaxLength(160, { each: true })
+  acknowledgmentItems?: string[];
+
+  @ApiPropertyOptional({
+    description:
+      "DOCUMENT only: the operator's conditions text (English), authored in the dashboard rich-text editor. Sanitized server-side with the PAGES pipeline before storage; one document per operator, shared by all its tours.",
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50000)
+  operatorTermsDocument?: string;
 
   @ApiPropertyOptional({
     enum: TourBookingType,

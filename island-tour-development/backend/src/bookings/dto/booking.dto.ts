@@ -1645,6 +1645,20 @@ export class ReportCancellationDto {
   reason?: string;
 }
 
+/** Acceptance evidence stamped by POST /bookings/:id/accept-operator-terms. */
+export class OperatorTermsAcceptanceDto {
+  @ApiProperty({ example: '2026-08-16T14:05:00.000Z' })
+  acceptedAt!: Date;
+
+  @ApiPropertyOptional({
+    example: '1.0',
+    nullable: true,
+    description:
+      "The operator's document version at acceptance - null for the ACKNOWLEDGMENT flavor",
+  })
+  version!: string | null;
+}
+
 export class ExtendBookingDto {
   @ApiPropertyOptional({
     example: 30,

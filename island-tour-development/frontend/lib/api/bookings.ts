@@ -273,6 +273,50 @@ export async function createPaymentIntent(
     );
 }
 
+// ── Operator conditions (Pastel #80 / MCK-20) ────────────────────────────────
+
+/** Backend `TourOperatorTermsDto` - the reading layer's body. */
+export interface OperatorTermsBody {
+    kind: 'DOCUMENT' | 'ACKNOWLEDGMENT';
+    operatorName: string | null;
+    version: string | null;
+    effectiveDate: string | null;
+    /** First-person declarations (ACKNOWLEDGMENT only), locale-resolved. */
+    items: string[];
+    /** Sanitized-HTML conditions text (DOCUMENT only), locale-resolved. */
+    document: string | null;
+}
+
+/** The conditions body for the checkout reading layer (public, by tour id). */
+export async function fetchOperatorTerms(
+    tourId: string,
+    locale: string
+): Promise<OperatorTermsBody> {
+    return apiFetch<OperatorTermsBody>(
+        `/tours/${seg(tourId)}/operator-terms?locale=${encodeURIComponent(locale)}`
+    );
+}
+
+/** Backend `OperatorTermsAcceptanceDto` - the stamped evidence pair. */
+export interface OperatorTermsAcceptance {
+    acceptedAt: string;
+    version: string | null;
+}
+
+/**
+ * Tick = accept (Pastel #80): stamps the acceptance evidence onto the ON_HOLD
+ * booking. Idempotent - the payment-intent endpoint refuses a flagged booking
+ * without it, so this MUST succeed before the intent leg runs.
+ */
+export async function acceptOperatorTerms(
+    bookingId: string
+): Promise<OperatorTermsAcceptance> {
+    return apiFetch<OperatorTermsAcceptance>(
+        `/bookings/${seg(bookingId)}/accept-operator-terms`,
+        { method: 'POST' }
+    );
+}
+
 /**
  * Read the thank-you payload by public ref (client-side - used by the
  * /payment/processing poller to watch for the webhook `CONFIRMED` transition).

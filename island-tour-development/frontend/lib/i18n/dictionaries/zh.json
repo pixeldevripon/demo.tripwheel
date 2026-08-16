@@ -606,7 +606,8 @@
             "cancellation": {
                 "title": "计划有变？没问题。",
                 "body": "在行程开始前 {hours} 小时可免费取消，全额退款，无需填表，无需理由。\n\n若在开始时间前不足 {hours} 小时取消，很抱歉我们无法退款或更改预订。",
-                "suppliedBy": "提供方"
+                "suppliedBy": "提供方",
+                "operatorConditionsApply": "适用运营方条款"
             },
             "related": {
                 "moreInCategory": "{destination}的更多{category}",
@@ -774,6 +775,18 @@
         "processingFailed": "我们无法确认您的付款。请凭参考编号 {ref} 联系客服。",
         "methodUnavailable": "不支持 {currency}",
         "redirectNote": "我们会安全地将您跳转至支付页面完成付款，随后带您返回。",
+        "operatorTermsAgree": "我已阅读并同意{operator}的{conditions}。",
+        "operatorTermsConditionsWord": "运营方条款",
+        "operatorTermsConfirmHeading": "此行程需要您确认：",
+        "operatorTermsConfirmLabel": "我代表同行的所有人确认以上内容。",
+        "operatorTermsError": "预订此行程前，请先接受{operator}的条款。",
+        "operatorTermsFallbackName": "运营方",
+        "operatorTermsReaderTitle": "运营方条款",
+        "operatorTermsReaderVersion": "版本 {version}",
+        "operatorTermsReaderAgree": "同意并继续",
+        "operatorTermsReaderClose": "关闭",
+        "operatorTermsReaderLoading": "正在加载条款...",
+        "operatorTermsReaderUnavailable": "暂时无法加载条款，请稍后再试。",
         "hostedCheckoutTitle": "安全在线支付",
         "countryPopular": "热门",
         "countryAll": "所有国家/地区"

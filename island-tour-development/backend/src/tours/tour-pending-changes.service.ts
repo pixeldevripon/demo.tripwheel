@@ -4,17 +4,21 @@ import { InboxService } from '@/inbox/inbox.service';
 import { ContentTranslationEnqueuer } from '@/content-translation/content-translation.enqueuer';
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   Logger,
   NotFoundException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import {
   InboxEvent,
+  OperatorTermsKind,
   PendingChangeStatus,
   Prisma,
   Role,
   TourStatus,
 } from '@prisma/client';
+import { htmlHasText, resolveLocaleText } from './operator-terms.util';
 import { randomUUID } from 'crypto';
 
 /** The subset of `source` whose keys are in `keys` AND defined. */
@@ -157,6 +161,28 @@ export interface StagedListItem extends Record<string, unknown> {
   isNew?: boolean;
 }
 
+/**
+ * The staged operator-conditions gate (Pastel #80): the WHOLE desired state.
+ * `kind: null` proposes removing the gate; items and the document ride as
+ * full locale maps so approve applies exactly what the diff showed. The
+ * document map holds sanitized TipTap HTML (the PAGES pipeline reused:
+ * `sanitizePageHtml` ran at write time) and lives on the OPERATOR row - one
+ * document per operator - so approving it applies cross-entity.
+ */
+export interface StagedConditions extends Record<string, unknown> {
+  kind: OperatorTermsKind | null;
+  acknowledgmentItems: Record<string, string[]> | null;
+  document: Record<string, string> | null;
+  /**
+   * Bookkeeping, never applied: the OPERATOR's termsDocument as it stood when
+   * this unit was (re)staged. The document is shared across the operator's
+   * tours, so approve() compare-and-swaps against this - two tours' proposals
+   * built on the same original must not silently overwrite each other's
+   * approval (code review, wave 3). `undefined` on pre-CAS rows = no check.
+   */
+  documentBase?: Record<string, string> | null;
+}
+
 export interface PendingChangePayload {
   tour?: { name?: string };
   /** Per-locale UpsertTourTranslationDto fields (defined fields only). */
@@ -165,10 +191,13 @@ export interface PendingChangePayload {
   images?: StagedImage[];
   /** Staged copies of the itemized lists - whole desired state per kind. */
   lists?: Partial<Record<StagedListKind, StagedListItem[]>>;
+  /** The staged operator-conditions gate change (Pastel #80). */
+  conditions?: StagedConditions;
   /**
    * Bookkeeping, never applied: `fieldTimes` stamps WHEN each unit was last
    * staged (client ask: per-change timestamps, not one for the whole set).
-   * Keys: 'title' | 'photos' | `tr:{locale}:{field}` | `list:{kind}`.
+   * Keys: 'title' | 'photos' | 'conditions' | `tr:{locale}:{field}` |
+   * `list:{kind}`.
    */
   meta?: { fieldTimes?: Record<string, string> };
 }
@@ -186,7 +215,12 @@ function withFieldTime(
 }
 
 /** The areas a change set touches - drives the queue's "what changed" chips. */
-export type ChangedArea = 'title' | 'content' | 'photos' | StagedListKind;
+export type ChangedArea =
+  | 'title'
+  | 'content'
+  | 'photos'
+  | 'conditions'
+  | StagedListKind;
 
 /** The LIVE counterparts of an open set's kept fields - what the diff view
  *  renders against, for the operator as much as the reviewer. */
@@ -195,6 +229,7 @@ export interface PendingChangeCurrentValues {
   translations?: Record<string, Record<string, unknown>>;
   images?: Omit<StagedImage, 'isNew'>[];
   lists?: Partial<Record<StagedListKind, Omit<StagedListItem, 'isNew'>[]>>;
+  conditions?: StagedConditions;
 }
 
 /** Bounds each staged list, like MAX_STAGED_IMAGES bounds the gallery. */
@@ -272,6 +307,7 @@ export class TourPendingChangesService {
     if (payload.translations && Object.keys(payload.translations).length > 0)
       areas.push('content');
     if (payload.images) areas.push('photos');
+    if (payload.conditions) areas.push('conditions');
     // EVERY configured kind - hand-listing three of five silently dropped
     // the features/locations chips (code review round 4).
     for (const kind of Object.keys(LIST_CONFIG) as StagedListKind[]) {
@@ -423,7 +459,33 @@ export class TourPendingChangesService {
       }
       current.lists = lists;
     }
+    if (payload.conditions) {
+      current.conditions = await this.loadLiveConditions(tourId);
+    }
     return current;
+  }
+
+  /** The live operator-conditions gate, in the staged unit's own shape. The
+   *  document half lives on the OPERATOR row (one per operator). */
+  async loadLiveConditions(tourId: string): Promise<StagedConditions> {
+    const tour = await this.prisma.tour.findUnique({
+      where: { id: tourId },
+      select: {
+        operatorTermsKind: true,
+        acknowledgmentItems: true,
+        operator: { select: { termsDocument: true } },
+      },
+    });
+    return {
+      kind: tour?.operatorTermsKind ?? null,
+      acknowledgmentItems:
+        (tour?.acknowledgmentItems as Record<string, string[]> | null) ?? null,
+      document:
+        tour?.operatorTermsKind === OperatorTermsKind.DOCUMENT
+          ? ((tour?.operator?.termsDocument as Record<string, string> | null) ??
+            null)
+          : null,
+    };
   }
 
   /**
@@ -532,6 +594,15 @@ export class TourPendingChangesService {
       }
     }
 
+    if (payload.conditions) {
+      const live = await this.loadLiveConditions(row.tourId);
+      if (this.conditionsEqual(payload.conditions, live)) pruned = true;
+      else {
+        next.conditions = payload.conditions;
+        current.conditions = live;
+      }
+    }
+
     // Per-unit timestamps survive only for units that survived the prune.
     if (payload.meta?.fieldTimes) {
       const kept: Record<string, string> = {};
@@ -541,14 +612,18 @@ export class TourPendingChangesService {
             ? next.tour !== undefined
             : key === 'photos'
               ? next.images !== undefined
-              : key.startsWith('list:')
-                ? next.lists?.[key.slice(5) as StagedListKind] !== undefined
-                : key.startsWith('tr:')
-                  ? (() => {
-                      const [, locale, field] = key.split(':');
-                      return next.translations?.[locale]?.[field] !== undefined;
-                    })()
-                  : false;
+              : key === 'conditions'
+                ? next.conditions !== undefined
+                : key.startsWith('list:')
+                  ? next.lists?.[key.slice(5) as StagedListKind] !== undefined
+                  : key.startsWith('tr:')
+                    ? (() => {
+                        const [, locale, field] = key.split(':');
+                        return (
+                          next.translations?.[locale]?.[field] !== undefined
+                        );
+                      })()
+                    : false;
         if (alive) kept[key] = at;
       }
       if (Object.keys(kept).length > 0) next.meta = { fieldTimes: kept };
@@ -586,6 +661,7 @@ export class TourPendingChangesService {
       p.tour?.name === undefined &&
       (!p.translations || Object.keys(p.translations).length === 0) &&
       !p.images &&
+      !p.conditions &&
       !this.hasAnyList(p)
     );
   }
@@ -694,6 +770,50 @@ export class TourPendingChangesService {
         ...(name === null ? {} : { tour: { name } }),
       };
     });
+  }
+
+  /** Stage (or, with null, withdraw) the operator-conditions gate change
+   *  (Pastel #80) - the staged value is the WHOLE desired state. */
+  async setStagedConditions(
+    tour: { id: string; operatorId: string; name: string },
+    submittedById: string,
+    staged: StagedConditions | null,
+  ) {
+    let toStore = staged;
+    if (staged?.kind === OperatorTermsKind.DOCUMENT) {
+      // Snapshot the OPERATOR row's document (not loadLiveConditions, whose
+      // document is null while the live kind is still ACKNOWLEDGMENT/None) -
+      // approve() CAS-checks the write against this.
+      const op = await this.prisma.operator.findUnique({
+        where: { id: tour.operatorId },
+        select: { termsDocument: true },
+      });
+      toStore = {
+        ...staged,
+        documentBase:
+          (op?.termsDocument as Record<string, string> | null) ?? null,
+      };
+    }
+    return this.mutateStash(tour, submittedById, (current) => {
+      const { conditions: _conditions, meta, ...rest } = current;
+      const nextMeta = withFieldTime(meta, 'conditions', toStore !== null);
+      return {
+        ...rest,
+        ...(nextMeta ? { meta: nextMeta } : {}),
+        ...(toStore === null ? {} : { conditions: toStore }),
+      };
+    });
+  }
+
+  /** Same comparison at stash, prune and withdraw time: the gate change is
+   *  one unit - kind plus the full items and document maps. */
+  conditionsEqual(a: StagedConditions, b: StagedConditions): boolean {
+    return (
+      (a.kind ?? null) === (b.kind ?? null) &&
+      JSON.stringify(a.acknowledgmentItems ?? null) ===
+        JSON.stringify(b.acknowledgmentItems ?? null) &&
+      JSON.stringify(a.document ?? null) === JSON.stringify(b.document ?? null)
+    );
   }
 
   /**
@@ -1329,6 +1449,83 @@ export class TourPendingChangesService {
         await tx.tour.update({
           where: { id: tourId },
           data: { name: payload.tour.name },
+        });
+      }
+      if (payload.conditions) {
+        // DOCUMENT must still have a document behind it at APPLY time - the
+        // write-time check is the other enforcement point, and the operator's
+        // document could have been cleared mid-review. The staged unit may
+        // itself CARRY the document (operator-authored via the wizard).
+        if (payload.conditions.kind === OperatorTermsKind.DOCUMENT) {
+          // The document is ONE row per operator shared by all their tours -
+          // lock it so concurrent approvals/instant writes serialize instead
+          // of losing each other's merge.
+          await tx.$queryRaw`SELECT id FROM operators WHERE id = ${tour.operatorId} FOR UPDATE`;
+          const op = await tx.operator.findUnique({
+            where: { id: tour.operatorId },
+            select: { termsDocument: true, termsVersion: true },
+          });
+          const stagedEn = payload.conditions.document?.en ?? null;
+          if (
+            !htmlHasText(stagedEn) &&
+            !resolveLocaleText(op?.termsDocument, 'en')
+          ) {
+            throw new UnprocessableEntityException(
+              'The operator has no conditions document on file - the document gate cannot be approved',
+            );
+          }
+          // Apply the staged document to the OPERATOR row (one document per
+          // operator - MCK-20 §4). A changed ENGLISH text is a new legal
+          // object, so the version stamps to today; translation-only merges
+          // keep the version (acceptance evidence names the EN text).
+          if (
+            payload.conditions.document &&
+            JSON.stringify(payload.conditions.document) !==
+              JSON.stringify(op?.termsDocument ?? null)
+          ) {
+            // CAS against the document this proposal was staged on: with two
+            // DOCUMENT-flavored tours, approving T1 moves the shared text -
+            // blind-applying T2's older proposal would silently revert it.
+            // undefined = pre-CAS row, no baseline to check.
+            const base = payload.conditions.documentBase;
+            if (
+              base !== undefined &&
+              JSON.stringify(base ?? null) !==
+                JSON.stringify(op?.termsDocument ?? null)
+            ) {
+              throw new ConflictException(
+                "The operator's conditions document changed after this proposal was staged - reject it with a note so the operator can restage against the current text",
+              );
+            }
+            const enChanged =
+              stagedEn !==
+              ((op?.termsDocument as Record<string, string> | null)?.en ??
+                null);
+            await tx.operator.update({
+              where: { id: tour.operatorId },
+              data: {
+                termsDocument: payload.conditions.document,
+                ...(enChanged
+                  ? {
+                      termsVersion: `v${new Date().toISOString().slice(0, 10)}`,
+                      termsEffectiveDate: new Date(),
+                    }
+                  : {}),
+              },
+            });
+          }
+        }
+        await tx.tour.update({
+          where: { id: tourId },
+          data: {
+            operatorTermsKind: payload.conditions.kind,
+            acknowledgmentItems:
+              payload.conditions.kind === OperatorTermsKind.ACKNOWLEDGMENT &&
+              payload.conditions.acknowledgmentItems
+                ? (payload.conditions
+                    .acknowledgmentItems as Prisma.InputJsonValue)
+                : Prisma.DbNull,
+          },
         });
       }
       for (const [locale, fields] of Object.entries(

@@ -186,6 +186,15 @@ async function CheckoutBody({
             pickupFromLabel={pickupFromLabel}
             pickupRequired={data.pickupRequired}
             totals={totals}
+            operatorTerms={
+                detail.operatorTerms
+                    ? {
+                          kind: detail.operatorTerms.kind,
+                          items: detail.operatorTerms.items,
+                      }
+                    : null
+            }
+            operatorName={detail.operatorName ?? null}
             tourId={detail.id}
             departureId={selection.departureId}
             currency={currency}

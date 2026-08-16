@@ -9,7 +9,8 @@ import { getDestinationCategories } from '@/lib/api/public/categories';
 import { getMediaSeo, normalizeUrl } from '@/lib/api/public/media';
 import { getTourReviewSummary } from '@/lib/api/public/reviews';
 import { getTourBySlug } from '@/lib/api/public/tours';
-import { type Locale } from '@/lib/constants/locales';
+import { localizeHref, type Locale } from '@/lib/constants/locales';
+import Link from 'next/link';
 import { getServerCurrency } from '@/lib/currency/server';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import {
@@ -933,11 +934,35 @@ export async function TourDetailContent({
                                     </>
                                 )}
 
-                                {/* LD14 supplied-by tail line. */}
+                                {/* LD14 supplied-by tail line - and, for a
+                                    tour gated on the operator's conditions
+                                    DOCUMENT, the MCK-20 disclosure link:
+                                    disclose on the tour page, gate once at
+                                    checkout. The link is the canonical
+                                    conditions URL; in-app it opens as the
+                                    intercepted overlay. */}
                                 {detail.operatorName && (
                                     <p className='m-0 text-[12.5px] leading-[1.6] text-it-ink-muted'>
                                         {cancelDict.suppliedBy}{' '}
                                         {detail.operatorName}
+                                        {detail.operatorTerms?.kind ===
+                                            'DOCUMENT' &&
+                                            detail.operatorSlug && (
+                                                <>
+                                                    {' · '}
+                                                    <Link
+                                                        href={localizeHref(
+                                                            locale,
+                                                            `/operators/${detail.operatorSlug}/conditions`
+                                                        )}
+                                                        scroll={false}
+                                                        className='font-semibold text-it-ink-muted underline underline-offset-2'>
+                                                        {
+                                                            cancelDict.operatorConditionsApply
+                                                        }
+                                                    </Link>
+                                                </>
+                                            )}
                                     </p>
                                 )}
                             </div>

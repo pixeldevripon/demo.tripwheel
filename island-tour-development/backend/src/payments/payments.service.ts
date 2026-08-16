@@ -4,6 +4,7 @@ import {
   Logger,
   NotFoundException,
   ServiceUnavailableException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import type Stripe from 'stripe';
 import {
@@ -227,6 +228,8 @@ export class PaymentsService {
         totalRetail: true,
         tourId: true,
         customerLocale: true,
+        operatorTermsAcceptedAt: true,
+        tour: { select: { operatorTermsKind: true } },
       },
     });
     if (!booking) throw new NotFoundException('Booking not found');
@@ -237,6 +240,18 @@ export class PaymentsService {
     ) {
       throw new BadRequestException(
         `Cannot pay for a ${booking.status} booking`,
+      );
+    }
+
+    // Operator-conditions gate (Pastel #80 / MCK-20): a flagged tour's booking
+    // takes no payment intent until the acceptance evidence is on the record.
+    // The checkout checkbox is the interface to this rule; this check IS the
+    // rule - every charging model and both PSPs funnel through here, and
+    // confirm() separately requires captured money, so there is no way to a
+    // CONFIRMED booking around it.
+    if (booking.tour?.operatorTermsKind && !booking.operatorTermsAcceptedAt) {
+      throw new UnprocessableEntityException(
+        'Accept the operator conditions before paying for this booking',
       );
     }
 

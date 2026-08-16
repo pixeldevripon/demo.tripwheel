@@ -46,6 +46,7 @@ function createMockPrismaService() {
       findUnique: jest.fn(),
       findMany: jest.fn(),
       create: jest.fn(),
+      update: jest.fn(),
       // publish() stamps firstTourLiveAt one-shot; default "already stamped"
       // so pre-existing publish tests exercise publishing, not onboarding.
       updateMany: jest.fn().mockResolvedValue({ count: 0 }),
@@ -189,6 +190,10 @@ describe('ToursService', () => {
   let pendingChanges: {
     isGated: jest.Mock;
     setStashedName: jest.Mock;
+    setStagedConditions: jest.Mock;
+    conditionsEqual: jest.Mock;
+    loadLiveConditions: jest.Mock;
+    getWorkingSetForTour: jest.Mock;
     getLatestForTour: jest.Mock;
   };
 
@@ -205,6 +210,23 @@ describe('ToursService', () => {
           role !== Role.EDITOR,
       ),
       setStashedName: jest.fn().mockResolvedValue(null),
+      setStagedConditions: jest.fn().mockResolvedValue(null),
+      loadLiveConditions: jest.fn().mockResolvedValue({
+        kind: null,
+        acknowledgmentItems: null,
+        document: null,
+      }),
+      // Real comparison shape, so the stage-vs-withdraw branch is exercised.
+      conditionsEqual: jest.fn(
+        (
+          a: { kind: unknown; acknowledgmentItems: unknown },
+          b: { kind: unknown; acknowledgmentItems: unknown },
+        ) =>
+          (a.kind ?? null) === (b.kind ?? null) &&
+          JSON.stringify(a.acknowledgmentItems ?? null) ===
+            JSON.stringify(b.acknowledgmentItems ?? null),
+      ),
+      getWorkingSetForTour: jest.fn().mockResolvedValue(null),
       getLatestForTour: jest.fn().mockResolvedValue(null),
     };
     availability = {
@@ -2634,6 +2656,388 @@ describe('ToursService', () => {
         'Editorial Title',
       );
       expect(pendingChanges.setStashedName).not.toHaveBeenCalled();
+    });
+
+    // ── Operator-conditions gate (Pastel #80): the update() branch itself ──
+
+    it("holds an operator's conditions change on a LIVE tour for review", async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({ status: TourStatus.LIVE }),
+      );
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+      prisma.tour.update.mockResolvedValue({});
+      prisma.tour.findUniqueOrThrow.mockResolvedValue(
+        makeTour({
+          operatorTermsKind: 'ACKNOWLEDGMENT',
+          acknowledgmentItems: { en: ['Everyone can swim.', 'No pregnancy.'] },
+        }),
+      );
+      pendingChanges.loadLiveConditions.mockResolvedValue({
+        kind: 'ACKNOWLEDGMENT',
+        acknowledgmentItems: { en: ['Everyone can swim.', 'No pregnancy.'] },
+        document: null,
+      });
+
+      const result = await service.update(
+        'tour-1',
+        {
+          operatorTermsKind: 'ACKNOWLEDGMENT',
+          acknowledgmentItems: [
+            'Everyone can swim.',
+            'No pregnancy.',
+            'Life jackets stay on.',
+          ],
+        },
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
+
+      expect(pendingChanges.setStagedConditions).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'tour-1' }),
+        'user-1',
+        {
+          kind: 'ACKNOWLEDGMENT',
+          acknowledgmentItems: {
+            en: [
+              'Everyone can swim.',
+              'No pregnancy.',
+              'Life jackets stay on.',
+            ],
+          },
+          document: null,
+        },
+      );
+      // The stored row is untouched on the gated lane.
+      expect(
+        prisma.tour.update.mock.calls[0][0].data.operatorTermsKind,
+      ).toBeUndefined();
+      expect(result.warnings.join(' ')).toContain('review');
+    });
+
+    it('a wizard resave preserves translations held in the working set', async () => {
+      // The wizard resends only the EN entry. With an ES translation HELD in
+      // the pending set, merging over the LIVE row (EN-only) silently dropped
+      // it on the next wizard save (user-reported loss).
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({ status: TourStatus.LIVE }),
+      );
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+      prisma.tour.update.mockResolvedValue({});
+      prisma.tour.findUniqueOrThrow.mockResolvedValue(
+        makeTour({
+          operatorTermsKind: 'ACKNOWLEDGMENT',
+          acknowledgmentItems: { en: ['Everyone can swim.', 'No pregnancy.'] },
+        }),
+      );
+      pendingChanges.loadLiveConditions.mockResolvedValue({
+        kind: 'ACKNOWLEDGMENT',
+        acknowledgmentItems: { en: ['Everyone can swim.', 'No pregnancy.'] },
+        document: null,
+      });
+      pendingChanges.getWorkingSetForTour.mockResolvedValue({
+        payload: {
+          conditions: {
+            kind: 'ACKNOWLEDGMENT',
+            acknowledgmentItems: {
+              en: ['Everyone can swim.', 'No pregnancy.'],
+              es: ['Todos saben nadar.', 'Nadie embarazada.'],
+            },
+            document: null,
+          },
+        },
+      });
+
+      await service.update(
+        'tour-1',
+        {
+          operatorTermsKind: 'ACKNOWLEDGMENT',
+          acknowledgmentItems: [
+            'Everyone can swim.',
+            'No pregnancy.',
+            'Life jackets stay on.',
+          ],
+        },
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
+
+      const staged = pendingChanges.setStagedConditions.mock.calls[0][2];
+      expect(staged.acknowledgmentItems.es).toEqual([
+        'Todos saben nadar.',
+        'Nadie embarazada.',
+      ]);
+      expect(staged.acknowledgmentItems.en).toEqual([
+        'Everyone can swim.',
+        'No pregnancy.',
+        'Life jackets stay on.',
+      ]);
+    });
+
+    it('typing the LIVE conditions back withdraws the staged unit', async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({ status: TourStatus.LIVE }),
+      );
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+      prisma.tour.update.mockResolvedValue({});
+      prisma.tour.findUniqueOrThrow.mockResolvedValue(
+        makeTour({
+          operatorTermsKind: 'ACKNOWLEDGMENT',
+          acknowledgmentItems: { en: ['Everyone can swim.', 'No pregnancy.'] },
+        }),
+      );
+      pendingChanges.loadLiveConditions.mockResolvedValue({
+        kind: 'ACKNOWLEDGMENT',
+        acknowledgmentItems: { en: ['Everyone can swim.', 'No pregnancy.'] },
+        document: null,
+      });
+
+      const result = await service.update(
+        'tour-1',
+        {
+          operatorTermsKind: 'ACKNOWLEDGMENT',
+          acknowledgmentItems: ['Everyone can swim.', 'No pregnancy.'],
+        },
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
+
+      expect(pendingChanges.setStagedConditions).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'tour-1' }),
+        'user-1',
+        null,
+      );
+      expect(result.warnings).toEqual([]);
+    });
+
+    it("an ADMIN's conditions change on a LIVE tour applies instantly", async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({ status: TourStatus.LIVE }),
+      );
+      prisma.tour.update.mockResolvedValue({});
+      prisma.tour.findUniqueOrThrow.mockResolvedValue(makeTour());
+
+      await service.update(
+        'tour-1',
+        {
+          operatorTermsKind: 'ACKNOWLEDGMENT',
+          acknowledgmentItems: ['Everyone can swim.', 'No pregnancy.'],
+        },
+        'admin',
+        Role.ADMIN,
+      );
+
+      const data = prisma.tour.update.mock.calls[0][0].data;
+      expect(data.operatorTermsKind).toBe('ACKNOWLEDGMENT');
+      expect(data.acknowledgmentItems).toEqual({
+        en: ['Everyone can swim.', 'No pregnancy.'],
+      });
+      expect(pendingChanges.setStagedConditions).not.toHaveBeenCalled();
+    });
+
+    it('rejects a confirm-list outside the 2-6 bound', async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({ status: TourStatus.DRAFT }),
+      );
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+      prisma.tour.findUniqueOrThrow.mockResolvedValue(makeTour());
+
+      await expect(
+        service.update(
+          'tour-1',
+          {
+            operatorTermsKind: 'ACKNOWLEDGMENT',
+            acknowledgmentItems: ['   ', 'Only one real fact.'],
+          },
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
+      ).rejects.toThrow(/2 to 6/);
+      expect(prisma.tour.update).not.toHaveBeenCalled();
+    });
+
+    it('refuses the DOCUMENT gate when the operator has no document on file', async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({ status: TourStatus.DRAFT }),
+      );
+      // First call resolves ownership; second is the document-existence check.
+      prisma.operator.findUnique
+        .mockResolvedValueOnce({ id: 'op-1' })
+        .mockResolvedValueOnce({ termsDocument: null });
+      prisma.tour.findUniqueOrThrow.mockResolvedValue(makeTour());
+
+      await expect(
+        service.update(
+          'tour-1',
+          { operatorTermsKind: 'DOCUMENT' },
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
+      ).rejects.toThrow(/no conditions document/i);
+      expect(prisma.tour.update).not.toHaveBeenCalled();
+    });
+
+    it('NONE clears both columns instantly on a DRAFT tour', async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({ status: TourStatus.DRAFT }),
+      );
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+      prisma.tour.update.mockResolvedValue({});
+      prisma.tour.findUniqueOrThrow.mockResolvedValue(
+        makeTour({
+          operatorTermsKind: 'ACKNOWLEDGMENT',
+          acknowledgmentItems: { en: ['Everyone can swim.', 'No pregnancy.'] },
+        }),
+      );
+
+      await service.update(
+        'tour-1',
+        { operatorTermsKind: null },
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
+
+      const data = prisma.tour.update.mock.calls[0][0].data;
+      expect(data.operatorTermsKind).toBeNull();
+      expect(pendingChanges.setStagedConditions).not.toHaveBeenCalled();
+    });
+
+    it('sanitizes an authored DOCUMENT through the PAGES pipeline before storing', async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({ status: TourStatus.DRAFT }),
+      );
+      prisma.operator.findUnique.mockResolvedValue({
+        id: 'op-1',
+        termsDocument: null,
+      });
+      prisma.tour.update.mockResolvedValue({});
+      prisma.tour.findUniqueOrThrow.mockResolvedValue(makeTour());
+      prisma.operator.update.mockResolvedValue({});
+
+      await service.update(
+        'tour-1',
+        {
+          operatorTermsKind: 'DOCUMENT',
+          operatorTermsDocument:
+            '<h4>Safety</h4><script>alert(1)</script><p onclick="x()">Follow the crew.</p>',
+        },
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
+
+      // The operator row carries the document; the script tag and the event
+      // handler are DROPPED by the shared pages sanitizer, never stored.
+      const opData = prisma.operator.update.mock.calls[0][0].data;
+      expect(opData.termsDocument.en).toBe(
+        '<h4>Safety</h4><p>Follow the crew.</p>',
+      );
+      expect(opData.termsVersion).toMatch(/^v\d{4}-\d{2}-\d{2}$/);
+    });
+
+    it('findOne survives the terms-only operator select and exposes the flat document map', async () => {
+      // Regression: findOne selects operator:{termsDocument} ONLY, but
+      // flattenCounts builds operatorInfo from operator.user.* whenever an
+      // operator key exists - the list query's full shape. Feeding it the
+      // terms-only relation crashed every wizard load with a 500.
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({
+          status: TourStatus.LIVE,
+          operatorTermsKind: 'DOCUMENT',
+          acknowledgmentItems: null,
+          operator: { termsDocument: { en: '<p>House rules.</p>' } },
+        }),
+      );
+
+      const res = (await service.findOne('tour-1', null, null)) as Record<
+        string,
+        unknown
+      >;
+
+      expect(res.operatorTermsDocument).toEqual({
+        en: '<p>House rules.</p>',
+      });
+      expect(res.operator).toBeUndefined();
+      expect(res.operatorInfo).toBeUndefined();
+    });
+
+    it('console translation: English is wizard-owned (400)', async () => {
+      await expect(
+        service.upsertOperatorTermsTranslation(
+          'tour-1',
+          'en',
+          { acknowledgmentItems: ['a', 'b'] },
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
+      ).rejects.toThrow(/wizard/);
+    });
+
+    it('console translation: a platform role merges the locale instantly', async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({ status: TourStatus.LIVE }),
+      );
+      pendingChanges.loadLiveConditions.mockResolvedValue({
+        kind: 'ACKNOWLEDGMENT',
+        acknowledgmentItems: { en: ['Everyone can swim.', 'No pregnancy.'] },
+        document: null,
+      });
+      prisma.tour.update.mockResolvedValue({});
+
+      const res = await service.upsertOperatorTermsTranslation(
+        'tour-1',
+        'nl',
+        {
+          acknowledgmentItems: ['Iedereen kan zwemmen.', 'Niemand is zwanger.'],
+        },
+        'admin',
+        Role.ADMIN,
+      );
+
+      expect(res).toEqual({ held: false });
+      expect(prisma.tour.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: {
+            acknowledgmentItems: {
+              en: ['Everyone can swim.', 'No pregnancy.'],
+              nl: ['Iedereen kan zwemmen.', 'Niemand is zwanger.'],
+            },
+          },
+        }),
+      );
+    });
+
+    it("console translation: a gated operator's write is HELD like the wizard's", async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({ status: TourStatus.LIVE }),
+      );
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+      pendingChanges.loadLiveConditions.mockResolvedValue({
+        kind: 'ACKNOWLEDGMENT',
+        acknowledgmentItems: { en: ['Everyone can swim.', 'No pregnancy.'] },
+        document: null,
+      });
+      pendingChanges.getWorkingSetForTour.mockResolvedValue(null);
+
+      const res = await service.upsertOperatorTermsTranslation(
+        'tour-1',
+        'nl',
+        {
+          acknowledgmentItems: ['Iedereen kan zwemmen.', 'Niemand is zwanger.'],
+        },
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
+
+      expect(res).toEqual({ held: true });
+      expect(pendingChanges.setStagedConditions).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'tour-1' }),
+        'user-1',
+        expect.objectContaining({
+          acknowledgmentItems: expect.objectContaining({
+            nl: ['Iedereen kan zwemmen.', 'Niemand is zwanger.'],
+          }),
+        }),
+      );
+      expect(prisma.tour.update).not.toHaveBeenCalled();
     });
 
     it("an operator's title change on a DRAFT tour applies instantly", async () => {

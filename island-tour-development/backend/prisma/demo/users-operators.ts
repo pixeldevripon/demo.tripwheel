@@ -24,7 +24,37 @@ export interface DemoOperatorDef {
   contactPhone: string;
   categorySlugs: string[]; // categories this operator runs tours in
   houseTier: 'premium' | 'featured' | 'boosted' | 'organic' | 'standard';
+  // Operator-conditions DOCUMENT (Pastel #80 / MCK-20): one per operator,
+  // shared by all its DOCUMENT-flagged tours. Placeholder text pending the
+  // legal workstream (D1/D2).
+  terms?: { document: Record<string, string>; version: string };
 }
+
+// Placeholder conditions text (Pastel #80). The section skeleton mirrors the
+// operator's old public T&C page; counsel writes the real document (D1/D2).
+// Sanitized-HTML contract: this is a TRUSTED write path - the CMS that later
+// replaces it must sanitize at write time, like page editorial content.
+const MISS_ANN_TERMS_EN = [
+  '<h4>1 · Safety and risk</h4>',
+  "<p>Miss Ann Boat Trips takes all reasonable measures to prevent injury and property damage. Speedboat travel involves movement, spray and wave impact; by joining you accept the risks that come with an open powerboat at sea and you follow the crew's safety instructions at all times.</p>",
+  '<h4>2 · Weather and technical cancellations</h4>',
+  '<p>If the operator cancels a departure for weather or technical reasons, you choose between a free reschedule and a full refund. This never narrows your Island Tours cancellation window.</p>',
+  '<h4>3 · Health</h4>',
+  '<p>This trip is not suitable during pregnancy or with recent back or neck injuries. Limited mobility: message us first, so the crew can advise honestly whether boarding works for you.</p>',
+  '<h4>4 · On board</h4>',
+  "<ul><li>Follow the crew's instructions at all times.</li><li>No illegal substances on board.</li><li>Do not endanger yourself, other guests or the crew.</li></ul>",
+].join('\n');
+
+const MISS_ANN_TERMS_NL = [
+  '<h4>1 · Veiligheid en risico</h4>',
+  "<p>Miss Ann Boat Trips neemt alle redelijke maatregelen om letsel en schade te voorkomen. Varen met een speedboot betekent beweging, buiswater en golfslag; door mee te gaan aanvaardt u de risico's van een open powerboat op zee en volgt u te allen tijde de veiligheidsinstructies van de bemanning.</p>",
+  '<h4>2 · Weer en technische annuleringen</h4>',
+  '<p>Annuleert de operator een afvaart wegens weer of techniek, dan kiest u tussen gratis omboeken en volledige terugbetaling. Dit beperkt nooit uw Island Tours-annuleringstermijn.</p>',
+  '<h4>3 · Gezondheid</h4>',
+  '<p>Deze trip is niet geschikt tijdens zwangerschap of met recente rug- of nekklachten. Beperkte mobiliteit: stuur ons eerst een bericht, zodat de bemanning eerlijk kan adviseren of aan boord gaan voor u werkt.</p>',
+  '<h4>4 · Aan boord</h4>',
+  '<ul><li>Volg altijd de instructies van de bemanning.</li><li>Geen illegale middelen aan boord.</li><li>Breng uzelf, andere gasten of de bemanning niet in gevaar.</li></ul>',
+].join('\n');
 
 export const OPERATORS: DemoOperatorDef[] = [
   {
@@ -37,6 +67,10 @@ export const OPERATORS: DemoOperatorDef[] = [
     contactPhone: '+59995601234',
     categorySlugs: ['boat-tours', 'snorkeling', 'day-trips'],
     houseTier: 'premium',
+    terms: {
+      document: { en: MISS_ANN_TERMS_EN, nl: MISS_ANN_TERMS_NL },
+      version: '1.0-placeholder',
+    },
   },
   {
     key: 'curacao-dive-crew',
@@ -281,6 +315,15 @@ export async function seedUsersAndOperators(): Promise<void> {
       },
     );
 
+    // Operator-conditions document rides both branches so a re-seed refreshes
+    // the placeholder text in place (this seed is re-runnable by design).
+    const termsData = op.terms
+      ? {
+          termsDocument: op.terms.document,
+          termsVersion: op.terms.version,
+          termsEffectiveDate: new Date(),
+        }
+      : {};
     const operator = await prisma.operator.upsert({
       where: { userId },
       update: {
@@ -288,6 +331,9 @@ export async function seedUsersAndOperators(): Promise<void> {
         verificationStatus: OperatorVerificationStatus.VERIFIED,
         contactEmail: email,
         contactPhone: op.contactPhone,
+        // Public operator URL slug - the canonical conditions page address.
+        slug: op.key,
+        ...termsData,
       },
       create: {
         userId,
@@ -295,6 +341,8 @@ export async function seedUsersAndOperators(): Promise<void> {
         verificationStatus: OperatorVerificationStatus.VERIFIED,
         contactEmail: email,
         contactPhone: op.contactPhone,
+        slug: op.key,
+        ...termsData,
       },
     });
 

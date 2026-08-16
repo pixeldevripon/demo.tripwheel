@@ -19,6 +19,7 @@ import {
   BadRequestException,
   NotFoundException,
   ServiceUnavailableException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import {
   BookingStatus,
@@ -218,6 +219,39 @@ describe('PaymentsService', () => {
         amount: '41.99',
       });
       expect(prisma.payment.upsert).toHaveBeenCalled();
+    });
+
+    // Operator-conditions gate (Pastel #80 / MCK-20): the intent endpoint is
+    // the enforcing half of the checkout checkbox - a flagged tour's booking
+    // takes no intent until acceptance evidence is on the record.
+    it('refuses a flagged tour without acceptance evidence (Pastel #80)', async () => {
+      prisma.booking.findUnique.mockResolvedValue(
+        booking({
+          tour: { operatorTermsKind: 'DOCUMENT' },
+          operatorTermsAcceptedAt: null,
+        }),
+      );
+      await expect(svc.createIntentForBooking('b1')).rejects.toThrow(
+        UnprocessableEntityException,
+      );
+      expect(stripe.createPaymentIntent).not.toHaveBeenCalled();
+    });
+
+    it('charges a flagged tour once acceptance is stamped', async () => {
+      prisma.booking.findUnique.mockResolvedValue(
+        booking({
+          tour: { operatorTermsKind: 'ACKNOWLEDGMENT' },
+          operatorTermsAcceptedAt: new Date('2030-06-01T09:00:00.000Z'),
+        }),
+      );
+      const res = await svc.createIntentForBooking('b1');
+      expect(res).toMatchObject({ paymentRequired: true });
+    });
+
+    it('an ungated tour needs no acceptance (the whole-catalog default)', async () => {
+      prisma.booking.findUnique.mockResolvedValue(booking());
+      const res = await svc.createIntentForBooking('b1');
+      expect(res).toMatchObject({ paymentRequired: true });
     });
 
     it('charges the full total for PAID_IN_FULL', async () => {

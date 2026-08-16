@@ -319,6 +319,17 @@ export type ConfirmationEmailInput = {
     name: string;
     slug: string;
   };
+  /**
+   * Operator-conditions acceptance recap (Pastel #80): null for the ungated
+   * catalog - the block renders ONLY when the booking carries the acceptance
+   * stamp, so every existing email stays byte-identical to the wireframe.
+   */
+  operatorTerms: {
+    kind: 'DOCUMENT' | 'ACKNOWLEDGMENT';
+    version: string | null;
+    /** Public operator slug for the canonical conditions URL; null hides the link. */
+    operatorSlug: string | null;
+  } | null;
   relatedTours: readonly RelatedTourInput[];
   /** The featured post-booking recommendations (up to a few); empty hides the block. */
   recommendations: readonly RecommendationInput[];
@@ -344,6 +355,7 @@ export function buildConfirmationEmailContext(
     operator,
     site,
     destination,
+    operatorTerms,
     relatedTours,
     recommendations,
     config,
@@ -424,6 +436,21 @@ export function buildConfirmationEmailContext(
     // rows via [EACH] and hide the heading via [IF] when empty.
     whatToBring: bullets(tour.whatToBring),
     knowBeforeYouGo: bullets(tour.knowBeforeYouGo),
+
+    // Operator-conditions acceptance recap (Pastel #80): one line + optional
+    // canonical link. Empty for the ungated catalog, so the wireframe-pinned
+    // rendering of every existing email is untouched.
+    termsLine: operatorTerms
+      ? operatorTerms.kind === 'DOCUMENT'
+        ? `You accepted ${operator.name ?? 'the operator'}'s operator conditions${
+            operatorTerms.version ? ` (version ${operatorTerms.version})` : ''
+          }.`
+        : `At checkout you confirmed ${operator.name ?? 'the operator'}'s participation requirements for everyone in your group.`
+      : '',
+    termsUrl:
+      operatorTerms?.kind === 'DOCUMENT' && operatorTerms.operatorSlug
+        ? `${base}/${urlLocale}/operators/${operatorTerms.operatorSlug}/conditions`
+        : '',
 
     // Links
     tourUrl: `${base}/${urlLocale}/${destination.slug}/${tour.slug}/`,

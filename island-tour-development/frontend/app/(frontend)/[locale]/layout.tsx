@@ -17,9 +17,14 @@ export function generateStaticParams() {
 
 export default async function LocaleLayout({
     children,
+    modal,
     params,
 }: {
     children: React.ReactNode;
+    /** The `@modal` parallel slot - null except while an intercepted route
+     *  (the operator-conditions overlay) is active. Optional so the generated
+     *  route types stay satisfied while `.next/types` regenerates. */
+    modal?: React.ReactNode;
     params: Promise<{ locale: string }>;
 }) {
     const { locale } = await params;
@@ -71,6 +76,10 @@ export default async function LocaleLayout({
                 </main>
                 <Footer locale={locale} dict={dict.footer} />
             </div>
+            {/* Intercepted-route overlay (operator conditions) - renders above
+                whatever page the reader navigated from; the URL stays the
+                shareable canonical address. */}
+            {modal}
         </WishlistProvider>
     );
 }

@@ -3,7 +3,12 @@ import { InboxService } from '@/inbox/inbox.service';
 import { ContentTranslationEnqueuer } from '@/content-translation/content-translation.enqueuer';
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { PendingChangeStatus, Role, TourStatus } from '@prisma/client';
+import {
+  OperatorTermsKind,
+  PendingChangeStatus,
+  Role,
+  TourStatus,
+} from '@prisma/client';
 import { TourPendingChangesService } from './tour-pending-changes.service';
 
 function createMockPrismaService() {
@@ -20,6 +25,7 @@ function createMockPrismaService() {
       groupBy: jest.fn().mockResolvedValue([]),
     },
     tour: { findUnique: jest.fn(), update: jest.fn() },
+    operator: { findUnique: jest.fn(), update: jest.fn() },
     tourTranslation: { findUnique: jest.fn(), upsert: jest.fn() },
     tourHighlight: {
       findMany: jest.fn().mockResolvedValue([]),
@@ -39,6 +45,7 @@ function createMockPrismaService() {
       deleteMany: jest.fn(),
     },
     $transaction: jest.fn(),
+    $queryRaw: jest.fn().mockResolvedValue([]),
   };
   mock.$transaction.mockImplementation((fn: (tx: typeof mock) => unknown) =>
     fn(mock),
@@ -685,6 +692,165 @@ describe('TourPendingChangesService', () => {
           },
         }),
       ).toEqual(['features', 'locations']);
+    });
+
+    it('changedAreas names a staged conditions unit (Pastel #80)', () => {
+      expect(
+        service.changedAreas({
+          conditions: {
+            kind: OperatorTermsKind.ACKNOWLEDGMENT,
+            acknowledgmentItems: { en: ['a', 'b'] },
+            document: null,
+          },
+        }),
+      ).toEqual(['conditions']);
+    });
+
+    it('approve applies a staged ACKNOWLEDGMENT gate onto the tour', async () => {
+      const items = {
+        en: ['Everyone in my group can swim.', 'Nobody is pregnant.'],
+      };
+      prisma.tourPendingChange.findFirst.mockResolvedValue(
+        makeOpenChange({
+          conditions: {
+            kind: OperatorTermsKind.ACKNOWLEDGMENT,
+            acknowledgmentItems: items,
+            document: null,
+          },
+        }),
+      );
+      prisma.tour.findUnique.mockResolvedValue(TOUR);
+      prisma.tourPendingChange.update.mockResolvedValue(
+        makeOpenChange({}, { status: PendingChangeStatus.APPROVED }),
+      );
+
+      await service.approve('tour-1', 'admin-1');
+
+      expect(prisma.tour.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'tour-1' },
+          data: {
+            operatorTermsKind: OperatorTermsKind.ACKNOWLEDGMENT,
+            acknowledgmentItems: items,
+          },
+        }),
+      );
+    });
+
+    it('approve REFUSES a DOCUMENT gate whose operator has no document left', async () => {
+      // The operator's document could have been cleared mid-review - the
+      // apply-time check is the second enforcement point.
+      prisma.tourPendingChange.findFirst.mockResolvedValue(
+        makeOpenChange({
+          conditions: {
+            kind: OperatorTermsKind.DOCUMENT,
+            acknowledgmentItems: null,
+            document: null,
+          },
+        }),
+      );
+      prisma.tour.findUnique.mockResolvedValue(TOUR);
+      prisma.operator.findUnique.mockResolvedValue({ termsDocument: null });
+
+      await expect(service.approve('tour-1', 'admin-1')).rejects.toThrow(
+        'no conditions document',
+      );
+      expect(prisma.tour.update).not.toHaveBeenCalled();
+    });
+
+    it('setStagedConditions snapshots the operator document as the CAS base', async () => {
+      prisma.tourPendingChange.findFirst.mockResolvedValue(null);
+      prisma.operator.findUnique.mockResolvedValue({
+        termsDocument: { en: '<p>Original.</p>' },
+      });
+      prisma.tourPendingChange.create.mockResolvedValue(makeOpenChange({}, {}));
+
+      await service.setStagedConditions(TOUR, 'user-1', {
+        kind: OperatorTermsKind.DOCUMENT,
+        acknowledgmentItems: null,
+        document: { en: '<p>Proposed.</p>' },
+      });
+
+      const payload = prisma.tourPendingChange.create.mock.calls[0][0].data
+        .payload as { conditions: { documentBase: unknown } };
+      expect(payload.conditions.documentBase).toEqual({
+        en: '<p>Original.</p>',
+      });
+    });
+
+    it('approve REFUSES a DOCUMENT proposal staged against an older document (CAS)', async () => {
+      // Two DOCUMENT-flavored tours under one operator: T1's approval moved
+      // the shared text; blindly applying T2's proposal (built on the
+      // original) would silently revert it (code review, wave 3).
+      prisma.tourPendingChange.findFirst.mockResolvedValue(
+        makeOpenChange({
+          conditions: {
+            kind: OperatorTermsKind.DOCUMENT,
+            acknowledgmentItems: null,
+            document: { en: '<p>T2 text, built on the original.</p>' },
+            documentBase: { en: '<p>Original.</p>' },
+          },
+        }),
+      );
+      prisma.tour.findUnique.mockResolvedValue(TOUR);
+      prisma.operator.findUnique.mockResolvedValue({
+        termsDocument: { en: '<p>T1 text, approved first.</p>' },
+        termsVersion: 'v2026-08-16',
+      });
+
+      await expect(service.approve('tour-1', 'admin-1')).rejects.toThrow(
+        'changed after this proposal was staged',
+      );
+      expect(prisma.operator.update).not.toHaveBeenCalled();
+      expect(prisma.tour.update).not.toHaveBeenCalled();
+    });
+
+    it('approve applies a DOCUMENT proposal whose base still matches, stamping the version', async () => {
+      const staged = { en: '<p>Updated text.</p>', nl: '<p>Vertaald.</p>' };
+      prisma.tourPendingChange.findFirst.mockResolvedValue(
+        makeOpenChange({
+          conditions: {
+            kind: OperatorTermsKind.DOCUMENT,
+            acknowledgmentItems: null,
+            document: staged,
+            documentBase: { en: '<p>Original.</p>', nl: '<p>Vertaald.</p>' },
+          },
+        }),
+      );
+      prisma.tour.findUnique.mockResolvedValue(TOUR);
+      prisma.operator.findUnique.mockResolvedValue({
+        termsDocument: { en: '<p>Original.</p>', nl: '<p>Vertaald.</p>' },
+        termsVersion: 'v1',
+      });
+      prisma.tourPendingChange.update.mockResolvedValue(
+        makeOpenChange({}, { status: PendingChangeStatus.APPROVED }),
+      );
+
+      await service.approve('tour-1', 'admin-1');
+
+      const opData = prisma.operator.update.mock.calls[0][0].data;
+      expect(opData.termsDocument).toEqual(staged);
+      expect(opData.termsVersion).toMatch(/^v\d{4}-\d{2}-\d{2}$/);
+    });
+
+    it('approve applies a staged gate REMOVAL (kind null clears both columns)', async () => {
+      prisma.tourPendingChange.findFirst.mockResolvedValue(
+        makeOpenChange({
+          conditions: { kind: null, acknowledgmentItems: null, document: null },
+        }),
+      );
+      prisma.tour.findUnique.mockResolvedValue(TOUR);
+      prisma.tourPendingChange.update.mockResolvedValue(
+        makeOpenChange({}, { status: PendingChangeStatus.APPROVED }),
+      );
+
+      await service.approve('tour-1', 'admin-1');
+
+      expect(prisma.tour.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ operatorTermsKind: null }),
+        }),
+      );
     });
 
     it('an approve with no EN translation change enqueues nothing', async () => {

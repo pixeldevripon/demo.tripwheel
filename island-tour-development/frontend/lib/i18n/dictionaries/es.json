@@ -606,7 +606,8 @@
             "cancellation": {
                 "title": "Los planes cambian. No hay problema.",
                 "body": "Cancelación gratuita hasta {hours} horas antes del inicio de tu tour. Reembolso completo, sin formularios ni preguntas.\n\nSi cancelas con menos de {hours} horas de antelación a la hora de inicio, lamentablemente no podemos reembolsar ni cambiar la reserva.",
-                "suppliedBy": "Ofrecido por"
+                "suppliedBy": "Ofrecido por",
+                "operatorConditionsApply": "Se aplican condiciones del operador"
             },
             "related": {
                 "moreInCategory": "Más {category} en {destination}",
@@ -774,6 +775,18 @@
         "processingFailed": "No pudimos confirmar tu pago. Contacta con soporte con tu referencia {ref}.",
         "methodUnavailable": "No disponible para {currency}",
         "redirectNote": "Te redirigiremos de forma segura para completar tu pago y luego volverás aquí.",
+        "operatorTermsAgree": "He leído y acepto las {conditions} de {operator}.",
+        "operatorTermsConditionsWord": "condiciones del operador",
+        "operatorTermsConfirmHeading": "Este tour te pide confirmar:",
+        "operatorTermsConfirmLabel": "Lo confirmo por todos los miembros de mi grupo.",
+        "operatorTermsError": "Para reservar este tour, acepta primero las condiciones de {operator}.",
+        "operatorTermsFallbackName": "el operador",
+        "operatorTermsReaderTitle": "Condiciones del operador",
+        "operatorTermsReaderVersion": "Versión {version}",
+        "operatorTermsReaderAgree": "Aceptar y continuar",
+        "operatorTermsReaderClose": "Cerrar",
+        "operatorTermsReaderLoading": "Cargando las condiciones...",
+        "operatorTermsReaderUnavailable": "No se pudieron cargar las condiciones en este momento. Inténtalo de nuevo en un momento.",
         "hostedCheckoutTitle": "Paga en línea de forma segura",
         "countryPopular": "Popular",
         "countryAll": "Todos los países"

@@ -606,7 +606,8 @@
             "cancellation": {
                 "title": "Pläne ändern sich. Kein Problem.",
                 "body": "Kostenlose Stornierung bis {hours} Stunden vor Beginn deiner Tour. Volle Rückerstattung, keine Formulare, keine Fragen.\n\nBei Stornierung weniger als {hours} Stunden vor der Startzeit können wir die Buchung leider nicht erstatten oder ändern.",
-                "suppliedBy": "Angeboten von"
+                "suppliedBy": "Angeboten von",
+                "operatorConditionsApply": "Es gelten Veranstalterbedingungen"
             },
             "related": {
                 "moreInCategory": "Mehr {category} in {destination}",
@@ -774,6 +775,18 @@
         "processingFailed": "Wir konnten deine Zahlung nicht bestätigen. Bitte kontaktiere den Support mit deiner Referenz {ref}.",
         "methodUnavailable": "Nicht verfügbar für {currency}",
         "redirectNote": "Du wirst sicher weitergeleitet, um deine Zahlung abzuschließen, und danach direkt zurückgebracht.",
+        "operatorTermsAgree": "Ich habe die {conditions} von {operator} gelesen und stimme zu.",
+        "operatorTermsConditionsWord": "Veranstalterbedingungen",
+        "operatorTermsConfirmHeading": "Diese Tour bittet dich zu bestätigen:",
+        "operatorTermsConfirmLabel": "Ich bestätige das für alle in meiner Gruppe.",
+        "operatorTermsError": "Akzeptiere zuerst die Bedingungen von {operator}, um diese Tour zu buchen.",
+        "operatorTermsFallbackName": "der Veranstalter",
+        "operatorTermsReaderTitle": "Veranstalterbedingungen",
+        "operatorTermsReaderVersion": "Version {version}",
+        "operatorTermsReaderAgree": "Zustimmen und fortfahren",
+        "operatorTermsReaderClose": "Schließen",
+        "operatorTermsReaderLoading": "Bedingungen werden geladen...",
+        "operatorTermsReaderUnavailable": "Die Bedingungen konnten gerade nicht geladen werden. Bitte versuche es gleich noch einmal.",
         "hostedCheckoutTitle": "Sicher online bezahlen",
         "countryPopular": "Beliebt",
         "countryAll": "Alle Länder"

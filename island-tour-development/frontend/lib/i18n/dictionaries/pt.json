@@ -606,7 +606,8 @@
             "cancellation": {
                 "title": "Os planos mudam. Sem problema.",
                 "body": "Cancelamento gratuito até {hours} horas antes do início do seu passeio. Reembolso total, sem formulários nem perguntas.\n\nSe cancelar com menos de {hours} horas antes da hora de início, infelizmente não podemos reembolsar nem alterar a reserva.",
-                "suppliedBy": "Fornecido por"
+                "suppliedBy": "Fornecido por",
+                "operatorConditionsApply": "Aplicam-se condições do operador"
             },
             "related": {
                 "moreInCategory": "Mais {category} em {destination}",
@@ -774,6 +775,18 @@
         "processingFailed": "Não conseguimos confirmar o teu pagamento. Contacta o suporte com a tua referência {ref}.",
         "methodUnavailable": "Não disponível para {currency}",
         "redirectNote": "Serás redirecionado em segurança para concluir o pagamento e depois trazido de volta.",
+        "operatorTermsAgree": "Li e aceito as {conditions} de {operator}.",
+        "operatorTermsConditionsWord": "condições do operador",
+        "operatorTermsConfirmHeading": "Este passeio pede que confirmes:",
+        "operatorTermsConfirmLabel": "Confirmo isto por todos no meu grupo.",
+        "operatorTermsError": "Para reservar este passeio, aceita primeiro as condições de {operator}.",
+        "operatorTermsFallbackName": "o operador",
+        "operatorTermsReaderTitle": "Condições do operador",
+        "operatorTermsReaderVersion": "Versão {version}",
+        "operatorTermsReaderAgree": "Aceitar e continuar",
+        "operatorTermsReaderClose": "Fechar",
+        "operatorTermsReaderLoading": "A carregar as condições...",
+        "operatorTermsReaderUnavailable": "Não foi possível carregar as condições agora. Tenta novamente daqui a pouco.",
         "hostedCheckoutTitle": "Pague online com segurança",
         "countryPopular": "Popular",
         "countryAll": "Todos os países"

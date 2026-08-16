@@ -606,7 +606,8 @@
             "cancellation": {
                 "title": "Les plans changent. Pas de problème.",
                 "body": "Annulation gratuite jusqu'à {hours} heures avant le début de votre visite. Remboursement intégral, sans formulaire ni question.\n\nEn cas d'annulation moins de {hours} heures avant l'heure de départ, nous ne pouvons malheureusement ni rembourser ni modifier la réservation.",
-                "suppliedBy": "Fourni par"
+                "suppliedBy": "Fourni par",
+                "operatorConditionsApply": "Conditions de l'opérateur applicables"
             },
             "related": {
                 "moreInCategory": "Autres {category} à {destination}",
@@ -774,6 +775,18 @@
         "processingFailed": "Nous n'avons pas pu confirmer votre paiement. Veuillez contacter le support avec votre référence {ref}.",
         "methodUnavailable": "Non disponible pour {currency}",
         "redirectNote": "Vous serez redirigé en toute sécurité pour finaliser votre paiement, puis ramené ici.",
+        "operatorTermsAgree": "J'ai lu et j'accepte les {conditions} de {operator}.",
+        "operatorTermsConditionsWord": "conditions de l'opérateur",
+        "operatorTermsConfirmHeading": "Cette excursion vous demande de confirmer :",
+        "operatorTermsConfirmLabel": "Je le confirme pour tout mon groupe.",
+        "operatorTermsError": "Pour réserver cette excursion, acceptez d'abord les conditions de {operator}.",
+        "operatorTermsFallbackName": "l'opérateur",
+        "operatorTermsReaderTitle": "Conditions de l'opérateur",
+        "operatorTermsReaderVersion": "Version {version}",
+        "operatorTermsReaderAgree": "Accepter et continuer",
+        "operatorTermsReaderClose": "Fermer",
+        "operatorTermsReaderLoading": "Chargement des conditions...",
+        "operatorTermsReaderUnavailable": "Impossible de charger les conditions pour le moment. Réessayez dans un instant.",
         "hostedCheckoutTitle": "Payez en ligne en toute sécurité",
         "countryPopular": "Populaire",
         "countryAll": "Tous les pays"

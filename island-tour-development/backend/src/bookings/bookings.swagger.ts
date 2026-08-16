@@ -26,6 +26,7 @@ import {
   BookingResponseDto,
   ConversionPushResponseDto,
   CustomerBookingSummaryDto,
+  OperatorTermsAcceptanceDto,
   UpdateBookingResponseDto,
   ListBookingsResponseDto,
   RecoverReferenceResponseDto,
@@ -215,6 +216,23 @@ export const ApiExtendDocs = () =>
   applyDecorators(
     ApiOperation({ summary: 'Extend an on-hold reservation window' }),
     ApiOkResponse({ type: BookingResponseDto }),
+    ApiNotFoundResponse({ type: NotFoundErrorDto }),
+    ApiConflictResponse({ type: ConflictErrorDto }),
+  );
+
+export const ApiAcceptOperatorTermsDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: "Accept the tour's operator conditions (checkout gate)",
+      description:
+        'Stamps the acceptance evidence pair onto the ON_HOLD booking ' +
+        '(timestamp + operator document version; identity is the booking ' +
+        'contact - Pastel #80 / MCK-20 §4). Idempotent: a re-tick returns the ' +
+        'first stamp. A flagged tour cannot take a payment intent without ' +
+        'this. 409 when the tour carries no conditions or the booking has ' +
+        'left ON_HOLD.',
+    }),
+    ApiOkResponse({ type: OperatorTermsAcceptanceDto }),
     ApiNotFoundResponse({ type: NotFoundErrorDto }),
     ApiConflictResponse({ type: ConflictErrorDto }),
   );

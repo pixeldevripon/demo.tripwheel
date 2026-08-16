@@ -5,7 +5,11 @@ import {
     readBookingSelection,
     writeBookingSelection,
 } from '@/hooks/tours/use-booking-selection-persistence';
-import type { BookingAddOnSelection, ReserveRequest } from '@/lib/api/bookings';
+import {
+    acceptOperatorTerms,
+    type BookingAddOnSelection,
+    type ReserveRequest,
+} from '@/lib/api/bookings';
 import {
     bookingIdKey,
     formatCheckoutMoney,
@@ -19,7 +23,16 @@ import {
     splitPhone,
 } from '@/lib/checkout/countries';
 import { leaveTo } from '@/lib/checkout/leave-to';
-import { reserveAndPay } from '@/lib/checkout/reserve-and-pay';
+import {
+    intentForBooking,
+    reserveAndPay,
+    userFacingError,
+    type ReserveAndPayResult,
+} from '@/lib/checkout/reserve-and-pay';
+import {
+    CheckoutOperatorTerms,
+    OperatorTermsPendingPanel,
+} from './checkout-operator-terms';
 import {
     localizeHref,
     type Currency,
@@ -108,6 +121,20 @@ interface CheckoutFormProps {
      *  composed by the page (it owns cancellationHours), shown under the pay CTA. */
     freeCancelLabel: string;
 
+    /**
+     * Operator-conditions gate (Pastel #80 / MCK-20): null for the ungated
+     * catalog. When set, the Payment card carries the required checkbox
+     * (DOCUMENT links the reading layer; ACKNOWLEDGMENT lists `items`), the
+     * payment intent is deferred behind the tick, and the backend refuses the
+     * charge without the recorded acceptance.
+     */
+    operatorTerms: {
+        kind: 'DOCUMENT' | 'ACKNOWLEDGMENT';
+        items: string[];
+    } | null;
+    /** Operator display name for the gate's label and error line. */
+    operatorName: string | null;
+
     // ── Live booking inputs (from the widget selection, carried in the URL) ──
     tourId: string;
     departureId: string | null;
@@ -148,6 +175,8 @@ export function CheckoutForm({
     pickupRequired,
     payToday,
     freeCancelLabel,
+    operatorTerms,
+    operatorName,
     tourId,
     departureId,
     currency,
@@ -241,9 +270,25 @@ export function CheckoutForm({
               testmode: boolean;
               amount: number | null;
           }
+        // Reserved + contact saved, intent DEFERRED behind the
+        // operator-conditions tick (Pastel #80) - the Payment card renders the
+        // gate panel until acceptance arms the real intent.
+        | {
+              provider: 'TERMS_PENDING';
+              bookingId: string;
+              publicRef: string;
+              amount: null;
+          }
         | null
     >(null);
     const [reserving, setReserving] = useState(false);
+
+    // Operator-conditions gate state (Pastel #80). `accepted` is the tick,
+    // `busy` covers the acceptance + intent round-trip, `error` is the one
+    // calm line under the box - raised by a Pay tap with the box empty.
+    const [termsAccepted, setTermsAccepted] = useState(false);
+    const [termsBusy, setTermsBusy] = useState(false);
+    const [termsError, setTermsError] = useState<string | null>(null);
 
     /**
      * What the Pay button promises - the BACKEND's figure once we have it.
@@ -258,6 +303,33 @@ export function CheckoutForm({
      * that will be charged.
      */
     const chargeToday = intent?.amount ?? payToday;
+
+    // Operator-conditions gate (Pastel #80): ONE rendered node, placed by
+    // whichever payment panel is live (the gate panel pre-intent, then the
+    // Stripe/Mollie panel between its method list and CTA).
+    const termsGateNode = operatorTerms ? (
+        <CheckoutOperatorTerms
+            dict={dict}
+            locale={locale}
+            tourId={tourId}
+            kind={operatorTerms.kind}
+            items={operatorTerms.items}
+            operatorName={operatorName}
+            checked={termsAccepted}
+            busy={termsBusy}
+            error={termsError}
+            onToggle={handleTermsToggle}
+        />
+    ) : undefined;
+    /** undefined = no gate on this tour; the panels then never block on it. */
+    const termsSatisfied = operatorTerms ? termsAccepted : undefined;
+    const raiseTermsError = () =>
+        setTermsError(
+            dict.operatorTermsError.replace(
+                '{operator}',
+                operatorName ?? dict.operatorTermsFallbackName
+            )
+        );
 
     const processingBase = localizeHref(
         locale,
@@ -498,14 +570,32 @@ export function CheckoutForm({
             pickup: pickupFields(),
             locale,
             contact,
+            // Operator-conditions gate (Pastel #80): stop before the intent
+            // leg - the backend 422s it until acceptance is recorded, so the
+            // tick arms it via `handleTermsToggle` instead.
+            deferIntent: !!operatorTerms && !termsAccepted,
         });
 
+        if (applyIntentResult(result) === 'navigating') {
+            // Deliberately leave `reserving` true so the button stays busy
+            // until the document swaps.
+            return;
+        }
+        setReserving(false);
+    }
+
+    /**
+     * The shared tail of the contact Continue AND of the gate's deferred
+     * intent arm (Pastel #80) - one mapping from a `ReserveAndPayResult` to
+     * component state, so the two entry points cannot drift.
+     */
+    function applyIntentResult(
+        result: ReserveAndPayResult
+    ): 'navigating' | 'done' {
         switch (result.kind) {
             case 'noPayment':
-                // Navigating; deliberately leave `reserving` true so the button
-                // stays busy until the document swaps.
                 leaveTo(processingHref(result.publicRef));
-                return;
+                return 'navigating';
             case 'mollie':
                 setIntent({
                     provider: 'MOLLIE',
@@ -528,6 +618,15 @@ export function CheckoutForm({
                 });
                 onPhaseChange('payment');
                 break;
+            case 'termsPending':
+                setIntent({
+                    provider: 'TERMS_PENDING',
+                    bookingId: result.bookingId,
+                    publicRef: result.publicRef,
+                    amount: null,
+                });
+                onPhaseChange('payment');
+                break;
             case 'paymentUnavailable':
                 setFormError(dict.paymentUnavailable);
                 break;
@@ -535,7 +634,74 @@ export function CheckoutForm({
                 setFormError(result.message ?? dict.reserveError);
                 break;
         }
-        setReserving(false);
+        return 'done';
+    }
+
+    /**
+     * The gate's tick handler (Pastel #80). Ticking records the acceptance
+     * evidence server-side (idempotent) and then runs the intent leg the
+     * reserve deliberately skipped - the live payment panel swaps in on
+     * success. Unticking is client state only: the recorded first stamp
+     * stands (a booking is a point-in-time acceptance), but the Pay button
+     * refuses until the box is ticked again.
+     */
+    async function handleTermsToggle(next: boolean) {
+        setTermsError(null);
+        setTermsAccepted(next);
+        if (!next || termsBusy || intent?.provider !== 'TERMS_PENDING') return;
+        await armDeferredIntent(intent.bookingId, intent.publicRef);
+    }
+
+    /**
+     * The deferred-intent arm: record acceptance, then run the intent leg the
+     * reserve skipped. EVERY failure surfaces at the GATE's own error line -
+     * `formError` lives inside the collapsed Contact section on this phase, so
+     * routing an arm failure there rendered it invisible while the only
+     * clickable CTA accused the traveller of not ticking a box they had ticked
+     * (code review CRITICAL). A failed arm keeps the panel; the CTA retries.
+     */
+    async function armDeferredIntent(armBookingId: string, publicRef: string) {
+        setTermsBusy(true);
+        // A noPayment result hard-navigates; the busy state must survive so
+        // the panel never flashes re-enabled while the page unloads (same
+        // contract as the contact Continue path keeping `reserving` true).
+        let navigating = false;
+        try {
+            await acceptOperatorTerms(armBookingId);
+            const result = await intentForBooking(armBookingId, publicRef);
+            if (result.kind === 'error' || result.kind === 'paymentUnavailable') {
+                setTermsError(
+                    (result.kind === 'error' ? result.message : null) ??
+                        dict.paymentUnavailable
+                );
+                return;
+            }
+            navigating = applyIntentResult(result) === 'navigating';
+        } catch (err) {
+            // The acceptance itself failed - untick so the UI never claims an
+            // acceptance the server does not have.
+            setTermsAccepted(false);
+            setTermsError(userFacingError(err) ?? dict.paymentUnavailable);
+        } finally {
+            if (!navigating) setTermsBusy(false);
+        }
+    }
+
+    /**
+     * The gate panel's CTA. Box empty: ask for the tick (the one calm error
+     * line). Box ticked but the arm failed earlier: RETRY the arm - acceptance
+     * is idempotent, so the retry is safe and the traveller is never stranded
+     * on a panel whose only button repeats a false accusation.
+     */
+    function handleGatePanelPay() {
+        if (termsBusy) return;
+        if (!termsAccepted) {
+            raiseTermsError();
+            return;
+        }
+        if (intent?.provider === 'TERMS_PENDING') {
+            void armDeferredIntent(intent.bookingId, intent.publicRef);
+        }
     }
 
     // Priced zones carry their per-person price inline (master 5.8: "operator
@@ -630,7 +796,15 @@ export function CheckoutForm({
                         <motion.button
                             key='contact-edit'
                             type='button'
-                            onClick={() => onPhaseChange('contact')}
+                            // Inert while the gate's accept + intent round trip
+                            // is in flight: its resolution calls
+                            // onPhaseChange('payment') (or hard-navigates on a
+                            // noPayment result), which would override the edit
+                            // the traveller just asked for (code review MAJOR).
+                            disabled={termsBusy}
+                            onClick={() => {
+                                if (!termsBusy) onPhaseChange('contact');
+                            }}
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
@@ -887,6 +1061,30 @@ export function CheckoutForm({
                                 ease: [0.4, 0, 0.2, 1],
                             }}
                             className='px-[22px] pb-6 pt-0.5'>
+                            {/* Operator-conditions gate (Pastel #80): the
+                                intent is deferred behind the tick, so the
+                                Payment card opens as the gate panel - method
+                                preview, required checkbox, CTA that asks for
+                                the tick instead of swallowing the tap. */}
+                            {intent?.provider === 'TERMS_PENDING' && (
+                                <OperatorTermsPendingPanel
+                                    dict={dict}
+                                    locale={locale}
+                                    freeCancelLabel={freeCancelLabel}
+                                    amountLabel={
+                                        chargeToday > 0
+                                            ? formatCheckoutMoney(
+                                                  chargeToday,
+                                                  currency,
+                                                  locale
+                                              )
+                                            : null
+                                    }
+                                    busy={termsBusy}
+                                    gate={termsGateNode}
+                                    onBlockedPay={handleGatePanelPay}
+                                />
+                            )}
                             {/* Mounted from the first successful continue on -
                                 collapsing back to edit contact keeps the Stripe
                                 fields (and their entries) alive. */}
@@ -904,6 +1102,9 @@ export function CheckoutForm({
                                     processingHref={processingHref(
                                         intent.publicRef
                                     )}
+                                    termsGate={termsGateNode}
+                                    termsSatisfied={termsSatisfied}
+                                    onTermsUnsatisfied={raiseTermsError}
                                 />
                             )}
                             {/* Mollie: inline Components card form (+ hosted
@@ -921,6 +1122,9 @@ export function CheckoutForm({
                                     processingHref={processingHref(
                                         intent.publicRef
                                     )}
+                                    termsGate={termsGateNode}
+                                    termsSatisfied={termsSatisfied}
+                                    onTermsUnsatisfied={raiseTermsError}
                                 />
                             )}
                         </motion.div>

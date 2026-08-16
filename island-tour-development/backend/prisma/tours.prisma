@@ -25,6 +25,15 @@ model Tour {
   redemptionMethod     RedemptionMethod     @default(DIGITAL)
   reference            String? // operator's external id (OCTO reference)
 
+  // Operator-conditions gate (Pastel #80 / MCK-20): null = no gate (the whole
+  // catalog's default, so nothing changes anywhere until a tour is flagged).
+  // DOCUMENT requires the operator's termsDocument to exist. ACKNOWLEDGMENT
+  // renders acknowledgmentItems: {locale: string[]} of 2-6 first-person
+  // participation facts - never platform policy (cancellation, deposit and
+  // payment already render in their locked places and must not drift here).
+  operatorTermsKind   OperatorTermsKind?
+  acknowledgmentItems Json?
+
   // ── Pricing model ──
   pricingModel       PricingModel   @default(PER_PERSON) // → OCTO pricingPer
   wholeUnitType      WholeUnitType? // when pricingModel = UNIT (boat/vehicle…)
