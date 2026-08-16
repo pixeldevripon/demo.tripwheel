@@ -688,7 +688,7 @@ export interface CreateTripPayload {
   cancellationHours?: number;
   paymentModel?: PaymentModel;
   onArrivalPayment?: OnArrivalPayment;
-  instantConfirmation?: boolean;
+  // instantConfirmation is not writable (Pastel #22) - the backend rejects it.
   bookingType?: TourBookingType;
   // OCTO product attributes (master E.3 §1.4)
   timeZone?: string;
@@ -756,7 +756,7 @@ export interface UpdateTripPayload {
   cancellationHours?: number;
   paymentModel?: PaymentModel;
   onArrivalPayment?: OnArrivalPayment;
-  instantConfirmation?: boolean;
+  // instantConfirmation is not writable (Pastel #22) - the backend rejects it.
   bookingType?: TourBookingType | null;
   // OCTO product attributes (master E.3 §1.4)
   timeZone?: string;

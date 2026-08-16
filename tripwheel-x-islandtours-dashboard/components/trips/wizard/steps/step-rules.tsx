@@ -67,7 +67,6 @@ const rulesSchema = z
         .int()
         .min(1, 'At least 1 guest'),
     bookingType: z.enum(['PRIVATE', 'SHARED']).optional().or(z.literal('')),
-    instantConfirmation: z.boolean(),
     bookingCutoffMinutes: z.coerce.number().int().min(0).max(10080),
     checkInMinutesBefore: z.coerce
         .number()
@@ -120,7 +119,6 @@ type RulesValues = {
     minPartySize: string;
     maxPartySize: string;
     bookingType: '' | 'PRIVATE' | 'SHARED';
-    instantConfirmation: boolean;
     bookingCutoffMinutes: string;
     checkInMinutesBefore: string;
     cancellationHours: '24' | '48' | '72' | '168';
@@ -152,7 +150,6 @@ function toDefaults(trip: TripListItem): RulesValues {
         // fields carries the schema default (10) until this step is saved.
         maxPartySize: String(trip.maxPartySize),
         bookingType: trip.bookingType ?? '',
-        instantConfirmation: trip.instantConfirmation,
         bookingCutoffMinutes: String(trip.bookingCutoffMinutes),
         checkInMinutesBefore:
             trip.checkInMinutesBefore != null
@@ -274,7 +271,6 @@ export function StepRules({ trip }: StepRulesProps) {
                             // alone", so unsetting any of these four silently
                             // did nothing.
                             bookingType: values.bookingType || null,
-                            instantConfirmation: values.instantConfirmation,
                             bookingCutoffMinutes: Number(
                                 values.bookingCutoffMinutes,
                             ),
@@ -390,17 +386,11 @@ export function StepRules({ trip }: StepRulesProps) {
                             }
                         />
 
-                        <ToggleRow
-                            id='instantConfirmation'
-                            label='Instant confirmation'
-                            description='Bookings are confirmed immediately, with no manual approval from you.'
-                            checked={v.instantConfirmation}
-                            onChange={c =>
-                                setValue('instantConfirmation', c, {
-                                    shouldDirty: true,
-                                })
-                            }
-                        />
+                        {/* The "Instant confirmation" toggle is removed on
+                            purpose (client review comment 22): every consumer
+                            surface promises instant confirmation and no
+                            request-to-book flow exists behind an off state.
+                            The backend rejects the key. Do not re-add. */}
                     </div>
                 </WizardSection>
 

@@ -39,7 +39,6 @@ function trip(over: Partial<TripListItem> = {}): TripListItem {
     minPartySize: 1,
     maxPartySize: 10,
     bookingType: 'SHARED',
-    instantConfirmation: true,
     bookingCutoffMinutes: 120,
     checkInMinutesBefore: 15,
     cancellationHours: 48,
@@ -65,6 +64,21 @@ async function openPaymentModel() {
   )!
   await user.click(within(section).getAllByRole('combobox')[0])
 }
+
+describe('StepRules — Instant confirmation (client review comment 22)', () => {
+  // The toggle let an operator untick a promise every consumer surface makes
+  // ("Confirmed in seconds"), with no request-to-book flow behind the off
+  // state. It is removed, not hidden - the backend also rejects the key.
+  it('no longer renders the toggle - every tour is instant confirmation', () => {
+    render(<StepRules trip={trip()} />)
+    expect(screen.queryByText('Instant confirmation')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText(
+        'Bookings are confirmed immediately, with no manual approval from you.',
+      ),
+    ).not.toBeInTheDocument()
+  })
+})
 
 describe('StepRules — Payment model (client review comment 21)', () => {
   it('describes ON_ARRIVAL as a deposit model, not payment in full', () => {

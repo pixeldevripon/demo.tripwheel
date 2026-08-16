@@ -90,7 +90,11 @@ export function tripToUpdatePayload(trip: TripListItem): UpdateTripPayload {
 
         paymentModel: trip.paymentModel,
         onArrivalPayment: trip.onArrivalPayment,
-        instantConfirmation: trip.instantConfirmation,
+        // `instantConfirmation` is gone on purpose (client review comment 22):
+        // the checkbox is removed - every tour IS instant confirmation - and
+        // the backend dropped the key from UpdateTourDto, so sending it now
+        // 400s the whole save via forbidNonWhitelisted (the isActive class of
+        // breakage, see below).
 
         minPartySize: trip.minPartySize,
         // NOT NULL since 20260729190000 - no `?? undefined` to write around.

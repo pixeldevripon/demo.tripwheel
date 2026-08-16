@@ -122,4 +122,8 @@ describe('tripToUpdatePayload', () => {
     } as unknown as TripListItem)
     expect('sleepAboard' in p && p.sleepAboard !== undefined).toBe(false)
   })
+
+  it('never sends instantConfirmation, even though the trip carries it (Pastel #22 - the backend 400s the key)', () => {
+    expect('instantConfirmation' in tripToUpdatePayload(base)).toBe(false)
+  })
 })
