@@ -1237,10 +1237,11 @@ export class CreateTourDto {
   })
   startTimes?: string[];
 
-  @ApiPropertyOptional({ example: true, default: true })
-  @IsOptional()
-  @IsBoolean()
-  instantConfirmation?: boolean;
+  // instantConfirmation is intentionally NOT client-writable (Pastel #22):
+  // every consumer surface promises instant confirmation ("Confirmed in
+  // seconds" on All Tours) and no request-to-book flow exists behind an off
+  // state. The column stays, default true - OCTO and the derived attributes
+  // read it. Do not re-add without the full pending-booking spec.
 
   @ApiPropertyOptional({
     enum: TourBookingType,
@@ -1702,10 +1703,8 @@ export class UpdateTourDto {
   // the tour's destination on create (a tour belongs to exactly one destination)
   // and must not drift from the destination clock. See is-iana-timezone.validator.
 
-  @ApiPropertyOptional({ example: true })
-  @IsOptional()
-  @IsBoolean()
-  instantConfirmation?: boolean;
+  // instantConfirmation removed - never client-writable (Pastel #22, see
+  // CreateTourDto).
 
   @ApiPropertyOptional({
     enum: TourBookingType,

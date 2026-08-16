@@ -2831,9 +2831,8 @@ export class ToursService {
             // Master rule #20 / §6.2 - free-cancellation window, enum-bound, default 48.
             cancellationHours: dto.cancellationHours ?? 48,
             startTimes: dto.startTimes ?? [],
-            ...(dto.instantConfirmation !== undefined && {
-              instantConfirmation: dto.instantConfirmation,
-            }),
+            // instantConfirmation is never client-written (Pastel #22) - the
+            // schema default (true) is the only value a tour can have.
             ...(dto.paymentModel !== undefined && {
               paymentModel: dto.paymentModel,
             }),
@@ -3181,9 +3180,6 @@ export class ToursService {
           // reserve, so changing this only affects future bookings.
           ...(dto.onArrivalPayment !== undefined && {
             onArrivalPayment: dto.onArrivalPayment,
-          }),
-          ...(dto.instantConfirmation !== undefined && {
-            instantConfirmation: dto.instantConfirmation,
           }),
           ...(dto.bookingType !== undefined && {
             bookingType: dto.bookingType,
