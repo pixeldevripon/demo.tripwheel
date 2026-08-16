@@ -634,6 +634,32 @@ export class OperatorsService {
     });
     if (!operator) throw new NotFoundException('Operator not found');
 
+    // Business history rows RESTRICT the delete at the database level.
+    // Without this check the delete reaches Postgres, trips over
+    // bookings_operatorId_fkey (or tours/reviews/spotlight) and surfaces as a
+    // bare 500 - the admin deserves to know WHY it is refused and what to do
+    // instead. Same pattern as the tour delete guard in tours.service.
+    const [tourCount, bookingCount, reviewCount, spotlightCount] =
+      await Promise.all([
+        this.prisma.tour.count({ where: { operatorId: id } }),
+        this.prisma.booking.count({ where: { operatorId: id } }),
+        this.prisma.review.count({ where: { operatorId: id } }),
+        this.prisma.spotlightRequest.count({ where: { operatorId: id } }),
+      ]);
+    const blockers = [
+      tourCount && `${tourCount} tour${tourCount === 1 ? '' : 's'}`,
+      bookingCount && `${bookingCount} booking${bookingCount === 1 ? '' : 's'}`,
+      reviewCount && `${reviewCount} review${reviewCount === 1 ? '' : 's'}`,
+      spotlightCount &&
+        `${spotlightCount} spotlight request${spotlightCount === 1 ? '' : 's'}`,
+    ].filter(Boolean);
+    if (blockers.length > 0) {
+      throw new ConflictException(
+        `This operator can't be deleted - it still has ${blockers.join(', ')}. ` +
+          'That history must be kept. Deactivate the operator instead: it disappears from the marketplace but the records stay intact.',
+      );
+    }
+
     // Team seats cascade with the operator row, but the seat USERS are
     // separate TOUR_OPERATOR accounts that would otherwise linger with live
     // sessions and no operator - delete them (owner handled below).
@@ -646,10 +672,26 @@ export class OperatorsService {
       select: { userId: true },
     });
 
-    await this.prisma.operator.delete({
-      where: { id },
-      select: { id: true },
-    });
+    // Settings side-tables (social links, payment provider configs,
+    // notification subscriptions) are RESTRICT too, but they are incidental
+    // configuration, not history - opening the Social Media tab once must not
+    // make an operator undeletable. Clear them in the same transaction.
+    await this.prisma.$transaction([
+      this.prisma.operatorSocialMedia.deleteMany({ where: { operatorId: id } }),
+      this.prisma.operatorStripeConfig.deleteMany({
+        where: { operatorId: id },
+      }),
+      this.prisma.operatorMollieConfig.deleteMany({
+        where: { operatorId: id },
+      }),
+      this.prisma.notificationSubscription.deleteMany({
+        where: { operatorId: id },
+      }),
+      this.prisma.operator.delete({
+        where: { id },
+        select: { id: true },
+      }),
+    ]);
 
     if (seats.length > 0) {
       const authCtx = await auth.$context;

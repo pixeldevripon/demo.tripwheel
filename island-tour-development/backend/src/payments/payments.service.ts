@@ -290,16 +290,28 @@ export class PaymentsService {
     // confirmCardPayment (no Stripe UI); PayPal/iDEAL confirm client-side and
     // redirect. We return `paymentMethodTypes` so the checkout only offers eligible
     // methods (the rest are hidden/disabled with a hint).
-    const intent = await this.stripe.createPaymentIntent({
-      amount: toMinorUnits(charge.amount),
-      currency: booking.currency,
-      idempotencyKey,
-      metadata: {
-        bookingId: booking.id,
-        displayRef: booking.displayRef,
-        kind: charge.kind,
-      },
-    });
+    const intent = await this.stripe
+      .createPaymentIntent({
+        amount: toMinorUnits(charge.amount),
+        currency: booking.currency,
+        idempotencyKey,
+        metadata: {
+          bookingId: booking.id,
+          displayRef: booking.displayRef,
+          kind: charge.kind,
+        },
+      })
+      .catch((err: unknown) => {
+        // A raw Stripe error (bad key, outage, amount/currency rejection) is
+        // a plain Error and would 500 the traveller's checkout with no words.
+        this.logger.error(
+          `Stripe payment intent failed for booking ${booking.id}`,
+          err instanceof Error ? err.stack : String(err),
+        );
+        throw new ServiceUnavailableException(
+          'The card payment service could not be reached. Try again in a moment, or pick another payment method.',
+        );
+      });
 
     await this.upsertChargeRow(booking, charge, {
       provider: PaymentProvider.STRIPE,
@@ -403,22 +415,34 @@ export class PaymentsService {
       ? `mp_${booking.id}_${charge.kind}_${Date.now()}`
       : `mp_${booking.id}_${charge.kind}`;
 
-    const payment = await this.mollie.createPayment({
-      amount: charge.amount,
-      currency: booking.currency,
-      description: `Island Tours booking ${booking.displayRef}`,
-      redirectUrl,
-      cancelUrl,
-      webhookUrl: mollieWebhookUrl(),
-      idempotencyKey,
-      metadata: {
-        bookingId: booking.id,
-        displayRef: booking.displayRef,
-        kind: charge.kind,
-      },
-      locale: booking.customerLocale,
-      cardToken: dto.cardToken,
-    });
+    const payment = await this.mollie
+      .createPayment({
+        amount: charge.amount,
+        currency: booking.currency,
+        description: `Island Tours booking ${booking.displayRef}`,
+        redirectUrl,
+        cancelUrl,
+        webhookUrl: mollieWebhookUrl(),
+        idempotencyKey,
+        metadata: {
+          bookingId: booking.id,
+          displayRef: booking.displayRef,
+          kind: charge.kind,
+        },
+        locale: booking.customerLocale,
+        cardToken: dto.cardToken,
+      })
+      .catch((err: unknown) => {
+        // Same rationale as the Stripe wrap above: a MollieApiError is a
+        // plain Error and would 500 the checkout with no words.
+        this.logger.error(
+          `Mollie payment failed for booking ${booking.id}`,
+          err instanceof Error ? err.stack : String(err),
+        );
+        throw new ServiceUnavailableException(
+          'The payment service could not be reached. Try again in a moment, or pick another payment method.',
+        );
+      });
 
     const checkoutUrl = payment._links.checkout?.href;
     if (!checkoutUrl) {

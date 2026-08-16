@@ -1,6 +1,11 @@
 import { redactEmail } from '@/common/utils/redact-email.util';
 import { authPrismaClient } from '@/auth/auth-prisma.client';
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  Optional,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Resend } from 'resend';
@@ -186,7 +191,13 @@ export class MailService {
       this.logger.error(
         `Email to ${this.redact(opts.to)} dropped - RESEND_API_KEY is not configured.`,
       );
-      throw new Error('Email service is not configured');
+      // ServiceUnavailableException, not a plain Error: several user-facing
+      // routes (resend confirmation, wishlist email, cancellation request)
+      // await this directly, and a plain Error reaches the global filter as a
+      // bare 500 "Internal server error".
+      throw new ServiceUnavailableException(
+        'Email sending is not set up on this server (missing email provider key). Contact the administrator.',
+      );
     }
 
     // Default reply-to (a monitored inbox) — read per send, not in the
@@ -217,7 +228,12 @@ export class MailService {
       sendPromise,
       new Promise<never>((_, reject) =>
         setTimeout(
-          () => reject(new Error('Email send timed out after 15s')),
+          () =>
+            reject(
+              new ServiceUnavailableException(
+                'The email provider did not respond in time. Try again in a few minutes.',
+              ),
+            ),
           15_000,
         ).unref?.(),
       ),
@@ -229,7 +245,9 @@ export class MailService {
       this.logger.error(
         `Failed to send email to ${this.redact(opts.to)} | ${error.name}: ${error.message}`,
       );
-      throw new Error(`Email send failed: ${error.name}`);
+      throw new ServiceUnavailableException(
+        'The email could not be sent - the email provider refused it. Try again in a few minutes.',
+      );
     }
 
     this.logger.log(

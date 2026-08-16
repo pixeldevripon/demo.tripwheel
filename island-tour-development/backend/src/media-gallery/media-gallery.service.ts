@@ -16,6 +16,7 @@ import { Locale } from '@/common/constants/locales';
 import { orBase } from '@/common/utils/translation.util';
 import { ContentTranslationEnqueuer } from '@/content-translation/content-translation.enqueuer';
 import { ContentTranslationService } from '@/content-translation/content-translation.service';
+import { toTranslationHttpError } from '@/content-translation/translation-http-error';
 
 import type {
   ConfirmUploadDto,
@@ -638,12 +639,20 @@ export class MediaGalleryService {
     }
     await this.assertVisible(id, actor);
 
-    return this.contentTranslationService.translateEntity(
-      'media',
-      id,
-      [locale],
-      force,
-    );
+    // The only AI-translate route without a try/catch used to be this one: a
+    // provider failure (bad key, rate limit, timeout) fell through the global
+    // filter as a bare 500 "Internal server error". Same mapping as the
+    // Translation Console routes.
+    try {
+      return await this.contentTranslationService.translateEntity(
+        'media',
+        id,
+        [locale],
+        force,
+      );
+    } catch (err) {
+      throw toTranslationHttpError(err);
+    }
   }
 
   /** 404s unless the asset is inside the actor's media scope. */

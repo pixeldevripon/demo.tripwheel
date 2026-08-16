@@ -454,7 +454,11 @@ export class DestinationService {
       // whole destination namespace (categories, hubs, tours, reserved) - rows are kept,
       // marked isActive=false + deletedAt=now, and cleared on re-seed after the cooldown.
       await markDestinationSlugsDeleted(tx, destination.slug);
-      // Cascade via Prisma schema handles: hubs, translations, FAQs, page content, featured experiences
+      // Cascade via Prisma schema handles: translations, FAQs, page content,
+      // featured experiences. NOT hubs/collections/tours - those FKs are
+      // RESTRICT, so a destination that still has any of them refuses here
+      // (surfaced as a readable 409 by the global Prisma mapping in
+      // AllExceptionsFilter).
       await tx.destination.delete({ where: { id } });
     });
 

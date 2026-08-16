@@ -2,6 +2,7 @@ import type { TypedAuthUser } from '@/auth/auth.types';
 import { AuthenticatedUser } from '@/auth/decorators/authenticated-user.decorator';
 import { RequirePermissions } from '@/auth/decorators/require-permissions.decorator';
 import { resolveOperatorId } from '@/common/utils/operator.util';
+import { toTranslationHttpError } from './translation-http-error';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
   BadRequestException,
@@ -16,7 +17,6 @@ import {
   ParseUUIDPipe,
   Post,
   Query,
-  ServiceUnavailableException,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Locale, Permission, Role } from '@prisma/client';
@@ -90,11 +90,7 @@ export class ContentTranslationController {
       );
       return { translatedText };
     } catch (err) {
-      throw new ServiceUnavailableException(
-        `AI translation failed - please try again shortly (${
-          err instanceof Error ? err.message : 'unknown error'
-        })`,
-      );
+      throw toTranslationHttpError(err);
     }
   }
 
@@ -185,11 +181,7 @@ export class ContentTranslationController {
       }
       return { fields: result };
     } catch (err) {
-      throw new ServiceUnavailableException(
-        `AI translation failed - please try again shortly (${
-          err instanceof Error ? err.message : 'unknown error'
-        })`,
-      );
+      throw toTranslationHttpError(err);
     }
   }
 
@@ -325,11 +317,7 @@ export class ContentTranslationController {
     } catch (err) {
       // Provider failure (rate limit, invalid output twice). The write side is
       // idempotent, so retrying is always safe.
-      throw new ServiceUnavailableException(
-        `AI translation failed - please try again shortly (${
-          err instanceof Error ? err.message : 'unknown error'
-        })`,
-      );
+      throw toTranslationHttpError(err);
     }
 
     if (result.reason === 'not_configured') {

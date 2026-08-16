@@ -2115,7 +2115,13 @@ export class BookingsService {
       // 'skipped' on the automated first send = someone else already decided
       // this email (idempotency working) - success, not an error.
       if (result.outcome === 'failed') {
-        throw new Error(result.error);
+        // ServiceUnavailableException so the traveller's "Resend email"
+        // button (rethrow: true) answers with the recorded readable cause
+        // instead of a bare 500 from the global filter.
+        throw new ServiceUnavailableException(
+          result.error ||
+            'The email could not be sent right now. Try again in a few minutes.',
+        );
       }
     } catch (err) {
       this.logger.error(

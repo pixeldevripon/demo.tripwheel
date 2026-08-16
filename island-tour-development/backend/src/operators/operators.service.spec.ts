@@ -54,20 +54,36 @@ const mockPrismaService = {
     count: jest.fn(),
   },
   user: { findUnique: jest.fn(), update: jest.fn() },
-  staffMember: { findUnique: jest.fn(), create: jest.fn() },
+  staffMember: {
+    findUnique: jest.fn(),
+    create: jest.fn(),
+    findMany: jest.fn(),
+  },
   staffDesignation: { createMany: jest.fn() },
   operatorCompanyInfo: { upsert: jest.fn(), findUnique: jest.fn() },
-  operatorSocialMedia: { upsert: jest.fn(), findUnique: jest.fn() },
+  operatorSocialMedia: {
+    upsert: jest.fn(),
+    findUnique: jest.fn(),
+    deleteMany: jest.fn(),
+  },
   operatorStripeConfig: {
     upsert: jest.fn(),
     findUnique: jest.fn(),
     updateMany: jest.fn(),
+    deleteMany: jest.fn(),
   },
   operatorMollieConfig: {
     upsert: jest.fn(),
     findUnique: jest.fn(),
     updateMany: jest.fn(),
+    deleteMany: jest.fn(),
   },
+  tour: { count: jest.fn() },
+  booking: { count: jest.fn() },
+  review: { count: jest.fn() },
+  spotlightRequest: { count: jest.fn() },
+  notificationSubscription: { deleteMany: jest.fn() },
+  $transaction: jest.fn().mockResolvedValue(undefined),
 };
 
 const mockMailService = {
@@ -134,6 +150,65 @@ describe('OperatorsService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  // Deleting an operator with history used to reach Postgres, trip over the
+  // RESTRICT FKs (bookings/tours/reviews/spotlight) and surface as a bare
+  // 500 "Internal server error". The guard must name what blocks the delete
+  // and point at deactivation instead.
+  describe('remove()', () => {
+    const operatorRow = {
+      userId: 'user-1',
+      user: { role: Role.TOUR_OPERATOR, email: 'op@example.test' },
+    };
+
+    it('refuses with a readable 409 naming the blockers when history exists', async () => {
+      mockPrismaService.$transaction.mockClear();
+      mockPrismaService.operator.findUnique.mockResolvedValueOnce(operatorRow);
+      mockPrismaService.tour.count.mockResolvedValueOnce(2);
+      mockPrismaService.booking.count.mockResolvedValueOnce(5);
+      mockPrismaService.review.count.mockResolvedValueOnce(0);
+      mockPrismaService.spotlightRequest.count.mockResolvedValueOnce(0);
+
+      const err: unknown = await service.remove('op-1').catch((e) => e);
+      expect(err).toBeInstanceOf(ConflictException);
+      expect((err as ConflictException).message).toContain('2 tours');
+      expect((err as ConflictException).message).toContain('5 bookings');
+      expect((err as ConflictException).message).toContain('Deactivate');
+      expect(mockPrismaService.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('clears the RESTRICT config side-tables and deletes when history is empty', async () => {
+      mockPrismaService.$transaction.mockClear();
+      mockPrismaService.operator.findUnique.mockResolvedValueOnce(operatorRow);
+      mockPrismaService.tour.count.mockResolvedValueOnce(0);
+      mockPrismaService.booking.count.mockResolvedValueOnce(0);
+      mockPrismaService.review.count.mockResolvedValueOnce(0);
+      mockPrismaService.spotlightRequest.count.mockResolvedValueOnce(0);
+      mockPrismaService.staffMember.findMany.mockResolvedValueOnce([]);
+
+      const result = await service.remove('op-1');
+      expect(result).toEqual({ message: 'Operator deleted successfully' });
+      // Incidental config rows (opening a settings tab once) must not make an
+      // operator undeletable - they are cleared in the same transaction.
+      expect(
+        mockPrismaService.operatorSocialMedia.deleteMany,
+      ).toHaveBeenCalledWith({ where: { operatorId: 'op-1' } });
+      expect(
+        mockPrismaService.operatorStripeConfig.deleteMany,
+      ).toHaveBeenCalledWith({ where: { operatorId: 'op-1' } });
+      expect(
+        mockPrismaService.operatorMollieConfig.deleteMany,
+      ).toHaveBeenCalledWith({ where: { operatorId: 'op-1' } });
+      expect(
+        mockPrismaService.notificationSubscription.deleteMany,
+      ).toHaveBeenCalledWith({ where: { operatorId: 'op-1' } });
+      expect(mockPrismaService.operator.delete).toHaveBeenCalledWith({
+        where: { id: 'op-1' },
+        select: { id: true },
+      });
+      expect(mockPrismaService.$transaction).toHaveBeenCalledTimes(1);
+    });
   });
 
   // Island cascade (client review #10): "operators on this island" = at
