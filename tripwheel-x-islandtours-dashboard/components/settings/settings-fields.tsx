@@ -51,6 +51,7 @@ export function SettingsCard({
     saveLabel = 'Save Changes',
     canSave = true,
     status,
+    fill = false,
 }: {
     title: string;
     description?: string;
@@ -61,9 +62,15 @@ export function SettingsCard({
     canSave?: boolean;
     /** Optional indicator rendered beside the title (e.g. connection status). */
     status?: ReactNode;
+    /**
+     * Stretch to the grid row's full height with the Save button pinned to
+     * the bottom - for cards placed side by side (the payments pair), where
+     * unequal content must not leave the shorter card floating short.
+     */
+    fill?: boolean;
 }) {
     return (
-        <Card>
+        <Card className={fill ? 'flex h-full flex-col' : undefined}>
             <CardHeader className='border-b'>
                 <div className='flex flex-wrap items-center gap-3'>
                     <CardTitle>{title}</CardTitle>
@@ -75,16 +82,23 @@ export function SettingsCard({
                     </p>
                 )}
             </CardHeader>
-            <CardContent className='pt-8'>
+            <CardContent className={fill ? 'flex-1 pt-8' : 'pt-8'}>
                 <form
                     onSubmit={e => {
                         e.preventDefault();
                         onSubmit();
                     }}
-                    className='space-y-6'>
+                    className={
+                        fill ? 'flex h-full flex-col gap-6' : 'space-y-6'
+                    }>
                     {children}
                     {canSave && (
-                        <div className='flex justify-end pt-2'>
+                        <div
+                            className={
+                                fill
+                                    ? 'mt-auto flex justify-end pt-2'
+                                    : 'flex justify-end pt-2'
+                            }>
                             <Button type='submit' disabled={isSaving}>
                                 {isSaving ? 'Saving...' : saveLabel}
                             </Button>

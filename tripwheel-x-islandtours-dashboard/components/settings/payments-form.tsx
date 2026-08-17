@@ -31,6 +31,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import {
+    ConnectionTestStrip,
+    ProviderMethodsSection,
+} from './payment-methods-board';
+import {
     ConnectionStatus,
     SecretField,
     SettingsCard,
@@ -155,6 +159,7 @@ function StripeCard({ activeControl }: { activeControl: React.ReactNode }) {
         <SettingsCard
             title='Stripe'
             description='Card and local payment processing via Stripe.'
+            fill
             onSubmit={handleSubmit(onSubmit)}
             isSaving={isPending}
             status={
@@ -214,6 +219,8 @@ function StripeCard({ activeControl }: { activeControl: React.ReactNode }) {
                         : 'Stored encrypted.'
                 }
             />
+            <ConnectionTestStrip provider='STRIPE' />
+            <ProviderMethodsSection provider='STRIPE' />
         </SettingsCard>
     );
 }
@@ -273,6 +280,7 @@ function MollieCard({ activeControl }: { activeControl: React.ReactNode }) {
         <SettingsCard
             title='Mollie'
             description='Hosted checkout via Mollie (cards, iDEAL, Bancontact, PayPal and more).'
+            fill
             onSubmit={handleSubmit(onSubmit)}
             isSaving={isPending}
             status={
@@ -316,6 +324,8 @@ function MollieCard({ activeControl }: { activeControl: React.ReactNode }) {
                         : 'Stored encrypted. Use test_... for test mode.'
                 }
             />
+            <ConnectionTestStrip provider='MOLLIE' />
+            <ProviderMethodsSection provider='MOLLIE' />
         </SettingsCard>
     );
 }
@@ -512,8 +522,20 @@ export function PaymentsForm() {
                 The switched-on provider charges travelers at checkout. Existing
                 payments keep their original provider for refunds and webhooks.
             </p>
-            <StripeCard activeControl={switchFor('STRIPE')} />
-            <MollieCard activeControl={switchFor('MOLLIE')} />
+            {/* Side by side so which-method-lives-where reads at a glance.
+                The default grid stretch + fill cards = EQUAL heights, Save
+                pinned to each card's bottom (founder call 2026-08-17 - the
+                shorter Mollie card ending mid-row read as broken). */}
+            <div className='grid gap-6 xl:grid-cols-2'>
+                <StripeCard activeControl={switchFor('STRIPE')} />
+                <MollieCard activeControl={switchFor('MOLLIE')} />
+            </div>
+            <p className='text-xs text-muted-foreground normal-case tracking-normal font-light'>
+                Methods are activated at the provider, not here. The traveller
+                checkout currently offers card, iDEAL and PayPal with Stripe,
+                and the inline card form with Mollie - other activated methods
+                join the checkout as support for them is built.
+            </p>
 
             <AlertDialog
                 open={pending !== null}

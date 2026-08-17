@@ -147,6 +147,63 @@ export interface UpdateMollieConfigurationPayload {
   paymentMethods?: string[];
 }
 
+// ── Payment connection status (test connection + method board) ──────────────
+
+/**
+ * Traveller-facing brand marks - the 8 badges the public site's footer shows.
+ * Mirrors the backend's `src/settings/payment-method-brands.ts`; change one,
+ * change the other.
+ */
+export type PaymentMethodBrand =
+  | 'visa'
+  | 'mastercard'
+  | 'amex'
+  | 'paypal'
+  | 'ideal'
+  | 'applepay'
+  | 'googlepay'
+  | 'klarna';
+
+/**
+ * active = activated on the PSP account; inactive = the PSP offers it but the
+ * account has not activated it; unsupported = the PSP does not offer it at all
+ * (e.g. Google Pay on Mollie).
+ */
+export type PaymentMethodState = 'active' | 'inactive' | 'unsupported';
+
+export interface PaymentMethodStatus {
+  key: PaymentMethodBrand;
+  status: PaymentMethodState;
+  /**
+   * "This still needs something" despite the status: Apple Pay activated
+   * with no validated payment-method domain, or an activation Stripe is
+   * still reviewing. Null = nothing owed.
+   */
+  attention: string | null;
+}
+
+export interface PaymentProviderConnection {
+  /** Credential set complete per the activation contract. */
+  configured: boolean;
+  /** Human labels of the credentials still missing. */
+  missing: string[];
+  /** The live probe against the STORED credentials succeeded. */
+  ok: boolean;
+  mode: 'live' | 'test' | null;
+  accountLabel: string | null;
+  /** Sanitized probe failure reason (null when ok or unconfigured). */
+  error: string | null;
+  methods: PaymentMethodStatus[];
+}
+
+export interface PaymentConnectionStatus {
+  activeProvider: PaymentProvider;
+  checkedAt: string;
+  /** Null only when the probe was filtered to the other provider. */
+  stripe: PaymentProviderConnection | null;
+  mollie: PaymentProviderConnection | null;
+}
+
 /** GET response - apiKey is masked by the backend or null. */
 export interface MailchimpConfiguration {
   id: string;

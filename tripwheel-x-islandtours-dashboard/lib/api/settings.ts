@@ -6,6 +6,8 @@ import type {
   IntegrationsConfiguration,
   MailchimpConfiguration,
   MollieConfiguration,
+  PaymentConnectionStatus,
+  PaymentProvider,
   PaymentProviderSettings,
   UpdatePaymentProviderPayload,
   ReviewRequestSettings,
@@ -122,6 +124,20 @@ export const settingsApi = {
       method: 'PATCH',
       body: JSON.stringify(payload),
     });
+  },
+
+  // ── Payments: connection test + method board ────────────────────────────────
+  /**
+   * Live probe against the STORED credentials (secrets are masked on every
+   * read, so this is the only way to verify a key actually works) plus the
+   * per-brand activation board. Omit `provider` to probe both.
+   */
+  getPaymentConnectionStatus(
+    provider?: PaymentProvider,
+  ): Promise<PaymentConnectionStatus> {
+    return apiFetch<PaymentConnectionStatus>(
+      `/settings/payment/connection-status${provider ? `?provider=${provider}` : ''}`,
+    );
   },
 
   // ── Mailchimp ──────────────────────────────────────────────────────────────
