@@ -5813,6 +5813,14 @@ export class BookingsService {
         status: true,
         commissionAmount: true,
         tourId: true,
+        island: true,
+        operatorId: true,
+        // Click ids captured at reserve (master 8.3 click_ids) - passed through
+        // to GTM for Ads/Meta click matching and future adjustments.
+        gclid: true,
+        gbraid: true,
+        wbraid: true,
+        fbclid: true,
         contactEmail: true,
         // Hashed server-side for the booking_complete user_data (Enhanced
         // Conversions); raw PII never leaves the backend for tracking.
@@ -5824,7 +5832,20 @@ export class BookingsService {
         billingCity: true,
         billingPostalCode: true,
         billingCountry: true,
-        tour: { select: { name: true } },
+        tour: {
+          select: {
+            name: true,
+            // Primary category name -> GA4 item_category (master 8.3).
+            categories: {
+              where: { isPrimary: true },
+              select: { category: { select: { name: true } } },
+              take: 1,
+            },
+          },
+        },
+        operator: {
+          select: { companyInfo: { select: { companyName: true } } },
+        },
       },
     });
     if (!booking) throw new NotFoundException('Booking not found');
@@ -5871,9 +5892,20 @@ export class BookingsService {
    */
   private buildConversionPayload(booking: {
     publicRef: string;
+    displayRef: string;
     commissionAmount: Prisma.Decimal | null;
     tourId: string;
-    tour: { name: string } | null;
+    island: string;
+    operatorId: string;
+    gclid: string | null;
+    gbraid: string | null;
+    wbraid: string | null;
+    fbclid: string | null;
+    tour: {
+      name: string;
+      categories?: { category: { name: string } }[];
+    } | null;
+    operator: { companyInfo: { companyName: string | null } | null } | null;
     contactEmail: string | null;
     contactPhone: string | null;
     contactFirstName: string | null;
@@ -5885,24 +5917,41 @@ export class BookingsService {
     billingCountry: string | null;
   }): BookingConversionDto | null {
     if (booking.commissionAmount == null) return null;
-    const userData = toGoogleUserData(
-      computeHashedPii({
-        email: booking.contactEmail,
-        phone: booking.contactPhone,
-        firstName: booking.contactFirstName,
-        lastName: booking.contactLastName,
-        city: booking.billingCity,
-        postalCode: booking.billingPostalCode ?? booking.contactPostalCode,
-        country: booking.billingCountry ?? booking.contactCountry,
-      }),
-    );
+    const hashed = computeHashedPii({
+      email: booking.contactEmail,
+      phone: booking.contactPhone,
+      firstName: booking.contactFirstName,
+      lastName: booking.contactLastName,
+      city: booking.billingCity,
+      postalCode: booking.billingPostalCode ?? booking.contactPostalCode,
+      country: booking.billingCountry ?? booking.contactCountry,
+    });
+    const userData = toGoogleUserData(hashed);
+    const hasClickId =
+      booking.gclid ?? booking.gbraid ?? booking.wbraid ?? booking.fbclid;
     return {
       event: 'Purchase',
       eventId: booking.publicRef,
+      bookingRef: booking.displayRef,
       currency: 'EUR',
       value: booking.commissionAmount.toString(),
       contentId: booking.tourId,
       contentName: booking.tour?.name ?? null,
+      island: booking.island,
+      operatorId: booking.operatorId,
+      operatorName: booking.operator?.companyInfo?.companyName ?? null,
+      itemCategory: booking.tour?.categories?.[0]?.category.name ?? null,
+      // GA4 user_id: the SAME lowercased-email SHA-256 the Enhanced Conversions
+      // envelope carries - stable across the traveler's bookings, never raw PII.
+      userId: hashed.email ?? null,
+      clickIds: hasClickId
+        ? {
+            gclid: booking.gclid,
+            gbraid: booking.gbraid,
+            wbraid: booking.wbraid,
+            fbclid: booking.fbclid,
+          }
+        : null,
       userData: userData ?? null,
     };
   }

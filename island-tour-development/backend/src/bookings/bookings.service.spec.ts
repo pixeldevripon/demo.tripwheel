@@ -3523,7 +3523,16 @@ describe('BookingsService', () => {
         status: BookingStatus.CONFIRMED,
         contactEmail: 'guest@example.test',
         commissionAmount: D('31.99'),
-        tour: { name: 'Sunset Sail' },
+        island: 'curacao',
+        gclid: null,
+        gbraid: null,
+        wbraid: null,
+        fbclid: null,
+        tour: {
+          name: 'Sunset Sail',
+          categories: [{ category: { name: 'Boat Trips' } }],
+        },
+        operator: { companyInfo: { companyName: 'Miss Ann Boat Trips' } },
         ...over,
       });
 
@@ -3558,15 +3567,25 @@ describe('BookingsService', () => {
         expect.objectContaining({
           event: 'Purchase',
           eventId: 'p1', // publicRef - MUST match the server CAPI event_id for dedup
+          bookingRef: 'IT-2030-AAAA', // display ref (master 8.3 booking_ref)
           currency: 'EUR',
           value: '31.99',
           contentId: 't1',
           contentName: 'Sunset Sail',
+          island: 'curacao',
+          operatorId: 'op1',
+          operatorName: 'Miss Ann Boat Trips',
+          itemCategory: 'Boat Trips',
+          clickIds: null, // organic booking - no ids captured at reserve
         }),
       );
       // Hashed PII for Enhanced Conversions (server-side; raw never sent).
       expect(conversion?.userData?.sha256_email_address).toEqual(
         expect.stringMatching(/^[a-f0-9]{64}$/),
+      );
+      // GA4 user_id is the SAME email hash (stable cross-device key, no raw PII).
+      expect(conversion?.userId).toEqual(
+        conversion?.userData?.sha256_email_address,
       );
       // Mark-first guard is on conversionPushedAt (NOT conversionFiredAt).
       expect(m.booking.updateMany).toHaveBeenCalledWith(
@@ -3575,6 +3594,41 @@ describe('BookingsService', () => {
           data: { conversionPushedAt: expect.any(Date) },
         }),
       );
+    });
+
+    it('passes the captured click ids through for GTM (master 8.3 click_ids)', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        pushable({ gclid: 'g-123', fbclid: 'fb-456' }),
+      );
+      m.booking.updateMany.mockResolvedValue({ count: 1 });
+
+      const { conversion } = await svc.claimConversionPush(
+        'p1',
+        issueTravelerSession('guest@example.test'),
+      );
+      expect(conversion?.clickIds).toEqual({
+        gclid: 'g-123',
+        gbraid: null,
+        wbraid: null,
+        fbclid: 'fb-456',
+      });
+    });
+
+    it('degrades operatorName / itemCategory to null when the relations are bare', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        pushable({
+          tour: { name: 'Sunset Sail', categories: [] }, // no primary category
+          operator: { companyInfo: null }, // operator without a company profile
+        }),
+      );
+      m.booking.updateMany.mockResolvedValue({ count: 1 });
+
+      const { conversion } = await svc.claimConversionPush(
+        'p1',
+        issueTravelerSession('guest@example.test'),
+      );
+      expect(conversion?.operatorName).toBeNull();
+      expect(conversion?.itemCategory).toBeNull();
     });
 
     it('returns null to the LOSER (a refresh / second tab - guard already burned)', async () => {

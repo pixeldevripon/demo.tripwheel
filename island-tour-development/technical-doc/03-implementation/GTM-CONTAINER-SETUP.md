@@ -28,14 +28,21 @@ Fired once per confirmed booking on the Thank-You page:
 {
   event: 'booking_complete',
   event_id: '<publicRef>',        // SHARED with the server CAPI -> Meta dedup key
+  booking_ref: 'IT-2026-00042',   // human display ref (cross-platform reporting)
   booking_value: 41.99,           // EUR COMMISSION - never GMV (master rule #22)
   booking_currency: 'EUR',
   tour_id: '<tourId>',
   tour_name: '<name>',
-  items: [{ item_id, item_name, price, quantity: 1 }],
+  operator_id: '<operatorId>',
+  operator_name: '<company>',
+  island: 'curacao',              // destination slug
+  items: [{ item_id, item_name, item_brand, item_category, price, quantity: 1 }],
+  user_id: '<sha256(email)>',     // GA4 cross-device key; OMITTED when no email
+  click_ids: { gclid, fbclid },   // only the ids captured at landing; OMITTED when organic
   user_data: {                    // SHA-256 hashed SERVER-side (Enhanced Conversions)
     sha256_email_address, sha256_phone_number,
-    address: { sha256_first_name, sha256_last_name, city, postal_code, country },
+    sha256_first_name, sha256_last_name,
+    address: { sha256_city, sha256_postal_code, sha256_country },
   },
 }
 ```

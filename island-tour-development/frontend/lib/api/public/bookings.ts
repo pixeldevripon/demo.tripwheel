@@ -36,13 +36,31 @@ export interface ConversionUserData {
     };
 }
 
+/** Click ids captured at landing (master 8.3 `click_ids`). Single source of
+ *  truth for the key set (type + iteration) is `lib/tracking/click-ids.ts`. */
+import type { ConversionClickIds } from '@/lib/tracking/click-ids';
+export type { ConversionClickIds };
+
 export interface TypConversion {
     event: string;
     eventId: string;
+    /** Human booking reference (display ref) - the master 8.3 booking_ref. */
+    bookingRef: string;
     currency: string;
     value: string;
     contentId: string;
     contentName: string | null;
+    /** Denormalized destination slug (master 8.3 island). */
+    island: string;
+    /** GA4 item_brand / segmentation (master 8.3). */
+    operatorId: string;
+    operatorName: string | null;
+    /** Primary category name (GA4 item_category); null when uncategorized. */
+    itemCategory: string | null;
+    /** GA4 user_id: SHA-256 of the lowercased email - never raw PII. */
+    userId: string | null;
+    /** Click ids captured at landing; null when the booking is organic. */
+    clickIds: ConversionClickIds | null;
     /** Hashed PII (Enhanced Conversions); null when there is no email to hash. */
     userData: ConversionUserData | null;
 }

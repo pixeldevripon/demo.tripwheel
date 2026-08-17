@@ -128,6 +128,22 @@ export class BookingUnitItemResponseDto {
   priceRetail!: string | null;
 }
 
+/**
+ * Click ids captured at reserve (master 8.3 `click_ids` block), passed through
+ * for GTM so Google Ads / Meta adjustments and offline conversions can match
+ * the click. A null field simply was not present on the landing URL.
+ */
+export class BookingConversionClickIdsDto {
+  @ApiPropertyOptional({ nullable: true, example: 'EAIaIQobChMI…' })
+  gclid!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: null })
+  gbraid!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: null })
+  wbraid!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: 'IwAR2xY…' })
+  fbclid!: string | null;
+}
+
 /** Conversion payload for the browser Pixel (master booking_complete contract). */
 export class BookingConversionDto {
   @ApiProperty({ example: 'Purchase' }) event!: string;
@@ -136,6 +152,13 @@ export class BookingConversionDto {
     description: 'Dedupe id shared with the server CAPI event.',
   })
   eventId!: string;
+  @ApiProperty({
+    example: 'IT-2026-00042',
+    description:
+      'Human booking reference (display_ref) - the master 8.3 booking_ref for ' +
+      'cross-platform reporting. Dedupe stays on eventId.',
+  })
+  bookingRef!: string;
   @ApiProperty({
     example: 'EUR',
     description: 'Conversion value is always EUR (rule #22).',
@@ -148,6 +171,38 @@ export class BookingConversionDto {
   value!: string;
   @ApiProperty() contentId!: string;
   @ApiPropertyOptional({ nullable: true }) contentName!: string | null;
+  @ApiProperty({
+    example: 'curacao',
+    description: 'Denormalized destination slug (master 8.3 island).',
+  })
+  island!: string;
+  @ApiProperty({
+    example: '3f9c…',
+    description: 'GA4 item_brand / segmentation (master 8.3).',
+  })
+  operatorId!: string;
+  @ApiPropertyOptional({ nullable: true, example: 'Miss Ann Boat Trips' })
+  operatorName!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Primary category name (GA4 item_category, master 8.3).',
+  })
+  itemCategory!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'GA4 user_id cross-device key: SHA-256 of the lowercased contact email - ' +
+      'the same hash the Enhanced Conversions envelope carries, never raw PII.',
+  })
+  userId!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    type: BookingConversionClickIdsDto,
+    description:
+      'Click ids captured at reserve (master 8.3 click_ids); null when the ' +
+      'booking is organic (none captured).',
+  })
+  clickIds!: BookingConversionClickIdsDto | null;
   @ApiPropertyOptional({
     nullable: true,
     description:

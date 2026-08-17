@@ -423,8 +423,8 @@
 - [x] TYP conversion object gated on CONFIRMED + non-null EUR commission
 - [x] Server-side SHA-256 PII hashing in one pass (`pii-hash.util.ts`): email, E.164 phone, split names, city/postal/country — `toGoogleUserData` (Enhanced Conversions `sha256_*`) and `toMetaUserData` (em/ph) from the same hashes
 - [x] Capture click ids + UTM at booking creation (attribution block written at reserve) so cancellation/refund adjustments and offline conversions can be posted back to Google Ads and Meta
-- [ ] CI type-check of the `booking_complete` payload contract so a missing required field is a build error rather than a runtime fallback
-- [ ] Hash the customer email into a `customer_id` for the GA4 `user_id` cross-device field (deferred)
+- [x] CI type-check of the `booking_complete` payload contract so a missing required field is a build error rather than a runtime fallback (2026-08-17: `BookingCompleteEvent` typed contract in `lib/tracking/booking-complete.ts` — the push is composed against it, `tsc` runs in CI)
+- [x] Hash the customer email into a `customer_id` for the GA4 `user_id` cross-device field (2026-08-17: `userId` on the conversion payload = the same lowercased-email SHA-256 the Enhanced Conversions envelope carries, derived in `buildConversionPayload` — the `Booking.customerId` column stays unpopulated/reserved)
 - [ ] Cancellation/refund conversion adjustments posted to the Google Ads and Meta APIs
 
 ### Analytics
@@ -1075,11 +1075,11 @@ its endpoints. Nothing a visitor reads says it, the URL included.
 
 - [x] Tracking layer bootstrapped (A5, 2026-07-25): `google-tag-manager.tsx` loads GTM from the dashboard-managed container ID, gated on `NEXT_PUBLIC_ENABLE_TRACKING === 'true'`
 - [~] GTM container four-tag fan-out (Conversion Linker · Google Ads · GA4 `purchase` · Meta Pixel) — **GTM-UI configuration, not code**: the full recipe lives in `technical-doc/03-implementation/GTM-CONTAINER-SETUP.md` (the Meta tag MUST pass `eventID = {{dlv - event_id}}` or it double-counts vs CAPI); awaiting the founder's container work
-- [x] `booking_complete` dataLayer push on the TYP (`booking_value` = commission EUR, `booking_currency: 'EUR'`, refs/context, `event_id` shared with CAPI)
+- [x] `booking_complete` dataLayer push on the TYP (`booking_value` = commission EUR, `booking_currency: 'EUR'`, refs/context, `event_id` shared with CAPI); 2026-08-17: full §8.3 payload — `booking_ref` (display ref), `click_ids` (gclid/gbraid/wbraid/fbclid, omitted when organic), `operator_id`/`operator_name`, `island`, `user_id` (hashed email), `items[]` with `item_brand` + `item_category`
 - [x] Server-side SHA-256 PII hashing (email, E.164 phone, split names, address) — one hash pass serving Google Enhanced Conversions and Meta (`pii-hash.util.ts`)
 - [x] Server-side Meta CAPI fire in parallel with the browser Pixel, deduplicated by the shared `event_id` (booking publicRef), queued + retried via the `platform-jobs` queue
 - [x] Click-id (`gclid`, `gbraid`, `wbraid`, `fbclid`) and UTM capture at booking creation (90-day first-party attribution cookie → reserve payload)
-- [ ] CI type-check of the tracking payload so a missing required field is a build error, not a runtime fallback
+- [x] CI type-check of the tracking payload so a missing required field is a build error, not a runtime fallback (2026-08-17: `BookingCompleteEvent` in `lib/tracking/booking-complete.ts` — required fields non-optional, composition compile-checked; backend mirror is the required-`!` fields on `BookingConversionDto`)
 - [ ] GA4 page-view baseline plus `select_content` on homepage destination selection
 - [ ] Tour-card events `view_item_list`, `select_item`, `add_to_wishlist` with list id and index (§3.5)
 - [ ] `related_tour_click` event on the tour-detail related rows (LD33)

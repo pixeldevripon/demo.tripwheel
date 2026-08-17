@@ -599,9 +599,11 @@ reconcile before it is:
   session) and the `<ConversionPush>` client leaf pushes `booking_complete` to `window.dataLayer`
   once per load (prod-only via `NEXT_PUBLIC_ENABLE_TRACKING`, EUR commission value, `event_id` =
   publicRef for CAPI dedup). `Code:` `lib/tracking/booking-complete.ts`,
-  `components/frontend/thank-you/conversion-push.tsx`, TYP `page.tsx`. REMAINING on this line: the
-  hashed-PII fields (#43), click ids (#81), GTM container fan-out to Conversion Linker / Google Ads /
-  GA4 / Meta Pixel (#45, blocked on founder creds), and server CAPI dedup (#44).
+  `components/frontend/thank-you/conversion-push.tsx`, TYP `page.tsx`. Hashed-PII fields (#43),
+  server CAPI dedup (#44) and the full §8.3 payload (2026-08-17: `booking_ref`, `click_ids`,
+  `operator_id`/`operator_name`, `island`, `user_id`, `item_brand`/`item_category`, typed
+  `BookingCompleteEvent` contract) are all DONE. REMAINING on this line: the GTM container fan-out
+  to Conversion Linker / Google Ads / GA4 / Meta Pixel (#45, blocked on founder creds).
 
 - [x] **2. FIRE-POINT RECONCILIATION (double-fire risk).** DONE 2026-07-25 (task #39). The server
   CAPI + email still fire at webhook/settle-confirm (`finalizeConfirmation`, guarded by
