@@ -97,6 +97,14 @@ export class PaymentIntentResponseDto {
       'Eligible payment methods for this booking (account-activated + currency-compatible). The checkout offers only these; card is inline, PayPal/iDEAL redirect.',
   })
   paymentMethodTypes?: string[];
+
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['applepay', 'googlepay'],
+    description:
+      'Wallet buttons the checkout MAY render via the Express Checkout Element (admin-switch gated; Stripe leg only). The Element itself decides what actually shows: account activation, Apple Pay domain registration and device capability all veto silently.',
+  })
+  walletMethods?: string[];
 }
 
 export class WebhookAckDto {

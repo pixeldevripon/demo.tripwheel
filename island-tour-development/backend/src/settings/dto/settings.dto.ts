@@ -29,6 +29,14 @@ import {
 } from 'class-validator';
 import { PaymentProvider } from '@prisma/client';
 import { PROVIDER_KEYS } from '@/content-translation/providers/provider-catalog';
+import {
+  MOLLIE_CHECKOUT_METHOD_KEYS,
+  PAYMENT_METHOD_BRANDS,
+  PAYMENT_METHOD_STATES,
+  STRIPE_CHECKOUT_METHOD_KEYS,
+  type PaymentMethodBrand,
+  type PaymentMethodState,
+} from '../payment-method-brands';
 
 // ── Shared DTOs ───────────────────────────────────────────────────────────────
 
@@ -532,6 +540,97 @@ export class PaymentProviderSettingsResponseDto {
   updatedAt!: Date;
 }
 
+export class PaymentMethodStatusDto {
+  @ApiProperty({
+    enum: PAYMENT_METHOD_BRANDS,
+    example: 'visa',
+    description: 'Traveller-facing brand mark (footer badge vocabulary)',
+  })
+  key!: PaymentMethodBrand;
+
+  @ApiProperty({
+    enum: PAYMENT_METHOD_STATES,
+    example: 'active',
+    description:
+      'active = activated on the PSP account; inactive = offered by the PSP but not activated; unsupported = the PSP does not offer this method at all',
+  })
+  status!: PaymentMethodState;
+
+  @ApiProperty({
+    example: null,
+    nullable: true,
+    description:
+      'Set when the method still owes the admin something despite its status: Apple Pay activated with no validated payment-method domain, or an activation Stripe is still reviewing. Null = nothing owed.',
+  })
+  attention!: string | null;
+}
+
+export class PaymentProviderConnectionDto {
+  @ApiProperty({
+    example: true,
+    description:
+      'Credential set complete per the activation contract (missingProviderCredentials)',
+  })
+  configured!: boolean;
+
+  @ApiProperty({
+    example: [],
+    isArray: true,
+    type: String,
+    description: 'Human labels of the credentials still missing',
+  })
+  missing!: string[];
+
+  @ApiProperty({
+    example: true,
+    description: 'The live probe against the stored credentials succeeded',
+  })
+  ok!: boolean;
+
+  @ApiProperty({ enum: ['live', 'test'], nullable: true, example: 'test' })
+  mode!: 'live' | 'test' | null;
+
+  @ApiProperty({ example: 'Island Tours BV', nullable: true })
+  accountLabel!: string | null;
+
+  @ApiProperty({
+    example: null,
+    nullable: true,
+    description:
+      'Sanitized probe failure reason (null when ok or unconfigured)',
+  })
+  error!: string | null;
+
+  @ApiProperty({ type: [PaymentMethodStatusDto] })
+  methods!: PaymentMethodStatusDto[];
+}
+
+export class PaymentConnectionStatusResponseDto {
+  @ApiProperty({ enum: PaymentProvider, example: PaymentProvider.STRIPE })
+  activeProvider!: PaymentProvider;
+
+  @ApiProperty({ example: '2026-08-16T12:00:00.000Z' })
+  checkedAt!: string;
+
+  @ApiProperty({ type: PaymentProviderConnectionDto, nullable: true })
+  stripe!: PaymentProviderConnectionDto | null;
+
+  @ApiProperty({ type: PaymentProviderConnectionDto, nullable: true })
+  mollie!: PaymentProviderConnectionDto | null;
+}
+
+// ── Query DTOs ────────────────────────────────────────────────────────────────
+
+export class PaymentConnectionQueryDto {
+  @ApiPropertyOptional({
+    enum: PaymentProvider,
+    description: 'Probe only this provider (both when omitted)',
+  })
+  @IsOptional()
+  @IsEnum(PaymentProvider)
+  provider?: PaymentProvider;
+}
+
 // ── Update DTOs ───────────────────────────────────────────────────────────────
 
 export class UpdateSiteInfoDto {
@@ -832,10 +931,13 @@ export class UpdateStripeConfigurationDto {
   @IsString()
   webhookSecret?: string;
 
-  @ApiPropertyOptional({ type: [String] })
+  // @IsIn, not free strings: a typo'd key would not fail loudly - the
+  // checkout's offer-intersection would silently resolve to ZERO methods
+  // site-wide. A 400 at save time is the honest failure.
+  @ApiPropertyOptional({ type: [String], enum: STRIPE_CHECKOUT_METHOD_KEYS })
   @IsOptional()
   @IsArray()
-  @IsString({ each: true })
+  @IsIn(STRIPE_CHECKOUT_METHOD_KEYS, { each: true })
   paymentMethods?: string[];
 }
 
@@ -879,10 +981,12 @@ export class UpdateMollieConfigurationDto {
   })
   profileId?: string;
 
-  @ApiPropertyOptional({ type: [String] })
+  // @IsIn, not free strings: a junk value here goes straight into Mollie's
+  // `payments.create({ method })` and 500s every hosted checkout until fixed.
+  @ApiPropertyOptional({ type: [String], enum: MOLLIE_CHECKOUT_METHOD_KEYS })
   @IsOptional()
   @IsArray()
-  @IsString({ each: true })
+  @IsIn(MOLLIE_CHECKOUT_METHOD_KEYS, { each: true })
   paymentMethods?: string[];
 }
 

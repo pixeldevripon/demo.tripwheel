@@ -90,6 +90,7 @@ describe('reserveAndPay - the happy paths', () => {
             clientSecret: 'cs_1',
             publishableKey: 'pk_1',
             methodTypes: ['card'],
+            walletMethods: [],
             amount: 150,
         });
     });
@@ -333,6 +334,7 @@ describe('intentForBooking - the deferred intent leg', () => {
             clientSecret: 'cs_1',
             publishableKey: 'pk_1',
             methodTypes: ['card'],
+            walletMethods: [],
             amount: 150,
         });
         // The intent leg alone: it must never re-reserve or touch contact.

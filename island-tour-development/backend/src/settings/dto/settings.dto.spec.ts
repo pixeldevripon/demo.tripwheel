@@ -3,10 +3,50 @@ import { plainToInstance } from 'class-transformer';
 import {
   UpdateSiteInfoDto,
   UpdateCompanyInformationsDto,
+  UpdateMollieConfigurationDto,
+  UpdateStripeConfigurationDto,
   FaqItemDto,
 } from './settings.dto';
 
 describe('Settings DTO Validation', () => {
+  // ── paymentMethods: closed per-PSP vocabularies ────────────────────────────
+  // A typo'd key would not fail loudly downstream: Stripe's offer-intersection
+  // silently resolves to ZERO checkout methods, Mollie 500s at payments.create.
+
+  describe('paymentMethods @IsIn guard', () => {
+    it('accepts the canonical Stripe keys', async () => {
+      const dto = plainToInstance(UpdateStripeConfigurationDto, {
+        paymentMethods: ['card', 'ideal', 'paypal', 'klarna'],
+      });
+      expect((await validate(dto)).length).toBe(0);
+    });
+
+    it('rejects a Mollie-vocabulary key on the Stripe DTO (and any typo)', async () => {
+      const dto = plainToInstance(UpdateStripeConfigurationDto, {
+        paymentMethods: ['card', 'creditcard'],
+      });
+      const errors = await validate(dto);
+      expect(errors.length).toBeGreaterThan(0);
+      expect(errors[0].property).toBe('paymentMethods');
+    });
+
+    it('accepts Mollie keys incl. legacy Klarna flavours and hosted-only methods', async () => {
+      const dto = plainToInstance(UpdateMollieConfigurationDto, {
+        paymentMethods: ['creditcard', 'klarnapaylater', 'bancontact'],
+      });
+      expect((await validate(dto)).length).toBe(0);
+    });
+
+    it('rejects a Stripe-vocabulary key on the Mollie DTO', async () => {
+      const dto = plainToInstance(UpdateMollieConfigurationDto, {
+        paymentMethods: ['card'],
+      });
+      const errors = await validate(dto);
+      expect(errors.length).toBeGreaterThan(0);
+      expect(errors[0].property).toBe('paymentMethods');
+    });
+  });
+
   // ── UpdateSiteInfoDto ──────────────────────────────────────────────────────
 
   describe('UpdateSiteInfoDto', () => {

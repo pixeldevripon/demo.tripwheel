@@ -78,6 +78,8 @@ export type ReserveAndPayResult =
           clientSecret: string;
           publishableKey: string;
           methodTypes: string[];
+          /** Wallet buttons the checkout MAY render (admin-switch gated). */
+          walletMethods: string[];
           amount: number | null;
       }
     | {
@@ -205,6 +207,7 @@ export async function intentForBooking(
             clientSecret: pi.clientSecret,
             publishableKey: pi.publishableKey,
             methodTypes: pi.paymentMethodTypes ?? [],
+            walletMethods: pi.walletMethods ?? [],
             amount,
         };
     } catch (err) {

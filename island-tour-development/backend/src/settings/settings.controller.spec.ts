@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { PaymentProvider } from '@prisma/client';
 import { SettingsController } from './settings.controller';
 import { SettingsService } from './settings.service';
+import { PaymentConnectionService } from './payment-connection.service';
 import {
   UpdateSiteInfoDto,
   UpdateSiteSEODto,
@@ -25,16 +27,25 @@ function createMockSettingsService() {
   };
 }
 
+function createMockPaymentConnectionService() {
+  return { getStatus: jest.fn() };
+}
+
 describe('SettingsController', () => {
   let controller: SettingsController;
   let service: ReturnType<typeof createMockSettingsService>;
+  let connectionService: ReturnType<typeof createMockPaymentConnectionService>;
 
   beforeEach(async () => {
     service = createMockSettingsService();
+    connectionService = createMockPaymentConnectionService();
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [SettingsController],
-      providers: [{ provide: SettingsService, useValue: service }],
+      providers: [
+        { provide: SettingsService, useValue: service },
+        { provide: PaymentConnectionService, useValue: connectionService },
+      ],
     }).compile();
 
     controller = module.get<SettingsController>(SettingsController);
@@ -122,6 +133,42 @@ describe('SettingsController', () => {
       const dto: UpdateMollieConfigurationDto = { apiKey: 'key_2' };
       await controller.updateMollieConfiguration(dto);
       expect(service.updateMollieConfiguration).toHaveBeenCalledWith(dto);
+    });
+  });
+
+  describe('Payment Connection Status', () => {
+    it('delegates the probe to PaymentConnectionService with the provider filter', async () => {
+      connectionService.getStatus.mockResolvedValue({
+        activeProvider: PaymentProvider.STRIPE,
+      });
+      const result = await controller.getPaymentConnectionStatus({
+        provider: PaymentProvider.MOLLIE,
+      });
+      expect(connectionService.getStatus).toHaveBeenCalledWith(
+        PaymentProvider.MOLLIE,
+      );
+      expect(result).toEqual({ activeProvider: PaymentProvider.STRIPE });
+    });
+
+    it('passes undefined through when no provider filter is given (probe both)', async () => {
+      await controller.getPaymentConnectionStatus({});
+      expect(connectionService.getStatus).toHaveBeenCalledWith(undefined);
+    });
+
+    it('requires MANAGE_SETTINGS - the probe reaches live PSP accounts', () => {
+      const permissions = Reflect.getMetadata(
+        'permissions',
+        SettingsController.prototype.getPaymentConnectionStatus,
+      );
+      expect(permissions).toEqual(['MANAGE_SETTINGS']);
+    });
+
+    it('is rate limited to 12 requests per minute (outbound PSP calls)', () => {
+      const limit = Reflect.getMetadata(
+        'THROTTLER:LIMITmedium',
+        SettingsController.prototype.getPaymentConnectionStatus,
+      );
+      expect(limit).toBe(12);
     });
   });
 

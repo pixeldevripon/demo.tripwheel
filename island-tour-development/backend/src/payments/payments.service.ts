@@ -319,6 +319,17 @@ export class PaymentsService {
       status: mapIntentStatus(intent.status),
     });
 
+    // The admin's per-method switch (Settings -> Payments). The intent itself
+    // keeps automatic_payment_methods - re-creating it on every toggle would
+    // fight the (booking, kind) idempotency key - so the switch is applied to
+    // the OFFER: the checkout renders only methods that are activated on the
+    // account AND currency-compatible AND switched on. Empty list = all on
+    // (the pre-toggle default).
+    const enabledMethods = await this.stripe.paymentMethods();
+    const offered = intent.payment_method_types ?? [];
+    const methodEnabled = (key: string) =>
+      enabledMethods.length === 0 || enabledMethods.includes(key);
+
     return {
       paymentRequired: true,
       provider: PaymentProvider.STRIPE,
@@ -328,9 +339,20 @@ export class PaymentsService {
       currency: booking.currency,
       kind: charge.kind,
       status: mapIntentStatus(intent.status),
-      // Eligible methods for this booking (account-activated + currency-compatible).
-      // The checkout offers only these; card is confirmed inline, PayPal/iDEAL redirect.
-      paymentMethodTypes: intent.payment_method_types ?? [],
+      // Eligible methods for this booking (account-activated + currency-compatible
+      // + admin-enabled). The checkout offers only these; card is confirmed
+      // inline, PayPal/iDEAL/Klarna redirect.
+      paymentMethodTypes: enabledMethods.length
+        ? offered.filter((m) => enabledMethods.includes(m))
+        : offered,
+      // Wallet buttons the checkout MAY render (Express Checkout Element).
+      // Admin-switch gated only: the Element itself consults Stripe's account
+      // activation + domain registration + device capability and renders
+      // nothing when any of those say no. Card switched off disables the
+      // wallets too (a wallet payment IS a card payment).
+      walletMethods: methodEnabled('card')
+        ? (['applepay', 'googlepay'] as const).filter(methodEnabled)
+        : [],
     };
   }
 
@@ -358,19 +380,33 @@ export class PaymentsService {
       throw new ServiceUnavailableException('Payments are not configured');
     }
 
+    // The admin's stored method list, fetched ONCE per request - it is an
+    // uncached row read + decrypt, and this function needs it in several
+    // places. Empty = UNRESTRICTED (the pre-toggle default): unlike the
+    // Stripe leg there is no cheap "everything Mollie could offer" list to
+    // expand it into, so empty stays literal and the hosted page - which
+    // gets NO `method` restriction in that case - is the eligibility truth.
+    const enabledMethods = await this.mollie.paymentMethods();
+    const cardEnabled =
+      enabledMethods.length === 0 || enabledMethods.includes('creditcard');
+
     // ── Phase 1: setup for the payment step (no money movement) ──────────────
     if (!dto?.returnUrl) {
       const profile = await this.mollie.componentsProfile();
       return {
         paymentRequired: true,
         provider: PaymentProvider.MOLLIE,
-        profileId: profile.profileId ?? undefined,
+        // The inline Components card form exists only while the admin's card
+        // switch is on - with creditcard toggled off, withholding the profile
+        // sends the checkout to the hosted page, whose method list (below)
+        // excludes creditcard too.
+        profileId: cardEnabled ? (profile.profileId ?? undefined) : undefined,
         testmode: profile.testmode,
         amount: charge.amount.toString(),
         currency: booking.currency,
         kind: charge.kind,
         status: PaymentStatus.REQUIRES_PAYMENT,
-        paymentMethodTypes: await this.mollie.paymentMethods(),
+        paymentMethodTypes: enabledMethods,
       };
     }
 
@@ -430,7 +466,11 @@ export class PaymentsService {
           kind: charge.kind,
         },
         locale: booking.customerLocale,
-        cardToken: dto.cardToken,
+        // A cardToken forces method=creditcard, which would silently bypass the
+        // admin's card switch (a stale tab can still send one after the toggle).
+        // Dropped, not rejected: the payment falls through to the hosted page,
+        // whose method list already excludes creditcard.
+        cardToken: cardEnabled ? dto.cardToken : undefined,
       })
       .catch((err: unknown) => {
         // Same rationale as the Stripe wrap above: a MollieApiError is a
@@ -478,8 +518,12 @@ export class PaymentsService {
       currency: booking.currency,
       kind: charge.kind,
       status,
-      // Admin-enabled Mollie methods (display only - Mollie's hosted page is
-      // the eligibility truth and shows exactly what this payment can use).
+      // Admin-enabled Mollie methods, display only. NOTE the contract differs
+      // from the Stripe leg: an EMPTY list here means UNRESTRICTED, not
+      // "none" - there is no cheap all-of-Mollie list to expand it into, and
+      // Mollie's hosted page (which gets no `method` restriction then) is the
+      // eligibility truth. Nothing on the Mollie checkout path reads this
+      // field today (checkout-payment-mollie.tsx uses profileId only).
       paymentMethodTypes: await this.mollie.paymentMethods(),
     };
   }
@@ -807,7 +851,11 @@ export class PaymentsService {
     const charge = await this.resolveCharge(intent);
 
     // Which method the customer used (card / paypal / apple_pay / google_pay) — Figma.
+    // A wallet payment reports type 'card' with the wallet nested under
+    // card.wallet.type - prefer that, or every Apple/Google Pay charge would
+    // record as a plain card and the Figma's method column could never say so.
     const methodType =
+      charge?.payment_method_details?.card?.wallet?.type ??
       charge?.payment_method_details?.type ??
       (typeof intent.payment_method === 'object'
         ? (intent.payment_method?.type ?? null)

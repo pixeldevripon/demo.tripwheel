@@ -10,6 +10,7 @@ import {
   CompanyInformationsResponseDto,
   MailchimpResponseDto,
   MollieConfigurationResponseDto,
+  PaymentConnectionStatusResponseDto,
   PaymentProviderSettingsResponseDto,
   PublicCompanyInfoResponseDto,
   PublicSiteInfoResponseDto,
@@ -353,6 +354,29 @@ export function ApiUpdatePaymentProviderDocs() {
       status: 200,
       description: 'Active payment provider updated successfully',
       type: PaymentProviderSettingsResponseDto,
+    }),
+    ...adminErrors,
+  );
+}
+
+export function ApiGetPaymentConnectionStatusDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary:
+        'Test the PSP connections + list per-method activation (Admin only)',
+      description:
+        'Live probe against the STORED credentials of both providers (or one, ' +
+        'via ?provider=). Verifies the keys work and reports which traveller-' +
+        'facing payment methods (Visa, Mastercard, Amex, PayPal, iDEAL, Apple ' +
+        'Pay, Google Pay, Klarna) are activated on each account. A provider ' +
+        'with incomplete credentials is reported unconfigured and never probed; ' +
+        'a failed probe is reported as ok:false with a sanitized reason, never ' +
+        'as an HTTP error - one bad key must not blank the other provider.',
+    }),
+    ApiResponse({
+      status: 200,
+      description: 'Connection + method activation status per provider',
+      type: PaymentConnectionStatusResponseDto,
     }),
     ...adminErrors,
   );

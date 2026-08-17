@@ -305,8 +305,12 @@ export class SettingsService {
    * when the intent comes back without one (`checkout-form.tsx`). Leaving it
    * out of this gate let an admin activate a Stripe that could not take a
    * card - the exact outcome the gate exists to prevent.
+   *
+   * Public because `PaymentConnectionService` gates its live probes on the
+   * SAME contract - a "connection OK" for a provider this list still blocks
+   * from charging would be a false certificate.
    */
-  private async missingProviderCredentials(
+  async missingProviderCredentials(
     provider: PaymentProvider,
   ): Promise<string[]> {
     if (provider === PaymentProvider.MOLLIE) {

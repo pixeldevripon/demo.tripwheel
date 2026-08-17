@@ -152,6 +152,31 @@ export class MollieService {
     });
   }
 
+  /**
+   * Live "test connection" probe: proves the stored API key works and reads
+   * which payment methods the account has activated (`GET /v2/methods`
+   * returns exactly the methods enabled on the profile - the same set the
+   * hosted checkout offers). Speaks Mollie vocabulary (`creditcard`,
+   * `applepay`, ...); brand mapping is the caller's job. Throws on
+   * auth/network failure; the caller owns the error shaping.
+   */
+  async connectionSnapshot(): Promise<MollieConnectionSnapshot> {
+    const client = await this.requireClient();
+    const [methods, cfg, row] = await Promise.all([
+      client.methods.list(),
+      this.config(),
+      this.prisma.mollieConfiguration.findUnique({
+        where: { id: 'default' },
+        select: { profileId: true },
+      }),
+    ]);
+    return {
+      mode: cfg.apiKey.startsWith('test_') ? 'test' : 'live',
+      accountLabel: row?.profileId || null,
+      enabledMethodIds: methods.map((m) => String(m.id)),
+    };
+  }
+
   // ── internals ──────────────────────────────────────────────────────────────
 
   /** A Mollie client bound to the current API key, or null if unconfigured. */
@@ -182,6 +207,14 @@ export class MollieService {
       methods: row?.paymentMethods ?? [],
     };
   }
+}
+
+/** What `connectionSnapshot` proves about the connected Mollie account. */
+export interface MollieConnectionSnapshot {
+  mode: 'live' | 'test';
+  accountLabel: string | null;
+  /** Mollie method ids enabled on the profile (`creditcard`, `ideal`, ...). */
+  enabledMethodIds: string[];
 }
 
 /** Decimal(10,2) → Mollie amount string ("41.99"). Exact 2 decimals required. */

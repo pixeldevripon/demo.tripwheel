@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -25,7 +25,19 @@ const stripeApi = vi.hoisted(() => ({
     confirmCardPayment: vi.fn(),
     confirmPayPalPayment: vi.fn(),
     confirmIdealPayment: vi.fn(),
+    confirmKlarnaPayment: vi.fn(),
+    confirmPayment: vi.fn(),
 }));
+
+// The Express Checkout Element's props, captured so tests can drive its
+// onReady/onClick/onConfirm events - the wallet sheet itself is device UI
+// with no jsdom equivalent.
+const eceProps = vi.hoisted(
+    () => ({ current: null }) as { current: Record<string, any> | null }
+);
+
+const leaveToMock = vi.hoisted(() => vi.fn());
+vi.mock('@/lib/checkout/leave-to', () => ({ leaveTo: leaveToMock }));
 
 vi.mock('@stripe/stripe-js', () => ({
     loadStripe: () => Promise.resolve(null),
@@ -41,6 +53,10 @@ vi.mock('@stripe/react-stripe-js', () => ({
     CardNumberElement: () => <div data-testid='stripe-card-number' />,
     CardExpiryElement: () => <div data-testid='stripe-card-expiry' />,
     CardCvcElement: () => <div data-testid='stripe-card-cvc' />,
+    ExpressCheckoutElement: (props: Record<string, any>) => {
+        eceProps.current = props;
+        return <div data-testid='stripe-ece' />;
+    },
 }));
 
 const dict = en.checkout;
@@ -167,10 +183,11 @@ describe('CheckoutPayment - method availability by currency (Pastel 83)', () => 
 
         expect(methodRow('iDEAL')).toBeDisabled();
         expect(methodRow(dict.paypal)).toBeDisabled();
+        expect(methodRow('Klarna')).toBeDisabled();
         expect(screen.queryByText(notAvailableFor('EUR'))).toBeNull();
         expect(
             screen.getAllByText(dict.methodTemporarilyUnavailable).length
-        ).toBe(2);
+        ).toBe(3);
     });
 
     it('USD checkout: iDEAL stays disabled even if the intent claims to offer it', () => {
@@ -189,6 +206,156 @@ describe('CheckoutPayment - method availability by currency (Pastel 83)', () => 
         expect(methodRow(dict.card)).toBeEnabled();
         expect(methodRow('iDEAL')).toBeDisabled();
         expect(screen.queryByText(notAvailableFor('EUR'))).toBeNull();
+    });
+});
+
+/**
+ * Klarna - the fourth method tile. Rendered like iDEAL/PayPal (redirect, no
+ * fields of ours) and offered ONLY when the intent reports it: Stripe filters
+ * by account activation + market, the backend intersects with the admin's
+ * per-method switch, and this row simply obeys `eligibleMethods`.
+ */
+describe('CheckoutPayment - Klarna', () => {
+    it('is selectable when the intent offers it and confirms with the contact billing facts', () => {
+        renderPanel({
+            eligibleMethods: ['card', 'ideal', 'paypal', 'klarna'],
+        });
+
+        fireEvent.click(methodRow('Klarna'));
+        expect(methodRow('Klarna')).toHaveAttribute('aria-pressed', 'true');
+
+        fireEvent.click(payButton());
+
+        // Klarna requires email + billing country up front - both come from
+        // the contact step, nothing new is asked of the traveller.
+        expect(stripeApi.confirmKlarnaPayment).toHaveBeenCalledWith(
+            'pi_test_secret',
+            expect.objectContaining({
+                payment_method: {
+                    billing_details: {
+                        email: 'traveller@example.test',
+                        address: { country: 'NL' },
+                    },
+                },
+                return_url: expect.stringContaining(
+                    '/curacao/payment/processing?ref=IT-2026-ABC'
+                ),
+            })
+        );
+    });
+
+    it('renders disabled with the honest hint while the account/admin does not offer it', () => {
+        renderPanel(); // default eligibleMethods has no klarna
+
+        expect(methodRow('Klarna')).toBeDisabled();
+        fireEvent.click(methodRow('Klarna'));
+        expect(methodRow('Klarna')).toHaveAttribute('aria-pressed', 'false');
+        expect(stripeApi.confirmKlarnaPayment).not.toHaveBeenCalled();
+    });
+});
+
+/**
+ * Wallets (Apple Pay / Google Pay) - the Express Checkout Element block.
+ * Wallets are device sheets, not radio rows: the Element renders only what
+ * this browser can pay with, the admin's switches veto per wallet, and the
+ * operator-conditions gate must stop the SHEET from opening, exactly as it
+ * stops the Pay button.
+ */
+describe('CheckoutPayment - wallet express checkout', () => {
+    it('mounts only when the admin offers a wallet, with the switches mapped per wallet', () => {
+        eceProps.current = null;
+        renderPanel();
+        expect(screen.queryByTestId('stripe-ece')).toBeNull();
+
+        renderPanel({ walletMethods: ['googlepay'] });
+        expect(screen.getByTestId('stripe-ece')).toBeInTheDocument();
+        expect(eceProps.current!.options.paymentMethods).toMatchObject({
+            googlePay: 'auto',
+            applePay: 'never',
+            link: 'never',
+            paypal: 'never',
+            klarna: 'never',
+        });
+
+        renderPanel({ walletMethods: ['applepay'] });
+        expect(eceProps.current!.options.paymentMethods).toMatchObject({
+            applePay: 'auto',
+            googlePay: 'never',
+        });
+    });
+
+    it('stays hidden until the Element reports a wallet this browser can pay with', () => {
+        renderPanel({ walletMethods: ['applepay', 'googlepay'] });
+        const wrapper = screen.getByTestId('stripe-ece').parentElement!;
+
+        // No dead buttons, no layout hole: hidden until onReady says a
+        // wallet is genuinely available on this device.
+        expect(wrapper.className).toContain('hidden');
+
+        act(() =>
+            eceProps.current!.onReady({
+                availablePaymentMethods: { applePay: true, googlePay: false },
+            })
+        );
+        expect(wrapper.className).not.toContain('hidden');
+    });
+
+    it('never opens the wallet sheet while the operator-conditions box is empty', () => {
+        const onTermsUnsatisfied = vi.fn();
+        renderPanel({
+            walletMethods: ['applepay', 'googlepay'],
+            termsSatisfied: false,
+            onTermsUnsatisfied,
+        });
+
+        const resolve = vi.fn();
+        eceProps.current!.onClick({ resolve });
+
+        expect(onTermsUnsatisfied).toHaveBeenCalled();
+        // Withholding resolve() IS the "do not open" signal to the Element.
+        expect(resolve).not.toHaveBeenCalled();
+    });
+
+    it('opens the sheet when the gate is satisfied, and a confirmed wallet payment leaves to processing', async () => {
+        renderPanel({ walletMethods: ['applepay'], termsSatisfied: true });
+
+        const resolve = vi.fn();
+        eceProps.current!.onClick({ resolve });
+        expect(resolve).toHaveBeenCalled();
+
+        stripeApi.confirmPayment.mockResolvedValue({
+            paymentIntent: { status: 'succeeded' },
+        });
+        await eceProps.current!.onConfirm();
+
+        expect(stripeApi.confirmPayment).toHaveBeenCalledWith(
+            expect.objectContaining({
+                redirect: 'if_required',
+                confirmParams: {
+                    return_url: expect.stringContaining(
+                        '/curacao/payment/processing?ref=IT-2026-ABC'
+                    ),
+                },
+            })
+        );
+        expect(leaveToMock).toHaveBeenCalledWith(
+            '/curacao/payment/processing?ref=IT-2026-ABC'
+        );
+    });
+
+    it('surfaces a wallet decline as the form-level error instead of navigating', async () => {
+        leaveToMock.mockClear();
+        renderPanel({ walletMethods: ['googlepay'] });
+
+        stripeApi.confirmPayment.mockResolvedValue({
+            error: { message: 'Your card was declined.' },
+        });
+        await eceProps.current!.onConfirm();
+
+        expect(
+            await screen.findByText('Your card was declined.')
+        ).toBeInTheDocument();
+        expect(leaveToMock).not.toHaveBeenCalled();
     });
 });
 

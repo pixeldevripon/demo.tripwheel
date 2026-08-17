@@ -254,6 +254,60 @@ describe('PaymentsService', () => {
       expect(res).toMatchObject({ paymentRequired: true });
     });
 
+    // The admin per-method switch (Settings -> Payments): applied to the
+    // OFFER, never the intent - the (booking, kind) idempotency key maps to
+    // ONE intent, so a toggle must not force re-creation.
+    it('offers only admin-enabled methods, intersected with what Stripe reports', async () => {
+      prisma.booking.findUnique.mockResolvedValue(booking());
+      stripe.createPaymentIntent.mockResolvedValue({
+        id: 'pi_1',
+        client_secret: 'pi_1_secret',
+        status: 'requires_payment_method',
+        payment_method_types: ['card', 'ideal', 'paypal', 'klarna'],
+      });
+      stripe.paymentMethods.mockResolvedValue(['card', 'klarna']);
+
+      const res = await svc.createIntentForBooking('b1');
+
+      expect(res.paymentMethodTypes).toEqual(['card', 'klarna']);
+      // The intent stays on automatic methods - the switch never restricts it.
+      expect(stripe.createPaymentIntent).toHaveBeenCalledWith(
+        expect.not.objectContaining({ methods: expect.anything() }),
+      );
+    });
+
+    it('an empty switch list means every reported method is offered (pre-toggle default)', async () => {
+      prisma.booking.findUnique.mockResolvedValue(booking());
+      stripe.createPaymentIntent.mockResolvedValue({
+        id: 'pi_1',
+        client_secret: 'pi_1_secret',
+        status: 'requires_payment_method',
+        payment_method_types: ['card', 'ideal'],
+      });
+      stripe.paymentMethods.mockResolvedValue([]);
+
+      const res = await svc.createIntentForBooking('b1');
+      expect(res.paymentMethodTypes).toEqual(['card', 'ideal']);
+      expect(res.walletMethods).toEqual(['applepay', 'googlepay']);
+    });
+
+    it('wallet buttons follow their own switches AND the card switch (a wallet payment IS a card payment)', async () => {
+      prisma.booking.findUnique.mockResolvedValue(booking());
+
+      stripe.paymentMethods.mockResolvedValue(['card', 'googlepay']);
+      let res = await svc.createIntentForBooking('b1');
+      expect(res.walletMethods).toEqual(['googlepay']);
+
+      // Card switched off kills the wallets even when their switches are on.
+      stripe.paymentMethods.mockResolvedValue([
+        'ideal',
+        'applepay',
+        'googlepay',
+      ]);
+      res = await svc.createIntentForBooking('b1');
+      expect(res.walletMethods).toEqual([]);
+    });
+
     it('charges the full total for PAID_IN_FULL', async () => {
       prisma.booking.findUnique.mockResolvedValue(
         booking({ paymentModel: PaymentModel.PAID_IN_FULL }),
@@ -484,6 +538,53 @@ describe('PaymentsService', () => {
       expect(res.checkoutUrl).toBe('https://mollie.test/3ds/tr_card');
     });
 
+    it('an empty Mollie method list means UNRESTRICTED: profile kept, list passed through empty', async () => {
+      // Contract differs from the Stripe leg by design: there is no cheap
+      // all-of-Mollie list to expand [] into; the hosted page (which gets no
+      // `method` restriction then) is the eligibility truth.
+      prisma.booking.findUnique.mockResolvedValue(booking());
+      mollie.paymentMethods.mockResolvedValue([]);
+
+      const res = await svc.createIntentForBooking('b1');
+
+      expect(res.profileId).toBe('pfl_test');
+      expect(res.paymentMethodTypes).toEqual([]);
+    });
+
+    // The admin per-method switch: with creditcard toggled off, the inline
+    // Components form must disappear (phase 1) AND a stale tab's cardToken
+    // must not force a creditcard charge past the switch (phase 2).
+    it('withholds the Components profile when the card switch is off', async () => {
+      prisma.booking.findUnique.mockResolvedValue(booking());
+      mollie.paymentMethods.mockResolvedValue(['ideal', 'paypal']);
+
+      const res = await svc.createIntentForBooking('b1');
+
+      expect(res.profileId).toBeUndefined();
+      expect(res.paymentMethodTypes).toEqual(['ideal', 'paypal']);
+    });
+
+    it('drops a cardToken when the card switch is off - hosted page takes over', async () => {
+      prisma.booking.findUnique.mockResolvedValue(booking());
+      mollie.paymentMethods.mockResolvedValue(['ideal']);
+      mollie.createPayment.mockResolvedValue({
+        id: 'tr_hosted',
+        status: 'open',
+        _links: {
+          checkout: { href: 'https://mollie.test/checkout/tr_hosted' },
+        },
+      });
+
+      await svc.createIntentForBooking('b1', {
+        returnUrl,
+        cardToken: 'tkn_stale',
+      });
+
+      expect(mollie.createPayment).toHaveBeenCalledWith(
+        expect.objectContaining({ cardToken: undefined }),
+      );
+    });
+
     it('accepts a tokenized payment with NO checkout link when 3DS was frictionless (paid)', async () => {
       prisma.booking.findUnique.mockResolvedValue(booking());
       mollie.createPayment.mockResolvedValue({
@@ -568,6 +669,39 @@ describe('PaymentsService', () => {
       );
       expect(prisma.stripeWebhookEvent.update).toHaveBeenCalledWith(
         expect.objectContaining({ where: { id: 'evt_1' } }),
+      );
+    });
+
+    it('records the WALLET as the method type when a card charge rode Apple/Google Pay', async () => {
+      stripe.constructEvent.mockResolvedValue({
+        id: 'evt_w',
+        type: 'payment_intent.succeeded',
+        data: {
+          object: {
+            id: 'pi_1',
+            metadata: { bookingId: 'b1' },
+            latest_charge: 'ch_1',
+          },
+        },
+      });
+      prisma.stripeWebhookEvent.create.mockResolvedValue({});
+      // A wallet payment reports type 'card' with the wallet nested - the row
+      // must say apple_pay/google_pay, not plain card (Figma method column).
+      stripe.retrieveCharge.mockResolvedValue({
+        id: 'ch_1',
+        billing_details: { address: { country: 'US' } },
+        payment_method_details: {
+          type: 'card',
+          card: { last4: '4242', brand: 'visa', wallet: { type: 'apple_pay' } },
+        },
+      });
+
+      await svc.handleWebhook(rawBody, 'sig');
+
+      expect(prisma.payment.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ methodType: 'apple_pay' }),
+        }),
       );
     });
 

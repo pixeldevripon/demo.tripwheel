@@ -259,6 +259,7 @@ export function CheckoutForm({
               publishableKey: string;
               publicRef: string;
               methodTypes: string[];
+              walletMethods: string[];
               /** Backend's authoritative charge amount - see `chargeToday`. */
               amount: number | null;
           }
@@ -614,6 +615,7 @@ export function CheckoutForm({
                     publishableKey: result.publishableKey,
                     publicRef: result.publicRef,
                     methodTypes: result.methodTypes,
+                    walletMethods: result.walletMethods,
                     amount: result.amount,
                 });
                 onPhaseChange('payment');
@@ -1098,6 +1100,7 @@ export function CheckoutForm({
                                     payToday={chargeToday}
                                     currency={currency}
                                     eligibleMethods={intent.methodTypes}
+                                    walletMethods={intent.walletMethods}
                                     freeCancelLabel={freeCancelLabel}
                                     processingHref={processingHref(
                                         intent.publicRef

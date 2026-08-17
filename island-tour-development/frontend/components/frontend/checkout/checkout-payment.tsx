@@ -9,6 +9,7 @@ import {
     CardExpiryElement,
     CardNumberElement,
     Elements,
+    ExpressCheckoutElement,
     useElements,
     useStripe,
 } from '@stripe/react-stripe-js';
@@ -34,7 +35,7 @@ import {
 
 type CheckoutDict = Dictionary['checkout'];
 
-type PayMethod = 'card' | 'ideal' | 'paypal';
+type PayMethod = 'card' | 'ideal' | 'paypal' | 'klarna';
 
 /** Passive brand mark on a method row (real network SVGs, never text). */
 function BrandMark({
@@ -75,6 +76,14 @@ interface CheckoutPaymentProps {
     currency: Currency;
     /** Eligible methods for this booking (account-activated + currency-compatible). */
     eligibleMethods: string[];
+    /**
+     * Wallet buttons this checkout MAY render (admin-switch gated, Stripe leg
+     * only). The Express Checkout Element itself decides what actually shows:
+     * account activation, Apple Pay domain registration and the device's own
+     * wallet capability all veto silently - so the block renders nothing on a
+     * browser that cannot pay, rather than a dead button.
+     */
+    walletMethods?: string[];
     /** Composed free-cancellation reassurance line under the pay CTA. */
     freeCancelLabel: string;
     /** Relative TYP-processing path (with ?ref); redirect return_url is built from it. */
@@ -96,12 +105,13 @@ interface CheckoutPaymentProps {
  * the checkout accordion card (the section header/badge and the expand/collapse
  * shell live in `checkout-form`). Card is collected INLINE via
  * styled Stripe Card Elements (transparent iframes, no Stripe-hosted UI) and
- * confirmed with confirmCardPayment. PayPal + iDEAL confirm client-side and
- * REDIRECT to the provider (return_url -> /payment/processing) - those methods have
- * no fields to collect by design. Methods not in `eligibleMethods` (account /
- * currency ineligible - e.g. iDEAL is EUR-only) render disabled with a hint.
+ * confirmed with confirmCardPayment. PayPal + iDEAL + Klarna confirm
+ * client-side and REDIRECT to the provider (return_url -> /payment/processing)
+ * - those methods have no fields to collect by design. Methods not in
+ * `eligibleMethods` (account-inactive, admin-switched-off, or currency
+ * ineligible - e.g. iDEAL is EUR-only) render disabled with a hint.
  *
- * NOTHING is pre-selected: all three rows render collapsed so the traveller
+ * NOTHING is pre-selected: every row renders collapsed so the traveller
  * sees every method they can pay with before choosing one (Pastel 84). Picking
  * one is therefore a real validation step - see `handleReserve`.
  */
@@ -118,7 +128,7 @@ export const CheckoutPayment = memo(function CheckoutPayment(
     );
     return (
         <Elements stripe={stripePromise} options={options}>
-            <PaymentInner {...props} />
+            <PaymentInner {...props} stripePromise={stripePromise} />
         </Elements>
     );
 });
@@ -131,12 +141,16 @@ function PaymentInner({
     payToday,
     currency,
     eligibleMethods,
+    walletMethods = [],
     freeCancelLabel,
     processingHref,
     termsGate,
     termsSatisfied,
     onTermsUnsatisfied,
-}: CheckoutPaymentProps) {
+    stripePromise,
+}: CheckoutPaymentProps & {
+    stripePromise: ReturnType<typeof loadStripe>;
+}) {
     const stripe = useStripe();
     const elements = useElements();
     const methodsLabelId = useId();
@@ -151,7 +165,12 @@ function PaymentInner({
         m !== 'ideal' || currency === 'EUR';
 
     // Card is always offered when eligible; if the intent didn't report methods
-    // (older/edge response) fall back to card-only.
+    // (older/edge response) fall back to card-only. DELIBERATE safety net:
+    // an empty list can now also mean "every admin-enabled method is inactive
+    // at the PSP" (only reachable by raw-API config writes - the dashboard
+    // refuses to switch the last ACTIVE method off), and stranding the
+    // traveller with zero ways to pay is worse than offering Card, which the
+    // PSP will still honestly decline if it truly cannot charge.
     const isEligible = (m: PayMethod) =>
         currencyAllows(m) &&
         (eligibleMethods.length === 0
@@ -331,9 +350,9 @@ function PaymentInner({
             return;
         }
 
-        // ── PayPal / iDEAL: confirm + REDIRECT to the provider, then return_url. ──
-        // return_url must be absolute; on success the browser navigates away, so we
-        // only handle the error case here.
+        // ── PayPal / iDEAL / Klarna: confirm + REDIRECT to the provider, then
+        // return_url. return_url must be absolute; on success the browser
+        // navigates away, so we only handle the error case here.
         const returnUrl = `${window.location.origin}${processingHref}`;
         setProcessing(true);
         const result =
@@ -341,18 +360,32 @@ function PaymentInner({
                 ? await stripe.confirmPayPalPayment(clientSecret, {
                       return_url: returnUrl,
                   })
-                : await stripe.confirmIdealPayment(clientSecret, {
-                      payment_method: {
-                          // No iDEAL Bank Element: omit the bank so Stripe collects it
-                          // on the redirect (modern iDEAL has no pre-selection).
-                          ideal: {},
-                          billing_details: {
-                              name: contact.fullName || undefined,
-                              email: contact.email,
-                          },
-                      },
-                      return_url: returnUrl,
-                  });
+                : method === 'klarna'
+                  ? await stripe.confirmKlarnaPayment(clientSecret, {
+                        payment_method: {
+                            // Klarna requires an email and a billing country
+                            // up front (it decides the offered plans by
+                            // market) - both already collected at the contact
+                            // step, so nothing new is asked of the traveller.
+                            billing_details: {
+                                email: contact.email,
+                                address: { country: contact.country },
+                            },
+                        },
+                        return_url: returnUrl,
+                    })
+                  : await stripe.confirmIdealPayment(clientSecret, {
+                        payment_method: {
+                            // No iDEAL Bank Element: omit the bank so Stripe collects it
+                            // on the redirect (modern iDEAL has no pre-selection).
+                            ideal: {},
+                            billing_details: {
+                                name: contact.fullName || undefined,
+                                email: contact.email,
+                            },
+                        },
+                        return_url: returnUrl,
+                    });
         if (result?.error) {
             setProcessing(false);
             setFormError(result.error.message ?? dict.paymentError);
@@ -370,6 +403,26 @@ function PaymentInner({
                 {dict.selectPaymentMethod}
             </span>
             <SecureCheckoutRow psp='Stripe' dict={dict} />
+
+            {/* Wallet buttons (Apple Pay / Google Pay) in their OWN Elements
+                group: the Express Checkout Element needs a clientSecret-mode
+                group, while the split Card Elements below run secretless and
+                confirm imperatively - the two modes cannot share one group.
+                Renders nothing on a device that cannot pay. */}
+            {walletMethods.length > 0 && (
+                <Elements
+                    stripe={stripePromise}
+                    options={{ clientSecret, locale }}>
+                    <WalletExpressRow
+                        walletMethods={walletMethods}
+                        processingHref={processingHref}
+                        termsSatisfied={termsSatisfied}
+                        onTermsUnsatisfied={onTermsUnsatisfied}
+                        onError={setFormError}
+                        paymentError={dict.paymentError}
+                    />
+                </Elements>
+            )}
 
             {/* Payment methods - ONE bordered radio list (design v2 .pm):
                 hairline-divided rows, tinted selected row, methods expand in
@@ -511,6 +564,27 @@ function PaymentInner({
                         {dict.redirectNote}
                     </p>
                 </MethodRow>
+
+                {/* Klarna (redirect; brand name, untranslated like iDEAL).
+                    Offered only when the intent reports it - Stripe already
+                    filters by account activation + market/currency, and the
+                    backend intersects with the admin's per-method switch. */}
+                <MethodRow
+                    selected={method === 'klarna'}
+                    eligible={isEligible('klarna')}
+                    hint={hintFor('klarna')}
+                    onSelect={() => selectMethod('klarna')}
+                    label='Klarna'
+                    logos={
+                        <BrandMark
+                            src='/icons/payments/pay-7.svg'
+                            className='h-6 w-auto'
+                        />
+                    }>
+                    <p className='px-4 pb-[18px] pt-0.5 text-[12.5px] leading-[1.6] text-it-text-muted'>
+                        {dict.redirectNote}
+                    </p>
+                </MethodRow>
             </div>
 
             {/* Operator-conditions gate (Pastel #80): between the methods and
@@ -537,6 +611,113 @@ function PaymentInner({
                 consentPrivacy={dict.consentPrivacy}
                 securePayment={dict.securePayment}
                 locale={locale}
+            />
+        </div>
+    );
+}
+
+/**
+ * The device-wallet buttons (Apple Pay / Google Pay) above the method list.
+ *
+ * Wallets are not radio rows: the DEVICE draws the payment sheet (Safari's
+ * Apple Pay sheet, Chrome's Google Pay sheet), so the integration is Stripe's
+ * Express Checkout Element - it renders only the wallet buttons this browser
+ * can actually pay with, and nothing at all otherwise (`onReady` reports no
+ * available methods and the wrapper stays hidden; no dead buttons, no layout
+ * hole). `walletMethods` (the admin's switches) vetoes per wallet on top.
+ *
+ * The operator-conditions gate applies here exactly like the Pay button: the
+ * sheet must not even OPEN while the box is unticked, so the click handler
+ * withholds `resolve()` and raises the gate's error line instead.
+ */
+function WalletExpressRow({
+    walletMethods,
+    processingHref,
+    termsSatisfied,
+    onTermsUnsatisfied,
+    onError,
+    paymentError,
+}: {
+    walletMethods: string[];
+    processingHref: string;
+    termsSatisfied?: boolean;
+    onTermsUnsatisfied?: () => void;
+    onError: (message: string | null) => void;
+    paymentError: string;
+}) {
+    const stripe = useStripe();
+    const elements = useElements();
+    const [visible, setVisible] = useState(false);
+
+    return (
+        <div className={visible ? 'mb-2.5' : 'hidden'}>
+            <ExpressCheckoutElement
+                options={{
+                    // Only what the admin switched on; everything else the
+                    // Element could render is vetoed - the method list below
+                    // owns PayPal/Klarna as rows, and Link/Amazon Pay are not
+                    // part of this checkout at all.
+                    paymentMethods: {
+                        applePay: walletMethods.includes('applepay')
+                            ? 'auto'
+                            : 'never',
+                        googlePay: walletMethods.includes('googlepay')
+                            ? 'auto'
+                            : 'never',
+                        link: 'never',
+                        paypal: 'never',
+                        amazonPay: 'never',
+                        klarna: 'never',
+                    },
+                    buttonHeight: 48,
+                }}
+                onReady={event =>
+                    setVisible(
+                        Boolean(
+                            event.availablePaymentMethods?.applePay ||
+                                event.availablePaymentMethods?.googlePay
+                        )
+                    )
+                }
+                onClick={event => {
+                    // Same first check as handleReserve: no sheet while the
+                    // operator-conditions box is empty. Not resolving is how
+                    // the Element is told "do not open".
+                    if (termsSatisfied === false) {
+                        onTermsUnsatisfied?.();
+                        return;
+                    }
+                    onError(null);
+                    event.resolve();
+                }}
+                onConfirm={async () => {
+                    if (!stripe || !elements) return;
+                    const { error, paymentIntent } = await stripe.confirmPayment(
+                        {
+                            elements,
+                            confirmParams: {
+                                // Absolute, like the redirect methods: most
+                                // wallet confirms settle in place, but a bank
+                                // may still force a 3DS hop.
+                                return_url: `${window.location.origin}${processingHref}`,
+                            },
+                            redirect: 'if_required',
+                        }
+                    );
+                    if (error) {
+                        onError(error.message ?? paymentError);
+                        return;
+                    }
+                    const status = paymentIntent?.status;
+                    if (status === 'succeeded' || status === 'processing') {
+                        // Document navigation, same as the card path - the
+                        // processing route is never prerendered
+                        // (lib/checkout/leave-to.ts).
+                        leaveTo(processingHref);
+                        return;
+                    }
+                    onError(paymentError);
+                }}
             />
         </div>
     );

@@ -123,6 +123,70 @@ export class StripeService {
     });
   }
 
+  /**
+   * Live "test connection" probe: proves the stored secret key works and
+   * reads which payment methods the account has activated, straight from
+   * Stripe's default payment-method configuration (the same source
+   * `automatic_payment_methods` consults when the checkout creates an
+   * intent, so the settings board and the checkout can never disagree).
+   *
+   * Speaks Stripe vocabulary only (`card`, `apple_pay`, ...) - mapping to
+   * the checkout's brand marks (Visa/Mastercard/...) is the caller's job.
+   * Throws on auth/network failure; the caller owns the error shaping.
+   */
+  async connectionSnapshot(): Promise<StripeConnectionSnapshot> {
+    const client = await this.requireClient();
+    const [account, configurations, domains, cfg] = await Promise.all([
+      // The account the secret key itself belongs to.
+      client.accounts.retrieveCurrent(),
+      client.paymentMethodConfigurations.list({ limit: 100 }),
+      // Apple Pay refuses the payment sheet on unregistered domains, so an
+      // account can be fully "activated" and still never show the button -
+      // the one activation state an admin cannot see anywhere else.
+      client.paymentMethodDomains.list({ limit: 100 }),
+      this.config(),
+    ]);
+    const pmc =
+      configurations.data.find((c) => c.is_default) ??
+      configurations.data[0] ??
+      null;
+    // A method counts as activated only when the account CAN use it AND the
+    // configuration shows it - `available` alone still hides it from intents.
+    const on = (method?: {
+      available: boolean;
+      display_preference: { value: string };
+    }) =>
+      Boolean(method?.available && method.display_preference.value === 'on');
+    return {
+      mode: pmc
+        ? pmc.livemode
+          ? 'live'
+          : 'test'
+        : cfg.secretKey.includes('_test_')
+          ? 'test'
+          : 'live',
+      accountLabel:
+        account.business_profile?.name ||
+        account.settings?.dashboard?.display_name ||
+        account.email ||
+        account.id,
+      methodFlags: {
+        card: on(pmc?.card),
+        paypal: on(pmc?.paypal),
+        ideal: on(pmc?.ideal),
+        apple_pay: on(pmc?.apple_pay),
+        google_pay: on(pmc?.google_pay),
+        klarna: on(pmc?.klarna),
+      },
+      applePayDomainReady: domains.data.some(
+        (d) => d.enabled && d.apple_pay?.status === 'active',
+      ),
+      // Raw capability states ('active'|'inactive'|'pending') - 'pending'
+      // distinguishes "Stripe is still reviewing" from plain inactive.
+      capabilities: (account.capabilities ?? {}) as Record<string, string>,
+    };
+  }
+
   /** Verify the Stripe-Signature header against the raw request body. */
   async constructEvent(
     rawBody: Buffer,
@@ -161,6 +225,21 @@ export class StripeService {
       methods: row?.paymentMethods ?? [],
     };
   }
+}
+
+/** What `connectionSnapshot` proves about the connected Stripe account. */
+export interface StripeConnectionSnapshot {
+  mode: 'live' | 'test';
+  accountLabel: string | null;
+  /** Stripe-vocabulary activation flags off the default configuration. */
+  methodFlags: Record<
+    'card' | 'paypal' | 'ideal' | 'apple_pay' | 'google_pay' | 'klarna',
+    boolean
+  >;
+  /** At least one enabled payment-method domain has Apple Pay validated. */
+  applePayDomainReady: boolean;
+  /** Account capability states; 'pending' = Stripe is still reviewing. */
+  capabilities: Record<string, string>;
 }
 
 /** Decimal(10,2) → integer minor units (cents). Rounds HALF_UP. */

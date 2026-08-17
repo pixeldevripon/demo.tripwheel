@@ -200,6 +200,8 @@ export interface PaymentIntentResult {
     status?: string;
     /** Eligible methods (account-activated + currency-compatible). Checkout offers only these. */
     paymentMethodTypes?: string[];
+    /** Wallet buttons the checkout MAY render (admin-switch gated; the Express Checkout Element vetoes the rest). */
+    walletMethods?: string[];
 }
 
 /** Thank-you-page payload (backend `ThankYouResponseDto`; TYP + processing poll). */

@@ -1,11 +1,13 @@
-import { Body, Controller, Get, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Post, Query } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { ApiTags } from '@nestjs/swagger';
 import { Permission } from '@prisma/client';
 import { Public } from '@/auth/decorators/public.decorator';
 import { RequirePermissions } from '@/auth/decorators/require-permissions.decorator';
 import { SettingsService } from './settings.service';
+import { PaymentConnectionService } from './payment-connection.service';
 import {
+  PaymentConnectionQueryDto,
   UpdateCompanyInformationsDto,
   UpdateMailchimpDto,
   UpdateReviewRequestsDto,
@@ -31,6 +33,7 @@ import {
   ApiUpdateIntegrationsConfigurationDocs,
   ApiUpdateStripeConfigurationDocs,
   ApiGetMollieConfigurationDocs,
+  ApiGetPaymentConnectionStatusDocs,
   ApiUpdateMollieConfigurationDocs,
   ApiGetPaymentProviderDocs,
   ApiUpdatePaymentProviderDocs,
@@ -58,7 +61,10 @@ import {
  *   - Sensitive payment and system configurations are locked to ADMIN via MANAGE_SETTINGS.
  */
 export class SettingsController {
-  constructor(private readonly settingsService: SettingsService) {}
+  constructor(
+    private readonly settingsService: SettingsService,
+    private readonly paymentConnectionService: PaymentConnectionService,
+  ) {}
 
   // ── Site Info ──────────────────────────────────────────────────────────────
 
@@ -283,6 +289,23 @@ export class SettingsController {
   @ApiUpdatePaymentProviderDocs()
   updatePaymentProviderSettings(@Body() dto: UpdatePaymentProviderDto) {
     return this.settingsService.updatePaymentProviderSettings(dto);
+  }
+
+  /**
+   * GET /settings/payment/connection-status
+   *
+   * Live "test connection" probe for the stored Stripe/Mollie credentials plus
+   * the per-method activation board (Visa ... Klarna). Read-only against our
+   * DB but makes outbound PSP calls, hence the explicit throttle (matches the
+   * provider switch: an admin re-testing while fixing keys needs more than 5).
+   * Security: requires MANAGE_SETTINGS (Admin only).
+   */
+  @Throttle({ medium: { limit: 12, ttl: 60000 } })
+  @Get('payment/connection-status')
+  @RequirePermissions(Permission.MANAGE_SETTINGS)
+  @ApiGetPaymentConnectionStatusDocs()
+  getPaymentConnectionStatus(@Query() query: PaymentConnectionQueryDto) {
+    return this.paymentConnectionService.getStatus(query.provider);
   }
 
   // ── Payment Configuration (Mollie) ──────────────────────────────────────────
