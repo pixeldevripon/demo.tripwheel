@@ -247,6 +247,14 @@ export interface IntegrationsConfiguration {
   translationModel: string | null;
   /** Only used by provider 'custom' (any OpenAI-compatible endpoint). */
   translationBaseUrl: string | null;
+  /** Google Ads API - cancellation retractions. The three secrets come back masked. */
+  googleAdsDeveloperToken: string | null;
+  googleAdsCustomerId: string | null;
+  googleAdsLoginCustomerId: string | null;
+  googleAdsClientId: string | null;
+  googleAdsClientSecret: string | null;
+  googleAdsRefreshToken: string | null;
+  googleAdsConversionActionId: string | null;
 }
 
 export interface UpdateIntegrationsConfigurationPayload {
@@ -257,6 +265,13 @@ export interface UpdateIntegrationsConfigurationPayload {
   translationApiKey?: string;
   translationModel?: string;
   translationBaseUrl?: string;
+  googleAdsDeveloperToken?: string;
+  googleAdsCustomerId?: string;
+  googleAdsLoginCustomerId?: string;
+  googleAdsClientId?: string;
+  googleAdsClientSecret?: string;
+  googleAdsRefreshToken?: string;
+  googleAdsConversionActionId?: string;
 }
 
 // ── Platform reviews (Trustpilot / Google) ─────────────────────────────────

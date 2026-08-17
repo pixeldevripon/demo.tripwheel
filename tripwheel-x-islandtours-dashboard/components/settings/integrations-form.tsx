@@ -188,6 +188,173 @@ function MetaCapiCard() {
     );
 }
 
+// ── Google Ads API ───────────────────────────────────────────────────────--
+//
+// Cancellation RETRACTIONS only (ad-conversion PRD phase 3c). The conversion
+// itself is reported browser-side by the GTM Ads tag; when a booking that
+// already converted is cancelled, the backend retracts it by order id (the
+// booking publicRef = the tag's Transaction ID). Every field below is required
+// before anything fires - the service is a warn-once no-op until then, so a
+// half-filled card is safe. The developer token comes from the Google Ads API
+// Center and needs Google's approval (2-3 business days).
+
+const googleAdsSchema = z.object({
+    googleAdsDeveloperToken: z.string().optional(),
+    googleAdsCustomerId: z.string().optional(),
+    googleAdsLoginCustomerId: z.string().optional(),
+    googleAdsClientId: z.string().optional(),
+    googleAdsClientSecret: z.string().optional(),
+    googleAdsRefreshToken: z.string().optional(),
+    googleAdsConversionActionId: z.string().optional(),
+});
+type GoogleAdsFormValues = z.infer<typeof googleAdsSchema>;
+
+function GoogleAdsCard() {
+    const { data, isLoading } = useIntegrationsConfig();
+    const { mutate, isPending } = useUpdateIntegrationsConfig();
+
+    const {
+        register,
+        handleSubmit,
+        reset,
+        formState: { errors },
+    } = useForm<GoogleAdsFormValues>({
+        resolver: zodResolver(googleAdsSchema),
+        defaultValues: {
+            googleAdsDeveloperToken: '',
+            googleAdsCustomerId: '',
+            googleAdsLoginCustomerId: '',
+            googleAdsClientId: '',
+            googleAdsClientSecret: '',
+            googleAdsRefreshToken: '',
+            googleAdsConversionActionId: '',
+        },
+    });
+
+    useEffect(() => {
+        if (data) {
+            reset({
+                // Secrets stay blank - the backend keeps the stored value when
+                // the field is omitted, and it only ever returns them masked.
+                googleAdsDeveloperToken: '',
+                googleAdsClientSecret: '',
+                googleAdsRefreshToken: '',
+                googleAdsCustomerId: data.googleAdsCustomerId ?? '',
+                googleAdsLoginCustomerId: data.googleAdsLoginCustomerId ?? '',
+                googleAdsClientId: data.googleAdsClientId ?? '',
+                googleAdsConversionActionId:
+                    data.googleAdsConversionActionId ?? '',
+            });
+        }
+    }, [data, reset]);
+
+    function onSubmit(values: GoogleAdsFormValues) {
+        mutate({
+            // Non-secrets always ride along so clearing a field clears it.
+            googleAdsCustomerId: values.googleAdsCustomerId,
+            googleAdsLoginCustomerId: values.googleAdsLoginCustomerId,
+            googleAdsClientId: values.googleAdsClientId,
+            googleAdsConversionActionId: values.googleAdsConversionActionId,
+            // Secrets only when a new value was typed.
+            ...(values.googleAdsDeveloperToken
+                ? { googleAdsDeveloperToken: values.googleAdsDeveloperToken }
+                : {}),
+            ...(values.googleAdsClientSecret
+                ? { googleAdsClientSecret: values.googleAdsClientSecret }
+                : {}),
+            ...(values.googleAdsRefreshToken
+                ? { googleAdsRefreshToken: values.googleAdsRefreshToken }
+                : {}),
+        });
+    }
+
+    if (isLoading) return <SettingsCardSkeleton />;
+
+    // "Connected" needs the whole set - a token alone retracts nothing.
+    const connected = Boolean(
+        data?.googleAdsDeveloperToken &&
+            data?.googleAdsCustomerId &&
+            data?.googleAdsClientId &&
+            data?.googleAdsClientSecret &&
+            data?.googleAdsRefreshToken &&
+            data?.googleAdsConversionActionId,
+    );
+
+    return (
+        <SettingsCard
+            title='Google Ads API'
+            description='Retracts a reported conversion when its booking is cancelled, so Smart Bidding stops optimising for bookings that did not stand. The conversion itself is sent by the GTM tag - only corrections come from here.'
+            onSubmit={handleSubmit(onSubmit)}
+            isSaving={isPending}
+            status={<ConnectionStatus connected={connected} />}>
+            <SecretField
+                label='Developer Token'
+                registration={register('googleAdsDeveloperToken')}
+                error={errors.googleAdsDeveloperToken?.message}
+                description={
+                    data?.googleAdsDeveloperToken
+                        ? `Current: ${data.googleAdsDeveloperToken}. Leave blank to keep it.`
+                        : 'From Google Ads > Tools > API Center. Needs Google approval before it works. Stored encrypted.'
+                }
+                autoComplete='new-password'
+            />
+            <div className='grid gap-6 sm:grid-cols-2'>
+                <TextField
+                    label='Customer ID'
+                    registration={register('googleAdsCustomerId')}
+                    error={errors.googleAdsCustomerId?.message}
+                    placeholder='123-456-7890'
+                    description='The Ads account running the campaigns. Dashes are fine.'
+                />
+                <TextField
+                    label='Manager (MCC) ID'
+                    registration={register('googleAdsLoginCustomerId')}
+                    error={errors.googleAdsLoginCustomerId?.message}
+                    placeholder='Optional'
+                    description='Only when access runs through a manager account.'
+                />
+            </div>
+            <div className='grid gap-6 sm:grid-cols-2'>
+                <TextField
+                    label='OAuth Client ID'
+                    registration={register('googleAdsClientId')}
+                    error={errors.googleAdsClientId?.message}
+                    placeholder='xxxx.apps.googleusercontent.com'
+                />
+                <TextField
+                    label='Conversion Action ID'
+                    registration={register('googleAdsConversionActionId')}
+                    error={errors.googleAdsConversionActionId?.message}
+                    placeholder='987654321'
+                    description='The purchase conversion action the retraction targets.'
+                />
+            </div>
+            <SecretField
+                label='OAuth Client Secret'
+                registration={register('googleAdsClientSecret')}
+                error={errors.googleAdsClientSecret?.message}
+                description={
+                    data?.googleAdsClientSecret
+                        ? `Current: ${data.googleAdsClientSecret}. Leave blank to keep it.`
+                        : 'Stored encrypted.'
+                }
+                autoComplete='new-password'
+            />
+            <SecretField
+                label='OAuth Refresh Token'
+                registration={register('googleAdsRefreshToken')}
+                error={errors.googleAdsRefreshToken?.message}
+                description={
+                    data?.googleAdsRefreshToken
+                        ? `Current: ${data.googleAdsRefreshToken}. Leave blank to keep it.`
+                        : 'Generated once against the OAuth client. Stored encrypted.'
+                }
+                autoComplete='new-password'
+            />
+        </SettingsCard>
+    );
+}
+
 // ── AI translation ───────────────────────────────────────────────────────--
 //
 // Powers ALL AI translation: content entities (tours, destinations, hubs,
@@ -666,6 +833,7 @@ export function IntegrationsForm() {
     return (
         <div className='space-y-6'>
             <MetaCapiCard />
+            <GoogleAdsCard />
             <AiTranslationCard />
             <CookiebotCard />
             {/* <MailchimpCard /> */}
