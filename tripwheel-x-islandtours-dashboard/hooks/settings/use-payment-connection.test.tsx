@@ -170,7 +170,7 @@ describe('useTestPaymentConnection', () => {
             });
         });
         expect(toast.success).toHaveBeenCalledWith(
-            'Visa via Stripe: active (test mode)',
+            'Visa via Stripe: configured (test mode)',
         );
 
         api.getPaymentConnectionStatus.mockResolvedValueOnce(withMethods);
@@ -181,7 +181,7 @@ describe('useTestPaymentConnection', () => {
             });
         });
         expect(toast.warning).toHaveBeenCalledWith(
-            'Klarna is not activated on the Stripe account - open "How to activate" for the steps.',
+            'Klarna is not configured on the Stripe account - open "How to activate" for the steps.',
         );
 
         api.getPaymentConnectionStatus.mockResolvedValueOnce(
