@@ -15,6 +15,21 @@ export const PLATFORM_JOBS = {
   CONFIRMATION_EMAIL: 'booking.confirmation-email',
   OPERATOR_NOTICE: 'booking.operator-notice',
   CAPI_CONVERSION: 'tracking.capi-conversion',
+  /**
+   * Cancellation correction to Meta (ad-conversion PRD phase 3): the standard
+   * `Refund` CAPI event for a cancelled, conversion-fired booking. Idempotent
+   * by deterministic event id (`<publicRef>:refund`) - no guard column, same
+   * contract as CAPI_CONVERSION.
+   */
+  META_REFUND: 'tracking.meta-refund',
+  /**
+   * Google Ads RETRACTION for a cancelled, conversion-fired booking
+   * (ad-conversion PRD phase 3c). Enqueued with ADS_ADJUSTMENT_DELAY_MS:
+   * order_id-identified conversions must be ingested by Google before they
+   * can be adjusted, so the correction waits out the ingest lag (still
+   * inside the PRD's 24-48h SLA).
+   */
+  ADS_ADJUSTMENT: 'tracking.ads-adjustment',
   PRE_TOUR_REMINDER: 'booking.pre-tour-reminder',
   REFUND_EXECUTE: 'booking.refund-execute',
   /**
@@ -138,3 +153,11 @@ export const PLATFORM_JOB_OPTS = {
 
 /** 24 hours in ms - the pre-tour reminder lead time (doc §4). */
 export const REMINDER_LEAD_MS = 24 * 60 * 60 * 1_000;
+
+/**
+ * Delay before a Google Ads retraction is attempted (ad-conversion PRD 3c).
+ * Google recommends waiting for the order_id conversion to be fully ingested
+ * before adjusting it; 24h clears that in practice and still lands inside the
+ * PRD's 24-48h correction SLA. The job's 5 retries cover the tail.
+ */
+export const ADS_ADJUSTMENT_DELAY_MS = 24 * 60 * 60 * 1_000;

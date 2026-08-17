@@ -1,0 +1,34 @@
+// Conversion audit trail (ad-conversion PRD, phase 3).
+//
+// One row per ad-platform SEND ATTEMPT (conversion, refund, adjustment) - the
+// PRD's verifiability metric: every fired event traceable to its source, and a
+// rejected send visible instead of vanishing into a log line. This is an audit
+// LOG, deliberately not unique-constrained: a retried send after a FAILED
+// attempt writes a second row. Idempotency does NOT live here - it lives in
+// the platform-side event-id dedup (Meta), the relay's deterministic jobId,
+// and the mark-first booking columns (master 8.2).
+
+model ConversionEvent {
+  id        String @id @default(uuid())
+  bookingId String
+
+  platform ConversionPlatform
+  kind     ConversionEventKind
+  // The dedup/reference id sent to the platform: publicRef for CONVERSION,
+  // `<publicRef>:refund` for REFUND, the order_id for a Google Ads ADJUSTMENT.
+  eventId  String
+  // EUR value carried by the event (commission, rule #22).
+  valueEur Decimal? @db.Decimal(10, 2)
+
+  status ConversionSendStatus
+  // Truncated platform error (status + response text). Never request PII.
+  error  String?
+
+  createdAt DateTime @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+  @@index([platform, kind, createdAt])
+  @@map("conversion_events")
+}

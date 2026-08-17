@@ -197,6 +197,16 @@ const OPTIONAL: Record<string, (v: string) => string | null> = {
   META_PIXEL_ID: () => null,
   META_CAPI_TOKEN: () => null,
   META_CAPI_TEST_CODE: () => null,
+  // Google Ads API (cancellation retractions, ad-conversion PRD phase 3c).
+  // Local-dev / first-boot fallback only - the dashboard-managed
+  // IntegrationsConfiguration values win when set.
+  GOOGLE_ADS_DEVELOPER_TOKEN: () => null,
+  GOOGLE_ADS_CUSTOMER_ID: () => null,
+  GOOGLE_ADS_LOGIN_CUSTOMER_ID: () => null,
+  GOOGLE_ADS_CLIENT_ID: () => null,
+  GOOGLE_ADS_CLIENT_SECRET: () => null,
+  GOOGLE_ADS_REFRESH_TOKEN: () => null,
+  GOOGLE_ADS_CONVERSION_ACTION_ID: () => null,
   // Instagram feed auto-sync (Instagram API with Instagram Login) is configured
   // ENTIRELY from the DASHBOARD (Settings > Instagram): the admin pastes a
   // long-lived access token, stored encrypted on InstagramAccount with the

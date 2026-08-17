@@ -426,6 +426,28 @@ enum CancelledBy {
   SYSTEM
 }
 
+// ── Conversion tracking audit (ad-conversion PRD phase 3) ─────────────────────
+
+/** Ad platform a conversion event was sent to. */
+enum ConversionPlatform {
+  META
+  GOOGLE_ADS
+  GA4
+}
+
+/** What the send represented. */
+enum ConversionEventKind {
+  CONVERSION
+  REFUND
+  ADJUSTMENT
+}
+
+/** Outcome of one send attempt; a retry after FAILED writes a new row. */
+enum ConversionSendStatus {
+  SENT
+  FAILED
+}
+
 // ── Payments ──────────────────────────────────────────────────────────────────
 
 enum PaymentModel {

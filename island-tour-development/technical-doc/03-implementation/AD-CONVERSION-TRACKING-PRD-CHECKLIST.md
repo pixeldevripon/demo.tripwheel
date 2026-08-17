@@ -23,11 +23,11 @@
 | Consent Mode v2 region-aware defaults + Cookiebot | ✅ BUILT | EEA+UK denied default, inline before gtm.js; CBID dashboard-managed |
 | GTM container 4-tag fan-out (Conversion Linker / Ads / GA4 / Pixel) | 🟡 CONFIG ONLY | code side done; container work blocked on stakeholder IDs |
 | Click IDs / booking_ref / operator / island / user_id **inside** the dataLayer payload | ✅ BUILT 2026-08-17 | Phase 2 shipped: full §8.3 payload + typed `BookingCompleteEvent` CI contract |
-| Cancellation correction: Google Ads negative adjustments | ❌ NOT BUILT | zero Google Ads API code; gclid stored but never read |
-| Cancellation correction: Meta refund events | ❌ NOT BUILT | no cancel-side CAPI event, no `booking.cancelled` outbox event |
+| Cancellation correction: Google Ads negative adjustments | ✅ BUILT 2026-08-17 | Phase 3c: delayed `tracking.ads-adjustment` job -> RETRACTION by `orderId = publicRef`; config-gated no-op until the developer token + credentials are entered |
+| Cancellation correction: Meta refund events | ✅ BUILT 2026-08-17 | Phase 3.1: `booking.cancelled` outbox -> `tracking.meta-refund` job -> CAPI `Refund` + `conversion_events` audit |
 | No-show correction | ❌ BLOCKED | no no-show state exists anywhere in the schema (documented skip) |
 | Paid vs affiliate/organic separation at the data-model level | 🟡 PARTIAL | `affiliateId` column exists and is separate from UTMs, but nothing writes it (Trackdesk not integrated) |
-| Google Ads developer token request | ❌ NOT STARTED | external, stakeholder approval needed day one |
+| Google Ads developer token request | ❌ NOT STARTED | external, stakeholder action - the ONLY thing between the built retraction code and live corrections |
 | QA across card / deposit / pay-on-arrival + test cancellation | ❌ NOT RUN | §8.4 Definition-of-Done checks pending container config |
 | Recorded walkthrough + written event reference | ❌ NOT DONE | reference doc should live in this folder (Phase 6 below) |
 | 14-day post-launch monitoring | ❌ NOT STARTED | needs the failed-job visibility already present in Bull Board |
@@ -281,6 +281,23 @@ CAPI dedup contract.
 
 ### Phase 3 - Post-conversion correction pipeline (the main build)
 
+> **Phase 3.1 SHIPPED 2026-08-17** - 3a (the `booking.cancelled` outbox event), 3d (Meta Refund
+> CAPI event), 3e (queue/relay/processor wiring for the Meta job) and the `conversion_events`
+> audit table from 3b. **Deliberate deviation from 3b as planned below:** NO `conversionAdjustedAt`
+> guard column was added - the Meta refund is idempotent the same way the CAPI conversion is
+> (deterministic `event_id = <publicRef>:refund` absorbed by Meta + the relay's deterministic
+> jobId), matching the repo's documented "CAPI needs no column" pattern, and a single shared
+> column could not have guarded two independent platform jobs anyway. Google Ads (3c) decides its
+> own idempotency when it lands (likely a unique claim on `conversion_events` or its own stamp).
+> Cancellation semantics shipped: the outbox event fires for EVERY executed cancellation of a
+> conversion-fired booking with the refund verdict in the payload; the Meta Refund event carries
+> `cancellation_refund` so reporting can distinguish kept-deposit cancels. Phase 3c's rule (from
+> §4 decision 2 groundwork): retract in Google Ads only when the commission is actually lost
+> (FULL refund / settlement reversed), restate for PARTIAL, leave NONE alone.
+> Optional follow-ups noted: admin dashboard view over `conversion_events` (monitoring nicety);
+> consider letting a Meta HTTP rejection throw so the queue's 5-attempt retry covers transient
+> 5xx (today: FAILED audit row + log, no retry - unchanged from the original conversion fire).
+
 #### 3a. Emit a `booking.cancelled` domain event (backend)
 
 - `backend/src/bookings/bookings.service.ts` -> inside the existing `cancel()` transaction
@@ -302,7 +319,29 @@ CAPI dedup contract.
   `TrackingService` (today failures are logged and swallowed - `tracking.service.ts:149-161`).
   An adjustment must reference what the original fire sent; this table is where it looks.
 
-#### 3c. Google Ads conversion adjustments (new backend service)
+#### 3c. Google Ads conversion adjustments (new backend service) - ✅ SHIPPED 2026-08-17
+
+> **As built** (differs from the sketch below in three deliberate ways):
+>
+> 1. **Delayed 24h**, not immediate (`ADS_ADJUSTMENT_DELAY_MS`) - an `order_id`-keyed conversion
+>    must be ingested by Google before it can be adjusted. Still inside the PRD's 24-48h SLA.
+>
+> 2. **Money rule decides whether to correct at all**: retract on FULL (and conservatively on
+>    PARTIAL, which `computeRefund` never produces today - it returns FULL|NONE); **skip NONE**,
+>    because the kept deposit IS the commission (LD24), so the reported conversion value is still
+>    true. Restatement is not used - no defensible adjusted value exists for a partial.
+>
+> 3. **Throws, unlike the Meta service** - retractions only ever run as queued jobs, so failures
+>    must reach the queue: 401/403 (developer token pending/revoked) -> `UnrecoverableError`
+>    (parks visibly, manually retryable once approved); 5xx/partial-failure -> plain Error (5
+>    retries with backoff). Replay protection is a prior-SENT `conversion_events` pre-check plus
+>    ALREADY_RETRACTED-as-success, because Google ERRORS on a duplicate retraction where Meta
+>    absorbs it. Shared `ConversionAuditService` now owns the audit rows for both platforms.
+>
+> Ships BEFORE the developer token exists: unset credentials = warn-once no-op, so merging this
+> is safe and the corrections begin the moment the stakeholder enters the credentials.
+> **Dashboard PR is the companion half** (Integrations card) - backend deploys FIRST, or the
+> dashboard POSTs keys the API would reject.
 
 - **Where:** extend `backend/src/tracking/` with `google-ads.service.ts` (keep the module pattern:
   service + spec; registered in `tracking.module.ts`). Do not create a parallel module - the seam

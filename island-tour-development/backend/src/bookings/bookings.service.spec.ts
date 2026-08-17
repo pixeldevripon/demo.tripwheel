@@ -380,6 +380,8 @@ describe('BookingsService', () => {
   let m: any;
   let mail: any;
   let tracking: any;
+  let googleAds: any;
+  let conversionAudit: any;
   let notifications: any;
   let tiers: any;
   let fx: any;
@@ -441,7 +443,16 @@ describe('BookingsService', () => {
         headers: {},
       }),
     };
-    tracking = { fireBookingComplete: jest.fn().mockResolvedValue(undefined) };
+    tracking = {
+      fireBookingComplete: jest.fn().mockResolvedValue(undefined),
+      fireBookingCancelled: jest.fn().mockResolvedValue(undefined),
+    };
+    googleAds = { uploadRetraction: jest.fn().mockResolvedValue(undefined) };
+    // No prior sends by default; the ads-adjustment replay tests flip this.
+    conversionAudit = {
+      record: jest.fn().mockResolvedValue(undefined),
+      alreadySent: jest.fn().mockResolvedValue(false),
+    };
     notifications = {
       emitAvailabilityUpdate: jest.fn(),
       emitBookingUpdate: jest.fn(),
@@ -502,6 +513,8 @@ describe('BookingsService', () => {
       prisma,
       mail,
       tracking,
+      googleAds,
+      conversionAudit,
       notifications,
       tiers,
       fx,
@@ -1655,6 +1668,144 @@ describe('BookingsService', () => {
       expect(tracking.fireBookingComplete).not.toHaveBeenCalled();
     });
 
+    it('meta-refund job fires the :refund correction for a cancelled, conversion-fired booking', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        confirmed({
+          status: BookingStatus.CANCELLED,
+          conversionFiredAt: new Date('2030-06-01T12:00:00Z'),
+          utcCancelledAt: new Date('2030-06-02T09:30:00Z'),
+          cancellationRefund: 'FULL',
+          tour: { name: 'Sunset Sail' },
+        }),
+      );
+      await svc.runMetaRefundJob('b1');
+      // Deterministic `<publicRef>:refund` id - Meta absorbs a redelivery the
+      // same way it dedups the conversion (no guard column by design).
+      expect(tracking.fireBookingCancelled).toHaveBeenCalledWith(
+        expect.objectContaining({
+          bookingId: 'b1',
+          eventId: 'p1:refund',
+          commissionEur: 18.4, // confirmed() fixture commission
+          refund: 'FULL',
+          eventTimeSec: Math.floor(
+            new Date('2030-06-02T09:30:00Z').getTime() / 1000,
+          ),
+        }),
+      );
+    });
+
+    it('meta-refund job skips a booking an admin restored to CONFIRMED (conversion stands)', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        confirmed({
+          status: BookingStatus.CONFIRMED,
+          conversionFiredAt: new Date('2030-06-01T12:00:00Z'),
+        }),
+      );
+      await svc.runMetaRefundJob('b1');
+      expect(tracking.fireBookingCancelled).not.toHaveBeenCalled();
+    });
+
+    it('meta-refund job skips when the conversion never fired (nothing to correct)', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        confirmed({
+          status: BookingStatus.CANCELLED,
+          conversionFiredAt: null,
+        }),
+      );
+      await svc.runMetaRefundJob('b1');
+      expect(tracking.fireBookingCancelled).not.toHaveBeenCalled();
+    });
+
+    it('meta-refund job fails UNRECOVERABLY on a null commission (data corruption)', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        confirmed({
+          status: BookingStatus.CANCELLED,
+          conversionFiredAt: new Date('2030-06-01T12:00:00Z'),
+          commissionAmount: null,
+        }),
+      );
+      await expect(svc.runMetaRefundJob('b1')).rejects.toMatchObject({
+        name: 'UnrecoverableError',
+      });
+      expect(tracking.fireBookingCancelled).not.toHaveBeenCalled();
+    });
+
+    it('ads-adjustment job retracts a FULL-refund cancellation by order id (= publicRef)', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        confirmed({
+          status: BookingStatus.CANCELLED,
+          conversionFiredAt: new Date('2030-06-01T12:00:00Z'),
+          utcCancelledAt: new Date('2030-06-02T09:30:00Z'),
+          cancellationRefund: 'FULL',
+        }),
+      );
+      await svc.runAdsAdjustmentJob('b1');
+      expect(googleAds.uploadRetraction).toHaveBeenCalledWith({
+        bookingId: 'b1',
+        orderId: 'p1', // publicRef == the GTM Ads tag's Transaction ID
+        adjustedAt: new Date('2030-06-02T09:30:00Z'),
+        valueEur: 18.4, // confirmed() fixture commission
+      });
+    });
+
+    it('ads-adjustment job SKIPS a NONE-refund cancellation (deposit = commission kept, value stands)', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        confirmed({
+          status: BookingStatus.CANCELLED,
+          conversionFiredAt: new Date('2030-06-01T12:00:00Z'),
+          cancellationRefund: 'NONE',
+        }),
+      );
+      await svc.runAdsAdjustmentJob('b1');
+      expect(googleAds.uploadRetraction).not.toHaveBeenCalled();
+    });
+
+    it('ads-adjustment job retracts conservatively on a PARTIAL verdict (no derivable restatement)', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        confirmed({
+          status: BookingStatus.CANCELLED,
+          conversionFiredAt: new Date('2030-06-01T12:00:00Z'),
+          cancellationRefund: 'PARTIAL',
+        }),
+      );
+      await svc.runAdsAdjustmentJob('b1');
+      expect(googleAds.uploadRetraction).toHaveBeenCalled();
+    });
+
+    it('ads-adjustment job skips a restored / never-fired booking', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        confirmed({
+          status: BookingStatus.CONFIRMED, // restored before the delayed job ran
+          conversionFiredAt: new Date('2030-06-01T12:00:00Z'),
+        }),
+      );
+      await svc.runAdsAdjustmentJob('b1');
+      expect(googleAds.uploadRetraction).not.toHaveBeenCalled();
+
+      m.booking.findUnique.mockResolvedValue(
+        confirmed({
+          status: BookingStatus.CANCELLED,
+          conversionFiredAt: null, // never fired - nothing to retract
+          cancellationRefund: 'FULL',
+        }),
+      );
+      await svc.runAdsAdjustmentJob('b1');
+      expect(googleAds.uploadRetraction).not.toHaveBeenCalled();
+    });
+
+    it('ads-adjustment job absorbs a replay when a SENT audit row already exists', async () => {
+      conversionAudit.alreadySent.mockResolvedValue(true);
+      m.booking.findUnique.mockResolvedValue(
+        confirmed({
+          status: BookingStatus.CANCELLED,
+          conversionFiredAt: new Date('2030-06-01T12:00:00Z'),
+          cancellationRefund: 'FULL',
+        }),
+      );
+      await svc.runAdsAdjustmentJob('b1');
+      expect(googleAds.uploadRetraction).not.toHaveBeenCalled();
+    });
+
     it('refund job re-invokes the idempotent executor only for a FULL verdict', async () => {
       m.booking.findUnique.mockResolvedValue(
         confirmed({
@@ -2301,6 +2452,84 @@ describe('BookingsService', () => {
       // Seats are released via the clamped count-down (master §3).
       expect(rawReleaseCalls(m).length).toBeGreaterThan(0);
       expect(res.cancellationRefund).toBe('FULL');
+    });
+
+    // Ad-conversion PRD phase 3: cancelling a conversion-fired booking commits
+    // a `booking.cancelled` outbox event WITH the cancellation (same tx), so
+    // the ad-platform corrections can never be missed - and never fire for a
+    // booking whose conversion never fired.
+    it('commits a booking.cancelled outbox event when the conversion had fired', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({
+          status: BookingStatus.CONFIRMED,
+          conversionFiredAt: new Date('2030-06-01T12:00:00Z'),
+        }),
+      );
+      m.tour.findUnique.mockResolvedValue({
+        cancellationHours: 48,
+        timeZone: 'America/Curacao',
+      });
+      m.departure.findUnique.mockResolvedValue({
+        capacity: 10,
+        bookedCount: 1,
+        status: 'OPEN',
+        soldOutAt: null,
+      });
+      m.booking.update.mockResolvedValue(
+        fakeBooking({
+          status: BookingStatus.CANCELLED,
+          cancellationRefund: 'FULL',
+        }),
+      );
+
+      await svc.cancel('b1', {}, { id: 'admin-1', role: Role.ADMIN });
+
+      expect(m.outboxEvent.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            type: 'booking.cancelled',
+            aggregateId: 'b1',
+            payload: expect.objectContaining({
+              bookingId: 'b1',
+              publicRef: 'p1',
+              refund: 'FULL',
+            }),
+          }),
+        }),
+      );
+    });
+
+    it('emits NO booking.cancelled event when the conversion never fired', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({
+          status: BookingStatus.CONFIRMED,
+          conversionFiredAt: null,
+        }),
+      );
+      m.tour.findUnique.mockResolvedValue({
+        cancellationHours: 48,
+        timeZone: 'America/Curacao',
+      });
+      m.departure.findUnique.mockResolvedValue({
+        capacity: 10,
+        bookedCount: 1,
+        status: 'OPEN',
+        soldOutAt: null,
+      });
+      m.booking.update.mockResolvedValue(
+        fakeBooking({
+          status: BookingStatus.CANCELLED,
+          cancellationRefund: 'FULL',
+        }),
+      );
+
+      await svc.cancel('b1', {}, { id: 'admin-1', role: Role.ADMIN });
+
+      const cancelledEvents = m.outboxEvent.create.mock.calls.filter(
+        ([arg]: [{ data: { type: string } }]) =>
+          arg.data.type === 'booking.cancelled',
+      );
+      expect(cancelledEvents).toHaveLength(0);
     });
 
     // B5: a FULL-refund cancellation executes a real Stripe refund of the captured

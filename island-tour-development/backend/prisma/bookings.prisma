@@ -192,6 +192,7 @@ model Booking {
   review           Review?
   reviewInvitation ReviewInvitation?
   settlement       Settlement?
+  conversionEvents ConversionEvent[]
 
   @@index([tourId])
   @@index([operatorId])

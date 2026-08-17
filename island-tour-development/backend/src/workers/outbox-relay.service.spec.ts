@@ -1,5 +1,9 @@
 import { OutboxRelayService } from './outbox-relay.service';
-import { PLATFORM_JOBS, REMINDER_LEAD_MS } from './platform-queue';
+import {
+  ADS_ADJUSTMENT_DELAY_MS,
+  PLATFORM_JOBS,
+  REMINDER_LEAD_MS,
+} from './platform-queue';
 
 /**
  * Unit tests for the transactional-outbox relay (B6). Prisma + queue mocked;
@@ -108,6 +112,35 @@ describe('OutboxRelayService', () => {
       { bookingId: 'b1' },
       expect.objectContaining({
         jobId: `b1__${PLATFORM_JOBS.REFUND_EXECUTE}`,
+      }),
+    );
+  });
+
+  it('fans booking.cancelled out to the Meta refund (instant) + delayed Ads retraction (ad-conversion PRD)', async () => {
+    prisma.outboxEvent.findMany.mockResolvedValue([
+      row({
+        type: 'booking.cancelled',
+        payload: { bookingId: 'b1', publicRef: 'p1', refund: 'FULL' },
+      }),
+    ]);
+
+    await svc.dispatchPending();
+
+    expect(queue.add).toHaveBeenCalledTimes(2);
+    expect(queue.add).toHaveBeenCalledWith(
+      PLATFORM_JOBS.META_REFUND,
+      { bookingId: 'b1' },
+      expect.objectContaining({
+        jobId: `b1__${PLATFORM_JOBS.META_REFUND}`,
+      }),
+    );
+    // The Ads retraction waits out Google's order_id ingest lag (24h).
+    expect(queue.add).toHaveBeenCalledWith(
+      PLATFORM_JOBS.ADS_ADJUSTMENT,
+      { bookingId: 'b1' },
+      expect.objectContaining({
+        jobId: `b1__${PLATFORM_JOBS.ADS_ADJUSTMENT}`,
+        delay: ADS_ADJUSTMENT_DELAY_MS,
       }),
     );
   });

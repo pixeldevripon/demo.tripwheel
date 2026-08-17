@@ -79,6 +79,10 @@ export class PlatformJobsProcessor extends WorkerHost {
         return this.bookings.runOperatorNoticeJob(bookingId);
       case PLATFORM_JOBS.CAPI_CONVERSION:
         return this.bookings.runCapiConversionJob(bookingId);
+      case PLATFORM_JOBS.META_REFUND:
+        return this.bookings.runMetaRefundJob(bookingId);
+      case PLATFORM_JOBS.ADS_ADJUSTMENT:
+        return this.bookings.runAdsAdjustmentJob(bookingId);
       case PLATFORM_JOBS.PRE_TOUR_REMINDER:
         return this.bookings.runPreTourReminderJob(bookingId);
       case PLATFORM_JOBS.REFUND_EXECUTE:

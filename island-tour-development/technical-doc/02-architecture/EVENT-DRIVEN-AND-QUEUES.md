@@ -125,6 +125,8 @@ them onto one deliberate pattern instead of ad-hoc timers.
 | `booking.confirmation-email` | `booking.confirmed` | standard | `bookingId:confirmation` |
 | `booking.operator-balance-email` | `booking.confirmed` and `operator_link` | standard | `bookingId:operator-balance` |
 | `tracking.capi-conversion` | `booking.confirmed` (EUR commission present) | standard | `bookingId:capi` (dedup by event id) |
+| `tracking.meta-refund` | `booking.cancelled` (only emitted when the conversion had fired) | standard | dedup by event id `<publicRef>:refund` + relay jobId; re-validates status CANCELLED at fire time (a restored booking is skipped) |
+| `tracking.ads-adjustment` | `booking.cancelled`, **delayed 24h** (`ADS_ADJUSTMENT_DELAY_MS` — Google must ingest the `order_id` conversion before it is adjustable) | delayed | relay jobId + a prior-SENT `conversion_events` pre-check (Google ERRORS on a duplicate retraction rather than absorbing it) + ALREADY_RETRACTED treated as success; skips a NONE-refund cancellation (commission kept) |
 | `booking.hold-expiry-sweep` | schedule | repeatable (cron) | run-window guarded |
 | `settlement.paid-in-full-payout` | `booking.confirmed` and `paid_in_full`, released after cancellation window | delayed | `bookingId:payout` |
 | `booking.pre-tour-reminder` | `booking.confirmed`, fire 24h before start | delayed | `bookingId:reminder` |

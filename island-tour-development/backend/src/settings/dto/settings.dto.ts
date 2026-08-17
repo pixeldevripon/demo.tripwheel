@@ -1012,6 +1012,59 @@ export class UpdateIntegrationsConfigurationDto {
 
   @ApiPropertyOptional({
     description:
+      'Google Ads API developer token (secret) - cancellation retractions',
+  })
+  @IsOptional()
+  @IsString()
+  googleAdsDeveloperToken?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Google Ads customer id (non-secret); dashes tolerated, digits are used',
+  })
+  @IsOptional()
+  @IsString()
+  googleAdsCustomerId?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Manager (MCC) customer id when API access runs through one (non-secret)',
+  })
+  @IsOptional()
+  @IsString()
+  googleAdsLoginCustomerId?: string;
+
+  @ApiPropertyOptional({
+    description: 'OAuth client id for the Google Ads API (non-secret)',
+  })
+  @IsOptional()
+  @IsString()
+  googleAdsClientId?: string;
+
+  @ApiPropertyOptional({
+    description: 'OAuth client secret for the Google Ads API (secret)',
+  })
+  @IsOptional()
+  @IsString()
+  googleAdsClientSecret?: string;
+
+  @ApiPropertyOptional({
+    description: 'OAuth refresh token for the Google Ads API (secret)',
+  })
+  @IsOptional()
+  @IsString()
+  googleAdsRefreshToken?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Numeric id of the purchase conversion action the retraction targets (non-secret)',
+  })
+  @IsOptional()
+  @IsString()
+  googleAdsConversionActionId?: string;
+
+  @ApiPropertyOptional({
+    description:
       "AI translation provider (non-secret). Blank = the default ('gemini'). The allowed set mirrors the backend provider catalog (src/content-translation/providers/provider-catalog.ts).",
   })
   @IsOptional()

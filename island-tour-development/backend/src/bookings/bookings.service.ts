@@ -22,6 +22,8 @@ import {
   EmailAudience,
   EmailStream,
   EmailTemplateKey,
+  ConversionEventKind,
+  ConversionPlatform,
   InboxEvent,
   Locale,
   OperatorTermsKind,
@@ -73,6 +75,8 @@ import {
   type TargetWindow,
 } from './lookup-rate-limiter';
 import { TrackingService } from '@/tracking/tracking.service';
+import { GoogleAdsService } from '@/tracking/google-ads.service';
+import { ConversionAuditService } from '@/tracking/conversion-audit.service';
 import { computeHashedPii, toGoogleUserData } from '@/tracking/pii-hash.util';
 import { InboxService } from '@/inbox/inbox.service';
 import { RecommendationsService } from '@/recommendations/recommendations.service';
@@ -406,6 +410,8 @@ export class BookingsService {
     private readonly prisma: PrismaService,
     private readonly mail: MailService,
     private readonly tracking: TrackingService,
+    private readonly googleAds: GoogleAdsService,
+    private readonly conversionAudit: ConversionAuditService,
     private readonly notifications: NotificationsService,
     private readonly tiers: TiersService,
     private readonly fx: FxRatesService,
@@ -1593,6 +1599,159 @@ export class BookingsService {
       tour?.name ?? null,
       booking.commissionAmount,
     );
+  }
+
+  /**
+   * Cancellation correction to Meta (ad-conversion PRD: corrections propagate
+   * within 24-48h; the relay ticks in seconds). No guard column, same reasoning
+   * as the CAPI conversion: the event id (`<publicRef>:refund`) is deterministic
+   * so Meta absorbs a redelivery, and the relay's jobId dedups the enqueue.
+   * Re-validates state at fire time (doc §5.4): a booking an admin RESTORED to
+   * CONFIRMED before the job ran is skipped - its conversion stands. A cancelled
+   * booking with a null commission is the same data corruption as at confirm:
+   * fail UNRECOVERABLY so it lands in the failed set loudly.
+   */
+  async runMetaRefundJob(bookingId: string): Promise<void> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: {
+        id: true,
+        displayRef: true,
+        publicRef: true,
+        status: true,
+        conversionFiredAt: true,
+        commissionAmount: true,
+        tourId: true,
+        cancellationRefund: true,
+        utcCancelledAt: true,
+        contactEmail: true,
+        contactPhone: true,
+        contactFirstName: true,
+        contactLastName: true,
+        contactPostalCode: true,
+        contactCountry: true,
+        billingCity: true,
+        billingPostalCode: true,
+        billingCountry: true,
+        tour: { select: { name: true } },
+      },
+    });
+    if (!booking) return;
+    if (booking.status !== BookingStatus.CANCELLED) {
+      this.logger.warn(
+        `Meta refund correction skipped for ${booking.displayRef} (status ${booking.status})`,
+      );
+      return;
+    }
+    // Belt-and-braces: the outbox event is only emitted for conversion-fired
+    // bookings, but a redelivered/hand-replayed job must re-check.
+    if (booking.conversionFiredAt === null) {
+      this.logger.warn(
+        `Meta refund correction skipped for ${booking.displayRef} (conversion never fired)`,
+      );
+      return;
+    }
+    if (booking.commissionAmount == null) {
+      this.logger.error(
+        `Booking ${booking.displayRef} cancelled with null commissionAmount - refund correction NOT fired (data corruption)`,
+      );
+      throw new UnrecoverableError(
+        `null commissionAmount on ${booking.displayRef}`,
+      );
+    }
+    await this.tracking.fireBookingCancelled({
+      bookingId: booking.id,
+      eventId: `${booking.publicRef}:refund`,
+      commissionEur: booking.commissionAmount.toNumber(),
+      contentId: booking.tourId,
+      contentName: booking.tour?.name ?? null,
+      refund: booking.cancellationRefund,
+      email: booking.contactEmail,
+      phone: booking.contactPhone,
+      firstName: booking.contactFirstName,
+      lastName: booking.contactLastName,
+      ...this.trackingAddress(booking),
+      eventTimeSec: Math.floor(
+        (booking.utcCancelledAt ?? new Date()).getTime() / 1000,
+      ),
+    });
+  }
+
+  /**
+   * Google Ads RETRACTION for a cancelled, conversion-fired booking
+   * (ad-conversion PRD phase 3c). Runs 24h after the cancellation
+   * (ADS_ADJUSTMENT_DELAY_MS - the order_id conversion must be ingested by
+   * Google before it is adjustable).
+   *
+   * The money rule decides whether to correct: the deposit IS the commission
+   * (LD24), so a NONE-refund cancellation KEEPS the commission and the
+   * reported conversion value stays true - no retraction. Only a FULL refund
+   * loses it. PARTIAL is never produced today (computeRefund returns
+   * FULL|NONE); if it ever appears, retract conservatively and warn - a
+   * restatement value is not derivable.
+   *
+   * Replays: Google ERRORS on a duplicate retraction instead of absorbing it
+   * (unlike Meta's event-id dedup), so a prior SENT audit row short-circuits
+   * before any API call; the service also absorbs an ALREADY_RETRACTED
+   * partial failure as success for the race the pre-check cannot cover.
+   */
+  async runAdsAdjustmentJob(bookingId: string): Promise<void> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: {
+        id: true,
+        displayRef: true,
+        publicRef: true,
+        status: true,
+        conversionFiredAt: true,
+        commissionAmount: true,
+        cancellationRefund: true,
+        utcCancelledAt: true,
+      },
+    });
+    if (!booking) return;
+    if (booking.status !== BookingStatus.CANCELLED) {
+      this.logger.warn(
+        `Ads retraction skipped for ${booking.displayRef} (status ${booking.status})`,
+      );
+      return;
+    }
+    if ((booking.conversionFiredAt ?? null) === null) {
+      this.logger.warn(
+        `Ads retraction skipped for ${booking.displayRef} (conversion never fired)`,
+      );
+      return;
+    }
+    if (booking.cancellationRefund === CancellationRefund.NONE) {
+      this.logger.log(
+        `Ads retraction skipped for ${booking.displayRef}: NONE refund keeps the deposit (= the commission), the reported value stands`,
+      );
+      return;
+    }
+    if (booking.cancellationRefund === CancellationRefund.PARTIAL) {
+      this.logger.warn(
+        `Ads retraction for ${booking.displayRef}: PARTIAL refund has no derivable restatement value - retracting conservatively`,
+      );
+    }
+    if (
+      await this.conversionAudit.alreadySent({
+        bookingId: booking.id,
+        platform: ConversionPlatform.GOOGLE_ADS,
+        kind: ConversionEventKind.ADJUSTMENT,
+        eventId: booking.publicRef,
+      })
+    ) {
+      this.logger.log(
+        `Ads retraction already sent for ${booking.displayRef} - replay absorbed`,
+      );
+      return;
+    }
+    await this.googleAds.uploadRetraction({
+      bookingId: booking.id,
+      orderId: booking.publicRef,
+      adjustedAt: booking.utcCancelledAt ?? new Date(),
+      valueEur: booking.commissionAmount?.toNumber() ?? null,
+    });
   }
 
   /**
@@ -3169,12 +3328,37 @@ export class BookingsService {
     return ics;
   }
 
+  /**
+   * Address preference for ad-platform matching (master 8.3): the Stripe
+   * billing snapshot first, contact fields for models with no card
+   * (on_arrival / operator_full). ONE policy shared by every tracking payload
+   * builder - conversion fire, refund correction, and the browser push.
+   */
+  private trackingAddress(booking: {
+    billingCity: string | null;
+    billingPostalCode: string | null;
+    billingCountry: string | null;
+    contactPostalCode: string | null;
+    contactCountry: string | null;
+  }): {
+    city: string | null;
+    postalCode: string | null;
+    country: string | null;
+  } {
+    return {
+      city: booking.billingCity,
+      postalCode: booking.billingPostalCode ?? booking.contactPostalCode,
+      country: booking.billingCountry ?? booking.contactCountry,
+    };
+  }
+
   private async fireConversion(
     booking: BookingWithItems,
     tourName: string | null,
     commissionEur: Prisma.Decimal,
   ): Promise<void> {
     await this.tracking.fireBookingComplete({
+      bookingId: booking.id,
       eventId: booking.publicRef,
       commissionEur: commissionEur.toNumber(),
       contentId: booking.tourId,
@@ -3183,11 +3367,7 @@ export class BookingsService {
       phone: booking.contactPhone,
       firstName: booking.contactFirstName,
       lastName: booking.contactLastName,
-      // Address prefers the Stripe billing snapshot (master 8.3), falling back to
-      // the contact fields for models with no card (on_arrival / operator_full).
-      city: booking.billingCity,
-      postalCode: booking.billingPostalCode ?? booking.contactPostalCode,
-      country: booking.billingCountry ?? booking.contactCountry,
+      ...this.trackingAddress(booking),
       clickId: booking.fbclid,
       // The TYP is where the browser Pixel fires the matching event (same event_id);
       // Meta wants the server event to carry the same source URL for attribution.
@@ -3302,6 +3482,29 @@ export class BookingsService {
             aggregateId: booking.id,
             type: 'booking.refund-owed',
             payload: { bookingId: booking.id },
+          },
+        });
+      }
+      // Marketing correction (ad-conversion PRD): a booking whose conversion
+      // already fired must be corrected back to the ad platforms when it is
+      // cancelled. Committed with the cancellation itself (B6 outbox) - just
+      // a row insert, the sends run in queued jobs after commit. Never for a
+      // held-only release (no conversion ever fired for a checkout hold).
+      if (!heldOnly && (booking.conversionFiredAt ?? null) !== null) {
+        await tx.outboxEvent.create({
+          data: {
+            aggregate: 'booking',
+            aggregateId: booking.id,
+            type: 'booking.cancelled',
+            // publicRef + refund ride along for ops readability of the raw
+            // outbox row ONLY - the relay forwards just the aggregateId and
+            // the job re-derives every fact from the DB (payloads are never
+            // trusted, doc §5.4).
+            payload: {
+              bookingId: booking.id,
+              publicRef: booking.publicRef,
+              refund,
+            },
           },
         });
       }
@@ -5922,9 +6125,7 @@ export class BookingsService {
       phone: booking.contactPhone,
       firstName: booking.contactFirstName,
       lastName: booking.contactLastName,
-      city: booking.billingCity,
-      postalCode: booking.billingPostalCode ?? booking.contactPostalCode,
-      country: booking.billingCountry ?? booking.contactCountry,
+      ...this.trackingAddress(booking),
     });
     const userData = toGoogleUserData(hashed);
     const hasClickId =

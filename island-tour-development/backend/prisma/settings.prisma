@@ -218,6 +218,20 @@ model IntegrationsConfiguration {
   metaCapiToken    String? // encrypted
   metaCapiTestCode String? @default("") // test_event_code (non-secret)
 
+  // Google Ads API (ad-conversion PRD phase 3c: cancellation retractions).
+  // The conversion itself is reported browser-side by the GTM Ads tag with
+  // Transaction ID = booking publicRef; the retraction identifies it by that
+  // same order id. All five credential pieces must be present for the service
+  // to fire (config-gated no-op otherwise). GOOGLE_ADS_* env vars remain the
+  // local-dev / first-boot fallback (DB wins).
+  googleAdsDeveloperToken     String? // encrypted (API Center token)
+  googleAdsCustomerId         String? @default("") // non-secret; digits only, no dashes
+  googleAdsLoginCustomerId    String? @default("") // non-secret; the manager (MCC) id when access runs through one
+  googleAdsClientId           String? @default("") // OAuth client id (non-secret)
+  googleAdsClientSecret       String? // encrypted
+  googleAdsRefreshToken       String? // encrypted
+  googleAdsConversionActionId String? @default("") // numeric id of the purchase conversion action
+
   // DEPRECATED (Gemini migration, 2026-07): Google Cloud Translation credentials.
   // No runtime consumer remains - kept only because a column drop is a destructive
   // migration for zero gain. Do not add new readers.

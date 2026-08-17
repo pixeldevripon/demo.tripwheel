@@ -25,6 +25,8 @@ describe('PlatformJobsProcessor', () => {
     runConfirmationEmailJob: jest.fn(),
     runOperatorNoticeJob: jest.fn(),
     runCapiConversionJob: jest.fn(),
+    runMetaRefundJob: jest.fn(),
+    runAdsAdjustmentJob: jest.fn(),
     runPreTourReminderJob: jest.fn(),
     runRefundJob: jest.fn(),
   };
@@ -50,6 +52,8 @@ describe('PlatformJobsProcessor', () => {
     [PLATFORM_JOBS.CONFIRMATION_EMAIL, 'runConfirmationEmailJob'],
     [PLATFORM_JOBS.OPERATOR_NOTICE, 'runOperatorNoticeJob'],
     [PLATFORM_JOBS.CAPI_CONVERSION, 'runCapiConversionJob'],
+    [PLATFORM_JOBS.META_REFUND, 'runMetaRefundJob'],
+    [PLATFORM_JOBS.ADS_ADJUSTMENT, 'runAdsAdjustmentJob'],
     [PLATFORM_JOBS.PRE_TOUR_REMINDER, 'runPreTourReminderJob'],
     [PLATFORM_JOBS.REFUND_EXECUTE, 'runRefundJob'],
   ] as const)('routes %s to %s', async (name, method) => {

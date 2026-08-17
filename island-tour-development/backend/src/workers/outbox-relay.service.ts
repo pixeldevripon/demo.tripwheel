@@ -5,6 +5,7 @@ import { Queue } from 'bullmq';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EmailTemplateKey } from '@prisma/client';
 import {
+  ADS_ADJUSTMENT_DELAY_MS,
   PLATFORM_JOB_OPTS,
   PLATFORM_JOBS,
   PLATFORM_QUEUE,
@@ -139,6 +140,23 @@ export class OutboxRelayService {
           {
             name: PLATFORM_JOBS.REFUND_EXECUTE,
             data: { bookingId: aggregateId },
+          },
+        ];
+      // Emitted only for cancellations of conversion-fired bookings (the
+      // cancel transaction filters); fans out to the ad-platform corrections.
+      // Meta fires immediately (event-id dedup absorbs anything); the Google
+      // Ads retraction is DELAYED so the order_id conversion is ingested and
+      // adjustable by the time the job runs (phase 3c).
+      case 'booking.cancelled':
+        return [
+          {
+            name: PLATFORM_JOBS.META_REFUND,
+            data: { bookingId: aggregateId },
+          },
+          {
+            name: PLATFORM_JOBS.ADS_ADJUSTMENT,
+            data: { bookingId: aggregateId },
+            opts: { delay: ADS_ADJUSTMENT_DELAY_MS },
           },
         ];
       case 'operator.first-tour-live':

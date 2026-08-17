@@ -412,6 +412,9 @@ export class SettingsService {
       ...live,
       metaCapiToken: maskSecret(config.metaCapiToken),
       translationApiKey: maskSecret(config.translationApiKey),
+      googleAdsDeveloperToken: maskSecret(config.googleAdsDeveloperToken),
+      googleAdsClientSecret: maskSecret(config.googleAdsClientSecret),
+      googleAdsRefreshToken: maskSecret(config.googleAdsRefreshToken),
     };
   }
 
@@ -425,6 +428,15 @@ export class SettingsService {
       ...(dto.metaCapiToken && { metaCapiToken: encrypt(dto.metaCapiToken) }),
       ...(dto.translationApiKey && {
         translationApiKey: encrypt(dto.translationApiKey),
+      }),
+      ...(dto.googleAdsDeveloperToken && {
+        googleAdsDeveloperToken: encrypt(dto.googleAdsDeveloperToken),
+      }),
+      ...(dto.googleAdsClientSecret && {
+        googleAdsClientSecret: encrypt(dto.googleAdsClientSecret),
+      }),
+      ...(dto.googleAdsRefreshToken && {
+        googleAdsRefreshToken: encrypt(dto.googleAdsRefreshToken),
       }),
     };
     const result = await this.prisma.integrationsConfiguration.upsert({
@@ -441,6 +453,9 @@ export class SettingsService {
       ...live,
       metaCapiToken: maskSecret(result.metaCapiToken),
       translationApiKey: maskSecret(result.translationApiKey),
+      googleAdsDeveloperToken: maskSecret(result.googleAdsDeveloperToken),
+      googleAdsClientSecret: maskSecret(result.googleAdsClientSecret),
+      googleAdsRefreshToken: maskSecret(result.googleAdsRefreshToken),
     };
   }
 

@@ -3,7 +3,11 @@
 > **Canonical source:** master §8 (`island-tours-platform-master.html` v1.9; deep source `island-tours-typ-tracking-dev-spec.md`).
 > **Purpose:** Define the conversion-tracking architecture — one `booking_complete` event on the Thank-You Page (TYP) fanning out to four GTM tags plus a server-side Meta CAPI, with `commission_amount` (EUR) as the conversion value and mark-first idempotency.
 
-> **Status:** Target architecture. **Not yet built** (no payments/Stripe processing, no webhooks, no tracking layer in code today). Cross-references: [`DATA-MODEL.md`](./DATA-MODEL.md) (E.8 bookings — all tracking columns) · [`AVAILABILITY-AND-DEPARTURES.md`](./AVAILABILITY-AND-DEPARTURES.md).
+> **Status:** BUILT except the GTM container configuration (see the §5 table for the per-concern
+> state — it supersedes any older "not yet built" claim). Cross-references:
+> [`DATA-MODEL.md`](./DATA-MODEL.md) (E.8 bookings — all tracking columns) ·
+> [`AVAILABILITY-AND-DEPARTURES.md`](./AVAILABILITY-AND-DEPARTURES.md) · PRD audit + phased plan:
+> [`../03-implementation/AD-CONVERSION-TRACKING-PRD-CHECKLIST.md`](../03-implementation/AD-CONVERSION-TRACKING-PRD-CHECKLIST.md).
 
 ---
 
@@ -114,3 +118,6 @@ The dev spec's **37 checks**, headlined by:
 | Server CAPI | fires at confirm, `event_id = publicRef` (browser dedup), creds dashboard-managed | BUILT 2026-07-25 (#44) |
 | Consent | Consent Mode v2 regional defaults in the GTM loader (EEA+UK denied, elsewhere granted, `wait_for_update` 500, `ads_data_redaction`) + Cookiebot CMP (dashboard-managed CBID, auto blocking mode) | BUILT 2026-07-25 (A5/#45) |
 | GTM container fan-out | 4 tags (Conversion Linker / Google Ads / GA4 purchase / Meta Pixel w/ eventID) | CONFIGURATION - follow [`GTM-CONTAINER-SETUP.md`](../03-implementation/GTM-CONTAINER-SETUP.md) once the founder's ids exist |
+| Cancellation correction (Meta) | `cancel()` commits `booking.cancelled` (only when `conversionFiredAt` set) -> `tracking.meta-refund` job -> CAPI `Refund` event (`event_id = <publicRef>:refund`, `system_generated`, policy verdict in custom_data); a restored booking is skipped at fire time | BUILT 2026-08-17 (PRD phase 3.1) |
+| Conversion audit trail | `conversion_events` table - one row per send attempt (platform/kind/eventId/valueEur/SENT-FAILED + error), written by TrackingService, best-effort (never breaks a send) | BUILT 2026-08-17 |
+| Cancellation correction (Google Ads) | `tracking.ads-adjustment` (delayed 24h) -> `ConversionAdjustmentUploadService` RETRACTION keyed on `orderId = publicRef` (the Transaction ID the GTM Ads tag reports); OAuth refresh-grant token cached; retract only when the commission is lost (FULL / conservatively PARTIAL, never NONE) | BUILT 2026-08-17 (PRD phase 3c) - **fires once the credentials exist**: warn-once no-op until the dashboard Integrations card / `GOOGLE_ADS_*` env carry the developer token, customer id, OAuth pair, refresh token and conversion-action id |

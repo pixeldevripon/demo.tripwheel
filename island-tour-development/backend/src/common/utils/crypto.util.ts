@@ -61,6 +61,24 @@ export function safeDecrypt(
 }
 
 /**
+ * The platform's DB-first / env-fallback resolution for one integration
+ * credential: the dashboard-managed value wins, the env var is the local-dev
+ * and first-boot fallback, and a blank string counts as UNSET (never a value).
+ * Pass secrets through {@link safeDecrypt} first - this helper only trims and
+ * chooses, it never decrypts.
+ *
+ * Lives beside the secret helpers because it belongs to the credential, not to
+ * any one integration: Meta CAPI, Google Ads and every future ad platform
+ * resolve their config exactly this way.
+ */
+export function resolveField(
+  dbValue: string | null | undefined,
+  envValue: string | null | undefined,
+): string | undefined {
+  return dbValue?.trim() || envValue?.trim() || undefined;
+}
+
+/**
  * How a stored secret is shown back to an admin: bullets + the last 4 plaintext
  * characters (`••••••••WQZD`). Enough to tell WHICH credential is stored,
  * useless as a credential.
