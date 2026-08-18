@@ -49,7 +49,7 @@ function TourBookingCardLayout() {
     useBookingSelectionPersistence();
 
     return (
-        <div className='flex flex-col gap-3.5'>
+        <div className='flex bg-it-surface flex-col gap-3.5'>
             {/* Main booking card — a viewport-capped flex column (mirrors the
                 tours filter modal): the price header and the CTA stay pinned,
                 and EVERYTHING the traveller fills in between them - date,
@@ -71,10 +71,19 @@ function TourBookingCardLayout() {
 
                 `scroll-mt-20` is for the sticky bar's return trip: without it
                 `scrollIntoView` parks the card's top edge under the fixed
-                navbar and the price header is the part that goes missing. */}
+                navbar and the price header is the part that goes missing.
+
+                The card paints NOTHING of its own - no fill, no border, no
+                shadow, no radius (founder, 2026-08-18). Two rounds got here:
+                Figma's #f8f8f8 body was tried first and lost the card its edge
+                against the page, and the white-card-with-border it reverted to
+                still drew a visible rounded frame around content that reads
+                better unframed. The chrome now lives entirely on the FIELDS
+                inside it - each a white 16px-radius panel with its own
+                hairline - which is what Figma's layering was actually doing. */}
             <div
                 ref={cardRef}
-                className='flex scroll-mt-20 flex-col rounded-it-lg border border-it-border bg-it-white shadow-it-md lg:max-h-[calc(100vh-7rem)]'>
+                className='flex scroll-mt-20 flex-col lg:max-h-[calc(100vh-7rem)]'>
                 {/* Price header — never scrolls */}
                 <div className='shrink-0'>
                     <PriceHeader />
@@ -106,7 +115,7 @@ function TourBookingCardLayout() {
                     scrolling, because there was no overflow to scroll. Block
                     children keep their height, so the region overflows and the
                     scrollbar is what resolves it. */}
-                <div className='it-modal-scroll it-modal-scroll-lg-only min-h-0 flex-1 px-5 pt-3.5 lg:min-h-[min(220px,25vh)]'>
+                <div className='it-modal-scroll it-modal-scroll-lg-only min-h-0 flex-1 px-4 pt-4 lg:min-h-[min(220px,25vh)]'>
                     {availabilityDeadEnd ? (
                         /* All-sold-out recovery (AVAILABILITY-AND-DEPARTURES.md
                            §8). The whole selector stack is replaced, not just
@@ -151,7 +160,7 @@ function TourBookingCardLayout() {
                     pinned rather than in flow. Without it the button touched the
                     "Hide details" link above it. */}
                 {!availabilityDeadEnd && (
-                    <div className='shrink-0 px-5 pb-5 pt-3.5'>
+                    <div className='shrink-0 px-4 pb-4 pt-5'>
                         <BookingCta />
                     </div>
                 )}

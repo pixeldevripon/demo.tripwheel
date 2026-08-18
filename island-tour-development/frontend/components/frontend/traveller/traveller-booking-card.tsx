@@ -93,12 +93,12 @@ export function TravellerBookingCard({
                 )}
                 <span className='min-w-0 flex-1'>
                     <strong
-                        className={`block font-bold leading-[1.4] tracking-[-0.012em] text-it-heading ${
-                            variant === 'full' ? 'text-[17px] tracking-[-0.012em]' : 'text-[15.5px] tracking-[-0.012em]'
+                        className={`block font-medium leading-[1.4] tracking-[-0.012em] text-it-heading ${
+                            variant === 'full' ? 'text-[18px] tracking-[-0.012em]' : 'text-[14.5px] tracking-[-0.012em]'
                         }`}>
                         {booking.tourName}
                     </strong>
-                    <span className='mt-1 block text-[13.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                    <span className='mt-1 block text-[13px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                         {metaLine}
                     </span>
                     <span className='mt-2 flex flex-wrap items-center gap-1.5'>
@@ -110,10 +110,10 @@ export function TravellerBookingCard({
                     </span>
                 </span>
                 <span className='hidden shrink-0 text-right sm:block'>
-                    <span className='block font-medium text-[17px] leading-[1.3] tracking-[-0.012em] text-it-heading'>
+                    <span className='block font-medium text-[18px] leading-[1.3] tracking-[-0.012em] text-it-heading'>
                         {money(booking.totalRetail, booking.currency, locale)}
                     </span>
-                    <span className='mt-0.5 block font-mono text-[11.5px] text-it-text-muted tracking-[-0.012em]'>
+                    <span className='mt-0.5 block font-mono text-[12px] text-it-text-muted tracking-[-0.012em]'>
                         {booking.displayRef}
                     </span>
                 </span>

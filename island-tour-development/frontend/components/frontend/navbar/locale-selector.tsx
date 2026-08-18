@@ -104,7 +104,7 @@ export function LocaleSelector({
                                     aria-current={code === locale}
                                     className={`flex w-full items-center justify-between gap-3 px-5 py-3 text-left text-sm bg-transparent border-none cursor-pointer transition-colors hover:bg-it-surface ${code === locale ? 'text-it-primary font-medium tracking-[-0.012em]' : ''}`}>
                                     <span>{LOCALE_NATIVE_LABELS[code]}</span>
-                                    <span className='uppercase text-[11.5px] text-it-text-muted tracking-[-0.012em]'>
+                                    <span className='uppercase text-[12px] text-it-text-muted tracking-[-0.012em]'>
                                         {code}
                                     </span>
                                 </button>

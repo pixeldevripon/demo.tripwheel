@@ -1,3 +1,5 @@
+import Image from 'next/image';
+
 import { Reveal } from '../reveal';
 import { HubDiscoverCard, type HubDiscoverItem } from './hub-discover-card';
 import { HubScrollButton } from './hub-scroll-button';
@@ -70,19 +72,74 @@ export function HubDiscoverSection({
     dict: HubDiscoverDict;
 }) {
     return (
-        // Design v2 .hs: plain white section head over the 2-col editorial
-        // grid - the old full-bleed banner band is gone.
         <div className='flex flex-col gap-6'>
-            <Reveal>
-                <div className='flex max-w-[640px] flex-col gap-2'>
-                    <h2 className='m-0 text-[21px] md:text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
-                        {dict.title}
-                    </h2>
-                    <p className='m-0 text-[13px] md:text-[14.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
-                        {dict.subtitle}
-                    </p>
-                </div>
-            </Reveal>
+            {/* ── Section head: a HERO BAND, not a plain heading (founder,
+                2026-08-18, Figma 48371:20779) ────────────────────────────────
+                Design v2 had flattened this to a white section head and the
+                comment here said "the old full-bleed banner band is gone" - it
+                is back, and `FULL_BLEED`/`bannerImage` below were the leftovers
+                of the original.
+
+                Figma measures it on a 1440 frame: band edge to edge, copy
+                inset 120px from the left, 675px of air to its right, 339px
+                above it and 90px below. The 120 is not a magic number - it is
+                `--it-container-px`, so the copy is simply `it-container` and
+                lands on the page's own gutter at every width. What the mockup
+                fixes is the BOTTOM gap; the top is whatever the band's height
+                leaves over, which is why this is bottom-anchored rather than
+                padded from the top.
+
+                Height matches `HubHero` (456/533). The two bands stack on one
+                page, and a discover band even slightly off the hero's height
+                reads as a mistake rather than as a second band.
+
+                The band is a PLAIN div and `Reveal` wraps the copy inside it.
+                Reveal writes an inline `width: 100%` (its `width` prop defaults
+                to '100%', not 'auto'), and an inline style beats any class - so
+                with the band ON the Reveal, `w-screen` lost silently and the
+                breakout rendered at the container's 1200px instead of the full
+                viewport. Measured, not guessed: computed width 1200px against a
+                2309px document. Animating the copy rather than the whole band
+                is the better behaviour anyway. */}
+            <div
+                className={`${FULL_BLEED} relative flex min-h-[456px] items-end overflow-hidden md:min-h-[533px] ${
+                    bannerImage ? 'bg-it-dark' : 'bg-it-bg'
+                }`}>
+                {bannerImage && (
+                    <>
+                        <Image
+                            src={bannerImage}
+                            alt=''
+                            fill
+                            className='object-cover'
+                        />
+                        <div className='absolute inset-0 bg-[image:var(--it-scrim-hub)]' />
+                    </>
+                )}
+
+                {/* Ink on the bare band, white over a photo - the same switch
+                    `HubHero` makes. Without it the imageless band (which is
+                    what ships today, since nothing passes `bannerImage` yet)
+                    would render white copy on a light surface and disappear. */}
+                <Reveal className='it-container relative z-10 pb-10 md:pb-[90px]'>
+                    <div className='flex max-w-[645px] flex-col gap-1'>
+                        <h2
+                            className={`m-0 text-[20px] md:text-[26px] leading-[1.2] tracking-[-0.012em] font-medium ${
+                                bannerImage ? 'text-it-white' : 'text-it-heading'
+                            }`}>
+                            {dict.title}
+                        </h2>
+                        <p
+                            className={`m-0 it-text ${
+                                bannerImage
+                                    ? 'text-it-white/92'
+                                    : 'text-it-text-muted'
+                            }`}>
+                            {dict.subtitle}
+                        </p>
+                    </div>
+                </Reveal>
+            </div>
 
             {/* Editorial grid + CTA.
                 Mobile: 16px gap between cards, 24px gap to CTA.
@@ -110,18 +167,18 @@ export function HubDiscoverSection({
                 <Reveal>
                     <div className='flex flex-col gap-5 rounded-it-lg bg-it-primary-subtle p-6 md:flex-row md:items-center md:justify-between md:gap-8 md:px-8 md:py-7'>
                         <div className='flex max-w-[560px] flex-col gap-1'>
-                            <h3 className='m-0 font-it-display text-[17px] leading-[1.3] tracking-[-0.012em] text-it-heading md:text-[19px] font-medium'>
+                            <h3 className='m-0 font-it-display text-[18px] leading-[1.3] tracking-[-0.012em] text-it-heading md:text-[18px] font-medium'>
                                 {dict.cta.title}
                             </h3>
                             {dict.cta.fact && (
-                                <p className='m-0 text-[13.5px] leading-[1.6] text-it-ink-secondary tracking-[-0.012em]'>
+                                <p className='m-0 text-[13px] leading-[1.6] text-it-ink-secondary tracking-[-0.012em]'>
                                     {dict.cta.fact}
                                 </p>
                             )}
                         </div>
                         <HubScrollButton
                             targetId={bookTripTargetId}
-                            className='inline-flex h-[46px] w-full shrink-0 cursor-pointer items-center justify-center rounded-it-full bg-it-primary-hover px-8 text-[13px] font-medium leading-none text-it-white no-underline transition-colors hover:bg-(--it-primary-active) md:h-12 md:w-auto md:text-[14px] tracking-[-0.012em]'>
+                            className='inline-flex h-[46px] w-full shrink-0 cursor-pointer items-center justify-center rounded-it-full bg-it-primary-hover px-8 text-[13px] font-medium leading-none text-it-white no-underline transition-colors hover:bg-(--it-primary-active) md:h-12 md:w-auto md:text-[13px] tracking-[-0.012em]'>
                             {dict.cta.button}
                         </HubScrollButton>
                     </div>

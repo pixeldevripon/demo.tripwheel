@@ -65,7 +65,13 @@ export function TourHeaderActions({
 
     const overlay = variant === 'overlay';
 
-    // Design v2 .wtool pills: bordered white pills, 13px bold, paper hover.
+    // Figma 47936:3370 pills: white, NO border, 16px radius-40 pills at
+    // 16/12 padding, a 24px icon and a 16px/510 UNDERLINED label in ink.
+    //
+    // White on white with no border means the pill is a hit area, not a visible
+    // control - what the reader sees is an icon beside an underlined word, and
+    // the underline is what carries the affordance. That is why the label is
+    // underlined here and nowhere else on the page.
     //
     // The overlay discs are 34px of visible white on the photo, with the touch
     // target taken back out to 44px by an invisible `before:` box (-5px on each
@@ -75,11 +81,16 @@ export function TourHeaderActions({
     // enough.
     const actionClass = overlay
         ? 'relative grid size-[34px] cursor-pointer place-items-center rounded-it-full border-none bg-it-white/94 shadow-it-sm backdrop-blur-[2px] before:absolute before:-inset-[5px] before:content-[""]'
-        : 'inline-flex cursor-pointer items-center gap-[7px] rounded-it-full border border-it-border bg-it-white px-3.5 py-2 text-[12px] font-medium leading-[1.2] text-it-heading transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:bg-it-bg tracking-[-0.012em]';
-    const iconClass = overlay ? 'size-[15px] shrink-0' : 'size-4 shrink-0';
+        : 'inline-flex cursor-pointer items-center justify-center gap-2 rounded-[40px] border-none bg-it-white px-4 py-3 text-[13px] font-medium leading-[1.6] text-it-heading underline underline-offset-[3px] transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:text-it-primary tracking-[-0.012em]';
+    const iconClass = overlay ? 'size-[15px] shrink-0' : 'size-5 shrink-0';
 
     return (
-        <div className='flex shrink-0 items-center justify-end gap-2'>
+        // Figma butts the two pills together: each already carries 16px of
+        // side padding, so a gap on top of that reads as a gulf.
+        <div
+            className={`flex shrink-0 items-center justify-end ${
+                overlay ? 'gap-2' : 'gap-0'
+            }`}>
             <motion.button
                 type='button'
                 aria-pressed={saved}
@@ -92,7 +103,9 @@ export function TourHeaderActions({
                     src={
                         saved
                             ? '/icons/heart-filled.svg'
-                            : '/icons/heart-outline.svg'
+                            : overlay
+                              ? '/icons/heart-outline.svg'
+                              : '/icons/tour/hdr-heart.svg'
                     }
                     alt=''
                     width={24}
@@ -135,10 +148,10 @@ export function TourHeaderActions({
                 ) : (
                     <>
                         <Image
-                            src='/icons/share-outline.svg'
+                            src='/icons/tour/hdr-share.svg'
                             alt=''
-                            width={24}
-                            height={24}
+                            width={23}
+                            height={20}
                             className={iconClass}
                         />
                         <AnimatePresence mode='wait' initial={false}>

@@ -79,10 +79,10 @@ export function Hero({
                 <div className='flex flex-col items-center gap-7 w-full max-w-[680px]'>
                     {/* Heading + subtitle */}
                     <Reveal className='flex flex-col items-center gap-3 text-center'>
-                        <h1 className='m-0 font-it-body text-[31px] md:text-[37px] leading-[1.2] tracking-[-0.012em] text-balance text-it-white [text-shadow:0_2px_22px_rgba(0,0,0,0.32)] font-medium'>
+                        <h1 className='m-0 font-it-body text-[26px] md:text-[38px] leading-[1.2] tracking-[-0.012em] text-balance text-it-white [text-shadow:0_2px_22px_rgba(0,0,0,0.32)] font-medium'>
                             {dict.title}
                         </h1>
-                        <p className='m-0 text-[14.5px] md:text-[16.5px] leading-[1.6] text-it-primary-subtle [text-shadow:0_1px_14px_rgba(0,0,0,0.34)] tracking-[-0.012em]'>
+                        <p className='m-0 text-[14.5px] md:text-[14.5px] leading-[1.6] text-it-primary-subtle [text-shadow:0_1px_14px_rgba(0,0,0,0.34)] tracking-[-0.012em]'>
                             {dict.subtitle}
                         </p>
                     </Reveal>

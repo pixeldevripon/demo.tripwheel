@@ -143,11 +143,12 @@ interface ToursFilterBarProps {
 
 // Control chip (.fchip): bordered white pill, 13.5px bold; the active state
 // swaps to the warm cta tint with the deep-orange text.
-const CHIP_INACTIVE = 'border-it-border bg-it-white text-it-heading tracking-[-0.012em]';
+const CHIP_INACTIVE =
+    'border-it-heading/10 bg-transparent text-it-heading tracking-[-0.012em] hover:bg-it-bg';
 const CHIP_ACTIVE =
-    'border-it-primary bg-it-primary-subtle text-it-primary-hover tracking-[-0.012em]';
+    'border-it-heading bg-it-surface text-it-heading tracking-[-0.012em]';
 const CHIP_BASE =
-    'flex shrink-0 items-center gap-2 whitespace-nowrap rounded-it-full border text-[13px] md:text-[14.5px] leading-[1.6] transition-colors duration-(--it-duration-xs) ease-(--it-ease) tracking-[-0.012em]';
+    'flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border px-4 py-2 it-text transition-colors duration-(--it-duration-xs) ease-(--it-ease) md:px-5 md:py-2.5 ';
 
 // Edge fade over the category track. `pointer-events-none` is load-bearing: the
 // fade sits ON TOP of the first/last chip, and without it that chip stops taking
@@ -280,10 +281,10 @@ function CategoryChipTrack({
                         }}
                         whileTap={{ scale: 0.99 }}
                         transition={springPop}
-                        className={`shrink-0 cursor-pointer whitespace-nowrap rounded-it-full border border-transparent px-[11px] py-[7px] text-[13px] font-medium leading-[1.6] transition-colors duration-(--it-duration-xs) ease-(--it-ease) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary md:px-[13px] md:py-[9px] md:text-[14.5px] ${
+                        className={`shrink-0 cursor-pointer whitespace-nowrap rounded-full border px-4 py-2 it-text font-medium transition-colors duration-(--it-duration-xs) ease-(--it-ease) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary md:px-5 md:py-2.5  ${
                             active
-                                ? 'bg-it-primary-subtle text-it-primary-hover tracking-[-0.012em]'
-                                : 'bg-transparent text-it-heading hover:bg-it-bg tracking-[-0.012em]'
+                                ? 'border-transparent bg-it-heading/10 text-it-heading tracking-[-0.012em]'
+                                : 'border-it-heading/10 bg-transparent text-it-heading hover:bg-it-bg tracking-[-0.012em]'
                         }`}>
                         {cat.label}
                     </motion.button>
@@ -545,7 +546,7 @@ export function ToursFilterBar({
                         <PopoverTrigger asChild>
                             <motion.button
                                 type='button'
-                                className='flex cursor-pointer items-center gap-[7px] whitespace-nowrap border-none bg-transparent px-1.5 py-[9px] text-[12.5px] font-medium leading-[1.6] text-it-heading tracking-[-0.012em]'>
+                                className='flex cursor-pointer items-center gap-[7px] whitespace-nowrap border-none bg-transparent px-1.5 py-[9px] it-text  font-medium text-it-heading'>
                                 <span className='font-medium text-it-text-muted tracking-[-0.012em]'>
                                     {dict.sortBy}
                                 </span>
@@ -555,14 +556,14 @@ export function ToursFilterBar({
                                     alt=''
                                     width={24}
                                     height={24}
-                                    className={`size-3.5 shrink-0 transition-transform duration-(--it-duration-sm) ease-(--it-ease) ${sortOpen ? 'rotate-180' : ''}`}
+                                    className={`size-3.5 shrink-0 transition-transform duration-(--it-duration-sm) ease-(--it-ease) md:size-4 ${sortOpen ? 'rotate-180' : ''}`}
                                 />
                             </motion.button>
                         </PopoverTrigger>
                         <PopoverContent
                             align='end'
                             sideOffset={8}
-                            className='w-[230px] rounded-it-md border-none bg-it-white p-2 text-it-heading shadow-it-lg duration-300 ease-(--it-ease) tracking-[-0.012em]'>
+                            className='w-[230px] rounded-it-lg border-none bg-it-white p-1.5 text-it-heading shadow-it-lg duration-300 ease-(--it-ease) tracking-[-0.012em]'>
                             {sortOptions.map((opt, i) => (
                                 <motion.button
                                     key={opt.value}
@@ -578,7 +579,7 @@ export function ToursFilterBar({
                                         ...springPop,
                                         delay: i * 0.03,
                                     }}
-                                    className={`flex w-full cursor-pointer items-center justify-between rounded-it-sm border-none bg-transparent px-3 py-2.5 text-left text-[12.5px] leading-[1.6] transition-colors duration-(--it-duration-xs) hover:bg-it-bg ${
+                                    className={`flex w-full cursor-pointer items-center justify-between rounded-it-sm border-none bg-transparent px-2.5 py-1.5 text-left text-[13px] leading-[1.6] transition-colors duration-(--it-duration-xs) hover:bg-it-bg ${
                                         opt.value === sort
                                             ? 'font-medium text-it-primary-hover tracking-[-0.012em]'
                                             : 'font-medium text-it-heading tracking-[-0.012em]'
@@ -590,7 +591,7 @@ export function ToursFilterBar({
                                             alt=''
                                             width={24}
                                             height={24}
-                                            className='size-[15px] shrink-0'
+                                            className='size-[17px] shrink-0'
                                         />
                                     )}
                                 </motion.button>
@@ -642,13 +643,13 @@ export function ToursFilterBar({
                                     <motion.button
                                         type='button'
                                         transition={springPop}
-                                        className={`flex h-full cursor-pointer items-center gap-2 whitespace-nowrap border-none bg-transparent py-[9px] pl-[15px] text-inherit ${date ? 'pr-1' : 'pr-[15px]'}`}>
+                                        className={`flex h-full cursor-pointer items-center gap-2 whitespace-nowrap border-none bg-transparent p-0 text-inherit ${date ? 'pr-1' : ''}`}>
                                         <Image
                                             src='/icons/filters/calendar.svg'
                                             alt=''
                                             width={24}
                                             height={24}
-                                            className='size-[15px] shrink-0'
+                                            className='size-[17px] shrink-0'
                                         />
                                         {date
                                             ? format(date, 'd MMM')
@@ -664,7 +665,7 @@ export function ToursFilterBar({
                                         onClick={() =>
                                             applyState({ date: null })
                                         }
-                                        className='grid h-full shrink-0 cursor-pointer place-items-center border-none bg-transparent pl-0.5 pr-2.5'>
+                                        className='grid h-full shrink-0 cursor-pointer place-items-center border-none bg-transparent p-0'>
                                         <Image
                                             src='/icons/filters/close-deep.svg'
                                             alt=''
@@ -711,11 +712,11 @@ export function ToursFilterBar({
                                         CHIP_INACTIVE
                                     )}>
                                     <Image
-                                        src='/icons/filters/person-soft.svg'
+                                        src='/icons/filters/person.svg'
                                         alt=''
                                         width={24}
                                         height={24}
-                                        className='size-[15px] shrink-0'
+                                        className='size-[17px] shrink-0'
                                     />
                                     {guestsLabel}
                                 </motion.button>
@@ -767,7 +768,7 @@ export function ToursFilterBar({
                                                         className='grid size-[30px] cursor-pointer place-items-center rounded-full border border-it-border bg-it-white text-[14.5px] font-medium text-it-heading disabled:cursor-default disabled:opacity-30 tracking-[-0.012em]'>
                                                         −
                                                     </motion.button>
-                                                    <i className='min-w-[18px] text-center text-[14px] not-italic font-medium text-it-heading tabular-nums tracking-[-0.012em]'>
+                                                    <i className='min-w-[18px] text-center text-[13px] not-italic font-medium text-it-heading tabular-nums tracking-[-0.012em]'>
                                                         {guestDraft[type]}
                                                     </i>
                                                     <motion.button
@@ -821,15 +822,15 @@ export function ToursFilterBar({
                                     : CHIP_INACTIVE
                             )}>
                             <Image
-                                src='/icons/filters/filter-lines-soft.svg'
+                                src='/icons/filters/sliders.svg'
                                 alt=''
                                 width={24}
                                 height={24}
-                                className='size-[15px] shrink-0'
+                                className='size-[17px] shrink-0'
                             />
                             {dict.filters}
                             {activeFilterCount > 0 && (
-                                <span className='inline-flex h-[17px] min-w-[17px] items-center justify-center rounded-it-full bg-it-primary px-1 text-[10.5px] font-medium leading-none text-it-white tabular-nums tracking-[-0.012em]'>
+                                <span className='inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-it-heading px-1.5 text-[12px] font-medium leading-none text-it-white tabular-nums tracking-[-0.012em]'>
                                     {activeFilterCount}
                                 </span>
                             )}
@@ -889,7 +890,7 @@ export function ToursFilterBar({
                     activeFilterCount > 0) && (
                     <div className='it-container flex flex-wrap items-center gap-3 gap-y-2.5 pt-3.5'>
                     {showCount && (
-                        <p className='m-0 shrink-0 whitespace-nowrap text-[13px] md:text-[14.5px] leading-[1.6] text-it-heading tabular-nums tracking-[-0.012em]'>
+                        <p className='m-0 shrink-0 whitespace-nowrap it-text text-it-heading tabular-nums'>
                             {counterLabel} {dict.toursWord}
                         </p>
                     )}
@@ -922,7 +923,7 @@ export function ToursFilterBar({
                                         exit={{ opacity: 0, scale: 0.96 }}
                                         transition={swapFade}
                                         whileTap={{ scale: 0.95 }}
-                                        className='inline-flex shrink-0 cursor-pointer items-center gap-[7px] whitespace-nowrap rounded-it-full border border-it-primary/25 bg-it-primary-subtle px-[11px] py-1.5 text-[11.5px] font-medium leading-[1.2] text-it-primary-hover tracking-[-0.012em]'>
+                                        className='inline-flex shrink-0 cursor-pointer items-center gap-[7px] whitespace-nowrap rounded-it-full border border-it-primary/25 bg-it-primary-subtle px-[11px] py-1.5 text-[12px] font-medium leading-[1.2] text-it-primary-hover tracking-[-0.012em]'>
                                         {chip.label}
                                         <Image
                                             src='/icons/filters/close-deep.svg'
@@ -938,10 +939,24 @@ export function ToursFilterBar({
                             <button
                                 type='button'
                                 onClick={clearAll}
-                                className='shrink-0 cursor-pointer whitespace-nowrap border-none bg-transparent p-0 text-[13px] md:text-[14.5px] font-medium leading-[1.6] text-it-text-muted underline underline-offset-2 tracking-[-0.012em]'>
+                                className='shrink-0 cursor-pointer whitespace-nowrap border-none bg-transparent p-0 it-text  font-medium text-it-text-muted underline underline-offset-2'>
                                 {dict.clearAll}
                             </button>
                         </ScrollTrack>
+                    )}
+
+                    {/* Sort, pinned right on the counter's line. The comment
+                        above this row has always said "with Sort pinned right",
+                        but the control was only ever rendered in the FILTER row
+                        - and there only in the `!showCount` branch. So on every
+                        page that shows a counter (All Tours, category, hub) it
+                        rendered nowhere at all and the row just ended in empty
+                        space. `ml-auto` puts it on the counter's right edge;
+                        the chips above take the full width on their own line. */}
+                    {showCount && (
+                        <div className='ml-auto flex shrink-0 items-center'>
+                            {sortControl}
+                        </div>
                     )}
                     </div>
                 )}

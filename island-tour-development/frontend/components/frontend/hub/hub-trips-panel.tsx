@@ -12,17 +12,14 @@ import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
+import { TOUR_CARD_GRID } from '@/lib/tours/listing';
 import { Reveal } from '../reveal';
+import { TourCard, type TourCardDict, type TourListing } from '../tour-card';
 import { useOptionalHubDate } from './hub-date-context';
 import { HubPicks, type HubPicksData } from './hub-picks';
-import {
-    HubTourCard,
-    type HubTour,
-    type HubTourCardDict,
-} from './hub-tour-card';
 
 /** One card group inside a panel - an optional title (e.g. "Private day charters (11)") + its tours. */
-export type HubCardGroup = { title?: string; tours: HubTour[] };
+export type HubCardGroup = { title?: string; tours: TourListing[] };
 
 /** A scroll-nav section's content - heading, subtitle, card groups, and an optional picks block. */
 export type HubTripsPanelData = {
@@ -40,8 +37,13 @@ export type HubTripsFilterDict = {
     showAllDates: string;
 };
 
-const GRID =
-    'grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-x-[18px] sm:gap-y-[22px]';
+/**
+ * The sitewide tour grid - 1 / 3 / 4 across (founder, 2026-08-18). The hub
+ * listing used to run its own 3-up grid on its own 18/22px gutters beside its
+ * own card component; both are gone, so a hub listing now sits on exactly the
+ * rhythm of All Tours, search and the destination page.
+ */
+const GRID = TOUR_CARD_GRID;
 
 /**
  * One panel of the hub trips/charters listing - a heading + its own date chip,
@@ -57,7 +59,7 @@ export function HubTripsPanel({
     panel: HubTripsPanelData;
     selectDate: string;
     filter: HubTripsFilterDict;
-    card: HubTourCardDict;
+    card: TourCardDict;
 }) {
     // Shared with the hero (and sibling panels): a date picked anywhere selects
     // here too. Falls back to local state when standalone.
@@ -119,7 +121,7 @@ export function HubTripsPanel({
      * again on a page that has no idea one was ever chosen.
      */
     const isoDate = date ? format(date, 'yyyy-MM-dd') : null;
-    const filterTours = (tours: HubTour[]) => {
+    const filterTours = (tours: TourListing[]) => {
         const kept = availableIds
             ? tours.filter(t => availableIds.has(t.id))
             : tours;
@@ -146,10 +148,10 @@ export function HubTripsPanel({
             {/* Heading + date chip */}
             <Reveal className='flex flex-col gap-4 md:gap-6'>
                 <div className='flex flex-col gap-1'>
-                    <h2 className='m-0 text-[21px] md:text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                    <h2 className='m-0 text-[20px] md:text-[26px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                         {panel.title}
                     </h2>
-                    <p className='m-0 text-[13px] md:text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                    <p className='m-0 it-text text-it-text-muted'>
                         {panel.subtitle}
                     </p>
                 </div>
@@ -168,7 +170,7 @@ export function HubTripsPanel({
                                     height={24}
                                     className='size-5 shrink-0 md:size-6'
                                 />
-                                <span className='whitespace-nowrap text-[13px] md:text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                <span className='whitespace-nowrap it-text text-it-heading'>
                                     {date
                                         ? format(date, 'd MMM yyyy')
                                         : selectDate}
@@ -232,7 +234,7 @@ export function HubTripsPanel({
                     animate={{ opacity: 1, y: 0 }}
                     transition={crossFade}
                     className='flex flex-col items-start gap-4 py-6 md:py-10'>
-                    <p className='m-0 text-[14.5px] md:text-[16.5px] leading-[1.6] tracking-[-0.012em] text-it-primary-subtle'>
+                    <p className='m-0 text-[14.5px] md:text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-primary-subtle'>
                         {filter.noneOnDate}
                     </p>
                     <motion.button
@@ -262,7 +264,7 @@ export function HubTripsPanel({
                                   <div className={GRID}>
                                       {group.tours.map((tour, i) => (
                                           <Reveal key={tour.id} listItem>
-                                              <HubTourCard
+                                              <TourCard
                                                   tour={tour}
                                                   dict={card}
                                                   // First card of the panel
@@ -270,6 +272,7 @@ export function HubTripsPanel({
                                                   highlighted={
                                                       gi === 0 && i === 0
                                                   }
+                                                  mobileRow
                                               />
                                           </Reveal>
                                       ))}
@@ -280,10 +283,11 @@ export function HubTripsPanel({
                               <div className={GRID}>
                                   {filteredGroups[0].tours.map((tour, i) => (
                                       <Reveal key={tour.id} listItem>
-                                          <HubTourCard
+                                          <TourCard
                                               tour={tour}
                                               dict={card}
                                               highlighted={i === 0}
+                                              mobileRow
                                           />
                                       </Reveal>
                                   ))}

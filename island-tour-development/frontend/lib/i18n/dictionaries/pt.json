@@ -237,17 +237,26 @@
                     "adults": {
                         "label": "Adultos",
                         "hint": "12 anos ou mais",
-                        "word": { "one": "Adulto", "other": "Adultos" }
+                        "word": {
+                            "one": "Adulto",
+                            "other": "Adultos"
+                        }
                     },
                     "children": {
                         "label": "Crianças",
                         "hint": "4 a 11 anos",
-                        "word": { "one": "Criança", "other": "Crianças" }
+                        "word": {
+                            "one": "Criança",
+                            "other": "Crianças"
+                        }
                     },
                     "infants": {
                         "label": "Bebés",
                         "hint": "Menores de 4 · Grátis na maioria dos tours",
-                        "word": { "one": "Bebé", "other": "Bebés" }
+                        "word": {
+                            "one": "Bebé",
+                            "other": "Bebés"
+                        }
                     }
                 },
                 "applyGuests": "Aplicar",
@@ -268,10 +277,22 @@
             },
             "trust": {
                 "checks": [
-                    "Cancelamento grátis, sem perguntas",
-                    "Pague apenas 20% hoje, o resto depois",
-                    "Confirmado em segundos",
-                    "Checkout seguro"
+                    {
+                        "title": "Feito por locais",
+                        "sub": "que cresceram aqui"
+                    },
+                    {
+                        "title": "Cancelamento gratuito",
+                        "sub": "sem perguntas"
+                    },
+                    {
+                        "title": "Suporte por WhatsApp",
+                        "sub": "somos locais"
+                    },
+                    {
+                        "title": "Apenas 20% de depósito",
+                        "sub": "para reservar"
+                    }
                 ],
                 "whatsapp": "Dúvidas? Fale no WhatsApp →"
             },
@@ -432,6 +453,7 @@
                 "calendarNoDepartures": "Sem partida",
                 "calendarClosed": "Fechado",
                 "calendarToday": "hoje",
+                "closeCalendar": "Fechar calendário",
                 "noDeparturesOnDateTitle": "Não há partidas em {date}",
                 "noDeparturesOnDateHint": "Escolha outro dia - o calendário mostra todas as datas com vagas.",
                 "deadEndTitle": "Estes passeios ainda têm partidas esta semana",
@@ -439,23 +461,44 @@
                 "deadEndNext": "Próxima partida: {date}",
                 "deadEndNoAlternatives": "Nada mais nesta ilha tem vagas esta semana. Experimente outras datas ou outra ilha.",
                 "onlyLeft": "Só restam {count}",
-                "travelers": { "one": "{count} viajante", "other": "{count} viajantes" },
-                "guests": { "one": "{count} hóspede", "other": "{count} hóspedes" },
+                "travelers": {
+                    "one": "{count} viajante",
+                    "other": "{count} viajantes"
+                },
+                "guests": {
+                    "one": "{count} hóspede",
+                    "other": "{count} hóspedes"
+                },
                 "bands": {
                     "ADULT": {
-                        "plural": { "one": "{count} adulto", "other": "{count} adultos" }
+                        "plural": {
+                            "one": "{count} adulto",
+                            "other": "{count} adultos"
+                        }
                     },
                     "CHILD": {
-                        "plural": { "one": "{count} criança", "other": "{count} crianças" }
+                        "plural": {
+                            "one": "{count} criança",
+                            "other": "{count} crianças"
+                        }
                     },
                     "INFANT": {
-                        "plural": { "one": "{count} bebé", "other": "{count} bebés" }
+                        "plural": {
+                            "one": "{count} bebé",
+                            "other": "{count} bebés"
+                        }
                     },
                     "YOUTH": {
-                        "plural": { "one": "{count} jovem", "other": "{count} jovens" }
+                        "plural": {
+                            "one": "{count} jovem",
+                            "other": "{count} jovens"
+                        }
                     },
                     "SENIOR": {
-                        "plural": { "one": "{count} sénior", "other": "{count} séniores" }
+                        "plural": {
+                            "one": "{count} sénior",
+                            "other": "{count} séniores"
+                        }
                     }
                 },
                 "ageFrom": "Idade {min}+",
@@ -813,7 +856,7 @@
         "verifyCta": "Verificar com e-mail + referência"
     },
     "thankYou": {
-        "title": "Reserva confirmada, {name}!",
+        "title": "Reserva confirmada, {name}! 🌴",
         "subtitle": "Seu {tour} está reservado para {date} às {time}.",
         "bookingRef": "Ref. da reserva:",
         "copy": "Copiar",

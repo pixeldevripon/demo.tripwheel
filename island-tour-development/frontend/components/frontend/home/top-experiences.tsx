@@ -317,10 +317,10 @@ export function TopExperiences({
     if (cards.length < MIN_CURATED_CARDS) return null;
 
     return (
-        <section className='bg-it-white it-section'>
+        <section className='bg-it-white it-section '>
             <div className='it-container'>
-                <Reveal className='flex flex-col items-center gap-4! md:gap-1! '>
-                    <h2 className='m-0 text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading text-center font-medium'>
+                <Reveal className='flex flex-col items-center gap-4! md:gap-3! '>
+                    <h2 className='m-0 text-[26px] leading-[1.2] tracking-[-0.012em] text-it-heading text-center font-medium'>
                         {dict.title}
                     </h2>
 
@@ -345,7 +345,7 @@ export function TopExperiences({
                                     <div
                                         key={`${card.key}-${i}`}
                                         className='relative shrink-0 w-62.5 max-md:w-43'>
-                                        <div className='relative w-full h-110 max-md:h-76.5 overflow-hidden rounded-it-xl bg-it-bg will-change-transform'>
+                                        <div className='relative w-full h-110 max-md:h-76.5 overflow-hidden rounded-[24px] bg-it-bg will-change-transform'>
                                             {/* Base layer - the image stays mounted for the video's
                                                 whole life (and doubles as its poster), so pressing
                                                 play never flashes: the video simply cross-fades in

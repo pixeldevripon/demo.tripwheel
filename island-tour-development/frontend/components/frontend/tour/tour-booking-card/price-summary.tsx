@@ -41,7 +41,7 @@ export function PriceSummary() {
             {/* `.wsummary` (mck-15): a rule above, 12px of air, and 13.5px rows
                 that sit at 3px each. Not a bordered card - the totals are the
                 card's own last word, not another panel inside it. */}
-            <div className='mt-3 flex flex-col border-t border-it-divider pt-3 text-[12.5px] leading-[1.6] tracking-[-0.012em]'>
+            <div className='mt-3 flex flex-col border-t border-it-divider pt-3 text-[14.5px] leading-[1.6] tracking-[-0.012em]'>
                 <Collapse open={detailsOpen}>
                     <div>
                         {priceRows.map(row => (
@@ -68,7 +68,7 @@ export function PriceSummary() {
                 </Collapse>
                 <div className='flex items-center justify-between gap-2 py-[3px] tabular-nums'>
                     <span className='text-it-text-muted tracking-[-0.012em]'>{dict.total}</span>
-                    <b className='text-[14.5px] font-medium text-it-heading tracking-[-0.012em]'>
+                    <b className='font-medium text-it-heading tracking-[-0.012em]'>
                         {money(total)}
                     </b>
                 </div>
@@ -96,7 +96,7 @@ export function PriceSummary() {
                         </b>
                     </div>
                 )}
-                <span className='mt-1 text-[11.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                <span className='mt-1 text-[13px] leading-[1.6] text-[#a3a3a3] tracking-[-0.012em]'>
                     {dict.taxesIncluded}
                 </span>
 
@@ -110,7 +110,7 @@ export function PriceSummary() {
                     onClick={() => toggleDetails()}
                     whileTap={{ scale: 0.97 }}
                     transition={springPop}
-                    className='mt-1.5 cursor-pointer self-start border-none bg-transparent text-[11.5px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-2 tracking-[-0.012em]'>
+                    className='mt-1.5 cursor-pointer self-start border-none bg-transparent text-[14.5px] leading-[1.6] text-it-heading underline underline-offset-2 tracking-[-0.012em]'>
                     {detailsOpen ? dict.hideDetails : dict.showDetails}
                 </motion.button>
             </div>

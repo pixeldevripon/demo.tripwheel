@@ -178,13 +178,23 @@ function PaymentInner({
             : eligibleMethods.includes(m));
 
     /**
-     * No method is chosen until the traveller chooses one (Pastel 84).
+     * Card starts SELECTED, and its form renders below the whole method list
+     * rather than inside the Card row (founder, 2026-08-18).
      *
-     * Card used to be pre-selected, and its expanded form pushed iDEAL and
-     * PayPal below the fold - a client watched a test booker with no card find
-     * iDEAL only much later. All three rows now start collapsed, so the choice
-     * is visible before it is made, and `null` is a state the pay path has to
-     * answer for rather than one it can assume away.
+     * This is a deliberate, qualified reversal of Pastel 84 - do not "restore"
+     * it. #84 removed the pre-selection because Card's expanded form sat INSIDE
+     * its row and pushed iDEAL and PayPal below the fold; a client watched a
+     * test booker with no card find iDEAL only much later. The complaint was
+     * about the other methods being hidden, not about Card being chosen. Moving
+     * the panel out from under the row answers that: every method stays visible
+     * at once AND the common case arrives ready to type.
+     *
+     * The in-row accordion was tried and reverted the same day - if it comes up
+     * again, this is the shape that was chosen twice.
+     *
+     * `null` is still a reachable state - Card can be ineligible (account
+     * inactive, admin-disabled, currency) - so the pay path still has to answer
+     * for "no method chosen" rather than assuming one.
      */
     const [method, setMethod] = useState<PayMethod | null>(null);
 
@@ -202,7 +212,13 @@ function PaymentInner({
      * contact step's Edit round trip keeps its fields alive for the same
      * reason.
      */
-    const [cardPanelMounted, setCardPanelMounted] = useState(false);
+    const [cardPanelMounted, setCardPanelMounted] = useState(() =>
+        isEligible('card')
+    );
+    // Card is the default only when it is actually payable; otherwise nothing
+    // is chosen and the traveller picks, exactly as before.
+    const activeMethod: PayMethod | null =
+        method ?? (isEligible('card') ? 'card' : null);
 
     /**
      * The name is the ONLY card field we own - number, expiry and CVC are
@@ -295,16 +311,21 @@ function PaymentInner({
             return;
         }
 
-        // Nothing is pre-selected any more, so "which method?" is a question
-        // the traveller can actually reach the Pay button without answering.
-        // Say so instead of swallowing the click.
-        if (!method) {
+        // `activeMethod`, NOT `method`. `method` is null until the traveller
+        // touches a row, and Card is the default - so guarding on the raw state
+        // told someone with Card visibly selected to "select a payment method".
+        // Every other read in this component goes through `activeMethod`; this
+        // guard was the one that did not.
+        //
+        // It is still a real check: `activeMethod` is null whenever Card is
+        // ineligible and nothing else has been picked.
+        if (!activeMethod) {
             setFormError(dict.selectMethodError);
             return;
         }
 
         // ── Card: confirm inline (no redirect); 3DS handled by an inline modal. ──
-        if (method === 'card') {
+        if (activeMethod === 'card') {
             if (!elements) return;
             const next: Record<string, string> = {};
             if (!cardName.trim()) next.name = dict.requiredError;
@@ -356,11 +377,11 @@ function PaymentInner({
         const returnUrl = `${window.location.origin}${processingHref}`;
         setProcessing(true);
         const result =
-            method === 'paypal'
+            activeMethod === 'paypal'
                 ? await stripe.confirmPayPalPayment(clientSecret, {
                       return_url: returnUrl,
                   })
-                : method === 'klarna'
+                : activeMethod === 'klarna'
                   ? await stripe.confirmKlarnaPayment(clientSecret, {
                         payment_method: {
                             // Klarna requires an email and a billing country
@@ -399,7 +420,7 @@ function PaymentInner({
                 the free-cancellation line at the commit button below. */}
             <span
                 id={methodsLabelId}
-                className='mt-0.5 mb-2.5 text-[12.5px] font-medium leading-[1.5] text-it-heading tracking-[-0.012em]'>
+                className='mt-0.5 mb-2.5 text-[13px] font-medium leading-[1.5] text-it-heading tracking-[-0.012em]'>
                 {dict.selectPaymentMethod}
             </span>
             <SecureCheckoutRow psp='Stripe' dict={dict} />
@@ -433,7 +454,7 @@ function PaymentInner({
                 className='overflow-hidden rounded-it-md border-[1.5px] border-it-border bg-it-white'>
                 {/* Card */}
                 <MethodRow
-                    selected={method === 'card'}
+                    selected={activeMethod === 'card'}
                     eligible={isEligible('card')}
                     hint={hintFor('card')}
                     onSelect={() => selectMethod('card')}
@@ -448,7 +469,84 @@ function PaymentInner({
                             <BrandMark src='/icons/payments/pay-2.svg' />
                             <BrandMark src='/icons/payments/pay-8.svg' />
                         </>
+                    }
+                />
+
+                {/* iDEAL (EUR-only by scheme rule; the currency is only ever
+                    blamed when it IS the reason - Pastel 83). */}
+                <MethodRow
+                    selected={activeMethod === 'ideal'}
+                    eligible={isEligible('ideal')}
+                    hint={hintFor('ideal')}
+                    onSelect={() => selectMethod('ideal')}
+                    label='iDEAL'
+                    logos={
+                        <BrandMark
+                            src='/icons/payments/pay-4.svg'
+                            className='h-6 w-auto'
+                        />
                     }>
+                    <p className='px-4 pb-[18px] pt-0.5 text-[13px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                        {dict.redirectNote}
+                    </p>
+                </MethodRow>
+
+                {/* PayPal (redirect). */}
+                <MethodRow
+                    selected={activeMethod === 'paypal'}
+                    eligible={isEligible('paypal')}
+                    hint={hintFor('paypal')}
+                    onSelect={() => selectMethod('paypal')}
+                    label={dict.paypal}
+                    logos={
+                        <BrandMark
+                            src='/icons/payments/pay-3.svg'
+                            className='h-6 w-auto'
+                        />
+                    }>
+                    <p className='px-4 pb-[18px] pt-0.5 text-[13px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                        {dict.redirectNote}
+                    </p>
+                </MethodRow>
+
+                {/* Klarna (redirect; brand name, untranslated like iDEAL).
+                    Offered only when the intent reports it - Stripe already
+                    filters by account activation + market/currency, and the
+                    backend intersects with the admin's per-method switch. */}
+                <MethodRow
+                    selected={activeMethod === 'klarna'}
+                    eligible={isEligible('klarna')}
+                    hint={hintFor('klarna')}
+                    onSelect={() => selectMethod('klarna')}
+                    label='Klarna'
+                    logos={
+                        <BrandMark
+                            src='/icons/payments/pay-7.svg'
+                            className='h-6 w-auto'
+                        />
+                    }>
+                    <p className='px-4 pb-[18px] pt-0.5 text-[13px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                        {dict.redirectNote}
+                    </p>
+                </MethodRow>
+            </div>
+
+            {/* Card fields, BELOW the list rather than inside the Card row.
+                This is what makes pre-selecting Card safe. Expanded in place,
+                this form pushed iDEAL, PayPal and Klarna below the fold -
+                which is the whole of Pastel 84's complaint. Out here the four
+                rows always sit together and the form opens under all of them.
+
+                Tried as an in-row accordion on 2026-08-18 and reverted the same
+                day: the founder wants the method list whole.
+
+                `Collapse`, not an unmount: the Stripe Elements mount once and
+                a card entered before a look at PayPal survives the trip. */}
+            {cardPanelMounted && (
+                <Collapse
+                    open={activeMethod === 'card'}
+                    instant={activeMethod === 'card'}>
+                    <div className='mt-2.5 rounded-it-md border-[1.5px] border-it-border bg-it-white pt-1.5'>
                     {/* Card fields (Stripe Card Elements, styled to the mockup;
                         brand auto-detected from the number). Mounted from the
                         first time Card is picked - see `cardPanelMounted`. */}
@@ -526,66 +624,9 @@ function PaymentInner({
                             error={errors.name}
                         />
                     </div>
-                </MethodRow>
-
-                {/* iDEAL (EUR-only by scheme rule; the currency is only ever
-                    blamed when it IS the reason - Pastel 83). */}
-                <MethodRow
-                    selected={method === 'ideal'}
-                    eligible={isEligible('ideal')}
-                    hint={hintFor('ideal')}
-                    onSelect={() => selectMethod('ideal')}
-                    label='iDEAL'
-                    logos={
-                        <BrandMark
-                            src='/icons/payments/pay-4.svg'
-                            className='h-6 w-auto'
-                        />
-                    }>
-                    <p className='px-4 pb-[18px] pt-0.5 text-[11.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
-                        {dict.redirectNote}
-                    </p>
-                </MethodRow>
-
-                {/* PayPal (redirect). */}
-                <MethodRow
-                    selected={method === 'paypal'}
-                    eligible={isEligible('paypal')}
-                    hint={hintFor('paypal')}
-                    onSelect={() => selectMethod('paypal')}
-                    label={dict.paypal}
-                    logos={
-                        <BrandMark
-                            src='/icons/payments/pay-3.svg'
-                            className='h-6 w-auto'
-                        />
-                    }>
-                    <p className='px-4 pb-[18px] pt-0.5 text-[11.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
-                        {dict.redirectNote}
-                    </p>
-                </MethodRow>
-
-                {/* Klarna (redirect; brand name, untranslated like iDEAL).
-                    Offered only when the intent reports it - Stripe already
-                    filters by account activation + market/currency, and the
-                    backend intersects with the admin's per-method switch. */}
-                <MethodRow
-                    selected={method === 'klarna'}
-                    eligible={isEligible('klarna')}
-                    hint={hintFor('klarna')}
-                    onSelect={() => selectMethod('klarna')}
-                    label='Klarna'
-                    logos={
-                        <BrandMark
-                            src='/icons/payments/pay-7.svg'
-                            className='h-6 w-auto'
-                        />
-                    }>
-                    <p className='px-4 pb-[18px] pt-0.5 text-[11.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
-                        {dict.redirectNote}
-                    </p>
-                </MethodRow>
-            </div>
+                    </div>
+                </Collapse>
+            )}
 
             {/* Operator-conditions gate (Pastel #80): between the methods and
                 the CTA, directly above the locked consent line. */}
@@ -796,7 +837,7 @@ function MethodRow({
                 )}
             </motion.button>
             {!eligible && (
-                <p className='px-4 pb-2.5 text-[11.5px] leading-[1.4] text-it-text-muted tracking-[-0.012em]'>
+                <p className='px-4 pb-2.5 text-[13px] leading-[1.4] text-it-text-muted tracking-[-0.012em]'>
                     {hint}
                 </p>
             )}

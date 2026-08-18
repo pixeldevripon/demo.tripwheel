@@ -4,10 +4,10 @@ import Image from 'next/image';
 export type TourHeaderDict = { localsFavorite: string };
 
 /**
- * Tour detail title block (design v2 .titleblock) - sits directly under the
- * breadcrumb. Display H1 over the meta row: amber star rating, the deep-orange
- * "✦ Locals' favorite" flag, and the location pin, joined by faint middots
- * (3.4).
+ * Tour detail title block - sits directly under the breadcrumb. Rebuilt to
+ * Figma 47936:3370: a 48px H1 over one muted 16px meta row - star + rating,
+ * "Locals' favorite", pin + location - joined by 6px dots, with Save/Share at
+ * the right end.
  *
  * On desktop Save/Share sit at the right end of this row, level with the meta
  * line. They used to open the booking rail (GAP-18), a block lower - which also
@@ -33,36 +33,42 @@ export function TourHeader({
     /** Save/Share pair, rendered at lg+ only (see the rail for the mobile copy). */
     actions?: React.ReactNode;
 }) {
-    // Meta groups in mockup order; only the present ones render, joined by dots.
+    // Meta groups in Figma order (47936:3370), each rendered only when it has a
+    // value, separated by 6px dots.
+    //
+    // All three read as ONE muted line at 16px/regular in #767676 - the colour
+    // lives in the icons, not the words. Two treatments were dropped to get
+    // there, and both were deliberate before, so they are worth naming:
+    // the rating number was amber, and "Locals' favorite" was orange with a
+    // leading. Figma draws both as plain muted text; the star's orange
+    // fill and the pin's orange stroke are the only colour on the row.
     const metaItems: React.ReactNode[] = [];
     if (rating != null) {
         metaItems.push(
-            <span key='rating' className='flex items-center gap-1.5'>
-                <span className='font-medium text-it-star tracking-[-0.012em]'>
-                    ★ {rating.toFixed(1)}
-                </span>
-                <span className='tabular-nums'>
-                    ({new Intl.NumberFormat(locale).format(reviewCount)})
-                </span>
+            <span key='rating' className='flex items-center gap-2'>
+                <Image
+                    src='/icons/tour/hdr-star.svg'
+                    alt=''
+                    width={24}
+                    height={23}
+                    className='size-4 shrink-0 lg:size-5'
+                />
+                <span className='tabular-nums'>{`${rating.toFixed(1)} (${new Intl.NumberFormat(locale).format(reviewCount)})`}</span>
             </span>
         );
     }
     if (isLocalsFavourite) {
-        metaItems.push(
-            <span key='locals' className='font-medium text-it-primary-hover tracking-[-0.012em]'>
-                ✦ {dict.localsFavorite}
-            </span>
-        );
+        metaItems.push(<span key='locals'>{dict.localsFavorite}</span>);
     }
     if (locationLabel) {
         metaItems.push(
-            <span key='location' className='flex items-center gap-[5px] text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+            <span key='location' className='flex items-center gap-2'>
                 <Image
-                    src='/icons/hero-location.svg'
+                    src='/icons/tour/hdr-location.svg'
                     alt=''
                     width={24}
                     height={24}
-                    className='size-3.5 shrink-0'
+                    className='size-4 shrink-0 lg:size-5'
                 />
                 {locationLabel}
             </span>
@@ -76,21 +82,31 @@ export function TourHeader({
                     "level with the subtitle" the client asked for - rather than
                     beside the H1, which on a two-line title would leave them
                     floating in the middle of nothing. */}
-                <div className='flex flex-col pt-2.5 pb-4 lg:flex-row lg:items-end lg:justify-between lg:gap-6'>
-                    <div className='flex min-w-0 flex-col'>
-                        <h1 className='m-0 max-w-[22em] font-it-display text-[clamp(24px,3.45vw,31px)] leading-[1.15] tracking-[-0.012em] text-balance text-it-heading font-medium'>
+                <div className='flex flex-col pt-5 pb-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6'>
+                    <div className='flex min-w-0 flex-col gap-2'>
+                        {/* Figma: 48px/510/1.2. That is the largest type on the
+                            site by a wide margin - the hub hero H1 tops out at
+                            37px - and it reverses the sitewide type reduction
+                            of Aug 18. It is the node's value, asked for
+                            explicitly; the clamp keeps a phone readable and
+                            lands on exactly 48px at the 1440 frame. */}
+                        <h1 className='m-0 max-w-[22em] font-it-display it-h1 text-balance text-it-heading font-medium'>
                             {title}
                         </h1>
                         {metaItems.length > 0 && (
-                            <div className='mt-2.5 flex flex-wrap items-center gap-[7px] text-[12.5px] font-medium leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                            <div className='flex flex-wrap items-center gap-x-3 gap-y-1.5 it-text text-it-text-muted lg:gap-x-4 '>
                                 {metaItems.map((item, i) => (
                                     <span
                                         key={i}
-                                        className='flex items-center gap-[7px]'>
+                                        className='flex items-center gap-x-3 lg:gap-x-4'>
+                                        {/* 6px @ 20% ink, drawn BETWEEN items
+                                            only - never leading or trailing a
+                                            wrapped line. */}
                                         {i > 0 && (
-                                            <span className='text-it-text-muted tracking-[-0.012em]'>
-                                                ·
-                                            </span>
+                                            <span
+                                                aria-hidden='true'
+                                                className='size-1.5 shrink-0 rounded-full bg-it-heading/20'
+                                            />
                                         )}
                                         {item}
                                     </span>

@@ -21,8 +21,8 @@ export function CategoryAbout({
     return (
         <section className='bg-it-white'>
             <div className='it-container'>
-                <Reveal className='flex max-w-[760px] flex-col gap-3'>
-                    <h2 className='m-0 mt-13 text-[21px] md:text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                <Reveal className='flex flex-col gap-3'>
+                    <h2 className='m-0 mt-13 text-[20px] md:text-[26px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                         {title}
                     </h2>
 
@@ -30,8 +30,8 @@ export function CategoryAbout({
                         description={description}
                         moreLabel={learnMoreLabel}
                         lessLabel={readLessLabel}
-                        className='m-0 text-[13.5px] leading-[1.7] text-it-heading tracking-[-0.012em]'
-                        buttonClassName='ml-1.5 inline cursor-pointer border-none bg-transparent p-0 text-[13px] md:text-[14.5px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-[3px] transition-colors duration-300 hover:text-it-primary tracking-[-0.012em]'
+                        className='m-0 text-[13px] leading-[1.7] text-it-heading tracking-[-0.012em]'
+                        buttonClassName='mt-1.5 block cursor-pointer border-none bg-transparent p-0 it-text  font-medium text-it-primary-hover underline underline-offset-[3px] transition-colors duration-300 hover:text-it-primary'
                     />
                 </Reveal>
             </div>

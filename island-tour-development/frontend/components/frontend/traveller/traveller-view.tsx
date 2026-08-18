@@ -136,10 +136,10 @@ export function TravellerView({
                     <MountReveal>
                         <div className='flex flex-wrap items-start justify-between gap-4'>
                             <div>
-                                <h1 className='m-0 font-medium text-[31px] md:text-[37px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
+                                <h1 className='m-0 font-medium text-[26px] md:text-[38px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
                                     {dict.title}
                                 </h1>
-                                <p className='mt-2 mb-0 text-[14px] leading-[1.6] text-it-text-muted md:text-[14.5px] tracking-[-0.012em]'>
+                                <p className='mt-2 mb-0 text-[13px] leading-[1.6] text-it-text-muted md:text-[14.5px] tracking-[-0.012em]'>
                                     {dict.subtitle}
                                 </p>
                             </div>
@@ -379,7 +379,7 @@ function CollapsibleGroup({
                 onClick={() => setOpen(v => !v)}
                 className={`flex cursor-pointer items-center gap-2 border-none bg-transparent p-0 font-normal tracking-[-0.012em] transition-colors ${
                     muted
-                        ? 'text-[15.5px] text-it-text-muted hover:'
+                        ? 'text-[14.5px] text-it-text-muted hover:'
                         : 'text-[18px] leading-[1.3]'
                 }`}>
                 {title}
@@ -431,10 +431,10 @@ function EmptyState({
             animate={{ opacity: 1 }}
             transition={crossFade}
             className='rounded-[16px] border border-dashed border-it-heading/15 bg-it-white px-6 py-16 text-center'>
-            <strong className='block font-medium text-[16.5px]'>
+            <strong className='block font-medium text-[14.5px]'>
                 {title}
             </strong>
-            <p className='mx-auto mt-2 mb-0 max-w-90 text-[14px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+            <p className='mx-auto mt-2 mb-0 max-w-90 text-[13px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                 {body}
             </p>
             {cta}

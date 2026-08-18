@@ -1,4 +1,6 @@
-import { reviewerLead } from '@/lib/reviews/review-view';
+import Image from 'next/image';
+
+import { ReviewStars } from '../review-stars';
 
 import { ExpandableText } from '../expandable-text';
 import { Reveal } from '../reveal';
@@ -72,39 +74,52 @@ export function TourReviews({
     dict: TourReviewsDict;
 }) {
     return (
-        <section className='rounded-it-lg bg-it-bg px-[22px] py-5'>
-            {/* Title + score left, "See all reviews" right. Wraps rather than
-                breaking at a breakpoint: on a phone the link drops to its own
-                line under the title (the client's ask), and `ml-auto` only
-                pushes it right once there is room for it beside the title. */}
-            <div className='mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1.5'>
-                <h2 className='m-0 text-[21px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
-                    {dict.title}
-                </h2>
-                {rating != null && reviewCount > 0 && (
-                    <span className='text-it-heading/50 tabular-nums'>
-                        <span className='font-medium text-it-star tracking-[-0.012em]'>
-                            ★ {rating.toFixed(1)}
-                        </span>{' '}
-                        ({reviewCount})
-                    </span>
-                )}
-                {/* Same page, not another route: the full section is further
-                    down this one. `SmoothScrollLink` is still a real
-                    `<a href='#tour-reviews'>` - it only intercepts the click to
-                    animate it, and falls back to the native jump before
-                    hydration or when the target is not in the DOM. The whole
-                    page's in-page jumps already run on this easing (the section
-                    tab nav), and a link that teleports while the tabs glide
-                    reads as two different pages. */}
-                <SmoothScrollLink
-                    targetId='tour-reviews'
-                    offset={REVIEWS_SCROLL_OFFSET}
-                    className='w-full text-[12px] font-medium leading-[1.6] text-it-primary-hover no-underline transition-colors hover:text-it-primary sm:ml-auto sm:w-auto tracking-[-0.012em]'>
-                    {dict.seeAll} →
-                </SmoothScrollLink>
+        // Figma 47936:3499. The grey panel is gone - the block sits on the page
+        // and the CARDS carry the chrome (white, 10% ink hairline, radius 16).
+        <section className='flex flex-col gap-6'>
+            <div className='flex flex-col gap-2'>
+                <div className='flex flex-wrap items-center justify-between gap-x-4 gap-y-2'>
+                    <div className='flex flex-wrap items-center gap-x-4 gap-y-1'>
+                        <h2 className='m-0 it-h2 leading-[1.2] text-it-heading font-medium '>
+                            {dict.title}
+                        </h2>
+                        {rating != null && reviewCount > 0 && (
+                            <span className='flex items-center gap-2 it-text text-it-text-muted '>
+                                <Image
+                                    src='/icons/tour/star.svg'
+                                    alt=''
+                                    width={20}
+                                    height={19}
+                                    className='size-4 shrink-0 lg:size-4'
+                                />
+                                <span className='tabular-nums'>{`${rating.toFixed(1)} (${reviewCount.toLocaleString()})`}</span>
+                            </span>
+                        )}
+                    </div>
+                    {/* Same page, not another route: the full section is further
+                        down this one. `SmoothScrollLink` is still a real
+                        `<a href='#tour-reviews'>` - it only intercepts the click
+                        to animate it, and falls back to the native jump before
+                        hydration or when the target is not in the DOM. */}
+                    <SmoothScrollLink
+                        targetId='tour-reviews'
+                        offset={REVIEWS_SCROLL_OFFSET}
+                        className='flex items-center gap-1 it-text font-medium text-it-primary no-underline transition-colors hover:text-it-primary-hover '>
+                        {dict.seeAll}
+                        <Image
+                            src='/icons/tour/arrow.svg'
+                            alt=''
+                            width={24}
+                            height={24}
+                            className='size-4 shrink-0 lg:size-5'
+                        />
+                    </SmoothScrollLink>
+                </div>
+                <p className='m-0 it-text text-it-text-muted '>
+                    {dict.subtitle}
+                </p>
             </div>
-            <div className='grid gap-3 md:grid-cols-2'>
+            <div className='grid gap-6 md:grid-cols-2'>
                 {reviews.map(review => (
                     <Reveal key={review.id} listItem>
                         <ReviewCard review={review} dict={dict} />
@@ -122,34 +137,60 @@ function ReviewCard({
     review: TourReview;
     dict: TourReviewsDict;
 }) {
-    // `Name · Country · Month Year`, composed by the shared helper so this card
-    // and the full section below cannot drift into two formats.
-    const lead = reviewerLead({
-        name: review.name,
-        country: review.country,
-        when: review.date,
-    });
-
     return (
-        <article className='h-full rounded-it-md border border-it-divider bg-it-white px-4 py-3.5'>
-            <div className='flex flex-wrap items-center gap-2 text-it-text-muted tracking-[-0.012em]'>
-                <span className='font-medium text-it-star tracking-[-0.012em]'>
-                    ★ {review.rating.toFixed(1)}
-                </span>
-                <span>
-                    {[...lead, review.verified ? dict.verified : null]
-                        .filter(Boolean)
-                        .join(' · ')}
-                </span>
+        // Figma 47936:3499 card: 24px padding, the head block and the body
+        // pushed apart so every card in the row agrees on where its text
+        // starts, whatever the reviewer line wraps to.
+        <article className='flex h-full min-h-[281px] flex-col justify-between gap-4 rounded-[16px] border border-it-heading/10 bg-it-white p-6'>
+            <div className='flex flex-col gap-2'>
+                <ReviewStars rating={review.rating} />
+                <div className='flex flex-col'>
+                    {/* Name and country at full ink; the dot only when both are
+                        there, so a reviewer who gave no country does not get a
+                        dot pointing at nothing. */}
+                    <span className='flex flex-wrap items-center gap-x-2.5 gap-y-0.5 it-text font-medium text-it-heading '>
+                        {review.name}
+                        {review.country && (
+                            <>
+                                <span
+                                    aria-hidden='true'
+                                    className='size-[5px] shrink-0 rounded-full bg-it-heading/20'
+                                />
+                                {review.country}
+                            </>
+                        )}
+                    </span>
+                    <span className='flex flex-wrap items-center gap-x-2.5 gap-y-0.5 it-meta text-it-heading/40 '>
+                        {review.date}
+                        {review.verified && (
+                            <>
+                                <span
+                                    aria-hidden='true'
+                                    className='size-1 shrink-0 rounded-full bg-it-heading/20'
+                                />
+                                <span className='flex items-center gap-2'>
+                                    <Image
+                                        src='/icons/review-verified.svg'
+                                        alt=''
+                                        width={16}
+                                        height={16}
+                                        className='size-4 shrink-0'
+                                    />
+                                    {dict.verified}
+                                </span>
+                            </>
+                        )}
+                    </span>
+                </div>
             </div>
-            <div className='mt-1.5 text-[12.5px] leading-[1.5] text-it-heading tracking-[-0.012em]'>
+            <div className='it-text text-it-heading '>
                 <ExpandableText
                     text={review.text}
                     moreLabel={dict.readMore}
                     lessLabel={dict.readLess}
                     sentenceLimit={PREVIEW_SENTENCES}
                     className='m-0'
-                    buttonClassName='cursor-pointer whitespace-nowrap border-none bg-transparent p-0 text-[12.5px] leading-[1.5] text-it-primary-hover tracking-[-0.012em]'
+                    buttonClassName='cursor-pointer whitespace-nowrap border-none bg-transparent p-0 it-text font-medium text-it-primary underline underline-offset-[3px] '
                 />
             </div>
         </article>

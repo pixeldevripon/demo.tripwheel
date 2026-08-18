@@ -85,13 +85,13 @@ export async function Testimonials() {
                                             className='text-it-star tracking-[-0.012em]'
                                             count={Math.round(r.rating)}
                                         />
-                                        <p className='m-0 text-[13px] md:text-[14.5px] leading-[1.6] text-it-heading line-clamp-5 md:line-clamp-7 tracking-[-0.012em]'>
+                                        <p className='m-0 it-text text-it-heading line-clamp-5 md:line-clamp-7'>
                                             {r.text}
                                         </p>
                                     </div>
 
                                     <div className='flex flex-col gap-0.5'>
-                                        <div className='flex flex-wrap items-center gap-x-2 text-[11.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                                        <div className='flex flex-wrap items-center gap-x-2 text-[12px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                                             <span className='font-medium text-it-heading tracking-[-0.012em]'>
                                                 {r.author}
                                             </span>
@@ -99,7 +99,7 @@ export async function Testimonials() {
                                                 <span>· {r.relativeTime}</span>
                                             )}
                                         </div>
-                                        <span className='text-[11.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                                        <span className='text-[12px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                                             via {providerLabel}
                                         </span>
                                     </div>

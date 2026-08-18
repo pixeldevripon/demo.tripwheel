@@ -70,7 +70,7 @@ export function ConfirmDialog({
                         exit={{ opacity: 0, scale: 0.96, y: 8 }}
                         transition={crossFade}
                         className='w-full max-w-100 rounded-[16px] bg-it-white p-6 shadow-[0_26px_70px_-20px_rgba(0,0,0,0.35)]'>
-                        <p className='m-0 text-[15.5px] font-medium leading-[1.4] tracking-[-0.012em] text-it-heading'>
+                        <p className='m-0 text-[14.5px] font-medium leading-[1.4] tracking-[-0.012em] text-it-heading'>
                             {title}
                         </p>
                         {body && (

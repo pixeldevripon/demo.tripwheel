@@ -222,10 +222,10 @@ export function TravellerLoginCard({
                     transition={crossFade}>
                     {step === 'email' ? (
                         <form onSubmit={sendCode} noValidate>
-                            <h1 className='mb-2 font-medium text-[22.5px] leading-[1.25] tracking-[-0.012em] text-it-heading'>
+                            <h1 className='mb-2 font-medium text-[20px] leading-[1.25] tracking-[-0.012em] text-it-heading'>
                                 {dict.loginTitle}
                             </h1>
-                            <p className='mb-7 text-[14px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                            <p className='mb-7 text-[13px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                                 {dict.loginSubtitle}
                             </p>
                             {error && <ErrorNote>{error}</ErrorNote>}
@@ -271,10 +271,10 @@ export function TravellerLoginCard({
                         </form>
                     ) : (
                         <div>
-                            <h1 className='mb-2 font-medium text-[22.5px] leading-[1.25] tracking-[-0.012em] text-it-heading'>
+                            <h1 className='mb-2 font-medium text-[20px] leading-[1.25] tracking-[-0.012em] text-it-heading'>
                                 {dict.codeTitle}
                             </h1>
-                            <p className='mb-7 text-[14px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                            <p className='mb-7 text-[13px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                                 {dict.codeSentNote.replace(
                                     '{email}',
                                     email.trim()

@@ -16,14 +16,19 @@ import { useId, type ReactNode } from 'react';
  * borders on inputs in any state (focus swaps to the orange primary).
  */
 
-export const labelClass = 'text-[12px] font-medium leading-[1.5] text-it-heading tracking-[-0.012em]';
-export const helperClass = 'text-[11.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]';
+export const labelClass = 'text-[13px] font-medium leading-[1.5] text-it-heading tracking-[-0.012em]';
+export const helperClass = 'text-[13px] leading-[1.6] text-it-text-muted tracking-[-0.012em]';
 // 16px below `md` - iOS Safari force-zooms the viewport on a focused input
 // under 16px. Zooming mid-checkout is the worst place on the site for it.
+//
+// This said 16 in the comment and 14.5 in the class (found 2026-08-18), so the
+// guard was written down but never actually in force: every checkout field
+// zoomed the page on focus on an iPhone. It is a real 16 now. Do NOT let a
+// type sweep pull it under 16 again - the desktop step is the one to tune.
 export const inputBase =
-    'w-full rounded-it-sm border bg-it-white px-[13px] text-[14.5px] md:text-[13px] leading-[1.6] text-it-heading placeholder:text-it-text-muted outline-none transition-colors focus:border-it-primary tracking-[-0.012em]';
+    'w-full rounded-it-sm border bg-it-white px-[13px] text-[16px] md:text-[14.5px] leading-[1.6] text-it-heading placeholder:text-it-text-muted outline-none transition-colors focus:border-it-primary tracking-[-0.012em]';
 export const titleClass =
-    'font-it-display text-[15.5px] font-medium leading-[1.3] tracking-[-0.012em] text-it-heading';
+    'font-it-display text-[14.5px] font-medium leading-[1.3] tracking-[-0.012em] text-it-heading';
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -33,7 +38,7 @@ export function FreeCancelNote({ label }: { label: string }) {
         // items-start + the icon's optical offset: when the line WRAPS on a
         // narrow viewport the check stays with the first line instead of
         // floating centred between both.
-        <div className='mt-3 flex items-start justify-center gap-[7px] text-center text-[12px] font-medium leading-[1.5] text-it-green-text tracking-[-0.012em]'>
+        <div className='mt-3 flex items-start justify-center gap-[7px] text-center text-[13px] font-medium leading-[1.5] text-it-green-text tracking-[-0.012em]'>
             <Image
                 src='/icons/booking-check.svg'
                 alt=''
@@ -69,7 +74,7 @@ export function ConsentLine({
     const linkClass =
         'font-medium text-it-text-muted underline underline-offset-2 tracking-[-0.012em]';
     return (
-        <p className='mt-2.5 text-center text-[11.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+        <p className='mt-2.5 text-center text-[13px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
             {securePayment && (
                 <>
                     {securePayment}.
@@ -224,7 +229,7 @@ export function FormError({
             {error && (
                 <motion.div
                     {...ERROR_REVEAL}
-                    className={`${className} text-[12.5px] leading-[1.6] text-it-primary`}>
+                    className={`${className} text-[13px] leading-[1.6] text-it-primary`}>
                     {error}
                 </motion.div>
             )}
@@ -371,7 +376,18 @@ export function Radio({ selected }: { selected: boolean }) {
     );
 }
 
-/** Full-width orange commit button (design v2 .cta: r-sm, 16px bold, 15px pad). */
+/**
+ * Full-width commit button - the ONE the whole checkout commits through
+ * (Continue on contact, "Reserve my spot · Pay X" on payment via
+ * `PayCtaButton`).
+ *
+ * It is INK, not the brand orange (founder, 2026-08-18). Orange is the site's
+ * "go and look at this" colour - it is on every card, link and price - and
+ * checkout is the one place where the button is not an invitation to browse
+ * but a commitment to pay. Black reads as the serious, secure action, which is
+ * the whole point of the step. The orange stays on the summary's amounts and
+ * on links, so the page still belongs to the site.
+ */
 export function CtaButton({
     onClick,
     disabled,
@@ -391,7 +407,7 @@ export function CtaButton({
             aria-busy={disabled || undefined}
             whileTap={disabled ? undefined : { scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-            className={`flex w-full items-center justify-center gap-[9px] rounded-it-sm border-none bg-it-primary p-[15px] text-[14.5px] font-bold leading-[1.5] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover ${
+            className={`flex w-full items-center justify-center gap-[9px] rounded-it-sm border-none bg-it-ink p-[15px] text-[14.5px] font-bold leading-[1.5] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-heading ${
                 disabled ? 'cursor-default opacity-90' : 'cursor-pointer'
             }`}>
             {children}
@@ -414,7 +430,7 @@ export function SecureCheckoutRow({
     dict: { secureCheckout: string; poweredBy: string };
 }) {
     return (
-        <div className='mb-3.5 flex items-center gap-2.5 rounded-it-md border border-it-border bg-it-bg px-3.5 py-[11px] text-[12px] font-medium leading-[1.5] text-it-heading tracking-[-0.012em]'>
+        <div className='mb-3.5 flex items-center gap-2.5 rounded-it-md border border-it-border bg-it-bg px-3.5 py-[11px] text-[13px] font-medium leading-[1.5] text-it-heading tracking-[-0.012em]'>
             <Image
                 src='/icons/checkout/lock-ink.svg'
                 alt=''
@@ -423,7 +439,7 @@ export function SecureCheckoutRow({
                 className='size-4 shrink-0'
             />
             {dict.secureCheckout}
-            <span className='ml-auto inline-flex items-center gap-1 rounded-[4px] bg-[#425466] px-[9px] py-1 text-[10.5px] font-medium tracking-[0.02em] text-it-white'>
+            <span className='ml-auto inline-flex items-center gap-1 rounded-[4px] bg-[#425466] px-[9px] py-1 text-[12px] font-medium tracking-[0.02em] text-it-white'>
                 {dict.poweredBy} <b>{psp}</b>
             </span>
         </div>
@@ -570,7 +586,7 @@ export function SectionBadge({
                         animate={{ scale: 1 }}
                         exit={{ scale: 0 }}
                         transition={springPop}
-                        className={`text-[11.5px] font-bold leading-none tabular-nums ${
+                        className={`text-[13px] font-bold leading-none tabular-nums ${
                             state === 'active'
                                 ? 'text-it-white tracking-[-0.012em]'
                                 : 'text-it-text-muted tracking-[-0.012em]'

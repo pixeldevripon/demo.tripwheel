@@ -26,18 +26,25 @@ export function BookingRefPill({
     className?: string;
 }) {
     return (
+        // Figma 47745:10846: "Booking ref:" is muted text OUTSIDE the pill;
+        // the pill itself is a plain #f8f8f8 radius-8 box holding the ref and
+        // the copy control. It was one bordered capsule with the label inside.
         <div
-            className={`flex items-center gap-2.5 rounded-it-full border border-it-border bg-it-bg px-4 py-[9px] text-[12.5px] leading-[1.5] ${className}`}>
-            <span className='text-it-text-muted tracking-[-0.012em]'>{dict.bookingRef}</span>
-            <code className='font-mono font-medium tracking-[0.02em] text-it-heading'>
-                {displayRef}
-            </code>
-            <BookingRefCopy
-                displayRef={displayRef}
-                copyLabel={dict.copy}
-                copiedLabel={dict.copied}
-                ariaLabel={`${dict.bookingRef} ${displayRef}`}
-            />
+            className={`flex flex-wrap items-center justify-center gap-2 text-[14.5px] leading-[1.6] ${className}`}>
+            <span className='text-it-text-muted tracking-[-0.012em]'>
+                {dict.bookingRef}
+            </span>
+            <div className='flex h-[42px] min-w-[204px] items-center justify-between gap-4 rounded-[8px] bg-it-surface px-4'>
+                <span className='font-medium tracking-[-0.012em] text-it-heading tabular-nums'>
+                    {displayRef}
+                </span>
+                <BookingRefCopy
+                    displayRef={displayRef}
+                    copyLabel={dict.copy}
+                    copiedLabel={dict.copied}
+                    ariaLabel={`${dict.bookingRef} ${displayRef}`}
+                />
+            </div>
         </div>
     );
 }

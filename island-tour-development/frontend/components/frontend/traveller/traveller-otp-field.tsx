@@ -43,7 +43,7 @@ export function TravellerOtpField({
                     {slots.map((slot, i) => (
                         <div
                             key={i}
-                            className={`relative flex h-12 flex-1 items-center justify-center rounded-[12px] border bg-it-white text-[19.5px] leading-none font-normal tracking-[-0.012em] text-it-heading transition-colors  sm:text-[21px] ${
+                            className={`relative flex h-12 flex-1 items-center justify-center rounded-[12px] border bg-it-white text-[18px] leading-none font-normal tracking-[-0.012em] text-it-heading transition-colors  sm:text-[20px] ${
                                 slot.isActive
                                     ? 'border-it-primary ring-2 ring-it-primary/15'
                                     : slot.char

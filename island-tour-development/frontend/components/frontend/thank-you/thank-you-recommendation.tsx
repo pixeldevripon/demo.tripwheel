@@ -13,7 +13,7 @@ type ThankYouDict = Dictionary['thankYou'];
 
 const factText = 'text-[12px] font-medium leading-[1.6] text-it-heading tracking-[-0.012em]';
 const factTextSm =
-    'text-[13px] leading-[1.6] tracking-[-0.012em] text-it-heading/70';
+    'text-[12px] leading-[1.6] tracking-[-0.012em] text-it-heading/70';
 
 /**
  * The brand palm that opens the eyebrow line (design v2 .apteyebrow). Rendered
@@ -36,7 +36,7 @@ const dot = (
 );
 
 const ctaClassSm =
-    'flex h-10 w-full items-center justify-center rounded-full bg-it-primary px-4 font-medium text-[12.5px] leading-none tracking-[-0.012em] text-it-white transition-colors hover:bg-it-primary-hover';
+    'flex h-10 w-full items-center justify-center rounded-full bg-it-primary px-4 font-medium text-[12px] leading-none tracking-[-0.012em] text-it-white transition-colors hover:bg-it-primary-hover';
 
 /**
  * Post-booking recommendations section. Admin-managed (Dashboard > Recommendations),
@@ -64,8 +64,13 @@ export function ThankYouRecommendations({
     const asGrid = recommendations.length > 3;
 
     return (
-        <section className='bg-it-white pt-12 pb-0'>
-            <div className={asGrid ? 'it-container' : 'it-wrap'}>
+        // `pb-14`, not `pb-0`. With no bottom padding the last card ran
+        // straight into the grey support band below and the band cut across
+        // it - the section had been written to sit flush against whatever
+        // followed, which stopped being true once the support section got its
+        // own #f8f8f8 ground.
+        <section className='bg-it-white pt-12 pb-14'>
+            <div className={asGrid ? 'it-container' : 'it-container'}>
                 {asGrid ? (
                     <div className='grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 sm:gap-x-6 sm:gap-y-8 lg:grid-cols-4'>
                         {recommendations.map((rec, i) => (
@@ -101,7 +106,7 @@ function buildFacts(
         facts.push({
             key: 'rating',
             node: (
-                <span className={`${cls} font-bold text-it-star`}>
+                <span className={`${cls} font-medium text-it-primary`}>
                     ★ {r.rating}
                     {r.reviewCount !== null &&
                         ` (${r.reviewCount.toLocaleString('en-US')})`}
@@ -223,20 +228,34 @@ function AptCard({
     const facts = buildFacts(recommendation, dict, 'md');
 
     const inner = (
-        <div className='grid overflow-hidden rounded-it-lg border border-it-divider bg-it-white shadow-it-sm md:grid-cols-[280px_1fr]'>
-            <div className='relative h-[170px] bg-it-bg md:h-auto md:min-h-[220px]'>
+        // Same treatment as the hub's "our picks" card (Figma 47979:4746): an
+        // even 50/50 split with the photo bleeding to the card's own edges, and
+        // ALL the padding on the content column so the two halves meet flush.
+        //
+        // It was a fixed 280px photo beside a `1fr` column - so on the 1200px
+        // grid the copy sat in a ~350px gutter with two thirds of the card left
+        // empty beside it, which is what made these read as broken rather than
+        // as cards.
+        //
+        // The hairline is load-bearing: this section's band is WHITE, so a
+        // white card with no border has no edge at all and the row reads as a
+        // photo with some text beside it. A grey fill would work too, but it
+        // would put the photo on a tinted ground and fight the tour cards
+        // directly above.
+        <div className='grid items-stretch overflow-hidden rounded-[16px] border border-it-divider bg-it-white max-md:gap-0 md:grid-cols-2'>
+            <div className='relative aspect-[16/10] w-full shrink-0 bg-it-bg md:aspect-auto md:min-h-[280px]'>
                 <Image
                     src={imageUrl}
                     alt={title}
                     fill
-                    sizes='(min-width: 768px) 280px, 100vw'
+                    sizes='(min-width: 768px) 50vw, 100vw'
                     className='object-cover'
                 />
             </div>
-            <div className='flex flex-col items-start justify-center px-5 py-5 md:px-7 md:py-6'>
+            <div className='flex flex-col items-start justify-center gap-2 p-6 md:p-8'>
                 {/* Eyebrow + area are admin copy; absent on internal picks. */}
                 {(eyebrow || recommendation.areaLabel) && (
-                    <div className='flex items-center gap-2 text-[11px] font-medium uppercase leading-[1.4] tracking-[0.12em] text-it-text-muted'>
+                    <div className='flex items-center gap-2 text-[12px] font-medium uppercase leading-[1.4] tracking-[0.08em] text-it-text-muted'>
                         {EyebrowMark}
                         <span className='flex items-center gap-2'>
                             {eyebrow}
@@ -245,22 +264,26 @@ function AptCard({
                         </span>
                     </div>
                 )}
-                <h3 className='m-0 mt-2 font-it-display text-[18px] leading-[1.3] tracking-[-0.012em] text-it-heading font-medium'>
+                <h3 className='m-0 font-it-display text-[18px] leading-[1.3] tracking-[-0.012em] text-it-heading font-medium md:text-[18px]'>
                     {title}
                 </h3>
                 {recommendation.descriptionLines.length > 0 && (
-                    <div className='mt-1 flex flex-col'>
+                    <div className='flex flex-col'>
+                        {/* Muted ink. This was `text-it-primary-subtle` - the
+                            pale peach FILL token - so the description rendered
+                            as barely-there wash on white and read as a loading
+                            state rather than as copy. */}
                         {recommendation.descriptionLines.map(line => (
                             <p
                                 key={line}
-                                className='m-0 text-[14.5px] md:text-[16.5px] leading-[1.6] text-it-primary-subtle tracking-[-0.012em]'>
+                                className='m-0 it-text text-it-text-muted '>
                                 {line}
                             </p>
                         ))}
                     </div>
                 )}
                 {facts.length > 0 && (
-                    <div className='mt-2 flex flex-wrap items-center gap-2'>
+                    <div className='flex flex-wrap items-center gap-2'>
                         {facts.map((fact, index) => (
                             <Fragment key={fact.key}>
                                 {index > 0 && dot}
@@ -272,7 +295,7 @@ function AptCard({
                 {ctaLabel && (
                     <Cta
                         r={recommendation}
-                        className='mt-3.5 inline-flex items-center gap-2 self-start rounded-it-sm border border-it-border bg-it-white px-[18px] py-2.5 text-[12.5px] font-medium leading-[1.4] text-it-heading no-underline transition-colors duration-(--it-duration-xs) hover:bg-it-bg tracking-[-0.012em]'>
+                        className='mt-2 inline-flex items-center gap-2 self-start rounded-[50px] border border-it-border bg-it-white px-6 py-3 text-[13px] font-medium leading-[1.4] text-it-heading no-underline transition-colors duration-(--it-duration-xs) hover:bg-it-bg tracking-[-0.012em] md:text-[13px]'>
                         {ctaLabel}
                         {recommendation.external && (
                             <Image
@@ -331,11 +354,11 @@ function GridCard({
                 {/* Eyebrow is admin copy (OUR VILLA / WHERE TO EAT). Absent on
                     internal picks, which then read like a plain tour card. */}
                 {eyebrow && (
-                    <span className='flex items-center gap-1.5 text-[11px] font-medium uppercase leading-[1.4] tracking-[0.08em] text-it-text-muted'>
+                    <span className='flex items-center gap-1.5 text-[12px] font-medium uppercase leading-[1.4] tracking-[0.08em] text-it-text-muted'>
                         {EyebrowMark} {eyebrow}
                     </span>
                 )}
-                <h3 className='m-0 font-medium text-[14.5px] leading-[1.4] tracking-[-0.012em] text-it-heading line-clamp-2'>
+                <h3 className='m-0 font-medium text-[13px] leading-[1.4] tracking-[-0.012em] text-it-heading line-clamp-2'>
                     {title}
                 </h3>
                 {facts.length > 0 && (

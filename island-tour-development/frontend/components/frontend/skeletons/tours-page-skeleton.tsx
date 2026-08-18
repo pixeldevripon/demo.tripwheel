@@ -111,21 +111,26 @@ export function ToursListingSkeleton() {
     );
 }
 
-/** Compact trust strip - four checkmark lines + WhatsApp link (mirrors ToursTrustStrip). */
+/**
+ * Trust strip - four icon + two-line columns (mirrors ToursTrustStrip, which
+ * follows Figma 47626:9337). It tracked the OLD shape (four tick lines and a
+ * trailing WhatsApp link) and would have reflowed the band the moment the real
+ * strip streamed in: the band is taller now and the link is gone.
+ */
 export function ToursTrustStripSkeleton() {
     return (
-        <section className='mt-14 mb-20 bg-it-bg py-7'>
+        <section className='mt-14 mb-20 bg-it-surface py-11'>
             <div className='it-container'>
-                <div className='flex flex-wrap items-center justify-between gap-[18px]'>
-                    <div className='flex flex-wrap gap-x-[22px] gap-y-2.5 max-md:flex-col'>
-                        {Array.from({ length: 4 }).map((_, i) => (
-                            <div key={i} className='flex items-center gap-2'>
-                                <Bar className='size-4 shrink-0 rounded-md [--it-skeleton-bg:var(--it-white)]' />
-                                <Bar className='h-[22px] w-44 [--it-skeleton-bg:var(--it-white)]' />
+                <div className='flex flex-wrap items-start gap-x-10 gap-y-7 md:flex-nowrap md:justify-between'>
+                    {Array.from({ length: 4 }).map((_, i) => (
+                        <div key={i} className='flex items-start gap-4'>
+                            <Bar className='size-5 shrink-0 rounded-md md:size-6 [--it-skeleton-bg:var(--it-white)]' />
+                            <div className='flex flex-col gap-1'>
+                                <Bar className='h-[22px] w-32 [--it-skeleton-bg:var(--it-white)]' />
+                                <Bar className='h-[22px] w-24 [--it-skeleton-bg:var(--it-white)]' />
                             </div>
-                        ))}
-                    </div>
-                    <Bar className='h-[22px] w-48 [--it-skeleton-bg:var(--it-white)]' />
+                        </div>
+                    ))}
                 </div>
             </div>
         </section>

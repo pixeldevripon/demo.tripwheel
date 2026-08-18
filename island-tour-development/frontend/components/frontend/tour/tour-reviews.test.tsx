@@ -49,8 +49,7 @@ describe('TourReviews — the header row', () => {
         expect(
             screen.getByRole('heading', { name: 'What our guests say' }),
         ).toBeInTheDocument();
-        expect(screen.getByText('★ 4.3')).toBeInTheDocument();
-        expect(screen.getByText(/\(4\)/)).toBeInTheDocument();
+        expect(screen.getByText('4.3 (4)')).toBeInTheDocument();
     });
 
     it('links to the full section ON THIS PAGE, not another route', () => {
@@ -64,8 +63,7 @@ describe('TourReviews — the header row', () => {
         // A tour borrowing its operator's rating can have none of its own.
         // The per-card score stays - that one is the review's, not the tour's.
         setup([review()], null, 0);
-        expect(screen.queryByText('★ 4.3')).not.toBeInTheDocument();
-        expect(screen.queryByText(/\(4\)/)).not.toBeInTheDocument();
+        expect(screen.queryByText('4.3 (4)')).not.toBeInTheDocument();
         expect(
             screen.getByRole('link', { name: /See all reviews/ }),
         ).toBeInTheDocument();
@@ -73,25 +71,39 @@ describe('TourReviews — the header row', () => {
 });
 
 describe('TourReviews — the reviewer line', () => {
-    it('reads Name · Country · Month Year · Verified', () => {
+    // Figma 47936:3499 splits what used to be one dot-joined string across two
+    // rows - name + country at full ink, then date + Verified muted under it.
+    // The rule the old single-line tests were really protecting still holds:
+    // a separator is drawn only when there is something on BOTH sides of it.
+    const card = () => screen.getByRole('article');
+    /** One dot per JOIN - so the count IS the separator rule, stated as a number. */
+    const dots = () => card().querySelectorAll('[aria-hidden="true"]').length;
+
+    it('names who reviewed, where they are from, and when', () => {
         setup([review()]);
-        expect(
-            screen.getByText('Maria S. · Netherlands · July 2026 · Verified'),
-        ).toBeInTheDocument();
+        expect(card()).toHaveTextContent('Maria S.');
+        expect(card()).toHaveTextContent('Netherlands');
+        expect(screen.getByText('July 2026')).toBeInTheDocument();
+        expect(screen.getByText('Verified')).toBeInTheDocument();
+        expect(dots()).toBe(2); // name·country, date·verified
     });
 
     it('drops the country cleanly, with no stray separator', () => {
         setup([review({ country: '' })]);
-        expect(
-            screen.getByText('Maria S. · July 2026 · Verified'),
-        ).toBeInTheDocument();
+        expect(card()).not.toHaveTextContent('Netherlands');
+        expect(dots()).toBe(1); // only date·verified is left to join
     });
 
     it('drops Verified when the review is not verified', () => {
         setup([review({ verified: false })]);
-        expect(
-            screen.getByText('Maria S. · Netherlands · July 2026'),
-        ).toBeInTheDocument();
+        expect(screen.queryByText('Verified')).not.toBeInTheDocument();
+        expect(screen.getByText('July 2026')).toBeInTheDocument();
+        expect(dots()).toBe(1); // only name·country is left to join
+    });
+
+    it('shows the score as five stars, filled to the rating', () => {
+        setup([review({ rating: 3 })]);
+        expect(screen.getByRole('img', { name: '3 / 5' })).toBeInTheDocument();
     });
 });
 

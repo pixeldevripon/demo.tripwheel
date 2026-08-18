@@ -125,7 +125,7 @@ export function ErrorDebugPanel({
                 widen the page (the sitewide rule: wide content scrolls inside
                 its own container, the body never scrolls sideways). */}
             {(server?.[0]?.stack || error.stack) && (
-                <pre className='mt-4 max-h-80 overflow-auto rounded-[12px] bg-it-surface p-4 text-[11.5px] leading-normal whitespace-pre text-it-ink-secondary tracking-[-0.012em]'>
+                <pre className='mt-4 max-h-80 overflow-auto rounded-[12px] bg-it-surface p-4 text-[12px] leading-normal whitespace-pre text-it-ink-secondary tracking-[-0.012em]'>
                     {server?.[0]?.stack ?? error.stack}
                 </pre>
             )}

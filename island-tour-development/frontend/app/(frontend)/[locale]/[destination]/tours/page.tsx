@@ -141,7 +141,7 @@ export default async function AllToursPage({
 
             {/* No bottom padding: the trust strip's own 56px top margin sets
                 the gap below the pager (mockup .truststrip). */}
-            <section className='bg-it-white'>
+            <section className='bg-it-white  pt-11 md:pt-14 pb-0'>
                 {/* Page header (.pagehead) in the container; the sticky filter
                     row + grid stream below at FULL WIDTH (the toolbar owns its
                     own containers so its sticky band bleeds edge to edge). */}

@@ -62,7 +62,7 @@ interface CheckoutClientProps {
 }
 
 const backBarLabel =
-    'flex w-fit cursor-pointer items-center gap-1.5 border-none bg-transparent p-0 text-[12.5px] font-medium leading-[1.6] text-it-heading no-underline hover:underline tracking-[-0.012em]';
+    'flex w-fit cursor-pointer items-center gap-1.5 border-none bg-transparent p-0 text-[13px] font-medium leading-[1.6] text-it-heading no-underline hover:underline tracking-[-0.012em]';
 
 const backCaret = (
     <Image
@@ -211,9 +211,21 @@ export function CheckoutClient({
                 summary (right). Mobile: one column, summary sheet first. */}
             <CheckoutLiveProvider
                 value={{ pickupLabel: pickup.label, totals: liveTotals }}>
-                <div className='grid items-start gap-4 pt-5 pb-14 lg:grid-cols-[1fr_340px] lg:gap-7'>
-                    <div className='min-w-0'>
-                        <div className='mb-[18px]'>
+                {/* Three grid children, not two, so the summary can be placed
+                    on the FORM's row rather than at the top of the column.
+
+                    The steps used to sit inside the left cell above the form,
+                    which meant the summary's top edge lined up with the STEPS
+                    and floated ~50px above the form card beside it (founder,
+                    2026-08-18). Explicit row/col placement at lg fixes that
+                    without hardcoding the steps' height - the summary starts
+                    exactly where the form card starts, whatever the step
+                    indicator grows to in a locale with longer labels.
+
+                    Below lg the placement classes drop away and the flow order
+                    stands, with `order-first` keeping the summary sheet on top. */}
+                <div className='grid items-start gap-y-4 pt-5 pb-14 lg:grid-cols-[1fr_340px] lg:grid-rows-[auto_auto] lg:gap-x-7 lg:gap-y-0'>
+                    <div className='lg:col-start-1 lg:row-start-1 lg:mb-[18px]'>
                             <CheckoutSteps
                                 phase={phase}
                                 contactLabel={dict.contact}
@@ -221,7 +233,8 @@ export function CheckoutClient({
                                 onGoToContact={() => setPhase('contact')}
                                 paymentStep={hasPayment}
                             />
-                        </div>
+                    </div>
+                    <div className='min-w-0 lg:col-start-1 lg:row-start-2'>
                         <CheckoutForm
                             dict={dict}
                             locale={locale}
@@ -246,7 +259,7 @@ export function CheckoutClient({
                             paymentFailed={paymentFailed}
                         />
                     </div>
-                    <div className='max-lg:order-first lg:sticky lg:top-20'>
+                    <div className='max-lg:order-first lg:col-start-2 lg:row-start-2 lg:sticky lg:top-20'>
                         {summary}
                     </div>
                 </div>

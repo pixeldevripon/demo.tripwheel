@@ -54,7 +54,7 @@ export function CollectionHero({
         // vertically, over the 76deg banner scrim.
         <section
             aria-label={title}
-            className={`relative h-[300px] w-full overflow-hidden ${heroImage ? 'bg-it-dark' : 'bg-it-bg'}`}>
+            className={`relative h-[clamp(380px,52vh,533px)] w-full overflow-hidden ${heroImage ? 'bg-it-dark' : 'bg-it-bg'}`}>
             {heroImage && (
                 <>
                     <Image
@@ -105,25 +105,27 @@ export function CollectionHero({
                 </div>
             </div>
 
-            {/* ── Text block: bottom-left, inside the container gutter ── */}
-            <div className='it-container absolute inset-0 z-10 flex flex-col justify-center'>
+            {/* ── Text block: bottom-left, inside the container gutter.
+                Figma seats it at y=261 of a 533px hero, i.e. below centre with
+                98px beneath - not vertically centred. ── */}
+            <div className='it-container absolute inset-0 z-10 flex flex-col justify-end pb-12 md:pb-[98px]'>
                 <div className='flex max-w-[640px] flex-col'>
                     {/* Eyebrow + H1 + subtitle - gap 4px */}
                     <MountReveal delay={0.1} yOffset={28}>
                         <div className='flex flex-col'>
                             {eyebrow && (
                                 <p
-                                    className={`m-0 text-[11.5px] font-medium uppercase tracking-[0.14em] ${heroImage ? 'text-it-white/85' : 'text-it-primary-hover'}`}>
+                                    className={`m-0 it-text uppercase  ${heroImage ? 'text-it-white' : 'text-it-heading'}`}>
                                     {eyebrow}
                                 </p>
                             )}
                             <h1
-                                className={`m-0 mt-2 font-it-body text-[31px] md:text-[37px] font-medium leading-[1.2] tracking-[-0.012em] text-balance ${heroImage ? 'text-it-white' : 'text-it-heading'}`}>
+                                className={`m-0 mt-2 font-it-body text-[26px] md:text-[38px] font-medium leading-[1.2] tracking-[-0.012em] text-balance ${heroImage ? 'text-it-white' : 'text-it-heading'}`}>
                                 {title}
                             </h1>
                             {subtitle && (
                                 <p
-                                    className={`m-0 mt-2.5 text-[14.5px] md:text-[16.5px] font-medium leading-[1.6] tracking-[-0.012em] ${heroImage ? 'text-it-white/92' : 'text-it-text-muted'}`}>
+                                    className={`m-0 mt-2.5 text-[14.5px] md:text-[14.5px] leading-[1.6] tracking-[-0.012em] ${heroImage ? 'text-it-white/60' : 'text-it-text-muted'}`}>
                                     {subtitle}
                                 </p>
                             )}
@@ -134,7 +136,7 @@ export function CollectionHero({
                     {tourCount > 0 && (
                         <MountReveal delay={0.2} yOffset={20}>
                             <div
-                                className={`mt-2 flex items-center gap-2 text-[12.5px] font-medium leading-[1.6] tracking-[-0.012em] tabular-nums ${heroImage ? 'text-it-white/85' : 'text-it-text-muted tracking-[-0.012em]'}`}>
+                                className={`mt-4 flex items-center gap-4 text-[14.5px] leading-[1.6] tracking-[-0.012em] tabular-nums md:text-[14.5px] ${heroImage ? 'text-it-white/60' : 'text-it-text-muted'}`}>
                                 <span>
                                     {tourCount} {dict.tours}
                                 </span>
@@ -142,19 +144,23 @@ export function CollectionHero({
                                     <>
                                         <span
                                             aria-hidden='true'
-                                            className={
-                                                heroImage
-                                                    ? 'text-it-white/55 tracking-[-0.012em]'
-                                                    : 'text-it-text-muted tracking-[-0.012em]'
-                                            }>
-                                            ·
-                                        </span>
-                                        <span>
-                                            {/* Locked stats format (5.6):
-                                                capital F, space, no "per". */}
-                                            {dict.from.charAt(0).toUpperCase() +
-                                                dict.from.slice(1)}{' '}
-                                            {startingPrice}
+                                            className={`size-[5px] shrink-0 rounded-full ${heroImage ? 'bg-it-white/20' : 'bg-it-heading/20'}`}
+                                        />
+                                        <span className='inline-flex items-baseline gap-1.5'>
+                                            {/* Figma puts the amount first at
+                                                510, with a smaller, dimmer
+                                                "From" after it. Locked stats
+                                                format (5.6): capital F, space,
+                                                no "per". */}
+                                            <span
+                                                className={`font-medium ${heroImage ? 'text-it-white' : 'text-it-heading'}`}>
+                                                {startingPrice}
+                                            </span>
+                                            <span
+                                                className={`text-[12px] md:text-[13px] ${heroImage ? 'text-it-white/70' : 'text-it-text-muted'}`}>
+                                                {dict.from.charAt(0).toUpperCase() +
+                                                    dict.from.slice(1)}
+                                            </span>
                                         </span>
                                     </>
                                 )}

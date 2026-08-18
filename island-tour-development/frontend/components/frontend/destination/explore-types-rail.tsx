@@ -170,9 +170,9 @@ export function ExploreTypesRail({
                 disabled={!canPrev}
                 whileTap={canPrev ? { scale: 0.9 } : undefined}
                 transition={springPop}
-                className='hidden lg:flex absolute top-[calc(50%-34px)] -left-3.5 z-5 size-9 items-center justify-center rounded-full border border-it-divider bg-it-white shadow-it-md transition-opacity enabled:cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed'>
+                className='hidden lg:flex absolute top-[calc(50%-34px)] -left-3.5 z-5 size-8 items-center justify-center rounded-full border border-it-divider bg-it-white shadow-it-md transition-opacity enabled:cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed'>
                 <ChevronLeft
-                    className='size-4 text-it-heading'
+                    className='size-3.5 text-it-heading'
                     strokeWidth={1.5}
                 />
             </motion.button>
@@ -183,9 +183,9 @@ export function ExploreTypesRail({
                 disabled={!canNext}
                 whileTap={canNext ? { scale: 0.9 } : undefined}
                 transition={springPop}
-                className='hidden lg:flex absolute top-[calc(50%-34px)] -right-3.5 z-5 size-9 items-center justify-center rounded-full border border-it-divider bg-it-white shadow-it-md transition-opacity enabled:cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed'>
+                className='hidden lg:flex absolute top-[calc(50%-34px)] -right-3.5 z-5 size-8 items-center justify-center rounded-full border border-it-divider bg-it-white shadow-it-md transition-opacity enabled:cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed'>
                 <ChevronRight
-                    className='size-4 text-it-heading'
+                    className='size-3.5 text-it-heading'
                     strokeWidth={1.5}
                 />
             </motion.button>

@@ -53,12 +53,12 @@ export function HubDiscoverCard({
             {/* Text content - inset 16px sides / 16px bottom / 10px top (mobile),
                 24px all (desktop); 8px title->body gap. */}
             <div className='flex flex-col gap-1.5 px-[22px] pt-[18px] pb-[22px]'>
-                <h3 className='m-0 text-[16.5px] md:text-[21px] leading-[1.6] md:leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                <h3 className='m-0 text-[14.5px] md:text-[20px] leading-[1.6] md:leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                     {item.title}
                 </h3>
                 <p
-                    className={`m-0 text-[12.5px] leading-[1.65] text-it-text-muted ${
-                        expanded ? '' : 'line-clamp-4 md:line-clamp-none tracking-[-0.012em] leading-[1.6] text-[13px] md:text-[14.5px]'
+                    className={`m-0 text-[12px] leading-[1.65] text-it-text-muted ${
+                        expanded ? '' : 'line-clamp-4 md:line-clamp-none tracking-[-0.012em] leading-[1.6] it-text '
                     }`}>
                     {item.body}
                 </p>

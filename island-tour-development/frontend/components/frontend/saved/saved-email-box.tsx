@@ -98,7 +98,7 @@ export function SavedEmailBox({
 
     return (
         <div className='rounded-it-lg bg-it-bg px-[22px] py-5'>
-            <b className='block font-it-display text-[15.5px] font-medium leading-[1.3] text-it-heading tracking-[-0.012em]'>
+            <b className='block font-it-display text-[14.5px] font-medium leading-[1.3] text-it-heading tracking-[-0.012em]'>
                 {dict.title}
             </b>
 
@@ -124,7 +124,7 @@ export function SavedEmailBox({
                     aria-invalid={fieldError ? true : undefined}
                     aria-describedby={fieldError ? ERROR_ID : undefined}
                     className={cn(
-                        'min-w-0 flex-1 rounded-it-sm border bg-it-white px-[13px] py-[11px] font-it-body text-[12.5px] leading-[1.6] text-it-heading outline-none tracking-[-0.012em]',
+                        'min-w-0 flex-1 rounded-it-sm border bg-it-white px-[13px] py-[11px] font-it-body text-[12px] leading-[1.6] text-it-heading outline-none tracking-[-0.012em]',
                         fieldError
                             ? 'border-it-error focus-visible:border-it-error'
                             : 'border-it-border focus-visible:border-it-primary'
@@ -135,7 +135,7 @@ export function SavedEmailBox({
                     disabled={status === 'sending'}
                     whileTap={{ scale: 0.97 }}
                     transition={springPop}
-                    className='inline-flex shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap rounded-it-sm border-none bg-it-primary px-4 py-[11px] text-[12.5px] font-medium leading-[1.6] text-it-white transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:bg-it-primary-hover disabled:cursor-default disabled:opacity-70 tracking-[-0.012em]'>
+                    className='inline-flex shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap rounded-it-sm border-none bg-it-primary px-4 py-[11px] text-[12px] font-medium leading-[1.6] text-it-white transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:bg-it-primary-hover disabled:cursor-default disabled:opacity-70 tracking-[-0.012em]'>
                     {status === 'sending' ? (
                         // Same spinner the checkout submit uses - a ring on the
                         // button's own ink, so the two reads as one system.
@@ -162,7 +162,7 @@ export function SavedEmailBox({
             {fieldError && (
                 <p
                     id={ERROR_ID}
-                    className='m-0 mt-2 text-[11.5px] font-medium leading-[1.5] text-it-error tracking-[-0.012em]'>
+                    className='m-0 mt-2 text-[12px] font-medium leading-[1.5] text-it-error tracking-[-0.012em]'>
                     {fieldError}
                 </p>
             )}
@@ -171,7 +171,7 @@ export function SavedEmailBox({
                 it without the form re-announcing itself. */}
             <p
                 aria-live='polite'
-                className='m-0 mt-[9px] text-[11.5px] leading-[1.5] text-it-text-muted tracking-[-0.012em]'>
+                className='m-0 mt-[9px] text-[12px] leading-[1.5] text-it-text-muted tracking-[-0.012em]'>
                 {status === 'sent'
                     ? dict.sent
                     : status === 'error'

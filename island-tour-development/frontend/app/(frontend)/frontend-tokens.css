@@ -435,6 +435,74 @@
         letter-spacing: var(--it-tracking-tight);
     }
 
+    /* ── The type scale ──────────────────────────────────────────────────
+       ONE ladder for every public page (founder, 2026-08-18). It is the tour
+       detail page's scale, which is the one that was tuned by eye and signed
+       off; the thank-you page was snapped onto it, and the rest follow.
+
+       Six steps, and no others. Before this the site carried 10.5, 11, 11.5,
+       12, 12.5, 13, 13.5, 14, 14.5, 15, 15.5, 16.5, 17, 19, 19.5, 21, 22.5,
+       24, 27.5, 31, 32, 35, 37, 40 and 48 - twenty-five sizes, most of them a
+       half-pixel apart and indistinguishable on screen, each one a decision
+       someone had to make again on the next component.
+
+       Sizes only step at `md`. A page that needs a different breakpoint should
+       set the size itself rather than bending these.
+
+       Use `it-h1` .. `it-meta` for SIZE, weight and rhythm. Colour stays on the
+       element (`text-it-heading`, `text-it-text-muted`) - these utilities set
+       no colour, so they can be used on a photo scrim as readily as on white. */
+
+    .it-h1 {
+        font-size: clamp(26px, 2.6vw, 38px);
+        line-height: 1.2;
+        letter-spacing: -0.012em;
+        font-weight: var(--it-weight-medium);
+    }
+
+    .it-h2 {
+        font-size: 18px;
+        line-height: 1.2;
+        letter-spacing: -0.012em;
+        font-weight: var(--it-weight-medium);
+    }
+
+    .it-h3 {
+        font-size: 14.5px;
+        line-height: 1.4;
+        letter-spacing: -0.012em;
+        font-weight: var(--it-weight-medium);
+    }
+
+    /* Running copy. */
+    .it-text {
+        font-size: 13px;
+        line-height: 1.6;
+        letter-spacing: -0.012em;
+    }
+
+    /* Secondary: dates, captions, field labels, table sub-lines. */
+    .it-meta {
+        font-size: 12px;
+        line-height: 1.6;
+        letter-spacing: -0.012em;
+    }
+
+    /* Buttons and links that act as buttons. */
+    .it-cta {
+        font-size: 14px;
+        line-height: 1.6;
+        letter-spacing: -0.012em;
+        font-weight: var(--it-weight-medium);
+    }
+
+    @media (min-width: 768px) {
+        .it-h2   { font-size: 20px; }
+        .it-h3   { font-size: 16px; }
+        .it-text { font-size: 14.5px; }
+        .it-meta { font-size: 13px; }
+    }
+
     .it-glass {
         background: rgba(255, 255, 255, 0.85);
         backdrop-filter: blur(16px) saturate(180%);

@@ -66,9 +66,14 @@ export const DESTINATION_RAIL =
 
 /**
  * The destination page's COLLECTION-card rail, mirroring
- * `destination-collections`: edge-bleeding swipe-carousel up to lg, max 3-col
- * grid from lg (collection cards never go 4-col). Cells:
- * `COLLECTION_CARD_CELL` (carousel widths persist until lg).
+ * `destination-collections`: edge-bleeding swipe-carousel up to lg, 4-col grid
+ * from lg. Cells: `COLLECTION_CARD_CELL` (carousel widths persist until lg).
+ *
+ * Keep this in lockstep with the real grid in `destination-collections`. The
+ * prose here once claimed 3-col while the value said 4, which is exactly how a
+ * mismatch survives: a wrong comment reads as the spec. They are two halves of
+ * one layout, and a disagreement shows as a reflow the moment the real cards
+ * swap in for the skeleton.
  */
 export const COLLECTION_RAIL =
     'grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4 lg:gap-x-4 lg:gap-y-5';

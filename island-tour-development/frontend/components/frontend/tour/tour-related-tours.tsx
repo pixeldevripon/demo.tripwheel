@@ -122,7 +122,7 @@ export async function TourRelatedTours({
     // cards running straight into the next heading reads as one list
     // (Pastel #34). Desktop keeps 32px.
     return (
-        <div className='flex flex-col gap-8 pt-2.5 max-md:gap-12.5'>
+        <div className='flex flex-col gap-8 pt-8.5 max-md:gap-12.5'>
             <TourRelatedSection
                 title={similarTitle}
                 tours={similarTours}

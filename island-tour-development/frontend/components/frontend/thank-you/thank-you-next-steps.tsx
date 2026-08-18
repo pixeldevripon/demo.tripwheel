@@ -1,17 +1,17 @@
 import { Reveal } from '@/components/frontend/reveal';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import type { ThankYouBooking } from '@/lib/thank-you/thank-you';
-import { Fragment } from 'react';
 
 type ThankYouDict = Dictionary['thankYou'];
 
 /**
- * "What happens next" (design v2 .whatnext): the checkout-style step indicator
- * (34px outline circles on 2px connector lines - all neutral, every step is a
- * future event) above three per-step cards. On mobile the indicator hides and
- * each card carries its own 28px number circle instead. The payment-link step
- * only renders when an operator balance is actually due (email rule: hide
- * zero-amount facts).
+ * "What happens next" (Figma 47745:11792): three columns, each a 64px outline
+ * circle over a centred bullet list, joined by a single hairline behind the
+ * circles. All neutral - every step is a future event, so none is "active".
+ *
+ * The payment-link step only renders when an operator balance is actually due
+ * (email rule: hide zero-amount facts), which is why the connector has to know
+ * whether it is spanning three columns or two.
  */
 export function ThankYouNextSteps({
     booking,
@@ -57,53 +57,49 @@ export function ThankYouNextSteps({
     return (
         <section
             className={`bg-it-white pt-14 ${flushBottom ? 'pb-2' : 'pb-14'}`}>
-            <div className='it-wrap flex flex-col'>
+            <div className='it-container flex flex-col gap-10 md:gap-12'>
                 <Reveal>
-                    <h2 className='m-0 mb-7 text-center font-it-display text-[clamp(18px,2.4vw,22.5px)] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                    <h2 className='m-0 text-center font-it-display it-h2 leading-[1.2] text-it-heading font-medium '>
                         {dict.nextTitle}
                     </h2>
                 </Reveal>
-                {/* Desktop step indicator - equal outline circles, no active
-                    state. Two steps (paid in full) get the longer connector. */}
-                <Reveal>
-                    <div
-                        aria-hidden='true'
-                        className='mb-[18px] hidden items-center justify-center md:flex'>
-                        {steps.map((step, i) => (
-                            <Fragment key={step.title}>
-                                {i > 0 && (
-                                    <span
-                                        className={`h-0.5 bg-it-divider ${steps.length === 3 ? 'w-[120px]' : 'w-[150px]'}`}
-                                    />
-                                )}
-                                <span className='grid size-[34px] place-items-center rounded-it-full border-2 border-it-border bg-it-white text-[13px] font-medium text-it-text-muted tabular-nums tracking-[-0.012em]'>
-                                    {i + 1}
-                                </span>
-                            </Fragment>
-                        ))}
-                    </div>
-                </Reveal>
+                {/* Figma 47745:11791: three columns, each a 64px outline circle
+                    over a centred bullet list - no cards. The step cards are
+                    gone: a card draws a box around every step and turns a
+                    three-beat timeline into three unrelated panels.
+
+                    The connector is ONE hairline behind the circle row, run
+                    between the first and last circle's centres. In a 3-column
+                    grid those centres are at 1/6 and 5/6; in a 2-column grid
+                    (paid in full, no payment-link step) they are at 1/4 and
+                    3/4. The circles paint over it because they carry a white
+                    fill and come later in the DOM. */}
                 <div
-                    className={`grid gap-4 text-left ${
+                    className={`relative grid gap-10 md:gap-6 ${
                         steps.length === 3 ? 'md:grid-cols-3' : 'md:grid-cols-2'
                     }`}>
+                    <span
+                        aria-hidden='true'
+                        className={`absolute top-6 hidden h-px bg-it-divider md:block ${
+                            steps.length === 3
+                                ? 'left-1/6 right-1/6'
+                                : 'left-1/4 right-1/4'
+                        }`}
+                    />
                     {steps.map((step, i) => (
-                        <Reveal key={step.title} listItem>
-                            {/* .stepcard: white bordered card; on mobile the
-                                number rides top-left as the outline circle. */}
-                            <div className='relative h-full rounded-it-md border border-it-divider bg-it-white py-[18px] pl-[58px] pr-5 shadow-it-sm md:px-5'>
-                                <span className='absolute top-4 left-4 grid size-7 place-items-center rounded-it-full border-2 border-it-border bg-it-white text-[11.5px] font-medium text-it-text-muted tabular-nums md:hidden tracking-[-0.012em]'>
-                                    {i + 1}
-                                </span>
-                                <b className='block text-[13.5px] font-medium leading-[1.5] text-it-heading tracking-[-0.012em]'>
-                                    {step.title}
-                                </b>
-                                {step.sub && (
-                                    <p className='m-0 mt-1.5 text-[12px] leading-[1.5] text-it-text-muted tracking-[-0.012em]'>
-                                        {step.sub}
-                                    </p>
-                                )}
-                            </div>
+                        <Reveal
+                            key={step.title}
+                            listItem
+                            className='relative flex flex-col items-center gap-6 text-center md:gap-8'>
+                            <span className='grid size-11 shrink-0 place-items-center rounded-it-full border border-it-border bg-it-white it-h2 font-medium leading-[1.2] text-it-heading tabular-nums md:size-12 '>
+                                {i + 1}
+                            </span>
+                            {/* A real list: two facts about one step, which is
+                                what the discs in the mockup are saying. */}
+                            <ul className='m-0 flex list-disc flex-col gap-1.5 ps-6 text-left it-text font-medium leading-[1.4] text-it-heading '>
+                                <li>{step.title}</li>
+                                {step.sub && <li>{step.sub}</li>}
+                            </ul>
                         </Reveal>
                     ))}
                 </div>
@@ -111,4 +107,3 @@ export function ThankYouNextSteps({
         </section>
     );
 }
-

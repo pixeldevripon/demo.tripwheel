@@ -130,18 +130,18 @@ export function TravellerNextTrip({
                     </div>
                 )}
                 <div className='min-w-0 flex-1 p-5 sm:p-7'>
-                    <p className='m-0 text-[11.5px] font-medium tracking-[0.08em] text-it-primary uppercase'>
+                    <p className='m-0 text-[12px] font-medium tracking-[0.08em] text-it-primary uppercase'>
                         {dict.nextTripKicker} · {when}
                     </p>
-                    <h2 className='mt-2 mb-0 font-medium text-[19.5px] md:text-[21px] leading-[1.3] tracking-[-0.012em] text-it-heading'>
+                    <h2 className='mt-2 mb-0 font-medium text-[18px] md:text-[20px] leading-[1.3] tracking-[-0.012em] text-it-heading'>
                         {booking.tourName}
                     </h2>
-                    <p className='mt-1 mb-0 text-[14px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                    <p className='mt-1 mb-0 text-[13px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                         {metaLine}
                     </p>
 
                     {(booking.meetingPoint || hasPickup) && (
-                        <p className='mt-2.5 mb-0 flex flex-wrap items-center gap-x-1.5 text-[13.5px] leading-[1.6] text-it-heading tracking-[-0.012em]'>
+                        <p className='mt-2.5 mb-0 flex flex-wrap items-center gap-x-1.5 text-[13px] leading-[1.6] text-it-heading tracking-[-0.012em]'>
                             <Image
                                 src='/icons/thank-you/detail-location.svg'
                                 alt=''
@@ -187,12 +187,12 @@ export function TravellerNextTrip({
                     </div>
 
                     {payLine && (
-                        <p className='mt-3 mb-0 text-[13.5px] leading-[1.6] text-it-heading tracking-[-0.012em]'>
+                        <p className='mt-3 mb-0 text-[13px] leading-[1.6] text-it-heading tracking-[-0.012em]'>
                             {payLine}
                         </p>
                     )}
                     {cancelLine && (
-                        <p className='mt-1 mb-0 text-[12.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                        <p className='mt-1 mb-0 text-[12px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                             {cancelLine}
                         </p>
                     )}

@@ -44,7 +44,7 @@ export function HeroPopularLinks({
         <div
             ref={trackRef}
             className={cn(
-                'flex w-full items-center gap-1.5 text-[12.5px] font-medium leading-[1.6] text-it-white/90 [text-shadow:0_1px_10px_rgba(0,0,0,0.3)] tracking-[-0.012em]',
+                'flex w-full items-center gap-1.5 text-[12px] font-medium leading-[1.6] text-it-white/90 [text-shadow:0_1px_10px_rgba(0,0,0,0.3)] tracking-[-0.012em]',
                 'max-md:flex-nowrap max-md:justify-start max-md:overflow-x-auto max-md:whitespace-nowrap md:flex-wrap md:justify-center',
                 '[scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
                 edgeFadeMask(left, right)

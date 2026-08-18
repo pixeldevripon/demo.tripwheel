@@ -18,8 +18,10 @@ export type TourTab = {
  * Sticky in-page tab nav for the tour detail sections (Figma node 47936:3592).
  *
  * Reuses the Activity Hub tab design (`HubTripsTabs`): a horizontal-scroll row
- * with a full-width baseline hairline; the active tab carries the orange
- * underline + dark medium label, inactive tabs are muted with no underline.
+ * with a full-width 2px baseline at 10% ink (Figma 47936:3592). The active tab
+ * swaps that rule for deep orange and sets its label in INK at medium; inactive
+ * labels are muted and regular. The orange lives in the rule, not the word - an
+ * orange label plus an orange rule made the active tab read as a link.
  * 16px mobile / 20px desktop. Sticks below the fixed navbar. Clicking a tab
  * smooth-scrolls to its `#id` section; scrolling activates the tab of the section
  * currently under the bar (scrollspy). Targets that don't exist yet are inert, so
@@ -86,7 +88,11 @@ export function TourDetailTabs({ tabs }: { tabs: TourTab[] }) {
                 position rather than the bar's. The baseline hairline is the
                 bar's, not the row's, or the mask would fade the rule away with
                 the tabs. */}
-            <div className='border-b border-it-divider'>
+            {/* Figma 47936:3592 rules EVERY tab with a 2px baseline at 10%
+                ink; the active one swaps that rule for deep orange. So the
+                baseline is 2px here, and the active underline overlaps it
+                exactly rather than sitting on a 1px hairline. */}
+            <div className='border-b-2 border-it-heading/10'>
             <div
                 ref={scrollRef}
                 className={`flex gap-0.5 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${edgeFadeMask(left, right)}`}>
@@ -99,10 +105,10 @@ export function TourDetailTabs({ tabs }: { tabs: TourTab[] }) {
                             onClick={() => goTo(t.id)}
                             data-tab-key={t.id}
                             aria-current={isActive ? 'true' : undefined}
-                            className={`relative -mb-px shrink-0 cursor-pointer whitespace-nowrap border-none bg-transparent px-[13px] py-3 text-[12px] leading-[1.6] transition-colors duration-(--it-duration-xs) ease-(--it-ease) ${
+                            className={`relative -mb-0.5 shrink-0 cursor-pointer whitespace-nowrap border-none bg-transparent px-4 py-3 text-[13px] leading-[1.6] transition-colors duration-(--it-duration-xs) ease-(--it-ease) lg:px-[30px] lg:py-5 lg:text-[14.5px] ${
                                 isActive
-                                    ? 'font-medium text-it-primary-hover tracking-[-0.012em]'
-                                    : 'font-medium text-it-text-muted hover:text-it-heading tracking-[-0.012em]'
+                                    ? 'font-medium text-it-heading tracking-[-0.012em]'
+                                    : 'text-it-text-muted hover:text-it-heading tracking-[-0.012em]'
                             }`}>
                             {/* One-cell grid: the invisible bold twin reserves
                                 the ACTIVE width, so the bold/semibold toggle

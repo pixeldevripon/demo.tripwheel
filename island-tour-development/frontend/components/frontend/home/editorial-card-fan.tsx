@@ -144,7 +144,7 @@ export function EditorialCardFan({
                                 {title}
                             </span>
                             {priceFrom && (
-                                <span className='mt-[3px] block text-[10px] leading-[1.2] text-it-text-muted lg:text-[11px] tracking-[-0.012em]'>
+                                <span className='mt-[3px] block text-[12px] leading-[1.2] text-it-text-muted lg:text-[12px] tracking-[-0.012em]'>
                                     {priceFrom}
                                 </span>
                             )}

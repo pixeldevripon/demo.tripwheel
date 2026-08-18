@@ -118,3 +118,34 @@ describe('TourCard — the two variants agree', () => {
         expect(readCard({})).toEqual(readCard({ rank: 1, description: 'Our pick' }));
     });
 });
+
+describe('TourCard — the hub attribute line', () => {
+    const HUB_ATTRS = ['8h', 'Motorboat', 'Beach house', 'Family-friendly'];
+
+    it('renders the attributes and DROPS the duration/pickup rows', () => {
+        // The two are alternatives, not layers. The duration is already the
+        // first attribute, so rendering both would print "8h" twice and hand a
+        // hub card two competing meta blocks.
+        render(
+            <TourCard
+                tour={{ ...base, attributes: HUB_ATTRS }}
+                dict={DICT}
+            />,
+        );
+        for (const attr of HUB_ATTRS) {
+            expect(screen.getByText(attr)).toBeInTheDocument();
+        }
+        expect(screen.queryByText('Pickup available')).not.toBeInTheDocument();
+    });
+
+    it('keeps the standard rows when no attributes are supplied', () => {
+        // Every non-hub surface passes none, and must be untouched by this.
+        render(<TourCard tour={base} dict={DICT} />);
+        expect(screen.getByText('Pickup available')).toBeInTheDocument();
+    });
+
+    it('treats an empty list as "no attributes", not as an empty line', () => {
+        render(<TourCard tour={{ ...base, attributes: [] }} dict={DICT} />);
+        expect(screen.getByText('Pickup available')).toBeInTheDocument();
+    });
+});

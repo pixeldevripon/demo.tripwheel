@@ -9,7 +9,6 @@ import {
     type ThankYouBooking,
 } from '@/lib/thank-you/thank-you';
 import Image from 'next/image';
-import { Fragment } from 'react';
 import { BookingRefPill } from './booking-ref-pill';
 import { renderTemplate } from './render-template';
 import { AddToCalendar, ResendEmailLine } from './thank-you-hero-actions';
@@ -32,72 +31,57 @@ export function ThankYouHero({
     booking: ThankYouBooking;
     dict: ThankYouDict;
 }) {
-    // Operator · meeting point · party - each only when the payload carries it.
-    const metaItems = [
-        booking.operatorName,
-        booking.pickupLabel,
-        booking.partyLabel,
-    ].filter(Boolean);
-
     return (
-        <section className='bg-it-white pt-10 pb-9 md:pt-14 md:pb-11'>
-            <div className='it-wrap flex flex-col items-center text-center'>
+        <section className='bg-it-white pt-12 pb-14 md:pt-[85px] md:pb-[116px]'>
+            <div className='it-container flex flex-col items-center text-center'>
                 <MountReveal className='flex w-full flex-col items-center'>
                     <MotionSpan
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
                         transition={{ ...springPop, delay: 0.15 }}
-                        className='mb-[18px] inline-flex shrink-0'>
+                        className='inline-flex shrink-0'>
+                        {/* Figma 47745:10764: a 56px green check. The brand
+                            palm used to sit here - but this page's whole job in
+                            its first half-second is to say "it worked", and a
+                            logo says who we are, not that anything succeeded. */}
                         <Image
-                            src='/logo/it-palm-orange.svg'
+                            src='/icons/typ/check.svg'
                             alt=''
-                            width={33}
-                            height={44}
-                            className='h-11 w-auto'
+                            width={56}
+                            height={56}
+                            className='size-11 md:size-12'
                         />
                     </MotionSpan>
-                    <h1 className='m-0 text-[27.5px] md:text-[37px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                    <h1 className='m-0 mt-8 it-h1 leading-[1.2] text-balance text-it-heading font-medium '>
                         {dict.title.replace('{name}', booking.guestFirstName)}
                     </h1>
-                    <p className='m-0 mt-3 text-[15px] leading-[1.6] text-it-heading tracking-[-0.012em]'>
+                    {/* The emphasised words are MEDIUM INK at the same size as
+                        the sentence around them (Figma 47745:10748).
+
+                        They were `text-[12px] text-it-heading/70` - two thirds
+                        the size of the muted text they sat inside, and lighter
+                        than it. The tour name, the date and the time - the three
+                        facts this page exists to confirm - were rendered as the
+                        least readable thing in the sentence. */}
+                    <p className='m-0 mt-1 it-text text-it-text-muted '>
                         {renderTemplate(dict.subtitle, {
                             tour: (
-                                <b className='tracking-[-0.012em] text-it-heading/70 text-[10px]'>
+                                <b className='font-medium tracking-[-0.012em] text-it-heading'>
                                     {booking.tourTitle}
                                 </b>
                             ),
                             date: (
-                                <b className='tracking-[-0.012em] text-it-heading/70 text-[10px]'>
+                                <b className='font-medium tracking-[-0.012em] text-it-heading'>
                                     {booking.dateLabel}
                                 </b>
                             ),
                             time: (
-                                <b className='tracking-[-0.012em] text-it-heading/70 text-[10px]'>
+                                <b className='font-medium tracking-[-0.012em] text-it-heading'>
                                     {booking.startTimeLabel}
                                 </b>
                             ),
                         })}
                     </p>
-                    {metaItems.length > 0 && (
-                        <div className='mt-2.5 flex flex-wrap items-center justify-center gap-2 text-[12.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
-                            {/* Index key: a fixed-position array of
-                                independent strings, where two entries CAN
-                                coincide (operator name == party label is
-                                unlikely but legal) and nothing reorders. */}
-                            {metaItems.map((item, i) => (
-                                <Fragment key={i}>
-                                    {i > 0 && (
-                                        <span
-                                            aria-hidden='true'
-                                            className='text-it-text-muted tracking-[-0.012em]'>
-                                            ·
-                                        </span>
-                                    )}
-                                    <span>{item}</span>
-                                </Fragment>
-                            ))}
-                        </div>
-                    )}
                     {/* Only for a viewer who proved they own this booking. The
                         reference is what support identifies a traveller by, so
                         the masked (shared-link) view does not carry it - and
@@ -106,14 +90,14 @@ export function ThankYouHero({
                         <BookingRefPill
                             displayRef={booking.displayRef}
                             dict={dict}
-                            className='mt-5'
+                            className='mt-8'
                         />
                     )}
                 </MountReveal>
                 <MountReveal
                     delay={0.15}
                     className='flex flex-col items-center'>
-                    <div className='mt-5'>
+                    <div className='mt-14'>
                         <AddToCalendar
                             googleUrl={buildCalendarUrl(booking)}
                             outlookUrl={buildOutlookCalendarUrl(booking)}
@@ -127,11 +111,11 @@ export function ThankYouHero({
                             }}
                         />
                     </div>
-                    <div className='mt-[18px] flex flex-col items-center text-center text-[12px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                    <div className='mt-8 flex flex-col items-center text-center it-text text-it-text-muted '>
                         <p className='m-0'>
                             {renderTemplate(dict.emailSentTo, {
                                 email: (
-                                    <b className='tracking-[-0.012em] text-it-heading/70 text-[10px]'>
+                                    <b className='font-medium tracking-[-0.012em] text-it-heading'>
                                         {booking.guestEmail}
                                     </b>
                                 ),

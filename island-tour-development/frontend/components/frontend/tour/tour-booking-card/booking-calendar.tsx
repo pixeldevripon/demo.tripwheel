@@ -80,6 +80,21 @@ export function BookingCalendar() {
     const [mounted, setMounted] = useState(false);
     const [coords, setCoords] = useState<PopoverCoords | null>(null);
     useEffect(() => setMounted(true), []);
+    // ESC closes it. The popover covers the field stack, which means the
+    // trigger that opened it is UNDERNEATH the panel - so the one control that
+    // could close it was unreachable the moment it opened, and a traveller who
+    // did not want to pick a date had no way back (founder, 2026-08-18). The
+    // explicit X below is the visible half of that fix; this is the half a
+    // keyboard user expects.
+    useEffect(() => {
+        if (!calendarOpen) return;
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') toggleCalendar();
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [calendarOpen, toggleCalendar]);
+
     useEffect(() => {
         if (!calendarOpen) return;
         const update = () => {
@@ -182,7 +197,7 @@ export function BookingCalendar() {
                 // 14px semibold, icon LEFT at 17px. Blocked CTA click with no
                 // date: ring the field so the note above the button points
                 // somewhere concrete.
-                className={`flex w-full cursor-pointer items-center gap-2.5 rounded-it-sm border border-it-border bg-it-white px-[13px] py-[11px] text-left ${
+                className={`flex w-full cursor-pointer items-center gap-2.5 rounded-[16px] border border-it-border bg-it-white px-[13px] py-[11px] text-left ${
                     ctaError === 'date' ? 'ring-1 ring-it-primary' : ''
                 }`}>
                 <Image
@@ -198,7 +213,7 @@ export function BookingCalendar() {
                     loading='eager'
                 />
                 <span
-                    className={`text-[13px] font-medium leading-[1.6] ${
+                    className={`text-[14.5px] leading-[1.6] ${
                         selectedDate ? '' : 'text-it-text-muted tracking-[-0.012em]'
                     }`}>
                     {selectedDate
@@ -209,7 +224,7 @@ export function BookingCalendar() {
                     empty input and starts looking like an answer you can edit
                     (mck-15 `.wfield .chg`). Nothing to change before then. */}
                 {selectedDate && (
-                    <span className='ml-auto text-[11.5px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-2 tracking-[-0.012em]'>
+                    <span className='ml-auto text-[12px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-2 tracking-[-0.012em]'>
                         {dict.change}
                     </span>
                 )}
@@ -256,6 +271,29 @@ export function BookingCalendar() {
                                     goes TO, so a screen reader hears "July 2026,
                                     button"rather than a bare"previous" - and
                                     it needs no new copy in seven locales. */}
+                                {/* Close - its own row, right-aligned. It does
+                                    not go in the month nav below: that row is
+                                    prev / month / next with the month CENTRED
+                                    between the two chevrons, and a fourth
+                                    control in it would push the month off
+                                    centre. */}
+                                <div className='mb-1 flex justify-end'>
+                                    <motion.button
+                                        type='button'
+                                        onClick={toggleCalendar}
+                                        aria-label={dict.closeCalendar}
+                                        whileTap={{ scale: 0.9 }}
+                                        transition={springPop}
+                                        className='-mt-1 -mr-1 grid size-7 cursor-pointer place-items-center rounded-it-full border-none bg-transparent transition-colors duration-200 hover:bg-it-bg'>
+                                        <Image
+                                            src='/icons/modal-close.svg'
+                                            alt=''
+                                            width={20}
+                                            height={20}
+                                            className='size-4 shrink-0'
+                                        />
+                                    </motion.button>
+                                </div>
                                 <div className='mb-3 flex items-center justify-between gap-2'>
                                     <motion.button
                                         type='button'
@@ -313,7 +351,7 @@ export function BookingCalendar() {
                                     {weekdays.map(w => (
                                         <span
                                             key={w}
-                                            className='py-1 text-[10px] font-medium uppercase leading-[1.6] tracking-[0.06em] text-it-text-muted'>
+                                            className='py-1 text-[12px] font-medium uppercase leading-[1.6] tracking-[0.06em] text-it-text-muted'>
                                             {w}
                                         </span>
                                     ))}
@@ -452,7 +490,19 @@ export function BookingCalendar() {
                                                         // is what tells the two
                                                         // states apart at a
                                                         // glance.
-                                                        'mx-auto grid aspect-square w-full max-w-[34px] place-items-center rounded-[8px] border text-[11.5px] leading-[1.6] tabular-nums transition-colors duration-200 tracking-[-0.012em]',
+                                                        // The SIZE lives here and nowhere else. It used to sit on two
+                                                        // of the five state branches, so a plain bookable
+                                                        // day got 13/14.5 while a DISABLED, selected or
+                                                        // first-open day fell through to the base's 11.5px
+                                                        // and rendered visibly smaller than the days around
+                                                        // it (founder, 2026-08-18). Every day is one size
+                                                        // now; only fill, weight and colour vary by state.
+                                                        //
+                                                        // Same trap the note below describes for font-weight:
+                                                        // a utility on the base and another on a branch are
+                                                        // resolved by CSS source order, not by which was
+                                                        // written last. One owner per property is the fix.
+                                                        'mx-auto grid aspect-square w-full max-w-[34px] place-items-center rounded-[8px] border it-text tabular-nums transition-colors duration-200 ',
                                                         struck && 'line-through',
                                                         isToday && 'rounded-full',
                                                         // The ring on today
@@ -494,10 +544,10 @@ export function BookingCalendar() {
                                                                     // "you are
                                                                     // here" is
                                                                     // legible
-                                                                    // even at
-                                                                    // 12.5px.
-                                                                    'cursor-pointer font-medium text-it-heading hover:bg-it-bg tracking-[-0.012em] text-[13px] md:text-[14.5px]'
-                                                                  : 'cursor-pointer font-medium text-it-heading hover:bg-it-bg tracking-[-0.012em] text-[13px] md:text-[14.5px]',
+                                                                    // at any
+                                                                    // size.
+                                                                    'cursor-pointer font-medium text-it-heading hover:bg-it-bg tracking-[-0.012em]'
+                                                                  : 'cursor-pointer font-medium text-it-heading hover:bg-it-bg tracking-[-0.012em]',
                                                     ]
                                                         .filter(Boolean)
                                                         .join(' ')}>
@@ -538,7 +588,7 @@ export function BookingCalendar() {
                                                                     // pointing
                                                                     // at its own
                                                                     // date.
-                                                                    className='relative block origin-bottom whitespace-nowrap rounded-[6px] bg-it-dark px-2 py-[3px] text-[10.5px] font-bold leading-[1.6] text-it-white after:absolute after:left-1/2 after:top-full after:-ml-1 after:border-x-4 after:border-t-4 after:border-x-transparent after:border-t-it-dark after:content-[""]'>
+                                                                    className='relative block origin-bottom whitespace-nowrap rounded-[6px] bg-it-dark px-2 py-[3px] text-[12px] font-bold leading-[1.6] text-it-white after:absolute after:left-1/2 after:top-full after:-ml-1 after:border-x-4 after:border-t-4 after:border-x-transparent after:border-t-it-dark after:content-[""]'>
                                                                     {hint}
                                                                 </motion.span>
                                                             </div>

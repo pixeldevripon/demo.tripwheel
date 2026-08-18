@@ -20,7 +20,7 @@ export const CANCEL_CARD_TITLE =
     'font-normal text-[18px] leading-[1.4] tracking-[-0.012em] text-it-heading';
 
 export const CANCEL_CARD_BODY =
-    'mt-2.5 mb-0 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted';
+    'mt-2.5 mb-0 text-[13px] leading-[1.6] tracking-[-0.012em] text-it-text-muted';
 
 /** Filled CTA - used only where the action moves the traveller forward. */
 export const CANCEL_CARD_CTA_PRIMARY =

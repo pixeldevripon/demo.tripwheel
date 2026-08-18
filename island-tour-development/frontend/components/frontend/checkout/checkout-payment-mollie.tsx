@@ -239,7 +239,7 @@ export function CheckoutPaymentMollie({
                         e.preventDefault();
                         void handlePay();
                     }}>
-                    <span className='mt-0.5 mb-2.5 text-[12.5px] font-medium leading-[1.5] text-it-heading tracking-[-0.012em]'>
+                    <span className='mt-0.5 mb-2.5 text-[13px] font-medium leading-[1.5] text-it-heading tracking-[-0.012em]'>
                         {dict.selectPaymentMethod}
                     </span>
                     <SecureCheckoutRow psp='Mollie' dict={dict} />
@@ -283,7 +283,7 @@ export function CheckoutPaymentMollie({
                     {/* Test-mode aid (operator-facing, never rendered on a live
                         key - so deliberately not in the 7-locale dictionaries). */}
                     {testmode && cardState === 'ready' && (
-                        <p className='pt-1.5 text-[11.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                        <p className='pt-1.5 text-[13px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                             Test mode - use card 4543 4740 0224 9996 (Visa) or
                             2223 0000 1047 9399 (Mastercard), any future expiry,
                             any CVV, any name.
@@ -299,7 +299,7 @@ export function CheckoutPaymentMollie({
                         <span className='text-[13px] font-medium leading-[1.5] text-it-heading tracking-[-0.012em]'>
                             {dict.hostedCheckoutTitle}
                         </span>
-                        <span className='text-[11.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                        <span className='text-[13px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                             {dict.redirectNote}
                         </span>
                     </div>

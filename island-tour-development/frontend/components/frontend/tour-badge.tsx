@@ -73,11 +73,11 @@ export function TourBadgeChip({
               // flex default (min-width: auto), so the chip can never be
               // squeezed narrower than its longest word and pushed into
               // overflow. It shrinks to that floor, then grows downward.
-              'px-[7px] py-[3px] text-[10px] @[220px]:px-[9px] @[220px]:py-1 @[220px]:text-[11.5px] tracking-[-0.012em] font-normal'
+              'px-[7px] py-[3px] text-[12px] @[220px]:px-[9px] @[220px]:py-1 @[220px]:text-[12px] tracking-[-0.012em] font-normal'
             : // Dense UIs (dashboard) size to content already. `min-h-5` rather
               // than a fixed `h-5` so a wrapped label grows the chip instead of
               // spilling out of it.
-              'min-h-5 shrink-0 px-2.5 text-[11px] tracking-[-0.012em]';
+              'min-h-5 shrink-0 px-2.5 text-[12px] tracking-[-0.012em]';
     return (
         <span
             className={[

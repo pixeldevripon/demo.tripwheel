@@ -138,7 +138,7 @@ export function SavedEmptyState({
 
             {island && island.favourites.length > 0 && (
                 <section className='mt-10'>
-                    <h2 className='m-0 font-it-display text-[19.5px] leading-[1.2] text-it-heading font-medium tracking-[-0.012em]'>
+                    <h2 className='m-0 font-it-display text-[18px] leading-[1.2] text-it-heading font-medium tracking-[-0.012em]'>
                         {island.curated
                             ? dict.favouritesTitle
                             : dict.popularTitle.replace(
@@ -146,7 +146,7 @@ export function SavedEmptyState({
                                   island.name
                               )}
                     </h2>
-                    <p className='m-0 mb-4 mt-[5px] text-[12.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                    <p className='m-0 mb-4 mt-[5px] text-[12px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                         {dict.favouritesHint}
                     </p>
                     {/* Three across, not the sitewide four (mockup `.g3`):

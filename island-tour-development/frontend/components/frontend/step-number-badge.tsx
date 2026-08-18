@@ -20,16 +20,30 @@ import { cn } from '@/lib/utils';
 export function StepNumberBadge({
     step,
     className,
+    variant = 'subtle',
 }: {
     /** 1-based step number, as displayed. */
     step: number;
     /** Positioning only - the disc's own chrome is fixed. */
     className?: string;
+    /**
+     * `subtle` - 30px peach disc with orange numeral (the policy modal).
+     * `solid`  - 40px deep-orange disc with a white numeral, per Figma
+     *            47936:3716, used by the "What to Expect" timeline.
+     *
+     * Two variants rather than one restyle: the tour node specifies the solid
+     * disc, but the policy modal is not in that node and its steps are a quiet
+     * aside, not the spine of a section.
+     */
+    variant?: 'subtle' | 'solid';
 }) {
     return (
         <span
             className={cn(
-                'grid size-[30px] shrink-0 place-items-center rounded-it-full bg-it-primary-subtle text-[12px] font-medium text-it-primary-hover tabular-nums tracking-[-0.012em]',
+                'grid shrink-0 place-items-center rounded-it-full tabular-nums tracking-[-0.012em]',
+                variant === 'solid'
+                    ? 'size-9 bg-it-primary it-text font-medium leading-[1.4] text-it-white lg:size-10 '
+                    : 'size-[30px] bg-it-primary-subtle text-[12px] font-medium text-it-primary-hover',
                 className
             )}>
             {step}

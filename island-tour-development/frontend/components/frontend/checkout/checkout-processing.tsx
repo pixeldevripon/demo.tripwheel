@@ -194,7 +194,7 @@ export function CheckoutProcessing({
                 className='flex max-w-md flex-col items-center gap-6 text-center'>
                 <span className='size-12 shrink-0 animate-spin rounded-full border-4 border-it-border border-t-it-primary' />
                 <div className='flex flex-col gap-2'>
-                    <h1 className='font-medium text-[21px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
+                    <h1 className='font-medium text-[20px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
                         {dict.title}
                     </h1>
                     <p className='text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-heading/60'>

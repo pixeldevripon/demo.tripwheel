@@ -66,9 +66,18 @@ export function HubPickCard({
     const [expanded, setExpanded] = useState(false);
 
     return (
-        <article className='group grid items-center gap-4 rounded-it-lg border border-it-divider bg-it-white p-4 shadow-it-sm md:grid-cols-[1fr_340px] md:gap-7 md:px-7 md:py-[26px]'>
+        // The card pads NOTHING, at any width. The photo runs to the card's own
+        // edges and its radius clips the corners (`overflow-hidden`); all the
+        // padding lives on the CONTENT column, so the two halves meet flush.
+        //
+        // Both halves changed together (founder, 2026-08-18). The photo was a
+        // fixed 340px column inset inside the card's own `p-4`/`px-7`, which
+        // left a white margin on all four sides of it - a picture pinned to a
+        // page rather than the card's own face. It is now an even 50/50 split
+        // that bleeds to the edge: `grid-cols-2`, no gap, no card padding.
+        <article className='group grid items-stretch overflow-hidden rounded-it-lg border border-it-divider bg-it-white shadow-it-sm max-md:gap-0 md:grid-cols-2 md:gap-0'>
             {/* Content */}
-            <div className='flex min-w-0 flex-col gap-4 max-md:order-2'>
+            <div className='flex min-w-0 flex-col gap-4 max-md:order-2 max-md:p-4 md:px-7 md:py-[26px]'>
                 <div className='flex flex-col gap-3 md:gap-6'>
                     {/* Label */}
                     <div className='flex items-center gap-2'>
@@ -77,9 +86,9 @@ export function HubPickCard({
                             alt=''
                             width={24}
                             height={24}
-                            className='size-6 shrink-0'
+                            className='size-3 sm:size-5 shrink-0'
                         />
-                        <span className='text-[14.5px] text-[#858585] uppercase tracking-[-0.012em] leading-[1.6]'>
+                        <span className='text-[12px] sm:text-[12px] text-[#858585] uppercase tracking-[-0.012em] leading-[1.6]'>
                             {pick.labelText}
                         </span>
                     </div>
@@ -87,7 +96,7 @@ export function HubPickCard({
                     <div className='flex flex-col gap-3 md:gap-5'>
                         {/* Title + rating */}
                         <div className='flex flex-col gap-0.5'>
-                            <h3 className='m-0 text-[24px] md:text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                            <h3 className='m-0 text-[14.5px] sm:text-[20px]  leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                                 {pick.title}
                             </h3>
                             <div className='flex items-center gap-4'>
@@ -123,7 +132,7 @@ export function HubPickCard({
                                 className={`m-0 max-w-[560px] text-[13px] leading-[1.65] text-it-text-muted ${
                                     expanded
                                         ? ''
-                                        : 'line-clamp-3 md:line-clamp-none tracking-[-0.012em] leading-[1.6] text-[13px] md:text-[14.5px]'
+                                        : 'line-clamp-3 md:line-clamp-none tracking-[-0.012em] leading-[1.6] it-text '
                                 }`}>
                                 {pick.description}
                             </p>
@@ -134,14 +143,27 @@ export function HubPickCard({
                                 {expanded ? dict.readLess : dict.learnMore}
                             </button>
 
+                            {/* `text-it-white/70` on a white card - the duration
+                                and the word "from" rendered white on white and
+                                were invisible on every pick, which is why the
+                                line read as a stray dot in front of a price.
+                                Muted ink, matching the rating/type line above.
+
+                                The dot is drawn only when there IS a duration
+                                to separate from the price; unconditional, it
+                                was the only visible thing left on the line. */}
                             <p className='m-0 flex items-center gap-4'>
-                                <span className='text-[13px] leading-[1.6] text-it-white/70 tabular-nums tracking-[-0.012em]'>
-                                    {pick.duration}
-                                </span>
-                                <span className='size-[3px] shrink-0 rounded-full bg-it-ink-muted' />
-                                <span className='text-[13px] leading-[1.6] text-it-white/70 tabular-nums tracking-[-0.012em]'>
+                                {pick.duration && (
+                                    <>
+                                        <span className='text-[13px] leading-[1.6] text-it-heading/70 tabular-nums tracking-[-0.012em]'>
+                                            {pick.duration}
+                                        </span>
+                                        <span className='size-[3px] shrink-0 rounded-full bg-it-ink-muted' />
+                                    </>
+                                )}
+                                <span className='text-[13px] leading-[1.6] text-it-heading/70 tabular-nums tracking-[-0.012em]'>
                                     {dict.from}{' '}
-                                    <b className='text-[14px] font-medium tracking-[-0.012em] text-it-heading'>
+                                    <b className='text-[13px] font-medium tracking-[-0.012em] text-it-heading'>
                                         {pick.priceDisplay}
                                     </b>
                                     {pick.priceUnit ? ` ${pick.priceUnit}` : ''}
@@ -156,13 +178,22 @@ export function HubPickCard({
                     href={pick.href}
                     whileTap={{ scale: 0.98 }}
                     transition={springPop}
-                    className='inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-it-full border-[1.5px] border-it-primary bg-transparent px-5 py-2.5 text-[12.5px] font-medium leading-[1.6] text-it-primary-hover no-underline transition-colors duration-(--it-duration-xs) hover:bg-it-primary-subtle md:w-auto md:self-start tracking-[-0.012em]'>
+                    className='inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-it-full border-[1.5px] border-it-primary bg-transparent px-5 py-2.5 text-[12px] font-medium leading-[1.6] text-it-primary-hover no-underline transition-colors duration-(--it-duration-xs) hover:bg-it-primary-subtle md:w-auto md:self-start tracking-[-0.012em]'>
                     {dict.bookTrip}
                 </MotionLink>
             </div>
 
-            {/* Image carousel - quiet dots always, arrows on hover/focus (S4j) */}
-            <div className='relative aspect-16/10 w-full shrink-0 overflow-hidden rounded-it-md bg-it-bg max-md:order-1'>
+            {/* Image carousel - quiet dots always, arrows on hover/focus (S4j).
+                From md it fills its HALF of the card top to bottom: the row is
+                `stretch` and the aspect ratio is dropped, so the photo tracks
+                whatever height the copy sets. It used to be a fixed 16/10 box
+                centred in its cell, which left a white band above and below it
+                that grew with the description - and made two picks in the same
+                list draw two different-sized photos. Below md the card is
+                stacked, the photo leads, and the ratio is what gives it a
+                height at all. `min-h` guards the short-copy case, where the
+                content column alone would not give the row enough height. */}
+            <div className='relative aspect-16/10 w-full shrink-0 overflow-hidden rounded-none bg-it-bg max-md:order-1 md:aspect-auto md:min-h-[212px]'>
                 <TourCardCarousel
                     images={pick.images}
                     alt={pick.title}

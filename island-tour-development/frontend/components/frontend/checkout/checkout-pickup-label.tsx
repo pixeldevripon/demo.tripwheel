@@ -141,7 +141,7 @@ export function CheckoutSummaryTotals({
                     <div className='h-px w-full bg-it-divider' />
                 </>
             )}
-            <div className={`${row} text-[14px] font-bold`}>
+            <div className={`${row} text-[14.5px] font-bold`}>
                 <span>{labels.total}</span>
                 <span className='tabular-nums'>{money(t.total)}</span>
             </div>

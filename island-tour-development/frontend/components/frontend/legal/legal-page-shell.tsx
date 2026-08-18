@@ -31,7 +31,7 @@ export function LegalPageShell({
         <div className='it-container pt-10 pb-20 md:pt-14 md:pb-28'>
             {/* Design v2: the same 880px reading measure as the thank-you page. */}
             <article className='mx-auto max-w-[880px]'>
-                <h1 className='m-0 text-[27.5px] md:text-[37px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                <h1 className='m-0 text-[26px] md:text-[38px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                     {title}
                 </h1>
 

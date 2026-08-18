@@ -87,14 +87,14 @@ export function TravellerBookingPanel({
                 <div className='mb-4 flex items-center gap-2.5 border-b border-it-heading/10 pb-4'>
                     <Link
                         href={manageHref}
-                        className='inline-flex items-center gap-2 text-[12.5px] font-medium text-it-heading/70 no-underline transition-colors hover:text-it-heading tracking-[-0.012em]'>
+                        className='inline-flex items-center gap-2 text-[12px] font-medium text-it-heading/70 no-underline transition-colors hover:text-it-heading tracking-[-0.012em]'>
                         <SquareArrowOutUpRight
                             className='size-4'
                             strokeWidth={2}
                         />
                         {dict.openBookingPage}
                     </Link>
-                    <span className='inline-flex items-center gap-1.5 rounded-full border border-it-green/25 bg-it-green-subtle px-2.5 py-0.5 text-[11.5px] font-medium text-it-green tracking-[-0.012em]'>
+                    <span className='inline-flex items-center gap-1.5 rounded-full border border-it-green/25 bg-it-green-subtle px-2.5 py-0.5 text-[12px] font-medium text-it-green tracking-[-0.012em]'>
                         <span
                             aria-hidden
                             className='size-1.5 rounded-full bg-it-green'
@@ -206,7 +206,7 @@ export function TravellerBookingPanel({
             {/* Support row (5.8): operator first, WhatsApp fallback - active
                 bookings only. */}
             {active && (booking.operator.name || whatsappHref) && (
-                <div className='mt-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 text-[12.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                <div className='mt-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 text-[12px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                     {booking.operator.name && (
                         <span>
                             {dict.supportTourQ}{' '}
@@ -265,12 +265,12 @@ export function TravellerBookingPanel({
                         </QuietLink>
                     )}
                     {booking.review.reviewed && (
-                        <span className='text-[12.5px] text-it-text-muted tracking-[-0.012em]'>
+                        <span className='text-[12px] text-it-text-muted tracking-[-0.012em]'>
                             {dict.reviewed}
                         </span>
                     )}
                 </span>
-                <span className='font-mono text-[11.5px] text-it-text-muted tracking-[-0.012em]'>
+                <span className='font-mono text-[12px] text-it-text-muted tracking-[-0.012em]'>
                     {booking.displayRef}
                 </span>
             </div>
@@ -336,7 +336,7 @@ function QuietLink({ href, children }: { href: string; children: ReactNode }) {
     return (
         <Link
             href={href}
-            className='inline-flex items-center gap-1 text-[12.5px] font-medium text-it-primary no-underline transition-opacity hover:opacity-80 tracking-[-0.012em]'>
+            className='inline-flex items-center gap-1 text-[12px] font-medium text-it-primary no-underline transition-opacity hover:opacity-80 tracking-[-0.012em]'>
             {children}
             <ArrowUpRight className='size-3.5' strokeWidth={2} />
         </Link>

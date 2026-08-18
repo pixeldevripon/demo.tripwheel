@@ -222,14 +222,14 @@ export async function TourDetailContent({
     const quickInfo: { icon: string; title: string; sub: string }[] = [];
     if (durationLabel) {
         quickInfo.push({
-            icon: '/icons/qi-clock.svg',
+            icon: '/icons/tour/clock.svg',
             title: durationLabel,
             sub: qiDict.durationSub,
         });
     }
     if (detail.pickupModel !== 'NONE') {
         quickInfo.push({
-            icon: '/icons/qi-car.svg',
+            icon: '/icons/tour/car.svg',
             title: dict.destination.listings.pickupAvailable,
             sub:
                 detail.pickupModel === 'INCLUDED'
@@ -246,7 +246,7 @@ export async function TourDetailContent({
             })
             .join(', ');
         quickInfo.push({
-            icon: '/icons/qi-globe.svg',
+            icon: '/icons/tour/global.svg',
             title: names,
             sub: qiDict.languagesSub,
         });
@@ -384,14 +384,14 @@ export async function TourDetailContent({
         /\{hours\}/g,
         String(detail.cancellationHours)
     );
-    // The locked policy copy renders as separate paragraphs in the .cancelbox;
-    // the "Plans change. No problem." lead opens the first paragraph (mockup
-    // renders them as one line).
+    // The locked policy copy renders as separate paragraphs. Figma 47936:3799
+    // gives the "Plans change. No problem." lead its OWN medium line above
+    // them; it used to be glued to the front of paragraph one, which buried a
+    // reassurance the whole section exists to make.
     const cancellationParagraphs = cancellationBody
         .split(/\n+/)
         .map(para => para.trim())
-        .filter(Boolean)
-        .map((para, i) => (i === 0 ? `${cancelDict.title} ${para}` : para));
+        .filter(Boolean);
 
     // Reviews aggregate + histogram come off the tour payload (same source as the
     // header rating); the individual cards stream in a separate boundary from the
@@ -541,31 +541,37 @@ export async function TourDetailContent({
                                     />
                                 }
                             />
+                            {/* Facts strip (Figma 47936:3486). Three plain
+                                icon + label pairs on a 40px gutter, ruled above
+                                and below - not the bordered peach-tile cards
+                                this was.
+
+                                The sub-lines went with the cards: Figma gives
+                                each fact ONE line. That drops "Included in the
+                                price" / "Pay on the day" under Pickup, which is
+                                the only one of the three that was telling the
+                                reader something the title did not. It is still
+                                on `quickInfo[].sub` if it needs to come back. */}
                             {quickInfo.length > 0 && (
-                                <div className='mt-[18px] flex flex-wrap gap-2 md:gap-3'>
-                                    {quickInfo.map(qi => (
-                                        <div
-                                            key={qi.sub}
-                                            className='flex items-center gap-[11px] rounded-it-md border border-it-divider bg-it-white px-3 py-[9px] md:px-4 md:py-[11px]'>
-                                            <span className='grid size-[34px] shrink-0 place-items-center rounded-it-sm bg-it-peach'>
+                                <div className='mt-6 flex flex-col gap-2'>
+                                    <span className='h-px w-full bg-it-divider' />
+                                    <div className='flex flex-wrap items-center gap-x-10 gap-y-1'>
+                                        {quickInfo.map(qi => (
+                                            <span
+                                                key={qi.title}
+                                                className='flex items-center gap-2 py-1.5 it-text text-it-heading '>
                                                 <Image
                                                     src={qi.icon}
                                                     alt=''
                                                     width={24}
                                                     height={24}
-                                                    className='size-[17px]'
+                                                    className='size-4 shrink-0 lg:size-5'
                                                 />
+                                                {qi.title}
                                             </span>
-                                            <span className='flex flex-col'>
-                                                <b className='text-[12.5px] font-medium leading-[1.5] tracking-[-0.012em] text-it-heading'>
-                                                    {qi.title}
-                                                </b>
-                                                <span className='text-[11.5px] leading-[1.5] text-it-text-muted tracking-[-0.012em]'>
-                                                    {qi.sub}
-                                                </span>
-                                            </span>
-                                        </div>
-                                    ))}
+                                        ))}
+                                    </div>
+                                    <span className='h-px w-full bg-it-divider' />
                                 </div>
                             )}
                         </div>
@@ -648,7 +654,7 @@ export async function TourDetailContent({
                                     id='tour-overview'
                                     title={tourDict.sections.overview}>
                                     {overviewParagraphs.length > 0 && (
-                                        <div className='flex flex-col gap-4 text-[14.5px] leading-[1.6]'>
+                                        <div className='flex flex-col gap-4 it-text text-it-text-muted '>
                                             {overviewParagraphs.map((p, i) => (
                                                 <p key={i} className='m-0'>
                                                     {p}
@@ -656,46 +662,61 @@ export async function TourDetailContent({
                                             ))}
                                         </div>
                                     )}
-                                    {/* Merged highlights (.hl): two-column list
-                                    with the orange bullet glyph. */}
+                                    {/* Highlights. Figma 47936:3612 makes these
+                                        a real single-column `<ul>` with the
+                                        browser's own disc marker at a 24px
+                                        indent - not the two-column grid of
+                                        orange bullet glyphs this was. A list
+                                        that IS a list also reads as one to a
+                                        screen reader. */}
                                     {highlights.length > 0 && (
-                                        <div className='grid grid-cols-1 gap-x-[22px] gap-y-2 sm:grid-cols-2'>
+                                        <ul className='m-0 flex list-disc flex-col gap-0 ps-6 it-text text-it-text-muted '>
+                                            {/* `Reveal` renders a div, so the
+                                                `<li>` is the wrapper - the disc
+                                                marker belongs to the list item,
+                                                not to the animated box. */}
                                             {highlights.map((h, i) => (
-                                                <Reveal
-                                                    key={i}
-                                                    width='auto'
-                                                    listItem
-                                                    className='flex items-start gap-[9px]'>
-                                                    <span
-                                                        aria-hidden='true'
-                                                        className='font-medium text-it-primary tracking-[-0.012em]'>
-                                                        •
-                                                    </span>
-                                                    {h}
-                                                </Reveal>
+                                                <li key={i}>
+                                                    <Reveal width='auto' listItem>
+                                                        {h}
+                                                    </Reveal>
+                                                </li>
                                             ))}
-                                        </div>
+                                        </ul>
                                     )}
-                                    {/* Local tip callout (Figma node): bold headline
-                                    over a muted description. Renders when either
-                                    line is present; each line only if it exists. */}
+                                    {/* Local tip (Figma 47936:3614): a 5%-orange
+                                        panel with a 0.6px 20%-orange hairline,
+                                        24px of padding, the bulb, and two lines
+                                        in the deep rust #8B390E - the headline
+                                        at full strength, the body at 60%.
+
+                                        `mt-4` on top of the body's own gap-4 is
+                                        Figma's 32px between the copy group and
+                                        this panel.
+
+                                        The headline is sentence case at 16px,
+                                        not the 11.5px uppercase eyebrow it was:
+                                        it is a sentence the operator writes
+                                        ("Book the morning departure"), and
+                                        uppercasing an author's sentence at
+                                        11.5px made it read as a label. */}
                                     {(localTipTitle || localTipBody) && (
-                                        <div className='mt-1 flex items-start gap-[11px] rounded-it-md border border-it-peach-border bg-it-peach px-4 py-3.5 text-[12.5px] leading-[1.6] tracking-[-0.012em]'>
+                                        <div className='mt-4 flex items-start gap-2 rounded-it-md border-[0.6px] border-it-primary/20 bg-it-primary/5 p-5 lg:p-6'>
                                             <Image
-                                                src='/icons/tip-sun.svg'
+                                                src='/icons/tour/tip-bulb.svg'
                                                 alt=''
-                                                width={24}
+                                                width={17}
                                                 height={24}
-                                                className='mt-0.5 size-5 shrink-0'
+                                                className='size-4 shrink-0 lg:size-5'
                                             />
-                                            <div>
+                                            <div className='min-w-0'>
                                                 {localTipTitle && (
-                                                    <b className='mb-[3px] block text-[11.5px] font-medium uppercase tracking-[0.08em] text-it-primary-hover'>
+                                                    <b className='block it-text font-medium leading-[1.4] text-[#8b390e] '>
                                                         {localTipTitle}
                                                     </b>
                                                 )}
                                                 {localTipBody && (
-                                                    <span className=''>
+                                                    <span className='block it-text text-[#8b390e]/60 '>
                                                         {localTipBody}
                                                     </span>
                                                 )}
@@ -710,39 +731,68 @@ export async function TourDetailContent({
                                         <TourSection
                                             id='tour-included'
                                             title={tourDict.sections.included}>
-                                            <div className='grid grid-cols-1 gap-x-6 gap-y-0 sm:grid-cols-2'>
-                                                {includedItems.map(item => (
-                                                    <Reveal
-                                                        key={item.id}
-                                                        width='auto'
-                                                        listItem
-                                                        className='flex items-start gap-[9px] py-[5px] text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                                        <Image
-                                                            src='/icons/trust-check-green.svg'
-                                                            alt=''
-                                                            width={24}
-                                                            height={24}
-                                                            className='mt-[3px] size-[15px] shrink-0'
-                                                        />
-                                                        {item.label}
-                                                    </Reveal>
-                                                ))}
-                                                {excludedItems.map(item => (
-                                                    <Reveal
-                                                        key={item.id}
-                                                        width='auto'
-                                                        listItem
-                                                        className='flex items-start gap-[9px] py-[5px] text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                                        <Image
-                                                            src='/icons/x-faint.svg'
-                                                            alt=''
-                                                            width={24}
-                                                            height={24}
-                                                            className='mt-[3px] size-[15px] shrink-0'
-                                                        />
-                                                        {item.label}
-                                                    </Reveal>
-                                                ))}
+                                            {/* Figma 47936:3625: TWO columns,
+                                                not one grid - what is included
+                                                on the left, what is not (and
+                                                the paid add-ons) on the right.
+
+                                                They shared a single 2-col grid
+                                                before, which fills ROW-wise: an
+                                                included item sat beside another
+                                                included item, and the excluded
+                                                list started wherever the
+                                                included one happened to end. So
+                                                the two lists were interleaved,
+                                                and which column an item landed
+                                                in depended on how many items
+                                                came before it. */}
+                                            <div className='flex flex-col gap-6 sm:flex-row sm:justify-between sm:gap-10'>
+                                                {includedItems.length > 0 && (
+                                                    <ul className='m-0 flex list-none flex-col gap-2 p-0 sm:w-[298px] sm:shrink-0'>
+                                                        {includedItems.map(item => (
+                                                            <li key={item.id}>
+                                                                <Reveal
+                                                                    width='auto'
+                                                                    listItem
+                                                                    className='flex items-start gap-2 it-text text-it-heading '>
+                                                                    <Image
+                                                                        src='/icons/tour/inc-check.svg'
+                                                                        alt=''
+                                                                        width={19}
+                                                                        height={16}
+                                                                        className='mt-[5px] size-4 shrink-0'
+                                                                    />
+                                                                    {item.label}
+                                                                </Reveal>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                )}
+                                                {excludedItems.length > 0 && (
+                                                    <ul className='m-0 flex min-w-0 list-none flex-col gap-2 p-0 sm:flex-1'>
+                                                        {excludedItems.map(item => (
+                                                            <li key={item.id}>
+                                                                <Reveal
+                                                                    width='auto'
+                                                                    listItem
+                                                                    className='flex items-start gap-2 it-text text-it-heading '>
+                                                                    {/* Figma draws this as the
+                                                                        `add` glyph turned 45deg -
+                                                                        one file serving as both a
+                                                                        plus and a cross. */}
+                                                                    <Image
+                                                                        src='/icons/tour/inc-cross.svg'
+                                                                        alt=''
+                                                                        width={20}
+                                                                        height={20}
+                                                                        className='mt-[5px] size-4 shrink-0 rotate-45'
+                                                                    />
+                                                                    {item.label}
+                                                                </Reveal>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                )}
                                             </div>
                                         </TourSection>
                                     </>
@@ -754,7 +804,7 @@ export async function TourDetailContent({
                                             id='tour-expect'
                                             title={tourDict.sections.expect}>
                                             {expectIntro && (
-                                                <p className='m-0 max-w-172 text-[14.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                                                <p className='m-0 max-w-172 it-text text-it-text-muted '>
                                                     {expectIntro}
                                                 </p>
                                             )}
@@ -782,7 +832,7 @@ export async function TourDetailContent({
                                                                             1 && (
                                                                         <span
                                                                             aria-hidden='true'
-                                                                            className='absolute top-9 bottom-0 left-[15px] w-px -translate-x-1/2 bg-it-divider'
+                                                                            className='absolute top-10 bottom-0 left-[18px] w-px -translate-x-1/2 bg-it-divider lg:left-5'
                                                                         />
                                                                     )}
                                                                     <StepNumberBadge
@@ -790,17 +840,18 @@ export async function TourDetailContent({
                                                                             i +
                                                                             1
                                                                         }
+                                                                        variant='solid'
                                                                         // Above the connector line.
                                                                         className='relative z-10'
                                                                     />
-                                                                    <div className='flex flex-col gap-0.5'>
-                                                                        <span className='text-[14.5px] font-medium leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                                                    <div className='flex flex-col gap-1'>
+                                                                        <span className='it-text font-medium leading-[1.4] text-it-heading '>
                                                                             {
                                                                                 step.title
                                                                             }
                                                                         </span>
                                                                         {step.detail && (
-                                                                            <span className='text-[14.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                                                                            <span className='it-text text-it-text-muted '>
                                                                                 {
                                                                                     step.detail
                                                                                 }
@@ -837,25 +888,33 @@ export async function TourDetailContent({
                                         <TourSection
                                             id='tour-info'
                                             title={tourDict.sections.info}>
-                                            <div className='flex flex-col gap-[18px]'>
+                                            {/* Figma 47936:3783: a 16px medium
+                                                title over a plain disc list at
+                                                16px muted, groups 24px apart.
+
+                                                The hand-drawn 5px bullets are
+                                                gone, and with them `group.warn`
+                                                - the amber dot that marked the
+                                                "not suitable for" group. Figma
+                                                gives all three groups the same
+                                                marker and lets the HEADING carry
+                                                the warning. The flag is still on
+                                                `infoGroups[].warn` if that
+                                                distinction is wanted back. */}
+                                            <div className='flex flex-col gap-6'>
                                                 {infoGroups.map(group => (
                                                     <Reveal
                                                         key={group.title}
                                                         listItem
-                                                        className='flex flex-col gap-1.5'>
-                                                        <h3 className='m-0 text-[14.5px] leading-[1.6] text-it-heading font-medium tracking-[-0.012em]'>
+                                                        className='flex flex-col gap-2'>
+                                                        <h3 className='m-0 it-text font-medium text-it-heading '>
                                                             {group.title}
                                                         </h3>
-                                                        <ul className='m-0 mt-1 list-none p-0'>
+                                                        <ul className='m-0 list-disc ps-6 it-text text-it-text-muted '>
                                                             {group.items.map(
                                                                 (item, i) => (
                                                                     <li
-                                                                        key={`${group.title}-${i}`}
-                                                                        className='relative py-[5px] pl-[22px]'>
-                                                                        <span
-                                                                            aria-hidden='true'
-                                                                            className={`absolute top-[13px] left-1 size-[5px] rounded-it-full ${group.warn ? 'bg-it-star' : 'bg-it-ink-muted'}`}
-                                                                        />
+                                                                        key={`${group.title}-${i}`}>
                                                                         {item}
                                                                     </li>
                                                                 )
@@ -871,17 +930,61 @@ export async function TourDetailContent({
                                 <TourSection
                                     id='tour-cancellation'
                                     title={tourDict.sections.cancellation}>
-                                    <div className='flex flex-col gap-2.5 rounded-it-md border border-it-divider bg-it-white px-5 py-[18px]'>
+                                    {/* Figma 47936:3794: no card. The bordered
+                                        white box is gone - the policy reads as
+                                        the page's own copy, like every other
+                                        section, rather than as a quoted notice. */}
+                                    <div className='flex flex-col gap-2'>
+                                        <p className='m-0 it-text font-medium text-it-heading '>
+                                            {cancelDict.title}
+                                        </p>
                                         {cancellationParagraphs.map(
                                             (para, i) => (
                                                 <p
                                                     key={i}
-                                                    className='m-0 text-[13.5px] leading-[1.7]'>
+                                                    className='m-0 it-text text-it-text-muted '>
                                                     {para}
                                                 </p>
                                             )
                                         )}
                                     </div>
+                                    {/* LD14 supplied-by tail - Figma sets it at
+                                        the RIGHT edge of this section, not adrift
+                                        at the bottom of the whole column where it
+                                        used to sit: it is the cancellation's
+                                        counterparty, so it belongs to this
+                                        section.
+
+                                        The MCK-20 disclosure link rides with it
+                                        for a tour gated on the operator's
+                                        conditions DOCUMENT - disclose on the tour
+                                        page, gate once at checkout. */}
+                                    {detail.operatorName && (
+                                        <p className='m-0 text-right it-meta text-it-text-muted '>
+                                            {cancelDict.suppliedBy}{' '}
+                                            <span className='font-medium text-it-heading lg:text-[14.5px]'>
+                                                {detail.operatorName}
+                                            </span>
+                                            {detail.operatorTerms?.kind ===
+                                                'DOCUMENT' &&
+                                                detail.operatorSlug && (
+                                                    <>
+                                                        {' · '}
+                                                        <Link
+                                                            href={localizeHref(
+                                                                locale,
+                                                                `/operators/${detail.operatorSlug}/conditions`
+                                                            )}
+                                                            scroll={false}
+                                                            className='font-medium text-it-text-muted underline underline-offset-2 tracking-[-0.012em]'>
+                                                            {
+                                                                cancelDict.operatorConditionsApply
+                                                            }
+                                                        </Link>
+                                                    </>
+                                                )}
+                                        </p>
+                                    )}
                                 </TourSection>
 
                                 {/* Full reviews section - streams from the reviews
@@ -934,37 +1037,6 @@ export async function TourDetailContent({
                                     </>
                                 )}
 
-                                {/* LD14 supplied-by tail line - and, for a
-                                    tour gated on the operator's conditions
-                                    DOCUMENT, the MCK-20 disclosure link:
-                                    disclose on the tour page, gate once at
-                                    checkout. The link is the canonical
-                                    conditions URL; in-app it opens as the
-                                    intercepted overlay. */}
-                                {detail.operatorName && (
-                                    <p className='m-0 text-[11.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
-                                        {cancelDict.suppliedBy}{' '}
-                                        {detail.operatorName}
-                                        {detail.operatorTerms?.kind ===
-                                            'DOCUMENT' &&
-                                            detail.operatorSlug && (
-                                                <>
-                                                    {' · '}
-                                                    <Link
-                                                        href={localizeHref(
-                                                            locale,
-                                                            `/operators/${detail.operatorSlug}/conditions`
-                                                        )}
-                                                        scroll={false}
-                                                        className='font-medium text-it-text-muted underline underline-offset-2 tracking-[-0.012em]'>
-                                                        {
-                                                            cancelDict.operatorConditionsApply
-                                                        }
-                                                    </Link>
-                                                </>
-                                            )}
-                                    </p>
-                                )}
                             </div>
 
                             {/* Related tours (LD33) - INSIDE the detail column so

@@ -341,7 +341,7 @@ export function ToursFilterModal({
                         className='relative flex max-h-[88vh] w-full max-w-[560px] flex-col rounded-it-lg bg-it-white'>
                         {/* Header (.mhead) — never scrolls */}
                         <div className='flex shrink-0 items-center justify-between border-b border-it-divider px-6 py-[18px]'>
-                            <h2 className='m-0 font-it-display text-[17px] leading-[1.2] text-it-heading font-medium tracking-[-0.012em]'>
+                            <h2 className='m-0 font-it-display text-[18px] leading-[1.2] text-it-heading font-medium tracking-[-0.012em]'>
                                 {dict.title}
                             </h2>
                             <motion.button
@@ -350,7 +350,7 @@ export function ToursFilterModal({
                                 onClick={onClose}
                                 whileTap={{ scale: 0.9 }}
                                 transition={springPop}
-                                className='grid size-[34px] shrink-0 cursor-pointer place-items-center rounded-full border-none bg-it-bg text-[14px] leading-none text-it-text-muted tracking-[-0.012em]'>
+                                className='grid size-[34px] shrink-0 cursor-pointer place-items-center rounded-full border-none bg-it-bg text-[13px] leading-none text-it-text-muted tracking-[-0.012em]'>
                                 ✕
                             </motion.button>
                         </div>
@@ -521,7 +521,7 @@ export function ToursFilterModal({
                                 }
                                 whileTap={{ scale: 0.97 }}
                                 transition={springPop}
-                                className='cursor-pointer border-none bg-transparent p-0 text-[12.5px] font-medium leading-[1.6] text-it-text-muted underline underline-offset-2 tracking-[-0.012em]'>
+                                className='cursor-pointer border-none bg-transparent p-0 text-[12px] font-medium leading-[1.6] text-it-text-muted underline underline-offset-2 tracking-[-0.012em]'>
                                 {dict.clearAll}
                             </motion.button>
                             <motion.button
@@ -529,7 +529,7 @@ export function ToursFilterModal({
                                 onClick={() => onApply(draft)}
                                 whileTap={{ scale: 0.98 }}
                                 transition={springPop}
-                                className='cursor-pointer rounded-it-sm border-none bg-it-primary px-[26px] py-3 text-[14px] font-medium leading-[1.6] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover tracking-[-0.012em]'>
+                                className='cursor-pointer rounded-it-sm border-none bg-it-primary px-[26px] py-3 text-[13px] font-medium leading-[1.6] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover tracking-[-0.012em]'>
                                 {dict.applyFilters}
                             </motion.button>
                         </div>

@@ -6,16 +6,19 @@ import en from '@/lib/i18n/dictionaries/en.json';
 import { CheckoutPayment } from './checkout-payment';
 
 /**
- * Pastel #84 · every payment method collapsed, none pre-selected.
+ * Pastel #84, as amended 2026-08-18 · every payment method stays VISIBLE.
  *
  * Card arrived expanded and its form pushed iDEAL and PayPal below the fold.
  * The client watched a test booker with no card find iDEAL only much later -
  * a conversion loss that never looked like a bug, because the page was doing
- * exactly what it was written to do.
+ * exactly what it was written to do. #84's fix was to pre-select nothing.
  *
- * These tests hold the three halves of the fix: all three rows render, none is
- * selected (so nothing is expanded and no Stripe Element is mounted), picking
- * one expands ONLY it, and pressing Pay without a choice says so instead of
+ * The founder has since restored the pre-selection, with the form moved OUT of
+ * the Card row to below the whole list. That keeps #84's actual requirement -
+ * no method is ever pushed out of sight - while the common case arrives ready
+ * to type. So these tests now hold: all rows render together, Card is the
+ * default WHEN IT IS PAYABLE (and nothing is chosen when it is not), picking
+ * one selects only it, and pressing Pay with no choice says so instead of
  * swallowing the click. The e2e spec covers the same ground against a real
  * Stripe account, but it skips wherever no PSP key is configured - which is
  * most runs - so the regression guard has to live here too.
@@ -92,37 +95,46 @@ const payButton = () =>
     screen.getByRole('button', { name: new RegExp(dict.reserve, 'i') });
 
 describe('CheckoutPayment - method selection', () => {
-    it('offers all three methods with none pre-selected', () => {
+    it('renders every method together, with Card the default', () => {
         renderPanel();
 
+        // The point of #84: no method is hidden behind another's expansion.
         for (const name of [dict.card, 'iDEAL', dict.paypal]) {
+            expect(methodRow(name)).toBeInTheDocument();
+        }
+        expect(methodRow(dict.card)).toHaveAttribute('aria-pressed', 'true');
+        for (const name of ['iDEAL', dict.paypal]) {
             expect(methodRow(name)).toHaveAttribute('aria-pressed', 'false');
         }
     });
 
-    it('mounts no card fields until Card is picked', () => {
+    it('has the card fields ready when Card is the default', () => {
         renderPanel();
-
-        // The load-bearing assertion. A row can look collapsed while its
-        // content sits in the DOM; the Elements being absent is what proves
-        // Card is not selected - and it is what fails the instant anything
-        // pre-selects a method again.
-        expect(screen.queryByTestId('stripe-card-number')).toBeNull();
-        expect(screen.queryByLabelText(/name on card/i)).toBeNull();
-
-        fireEvent.click(methodRow(dict.card));
 
         expect(screen.getByTestId('stripe-card-number')).toBeInTheDocument();
         expect(screen.getByTestId('stripe-card-expiry')).toBeInTheDocument();
         expect(screen.getByTestId('stripe-card-cvc')).toBeInTheDocument();
         expect(screen.getByLabelText(/name on card/i)).toBeInTheDocument();
-        expect(methodRow(dict.card)).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('mounts NO card fields when Card is not payable', () => {
+        // The load-bearing assertion now. Card is the default only when it is
+        // eligible; with it switched off, nothing is chosen and no Stripe
+        // Element may be created - mounting one would both mislead the
+        // traveller and start a card session on an account that cannot take it.
+        renderPanel({ eligibleMethods: ['ideal', 'paypal'] });
+
+        expect(screen.queryByTestId('stripe-card-number')).toBeNull();
+        expect(screen.queryByLabelText(/name on card/i)).toBeNull();
+        for (const name of [dict.card, 'iDEAL', dict.paypal]) {
+            expect(methodRow(name)).toHaveAttribute('aria-pressed', 'false');
+        }
     });
 
     it('selects one method at a time', () => {
         renderPanel();
 
-        fireEvent.click(methodRow(dict.card));
+        // Card is already the default, so this is a real switch away from it.
         fireEvent.click(methodRow(dict.paypal));
 
         expect(methodRow(dict.paypal)).toHaveAttribute('aria-pressed', 'true');
@@ -380,7 +392,13 @@ describe('CheckoutPayment - operator-conditions gate (Pastel 80)', () => {
 
     it('a satisfied gate falls through to the normal validation', () => {
         const onTermsUnsatisfied = vi.fn();
-        renderPanel({ termsSatisfied: true, onTermsUnsatisfied });
+        // Card off, so the gate's next stop really is "choose a method" - with
+        // Card payable it is the default and the click goes straight through.
+        renderPanel({
+            termsSatisfied: true,
+            onTermsUnsatisfied,
+            eligibleMethods: ['ideal', 'paypal'],
+        });
 
         fireEvent.click(payButton());
 
@@ -390,9 +408,36 @@ describe('CheckoutPayment - operator-conditions gate (Pastel 80)', () => {
     });
 });
 
-describe('CheckoutPayment - paying without a choice', () => {
-    it('prompts for a method instead of swallowing the click', () => {
+describe('CheckoutPayment - the default method is the one that pays', () => {
+    /**
+     * The regression that made this test exist: `activeMethod` (Card by
+     * default) drove the radio, the row tint and the card panel, while the Pay
+     * guard read the raw `method` state - which stays null until the traveller
+     * touches a row. So the page showed Card selected and then refused to pay,
+     * asking them to "select a payment method" they could see was already
+     * selected. Two names for one thing, and only one of them was checked.
+     */
+    it('reaches CARD validation, not "choose a method", on a first click', () => {
         renderPanel();
+
+        expect(methodRow(dict.card)).toHaveAttribute('aria-pressed', 'true');
+        fireEvent.click(payButton());
+
+        // The guard must not fire...
+        expect(screen.queryByText(dict.selectMethodError)).toBeNull();
+        // ...and the click must land in the CARD branch, which is proved by
+        // its own required-field check answering instead. (It stops there
+        // rather than charging because "Name on card" is empty - that part is
+        // correct and is what a real first click does.)
+        expect(screen.getByText(dict.requiredError)).toBeInTheDocument();
+    });
+});
+
+describe('CheckoutPayment - paying without a choice', () => {
+    // Reachable only with Card ineligible: Card is otherwise pre-selected, and
+    // the Pay button then has a method to work with. These render without it.
+    it('prompts for a method instead of swallowing the click', () => {
+        renderPanel({ eligibleMethods: ['ideal', 'paypal'] });
 
         fireEvent.click(payButton());
 
@@ -403,7 +448,7 @@ describe('CheckoutPayment - paying without a choice', () => {
     });
 
     it('drops the prompt as soon as a method is picked', async () => {
-        renderPanel();
+        renderPanel({ eligibleMethods: ['ideal', 'paypal'] });
 
         fireEvent.click(payButton());
         expect(screen.getByText(dict.selectMethodError)).toBeInTheDocument();

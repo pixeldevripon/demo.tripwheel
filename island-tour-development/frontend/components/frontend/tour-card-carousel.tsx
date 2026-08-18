@@ -64,8 +64,8 @@ import { springPop } from '@/lib/motion';
  */
 const INSET = 'inset-x-4 @max-[219px]:inset-x-1.5';
 const ARROW =
-    'pointer-events-auto flex size-8 @max-[219px]:size-[26px] cursor-pointer items-center justify-center rounded-full border-none bg-it-white shadow-it-sm transition-colors duration-300 hover:bg-it-white/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary';
-const ARROW_ICON = 'size-6 @max-[219px]:size-[18px]';
+    'pointer-events-auto flex size-7 @max-[219px]:size-6 cursor-pointer items-center justify-center rounded-full border-none bg-it-white shadow-it-sm transition-colors duration-300 hover:bg-it-white/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary';
+const ARROW_ICON = 'size-4 @max-[219px]:size-3.5';
 
 /** Contract cap: five PHOTOS max, whatever the backend sends. The description
  *  slide rides on top of the cap - it is information, not another photo. */
@@ -182,15 +182,15 @@ export function TourCardCarousel({
                 ))}
                 {descSlide && (
                     <div className='flex h-full w-full flex-none snap-start flex-col justify-center gap-2 overflow-hidden bg-it-peach px-[18px] pb-5 pt-11 @max-[219px]:gap-[5px] @max-[219px]:px-3.5 @max-[219px]:pb-7 @max-[219px]:pt-[34px]'>
-                        <p className='m-0 text-[14px] font-medium leading-[1.3] text-it-heading line-clamp-2 @max-[219px]:text-[12px] tracking-[-0.012em]'>
+                        <p className='m-0 text-[13px] font-medium leading-[1.3] text-it-heading line-clamp-2 @max-[219px]:text-[12px] tracking-[-0.012em]'>
                             {descSlide.title}
                         </p>
-                        <p className='m-0 text-[12px] leading-[1.5] text-it-text-muted line-clamp-3 @max-[219px]:text-[11.5px] @max-[219px]:leading-[1.45] tracking-[-0.012em]'>
+                        <p className='m-0 text-[12px] leading-[1.5] text-it-text-muted line-clamp-3 @max-[219px]:text-[12px] @max-[219px]:leading-[1.45] tracking-[-0.012em]'>
                             {descSlide.description}
                         </p>
                         {/* Deliberately NOT an anchor: the card itself is the
                             one link (S4j #5), this line just says where it goes. */}
-                        <p className='m-0 text-[11.5px] font-medium text-it-primary-hover @max-[219px]:text-[10.5px] tracking-[-0.012em]'>
+                        <p className='m-0 text-[12px] font-medium text-it-primary-hover @max-[219px]:text-[12px] tracking-[-0.012em]'>
                             {descSlide.linkLabel}
                         </p>
                     </div>

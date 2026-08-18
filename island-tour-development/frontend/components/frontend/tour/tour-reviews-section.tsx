@@ -14,6 +14,8 @@ import { toFullReview } from '@/lib/reviews/review-view';
 import type { ReviewFacet, ReviewSort, ThemeFacet } from '@/types/review';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
+
+import { ReviewStars } from '../review-stars';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
@@ -421,7 +423,7 @@ export function TourReviewsSection({
             {/* Header + rating summary */}
             <div className='flex flex-col gap-4'>
                 <div className='flex flex-col gap-2'>
-                    <h2 className='m-0 text-[21px] md:text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                    <h2 className='m-0 text-[20px] md:text-[26px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                         {dict.title}
                     </h2>
                     <p className='m-0 flex flex-wrap items-center gap-[7px] text-[14.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
@@ -470,19 +472,33 @@ export function TourReviewsSection({
                     ) : (
                         // Only reachable with `source === 'tour'`, which LD11
                         // guarantees means >= 3 reviews and a real rating.
-                        <div className='flex flex-col'>
-                            <div className='m-0 font-it-display text-[35px] font-medium leading-none tracking-[-0.012em] text-it-heading'>
-                                <span className='align-[6px] text-[22.5px] text-it-star tracking-[-0.012em]'>
-                                    ★
-                                </span>{' '}
-                                {rating.toFixed(1)}
-                            </div>
-                            <div className='mt-1 text-[11.5px] leading-[1.6] text-it-text-muted tabular-nums tracking-[-0.012em]'>
+                        // Figma 47936:3808 puts the aggregate on ONE line -
+                        // star, score, dot, count - instead of a 35px display
+                        // numeral stacked over its own caption. The big numeral
+                        // competed with the section heading directly above it.
+                        <div className='flex flex-wrap items-center gap-x-4 gap-y-1 it-text text-it-heading '>
+                            <span className='flex items-center gap-1'>
+                                <Image
+                                    src='/icons/tour/star.svg'
+                                    alt=''
+                                    width={20}
+                                    height={19}
+                                    className='size-4 shrink-0 lg:size-4'
+                                />
+                                <span className='font-medium leading-[1.4] tabular-nums'>
+                                    {rating.toFixed(1)}
+                                </span>
+                            </span>
+                            <span
+                                aria-hidden='true'
+                                className='size-1 shrink-0 rounded-full bg-it-heading/20'
+                            />
+                            <span className='tabular-nums'>
                                 {dict.reviewsCount.replace(
                                     '{count}',
                                     String(reviewCount)
                                 )}
-                            </div>
+                            </span>
                         </div>
                     )}
 
@@ -492,7 +508,7 @@ export function TourReviewsSection({
                         latter can be the operator's, which would scale every bar
                         against the wrong total. */}
                     {showChart && (
-                        <div className='flex max-w-91 flex-col gap-[5px]'>
+                        <div className='flex max-w-[363px] flex-col gap-1'>
                             {histogram.map(row => {
                                 const active = starFilter === row.stars;
                                 return (
@@ -510,22 +526,38 @@ export function TourReviewsSection({
                                         className={`flex cursor-pointer items-center gap-3 rounded-it-full px-2 py-0.5 text-left transition-colors hover:bg-it-surface disabled:cursor-default disabled:opacity-60 disabled:hover:bg-transparent ${
                                             active ? 'bg-it-surface' : ''
                                         }`}>
-                                        <span className='w-[46px] shrink-0 text-left text-[11.5px] leading-[1.6] text-it-text-muted tabular-nums tracking-[-0.012em]'>
-                                            {starLabel(row.stars)}
+                                        {/* Figma 47936:3818: the numeral and a
+                                            16px star, not the spelled-out
+                                            "5 stars" label. `starLabel` still
+                                            supplies the ACCESSIBLE name on the
+                                            button above, so a screen reader
+                                            hears "5 stars" while the eye reads
+                                            the glyph. */}
+                                        <span
+                                            aria-hidden='true'
+                                            className='flex w-[37px] shrink-0 items-center gap-2 it-text tabular-nums text-it-heading '>
+                                            {row.stars}
+                                            <Image
+                                                src='/icons/tour/star.svg'
+                                                alt=''
+                                                width={16}
+                                                height={15}
+                                                className='size-4 shrink-0'
+                                            />
                                         </span>
-                                        <span className='relative h-[7px] flex-1 overflow-hidden rounded-it-full bg-it-divider'>
+                                        <span className='relative h-2 flex-1 overflow-hidden rounded-[30px] bg-[#dddfe3]'>
                                             <span
-                                                className={`absolute inset-y-0 left-0 rounded-it-full transition-colors ${
+                                                className={`absolute inset-y-0 left-0 rounded-[30px] transition-colors ${
                                                     active
                                                         ? 'bg-it-ink'
-                                                        : 'bg-it-star'
+                                                        : 'bg-it-primary'
                                                 }`}
                                                 style={{
                                                     width: `${ownReviewCount ? (row.count / ownReviewCount) * 100 : 0}%`,
                                                 }}
                                             />
                                         </span>
-                                        <span className='w-[26px] shrink-0 text-right text-[11.5px] leading-[1.6] text-it-text-muted tabular-nums tracking-[-0.012em]'>
+                                        <span className='w-[26px] shrink-0 text-right it-text tabular-nums text-it-heading '>
                                             {row.count}
                                         </span>
                                     </MotionButton>
@@ -581,7 +613,7 @@ export function TourReviewsSection({
                                         guest: e.target.value || null,
                                     })
                                 }
-                                className='cursor-pointer rounded-it-full border border-it-border bg-it-white px-4 py-1.5 text-[14.5px] md:text-[13px] text-it-heading disabled:cursor-default disabled:opacity-60 tracking-[-0.012em]'>
+                                className='cursor-pointer rounded-it-full border border-it-border bg-it-white px-4 py-1.5 text-[16px] md:text-[14.5px] text-it-heading disabled:cursor-default disabled:opacity-60 tracking-[-0.012em]'>
                                 <option value=''>{dict.filterAny}</option>
                                 {guestTypes.map(g => (
                                     <option key={g.value} value={g.value}>
@@ -607,7 +639,7 @@ export function TourReviewsSection({
                                         language: e.target.value || null,
                                     })
                                 }
-                                className='cursor-pointer rounded-it-full border border-it-border bg-it-white px-4 py-1.5 text-[14.5px] md:text-[13px] text-it-heading disabled:cursor-default disabled:opacity-60 tracking-[-0.012em]'>
+                                className='cursor-pointer rounded-it-full border border-it-border bg-it-white px-4 py-1.5 text-[16px] md:text-[14.5px] text-it-heading disabled:cursor-default disabled:opacity-60 tracking-[-0.012em]'>
                                 <option value=''>{dict.filterAny}</option>
                                 {languages.map(l => (
                                     <option key={l.value} value={l.value}>
@@ -705,7 +737,7 @@ export function TourReviewsSection({
                                     alt=''
                                     width={20}
                                     height={20}
-                                    className='pointer-events-none absolute top-1/2 right-4 size-5 shrink-0 -translate-y-1/2'
+                                    className='pointer-events-none absolute top-1/2 right-4 size-4 shrink-0 -translate-y-1/2'
                                 />
                             </div>
                         </div>
@@ -882,7 +914,7 @@ function ReviewCard({
                 <div className='flex items-center gap-2.5'>
                     <span
                         aria-hidden='true'
-                        className='grid size-[34px] shrink-0 place-items-center rounded-it-full bg-it-bg text-[11.5px] font-medium text-it-primary-hover tracking-[-0.012em]'>
+                        className='grid size-[34px] shrink-0 place-items-center rounded-it-full bg-it-bg text-[12px] font-medium text-it-primary-hover tracking-[-0.012em]'>
                         {review.name
                             .split(/\s+/)
                             .map(part => part[0])
@@ -892,7 +924,7 @@ function ReviewCard({
                     </span>
                     <div className='flex flex-col text-it-text-muted tracking-[-0.012em]'>
                         <span className='flex flex-wrap items-center gap-x-2'>
-                            <b className='text-[12.5px] font-medium text-it-heading tracking-[-0.012em]'>
+                            <b className='text-[12px] font-medium text-it-heading tracking-[-0.012em]'>
                                 {review.name}
                             </b>
                             {lead.slice(1).join(' · ')}
@@ -909,11 +941,7 @@ function ReviewCard({
                             )}
                         </span>
                         <span className='flex flex-wrap items-center gap-x-2'>
-                            <span
-                                aria-label={`${review.rating} / 5`}
-                                className='text-[11.5px] tracking-[1px] text-it-star'>
-                                {'★'.repeat(review.rating)}
-                            </span>
+                            <ReviewStars rating={review.rating} />
                             {/* Guest type only - the travel month is in the
                                 reviewer line above now. */}
                             {guestLabel && <span>{guestLabel}</span>}

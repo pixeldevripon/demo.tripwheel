@@ -216,10 +216,10 @@ export function TravelerLogin({
                     <MountReveal key={`${locale}:${panel}`}>
                         {panel === 'login' ? (
                             <>
-                                <h1 className='m-0 font-it-display text-[22.5px] font-medium tracking-[-0.01em] text-it-heading'>
+                                <h1 className='m-0 font-it-display text-[20px] font-medium tracking-[-0.01em] text-it-heading'>
                                     {dict.title}
                                 </h1>
-                                <p className='mb-6 mt-2 text-[13.5px] text-it-text-muted tracking-[-0.012em]'>
+                                <p className='mb-6 mt-2 text-[13px] text-it-text-muted tracking-[-0.012em]'>
                                     {dict.subtitle}
                                 </p>
 
@@ -278,7 +278,7 @@ export function TravelerLogin({
                                             }
                                             className={inputClass}
                                         />
-                                        <p className='mt-1.5 text-[11.5px] text-it-text-muted tracking-[-0.012em]'>
+                                        <p className='mt-1.5 text-[12px] text-it-text-muted tracking-[-0.012em]'>
                                             {dict.refHint}
                                         </p>
                                     </Field>
@@ -326,17 +326,17 @@ export function TravelerLogin({
                                 <button
                                     type='button'
                                     onClick={() => setPanel('login')}
-                                    className='mb-3.5 inline-flex items-center gap-1.5 text-[12.5px] font-medium text-it-text-muted transition-colors hover:text-it-heading tracking-[-0.012em]'>
+                                    className='mb-3.5 inline-flex items-center gap-1.5 text-[12px] font-medium text-it-text-muted transition-colors hover:text-it-heading tracking-[-0.012em]'>
                                     <ArrowLeft
                                         className='size-3.5'
                                         strokeWidth={1.5}
                                     />
                                     {dict.back}
                                 </button>
-                                <h1 className='m-0 font-it-display text-[22.5px] font-medium tracking-[-0.01em] text-it-heading'>
+                                <h1 className='m-0 font-it-display text-[20px] font-medium tracking-[-0.01em] text-it-heading'>
                                     {dict.lostTitle}
                                 </h1>
-                                <p className='mb-6 mt-2 text-[13.5px] text-it-text-muted tracking-[-0.012em]'>
+                                <p className='mb-6 mt-2 text-[13px] text-it-text-muted tracking-[-0.012em]'>
                                     {dict.lostSubtitle}
                                 </p>
                                 <form onSubmit={handleRecover}>
@@ -390,8 +390,8 @@ export function TravelerLogin({
             </main>
 
             {/* ── Minimal footer ───────────────────────────────────────────── */}
-            <footer className='flex flex-col items-center gap-2 px-5 pb-8.5 pt-6.5 text-[11.5px] text-it-text-muted tracking-[-0.012em]'>
-                <div className='font-it-display text-[14px] font-bold text-it-heading tracking-[-0.012em]'>
+            <footer className='flex flex-col items-center gap-2 px-5 pb-8.5 pt-6.5 text-[12px] text-it-text-muted tracking-[-0.012em]'>
+                <div className='font-it-display text-[13px] font-bold text-it-heading tracking-[-0.012em]'>
                     {dict.tagline}
                 </div>
                 <div className='flex gap-3.5'>

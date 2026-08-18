@@ -130,7 +130,7 @@ export function CategoriesMenu({
                                                         </b>
                                                         {hub.tours !==
                                                             undefined && (
-                                                            <span className='text-[11.5px] text-it-text-muted tabular-nums tracking-[-0.012em]'>
+                                                            <span className='text-[12px] text-it-text-muted tabular-nums tracking-[-0.012em]'>
                                                                 {hub.tours}{' '}
                                                                 {dict.tours}
                                                             </span>
@@ -176,7 +176,7 @@ export function CategoriesMenu({
                                                         </b>
                                                         {cat.tours !==
                                                             undefined && (
-                                                            <span className='text-[11.5px] text-it-text-muted tabular-nums tracking-[-0.012em]'>
+                                                            <span className='text-[12px] text-it-text-muted tabular-nums tracking-[-0.012em]'>
                                                                 {cat.tours}{' '}
                                                                 {dict.tours}
                                                             </span>
@@ -195,7 +195,7 @@ export function CategoriesMenu({
                                                     onClick={() =>
                                                         setOpen(false)
                                                     }
-                                                    className='block rounded-it-md px-2.5 py-2 text-[12.5px] font-medium text-it-primary-hover no-underline transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:bg-it-bg tracking-[-0.012em]'>
+                                                    className='block rounded-it-md px-2.5 py-2 text-[12px] font-medium text-it-primary-hover no-underline transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:bg-it-bg tracking-[-0.012em]'>
                                                     {dict.allIslandTours.replace(
                                                         '{destination}',
                                                         currentIsland.name

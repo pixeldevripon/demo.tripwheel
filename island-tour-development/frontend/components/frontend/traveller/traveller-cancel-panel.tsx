@@ -101,14 +101,14 @@ export function TravellerCancelPanel({
                     label={dict.cancelRequestedChip}
                     tone='pending'
                 />
-                <p className='mt-2 mb-0 text-[12.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                <p className='mt-2 mb-0 text-[12px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                     {dict.cancelRequestedOn.replace(
                         '{date}',
                         formatDay(booking.utcCancellationRequestedAt, locale)
                     )}
                 </p>
                 {note && (
-                    <p className='mt-1.5 mb-0 text-[12.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                    <p className='mt-1.5 mb-0 text-[12px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                         {note}
                     </p>
                 )}
@@ -136,7 +136,7 @@ export function TravellerCancelPanel({
 
     if (booking.cancellationBlockedReason === 'NOT_CONFIRMED') {
         return (
-            <p className='m-0 text-[12.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+            <p className='m-0 text-[12px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                 {dict.cancelNotConfirmed}
             </p>
         );
@@ -161,7 +161,7 @@ export function TravellerCancelPanel({
 
     if (!booking.canRequestCancellation) {
         return (
-            <p className='m-0 text-[12.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+            <p className='m-0 text-[12px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                 {windowLine}
             </p>
         );
@@ -182,7 +182,7 @@ export function TravellerCancelPanel({
 
     return (
         <div>
-            <p className='m-0 text-[12.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+            <p className='m-0 text-[12px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                 {windowLine}
             </p>
             {/* Self-service date change (review 10.4) is BUILT but HIDDEN for
@@ -217,7 +217,7 @@ export function TravellerCancelPanel({
                             maxLength={500}
                             value={reason}
                             onChange={e => setReason(e.target.value)}
-                            className='w-full rounded-[10px] border border-it-border bg-it-white px-3.5 py-2.5 text-[14.5px] md:text-[13px] text-it-heading focus:border-transparent focus:outline-2 focus:outline-it-primary tracking-[-0.012em]'
+                            className='w-full rounded-[10px] border border-it-border bg-it-white px-3.5 py-2.5 text-[16px] md:text-[14.5px] text-it-heading focus:border-transparent focus:outline-2 focus:outline-it-primary tracking-[-0.012em]'
                         />
                         {failed && (
                             <p

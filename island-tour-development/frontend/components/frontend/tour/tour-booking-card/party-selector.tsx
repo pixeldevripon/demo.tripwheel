@@ -76,7 +76,7 @@ export function PartySelector() {
                     onClick={() => togglePartyOpen()}
                     whileTap={{ scale: 0.99 }}
                     transition={springPop}
-                    className='flex w-full cursor-pointer items-center justify-between gap-2.5 rounded-it-sm border border-it-border bg-it-white px-[13px] py-[11px] text-left'>
+                    className='flex w-full cursor-pointer items-center justify-between gap-2.5 rounded-[16px] border border-it-border bg-it-white px-[13px] py-[11px] text-left'>
                     {headerLabel}
                     <Image
                         src='/icons/booking-chevron-down.svg'
@@ -89,7 +89,7 @@ export function PartySelector() {
                     />
                 </motion.button>
             ) : (
-                <div className='flex items-center justify-between gap-2.5 rounded-it-sm border border-it-border bg-it-white px-[13px] py-[11px]'>
+                <div className='flex items-center justify-between gap-2.5 rounded-[16px] border border-it-border bg-it-white px-[13px] py-[11px]'>
                     {headerLabel}
                     {showInlineStepper && (
                         <Stepper
@@ -113,7 +113,7 @@ export function PartySelector() {
                     `.travinline` never overrides it). Inline under a 10px
                     field, the softer corner read as a different kind of box;
                     Ripon's call, 2026-08-09. */}
-                <div className='mt-2 rounded-it-sm border border-it-border bg-it-white px-3.5 py-0.5'>
+                <div className='mt-2 rounded-[16px] border border-it-border bg-it-white px-3.5 py-0.5'>
                     {participantBands.map(band => (
                         <BandStepperRow
                             key={band.id}
@@ -126,7 +126,7 @@ export function PartySelector() {
                         under their own heading. */}
                     {spectatorsApplied && spectatorsOn && (
                         <>
-                            <div className='border-t border-it-divider pt-2.5 text-[11.5px] font-medium leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                            <div className='border-t border-it-divider pt-2.5 text-[12px] font-medium leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                                 {dict.spectators}
                             </div>
                             {spectatorBands.map(band => (

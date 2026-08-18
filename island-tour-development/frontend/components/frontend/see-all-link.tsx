@@ -12,6 +12,10 @@ import { MotionLink } from './motion-link';
 /**
  * The sitewide "see all / all {destination} tours →" text link.
  *
+ * Two shapes: inline (beside a section title) and `rule` - centred on a
+ * hairline that runs the full width, which is how a section-closing CTA reads
+ * as an ending rather than as another item in the list.
+ *
  * ONE definition, because it was written out twice - the "Explore by type"
  * section head ("All Curaçao tours →") and the "Locals' favorites" footer CTA
  * ("See all 47 tours in Curaçao") - and the second copy had drifted into a
@@ -54,21 +58,41 @@ import { MotionLink } from './motion-link';
  * The arrow is a text glyph, not an `/icons/*.svg`: it has to follow the link's
  * colour through the hover transition, and a `next/image` SVG carries its fill
  * baked in. It is `aria-hidden` so the accessible name is just the label.
+ *
+ * A muted lead-in ("Not what you were after?") goes in `prefix`, which renders
+ * BESIDE the link. This used to be `children`, which put it inside the anchor -
+ * the whole sentence became clickable and the link's accessible name became the
+ * sentence plus the CTA, so a screen reader announced a paragraph where the
+ * visual design shows a short link. `prefix` is the only shape this slot ever
+ * wanted; nothing else ever passed children.
  */
 export function SeeAllLink({
     href,
     label,
     className,
+    rule = false,
+    prefix,
 }: {
     href: string;
     /** Fully interpolated label - callers do their own `{count}`/`{destination}` replacement. */
     label: string;
     /** Placement/visibility only (e.g. `max-sm:hidden`). Not a restyle hook. */
     className?: string;
+    /**
+     * Centre the link on a full-width hairline, rules running out to both
+     * edges. For a CTA that closes a section on its own; the inline variant is
+     * for one sitting beside a section title.
+     */
+    rule?: boolean;
+    /**
+     * Muted lead-in rendered immediately before the link and OUTSIDE it, so it
+     * is neither clickable nor part of the accessible name.
+     */
+    prefix?: React.ReactNode;
 }) {
     const [hovered, setHovered] = useState(false);
 
-    return (
+    const link = (
         <MotionLink
             href={href}
             onHoverStart={() => setHovered(true)}
@@ -91,4 +115,28 @@ export function SeeAllLink({
             </motion.span>
         </MotionLink>
     );
+
+    // The lead-in sits beside the link on a tight 6px gap - the rule row's own
+    // gap-4 is the air around the RULES, not between two bits of running text.
+    const row = prefix ? (
+        <span className='inline-flex items-center gap-1.5'>
+            {prefix}
+            {link}
+        </span>
+    ) : (
+        link
+    );
+
+    if (!rule) return row;
+
+    // `min-w-0` on the rules so a long label never pushes them off the row;
+    // aria-hidden because they are decoration, not a separator the reader needs.
+    return (
+        <div className='flex w-full items-center gap-4'>
+            <span aria-hidden className='h-px min-w-0 flex-1 bg-it-divider' />
+            {row}
+            <span aria-hidden className='h-px min-w-0 flex-1 bg-it-divider' />
+        </div>
+    );
 }
+

@@ -10,15 +10,15 @@ import { TourCardSkeleton } from './tour-card-skeleton';
  */
 
 /** One icon-label | value hairline row inside the summary cards. */
-function SummaryRowSkeleton({ last = false }: { last?: boolean }) {
+function SummaryRowSkeleton() {
     return (
-        <div
-            className={`flex items-center justify-between gap-[18px] py-[11px] ${last ? '' : 'border-b border-it-divider'}`}>
-            <span className='flex items-center gap-[9px]'>
-                <Bar className='size-4 rounded-full' />
-                <Bar className='h-4 w-24' />
+        // Unstriped, like the real card - no divider, 24px glyph, 7px rhythm.
+        <div className='flex items-center justify-between gap-[18px] py-[7px]'>
+            <span className='flex items-center gap-2.5'>
+                <Bar className='size-5 rounded-full' />
+                <Bar className='h-5 w-24' />
             </span>
-            <Bar className='h-4 w-36' />
+            <Bar className='h-5 w-36' />
         </div>
     );
 }
@@ -36,20 +36,17 @@ function SummaryRowSkeleton({ last = false }: { last?: boolean }) {
 export function ThankYouSummarySkeleton() {
     return (
         <div className='bg-it-bg py-[52px]'>
-            <div className='it-wrap flex flex-col'>
-                <Bar className='mb-[22px] h-8 w-72' />
-                <div className='grid items-start gap-2 md:grid-cols-2 md:gap-5'>
+            <div className='it-container flex flex-col'>
+                <Bar className='mb-8 h-8 w-72 md:h-10' />
+                <div className='grid gap-2 md:grid-cols-2 md:gap-6'>
                     {[9, 6].map((rows, card) => (
                         <div
                             key={card}
-                            className='rounded-it-lg border border-it-divider bg-it-white px-5 py-[22px] shadow-it-sm md:px-[26px]'>
-                            <Bar className='mb-3 h-4 w-28' />
+                            className='h-full rounded-[16px] bg-it-white p-5 md:p-6'>
+                            <Bar className='mb-4 h-5 w-32' />
                             <div className='flex flex-col'>
                                 {Array.from({ length: rows }, (_, i) => (
-                                    <SummaryRowSkeleton
-                                        key={i}
-                                        last={i === rows - 1}
-                                    />
+                                    <SummaryRowSkeleton key={i} />
                                 ))}
                             </div>
                         </div>
@@ -63,41 +60,41 @@ export function ThankYouSummarySkeleton() {
 export function ThankYouPageSkeleton() {
     return (
         <>
-            {/* Hero */}
-            <div className='bg-it-white pt-10 pb-9 md:pt-14 md:pb-11'>
-                <div className='it-wrap flex flex-col items-center'>
-                    <Bar className='mb-[18px] h-11 w-9' />
-                    <Bar className='h-[34px] w-72 md:h-[43px] md:w-[440px]' />
-                    <Bar className='mt-3 h-5 w-64 md:w-[460px]' />
-                    <Bar className='mt-2.5 h-4 w-72' />
-                    <Bar className='mt-5 h-10 w-[280px] rounded-full' />
-                    <Bar className='mt-5 h-[50px] w-[220px] rounded-it-sm' />
-                    <div className='mt-[18px] flex flex-col items-center gap-1.5'>
-                        <Bar className='h-4 w-80' />
-                        <Bar className='h-4 w-64' />
+            {/* Hero - 1:1 with `ThankYouHero` (Figma 47745:10745). The meta
+                line it used to hold is gone with the real one; those facts live
+                in the detail cards below. */}
+            <div className='bg-it-white pt-12 pb-14 md:pt-[85px] md:pb-[116px]'>
+                <div className='it-container flex flex-col items-center'>
+                    <Bar className='size-11 rounded-full md:size-12' />
+                    <Bar className='mt-8 h-8 w-72 md:h-[46px] md:w-[440px]' />
+                    <Bar className='mt-1 h-6 w-64 md:w-[460px]' />
+                    <Bar className='mt-8 h-[42px] w-[300px] rounded-[8px]' />
+                    <Bar className='mt-14 h-[56px] w-[226px] rounded-[50px]' />
+                    <div className='mt-8 flex flex-col items-center gap-1'>
+                        <Bar className='h-6 w-[364px] max-w-full' />
+                        <Bar className='h-6 w-[300px] max-w-full' />
                     </div>
                 </div>
             </div>
             {/* Booking summary */}
             <ThankYouSummarySkeleton />
-            {/* What happens next */}
+            {/* What happens next - 1:1 with `ThankYouNextSteps` (Figma
+                47745:11792): a 64px circle over a bullet list per column, with
+                one hairline behind the circle row. The step CARDS are gone. */}
             <div className='bg-it-white pt-14 pb-2'>
-                <div className='it-wrap flex flex-col items-center'>
-                    <Bar className='mb-7 h-7 w-64' />
-                    <div className='mb-[18px] hidden items-center md:flex'>
-                        <Bar className='size-[34px] rounded-full' />
-                        <span className='h-0.5 w-[120px] bg-it-divider' />
-                        <Bar className='size-[34px] rounded-full' />
-                        <span className='h-0.5 w-[120px] bg-it-divider' />
-                        <Bar className='size-[34px] rounded-full' />
-                    </div>
-                    <div className='grid w-full gap-4 md:grid-cols-3'>
+                <div className='it-container flex flex-col gap-10 md:gap-12'>
+                    <Bar className='mx-auto h-8 w-64 md:h-12 md:w-80' />
+                    <div className='relative grid gap-10 md:grid-cols-3 md:gap-6'>
+                        <span className='absolute top-6 right-1/6 left-1/6 hidden h-px bg-it-divider md:block' />
                         {Array.from({ length: 3 }, (_, i) => (
                             <div
                                 key={i}
-                                className='rounded-it-md border border-it-divider bg-it-white px-5 py-[18px] shadow-it-sm'>
-                                <Bar className='h-[18px] w-44' />
-                                <Bar className='mt-2 h-4 w-52' />
+                                className='flex flex-col items-center gap-6 md:gap-8'>
+                                <Bar className='size-11 rounded-full md:size-12' />
+                                <div className='flex flex-col gap-1.5'>
+                                    <Bar className='h-5 w-44' />
+                                    <Bar className='h-5 w-40' />
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -105,7 +102,7 @@ export function ThankYouPageSkeleton() {
             </div>
             {/* Related tours */}
             <div className='bg-it-white pt-14'>
-                <div className='it-wrap flex flex-col'>
+                <div className='it-container flex flex-col'>
                     <Bar className='h-7 w-72' />
                     <Bar className='mt-1.5 h-4 w-60' />
                     <div className='mt-[22px] grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4'>
@@ -116,36 +113,45 @@ export function ThankYouPageSkeleton() {
                     <Bar className='mt-6 h-5 w-56' />
                 </div>
             </div>
-            {/* Apartment promo */}
-            <div className='bg-it-white pt-12'>
-                <div className='it-wrap'>
-                    <div className='grid overflow-hidden rounded-it-lg border border-it-divider bg-it-white shadow-it-sm md:grid-cols-[280px_1fr]'>
-                        <Bar className='h-[170px] rounded-none md:h-auto md:min-h-[220px]' />
-                        <div className='flex flex-col items-start justify-center px-5 py-5 md:px-7 md:py-6'>
+            {/* Apartment promo - `pb-14` matches the real section, so the
+                last card clears the grey support band below it. */}
+            <div className='bg-it-white pt-12 pb-14'>
+                <div className='it-container'>
+                    {/* 1:1 with `AptCard`: even 50/50, photo flush to the edge. */}
+                    <div className='grid items-stretch overflow-hidden rounded-[16px] border border-it-divider bg-it-white md:grid-cols-2'>
+                        <Bar className='aspect-[16/10] w-full rounded-none md:aspect-auto md:min-h-[280px]' />
+                        <div className='flex flex-col items-start justify-center gap-2 p-6 md:p-8'>
                             <Bar className='h-4 w-48' />
-                            <Bar className='mt-2 h-6 w-64' />
-                            <Bar className='mt-1 h-4 w-72' />
-                            <Bar className='mt-2 h-4 w-56' />
-                            <Bar className='mt-3.5 h-10 w-56 rounded-it-sm' />
+                            <Bar className='h-7 w-64 md:h-8' />
+                            <Bar className='h-5 w-72 max-w-full' />
+                            <Bar className='h-5 w-56' />
+                            <Bar className='mt-2 h-11 w-56 rounded-[50px]' />
                         </div>
                     </div>
                 </div>
             </div>
-            {/* Question card */}
-            <div className='bg-it-white pt-14 pb-[72px]'>
-                <div className='it-wrap'>
-                    <div className='mx-auto w-full max-w-[560px] rounded-it-lg border border-it-divider bg-it-white px-5 py-[22px] shadow-it-sm md:px-8 md:py-7'>
-                        <Bar className='h-6 w-72' />
-                        <Bar className='mt-1.5 h-4 w-60' />
-                        <div className='mt-4 flex flex-col gap-2'>
-                            <Bar className='h-5 w-36' />
-                            <Bar className='h-4 w-56' />
-                            <Bar className='h-4 w-44' />
-                        </div>
-                        <div className='my-[18px] border-t border-it-divider' />
-                        <Bar className='h-4 w-48' />
-                        <Bar className='mt-1 h-4 w-full max-w-[400px]' />
-                        <Bar className='mt-1 h-4 w-40' />
+            {/* Support panel - 1:1 with `ThankYouQuestion` (Figma
+                47745:12376): full width, split down the middle. */}
+            <div className='bg-it-surface pt-14 pb-[72px]'>
+                <div className='it-container flex flex-col gap-8 md:gap-12'>
+                    <Bar className='h-8 w-72 md:h-12 md:w-[520px]' />
+                    <div className='grid overflow-hidden rounded-[16px] bg-it-white md:grid-cols-2'>
+                        {Array.from({ length: 2 }, (_, i) => (
+                            <div
+                                key={i}
+                                className={`flex flex-col gap-5 border-it-divider p-6 md:gap-7 md:p-8 ${
+                                    i === 1
+                                        ? 'max-md:border-t md:border-l'
+                                        : ''
+                                }`}>
+                                <Bar className='h-7 w-64 max-w-full' />
+                                <div className='flex flex-col gap-3'>
+                                    <Bar className='h-5 w-40' />
+                                    <Bar className='h-5 w-60 max-w-full' />
+                                    <Bar className='h-5 w-44' />
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>

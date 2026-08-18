@@ -24,6 +24,10 @@ import {
     priceUnitLabel,
     type PriceUnitLabels,
 } from '@/lib/tours/pricing-label';
+import {
+    searchHitToListing,
+    type DurationDict,
+} from '@/lib/tours/listing';
 import { hubCardTitle } from '@/lib/tours/tour-name';
 import type {
     HubRender,
@@ -34,6 +38,7 @@ import type {
 import type { SearchHit } from '@/types/search';
 import { notFound } from 'next/navigation';
 import { FaqSection } from '../faq-section';
+import type { TourListing } from '../tour-card';
 import { MountReveal } from '../mount-reveal';
 import { JsonLd } from '../seo/json-ld';
 import { ToursBreadcrumb } from '../tours/tours-breadcrumb';
@@ -53,7 +58,6 @@ import {
 } from './hub-first-timers-section';
 import { HubHero, type HubHeroMeta } from './hub-hero';
 import { type HubPick, type HubPickLabel } from './hub-pick-card';
-import { type HubTour, type HubTourBadge } from './hub-tour-card';
 import { HubTripsSection } from './hub-trips-section';
 import { HubWhySection } from './hub-why-section';
 
@@ -94,8 +98,6 @@ type CardLabels = {
     perVehicle: string;
     perAircraft: string;
     perPackage: string;
-    /** UNIT surcharge template, e.g. "+ {price} per extra person". */
-    perExtra: string;
 };
 
 type AmenityLabelKey =
@@ -109,7 +111,9 @@ type AmenityLabelKey =
 
 /**
  * Amenity attribute key -> label key, in card display priority (Figma favours
- * beach house / BBQ / breakfast). Capped at MAX_AMENITY_CHIPS on the card.
+ * beach house / BBQ / breakfast). Capped at MAX_AMENITY_CHIPS on the card - the
+ * line has to survive a 282px column, and every amenity past the second pushes
+ * it to a third row.
  */
 const AMENITY_CHIPS: [attributeKey: string, label: AmenityLabelKey][] = [
     ['beach_house_included', 'beachHouse'],
@@ -149,79 +153,6 @@ function formatDuration(
 function titleCaseValue(v: string): string {
     const spaced = v.replace(/_/g, ' ').trim();
     return spaced ? spaced.charAt(0).toUpperCase() + spaced.slice(1) : '';
-}
-
-/**
- * Builds the card's dot-separated attribute chips from the listing hit:
- * duration, then capacity ("Up to N") for charters, boat type, up to 3 true
- * amenities, and the family-friendly flag - all derived from data the operator
- * already enters (attributes + flags).
- */
-function buildCardChips(hit: SearchHit, labels: CardLabels): string[] {
-    const chips: string[] = [];
-    const duration = formatDuration(hit.durationMinutesFrom, labels);
-    if (duration) chips.push(duration);
-
-    if (hit.pricingModel === 'UNIT' && hit.maxPartySize != null) {
-        chips.push(labels.upTo.replace('{count}', String(hit.maxPartySize)));
-    }
-
-    const attrs = new Map((hit.attributes ?? []).map(a => [a.key, a]));
-    const boat = attrs.get('boat_type');
-    if (boat?.value) chips.push(titleCaseValue(boat.value));
-
-    let added = 0;
-    for (const [key, labelKey] of AMENITY_CHIPS) {
-        if (added >= MAX_AMENITY_CHIPS) break;
-        if (attrs.get(key)?.value === 'true') {
-            chips.push(labels.amenities[labelKey]);
-            added++;
-        }
-    }
-
-    if (hit.familyFriendly) chips.push(labels.familyFriendly);
-    return chips;
-}
-
-/**
- * Card price display for a listing hit. PER_PERSON keeps the "per person" suffix;
- * UNIT (charter) reads "from $X /N people + $Y per extra person" from the
- * unit-pricing fields.
- */
-function cardPrice(
-    hit: SearchHit,
-    labels: CardLabels,
-    locale: Locale
-): { priceDisplay: string; priceUnit: string; priceNote?: string } {
-    // Same money-resolution rule as every other card surface (guide §20.9).
-    const { currency, priceDisplay, fxRate } = resolveDisplayPrice(hit, locale);
-    if (hit.pricingModel !== 'UNIT') {
-        return { priceDisplay, priceUnit: labels.perPerson };
-    }
-    // Unit-type-aware noun ("/per boat" etc.). The per-extra-guest note only
-    // shows for GROUP pricing (non-GROUP charters carry no extraPersonPrice).
-    const priceUnit = priceUnitLabel(
-        { pricingModel: hit.pricingModel, wholeUnitType: hit.wholeUnitType },
-        {
-            per: labels.perPerson,
-            perGroup: labels.perGroup,
-            perBoat: labels.perBoat,
-            perVehicle: labels.perVehicle,
-            perAircraft: labels.perAircraft,
-            perPackage: labels.perPackage,
-        }
-    );
-    // `extraPersonPrice` is a source-currency amount (not in `money`), so convert
-    // it with the same rate before formatting.
-    const extra = Number(hit.extraPersonPrice ?? 0);
-    const priceNote =
-        extra > 0
-            ? labels.perExtra.replace(
-                  '{price}',
-                  formatPriceFrom(extra * fxRate, currency, locale)
-              )
-            : undefined;
-    return { priceDisplay, priceUnit, priceNote };
 }
 
 /**
@@ -305,10 +236,40 @@ function humanizeUnit(u: string | null | undefined): string {
 }
 
 /** SearchHit badge -> hub-card badge ('new' has no hub-card slot -> null). */
-function toHubBadge(b: SearchHit['badge']): HubTourBadge {
-    return b === 'sponsored' || b === 'mostPopular' || b === 'likelyToSellOut'
-        ? b
-        : null;
+/**
+ * The hub card's attribute line: duration, capacity, boat type, up to two
+ * amenities, then family-friendly - in that order, rendered dot-separated by
+ * `TourCard`.
+ *
+ * This is the one piece of the old hub-local card that had no equivalent on
+ * the shared card, so it moved onto `TourListing.attributes` rather than
+ * dying with it. On a hub every tour is the same kind of thing, and this line
+ * is what actually distinguishes two cards from each other.
+ */
+function buildCardChips(hit: SearchHit, labels: CardLabels): string[] {
+    const chips: string[] = [];
+    const duration = formatDuration(hit.durationMinutesFrom, labels);
+    if (duration) chips.push(duration);
+
+    if (hit.pricingModel === 'UNIT' && hit.maxPartySize != null) {
+        chips.push(labels.upTo.replace('{count}', String(hit.maxPartySize)));
+    }
+
+    const attrs = new Map((hit.attributes ?? []).map(a => [a.key, a]));
+    const boat = attrs.get('boat_type');
+    if (boat?.value) chips.push(titleCaseValue(boat.value));
+
+    let added = 0;
+    for (const [key, labelKey] of AMENITY_CHIPS) {
+        if (added >= MAX_AMENITY_CHIPS) break;
+        if (attrs.get(key)?.value === 'true') {
+            chips.push(labels.amenities[labelKey]);
+            added++;
+        }
+    }
+
+    if (hit.familyFriendly) chips.push(labels.familyFriendly);
+    return chips;
 }
 
 const PICK_LABEL_BY_TYPE: Record<string, HubPickLabel> = {
@@ -318,38 +279,49 @@ const PICK_LABEL_BY_TYPE: Record<string, HubPickLabel> = {
     BEST_VALUE: 'best',
 };
 
-function hitToHubTour(
+/**
+ * Map a search hit to the SHARED `TourListing`, with the two things the hub
+ * page does differently.
+ *
+ * The hub listing used to carry its own card type, its own badge enum, its own
+ * price resolver and its own attribute chips. It now renders the same
+ * `TourCard` as All Tours, search, the destination page and collections
+ * (founder, 2026-08-18), so all of that is `searchHitToListing`'s job and the
+ * hub-local copies are deleted.
+ *
+ * Two overrides survive, and both are deliberate:
+ *
+ * 1. `title` is COMPOSED "{Hub} {Title}" and `hub` is nulled, which suppresses
+ *    the card's hub eyebrow (founder, Aug 6 2026 / mck-18 §2). The stored title
+ *    is hub-free and this is the one surface that puts the hub back INTO the
+ *    title - so the eyebrow would repeat, on every card, the single fact the
+ *    whole page is already about.
+ * 2. `href` is built from the page's own `destinationSlug`. The shared mapper
+ *    reads `hit.destinationSlug` and returns an UNLINKED card when it is
+ *    absent; the hub query does not guarantee that field, and a grid of dead
+ *    cards is a worse failure than one redundant argument.
+ *
+ * The attribute line (duration · boat type · amenities · family-friendly) is
+ * NOT lost - it moved onto `TourListing.attributes` and the shared card renders
+ * it, because it is the only thing telling two cards on a hub page apart.
+ *
+ * Deliberately dropped: the per-extra-person price note. No other card surface
+ * carries one.
+ */
+function hitToHubListing(
     hit: SearchHit,
     locale: Locale,
     destinationSlug: string,
+    duration: DurationDict,
     labels: CardLabels,
     hubName: string
-): HubTour {
-    const { priceDisplay, priceUnit, priceNote } = cardPrice(hit, labels, locale);
+): TourListing {
     return {
-        id: hit.id,
+        ...searchHitToListing(hit, locale, duration),
         href: localizeHref(locale, `/${destinationSlug}/${hit.slug}`),
-        images: (hit.images ?? []).map(img => img.url).filter(Boolean),
-        badge: toHubBadge(hit.badge),
-        // Undefined, never 0: `lib/tours/listing.ts` gates on the COUNT for the
-        // same reason - a tour with no reviews has no rating, and `?? 0` turned
-        // that into a displayed zero on every hub card.
-        rating:
-            hit.aggregateReviewCount > 0
-                ? (hit.aggregateRating ?? undefined)
-                : undefined,
-        reviewCount:
-            hit.aggregateReviewCount > 0 ? hit.aggregateReviewCount : undefined,
-        // COMPOSED "{Hub} {Title}", eyebrow suppressed (founder, Aug 6 2026 /
-        // mck-18 §2): the stored title is hub-free, and the hub page is the one
-        // surface that puts the hub back INTO the card title.
         title: hubCardTitle(hubName, hit.title),
-        shortDescription: hit.shortDescription ?? null,
+        hub: null,
         attributes: buildCardChips(hit, labels),
-        priceDisplay,
-        priceUnit,
-        priceNote,
-        freeCancellation: hit.cancellationHours != null,
     };
 }
 
@@ -802,7 +774,6 @@ async function HubTripsData({
         perVehicle: hubDict.cardChips.perVehicle,
         perAircraft: hubDict.cardChips.perAircraft,
         perPackage: hubDict.cardChips.perPackage,
-        perExtra: hubDict.cardChips.perExtraPerson,
     };
 
     // Price-unit labels for the pick + comparison cards (unit-type-aware).
@@ -815,8 +786,15 @@ async function HubTripsData({
         perPackage: cardLabels.perPackage,
     };
 
-    const linkTour = (hit: SearchHit): HubTour =>
-        hitToHubTour(hit, locale, destinationSlug, cardLabels, render.name);
+    const linkTour = (hit: SearchHit): TourListing =>
+        hitToHubListing(
+            hit,
+            locale,
+            destinationSlug,
+            dict.search,
+            cardLabels,
+            render.name
+        );
     const tourHref = (slug: string) =>
         localizeHref(locale, `/${destinationSlug}/${slug}`);
 
@@ -973,20 +951,9 @@ async function HubTripsData({
                     noneOnDate: hubDict.noneOnDate,
                     showAllDates: hubDict.showAllDates,
                 },
-                card: {
-                    badges: {
-                        sponsored: hubDict.sponsored,
-                        mostPopular: listingsDict.mostPopular,
-                        likelyToSellOut: listingsDict.likelyToSellOut,
-                    },
-                    from: listingsDict.from,
-                    freeCancellation: listingsDict.freeCancellation,
-                    saveAria: listingsDict.saveAria,
-                    removeAria: listingsDict.removeAria,
-                    prevPhotoAria: listingsDict.prevPhotoAria,
-                    nextPhotoAria: listingsDict.nextPhotoAria,
-                    fullDetails: listingsDict.fullDetails,
-                },
+                // `DestinationListingsDict` IS a `TourCardDict` superset, and
+                // every field this used to spell out was already read off it.
+                card: listingsDict,
             }}
         >
             {children}

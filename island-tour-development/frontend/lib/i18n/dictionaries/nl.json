@@ -237,17 +237,26 @@
                     "adults": {
                         "label": "Volwassenen",
                         "hint": "12 jaar of ouder",
-                        "word": { "one": "Volwassene", "other": "Volwassenen" }
+                        "word": {
+                            "one": "Volwassene",
+                            "other": "Volwassenen"
+                        }
                     },
                     "children": {
                         "label": "Kinderen",
                         "hint": "4 tot 11 jaar",
-                        "word": { "one": "Kind", "other": "Kinderen" }
+                        "word": {
+                            "one": "Kind",
+                            "other": "Kinderen"
+                        }
                     },
                     "infants": {
                         "label": "Baby's",
                         "hint": "Onder de 4 · Gratis op de meeste tours",
-                        "word": { "one": "Baby", "other": "Baby's" }
+                        "word": {
+                            "one": "Baby",
+                            "other": "Baby's"
+                        }
                     }
                 },
                 "applyGuests": "Toepassen",
@@ -268,10 +277,22 @@
             },
             "trust": {
                 "checks": [
-                    "Gratis annuleren, zonder vragen",
-                    "Betaal vandaag slechts 20%, de rest later",
-                    "Binnen seconden bevestigd",
-                    "Veilig afrekenen"
+                    {
+                        "title": "Gemaakt door locals",
+                        "sub": "die hier opgroeiden"
+                    },
+                    {
+                        "title": "Gratis annuleren",
+                        "sub": "geen vragen"
+                    },
+                    {
+                        "title": "WhatsApp-ondersteuning",
+                        "sub": "wij zijn lokaal"
+                    },
+                    {
+                        "title": "Slechts 20% aanbetaling",
+                        "sub": "om te boeken"
+                    }
                 ],
                 "whatsapp": "Vragen? Chat via WhatsApp →"
             },
@@ -432,6 +453,7 @@
                 "calendarNoDepartures": "Geen vertrek",
                 "calendarClosed": "Gesloten",
                 "calendarToday": "vandaag",
+                "closeCalendar": "Kalender sluiten",
                 "noDeparturesOnDateTitle": "Op {date} vaart er niets",
                 "noDeparturesOnDateHint": "Kies een andere dag - de kalender toont elke datum met plek.",
                 "deadEndTitle": "Deze trips hebben deze week nog vertrekken",
@@ -439,23 +461,44 @@
                 "deadEndNext": "Volgende: {date}",
                 "deadEndNoAlternatives": "Niets anders op dit eiland heeft deze week nog plek. Probeer een andere periode of een ander eiland.",
                 "onlyLeft": "Nog {count} beschikbaar",
-                "travelers": { "one": "{count} reiziger", "other": "{count} reizigers" },
-                "guests": { "one": "{count} gast", "other": "{count} gasten" },
+                "travelers": {
+                    "one": "{count} reiziger",
+                    "other": "{count} reizigers"
+                },
+                "guests": {
+                    "one": "{count} gast",
+                    "other": "{count} gasten"
+                },
                 "bands": {
                     "ADULT": {
-                        "plural": { "one": "{count} volwassene", "other": "{count} volwassenen" }
+                        "plural": {
+                            "one": "{count} volwassene",
+                            "other": "{count} volwassenen"
+                        }
                     },
                     "CHILD": {
-                        "plural": { "one": "{count} kind", "other": "{count} kinderen" }
+                        "plural": {
+                            "one": "{count} kind",
+                            "other": "{count} kinderen"
+                        }
                     },
                     "INFANT": {
-                        "plural": { "one": "{count} baby", "other": "{count} baby's" }
+                        "plural": {
+                            "one": "{count} baby",
+                            "other": "{count} baby's"
+                        }
                     },
                     "YOUTH": {
-                        "plural": { "one": "{count} jongere", "other": "{count} jongeren" }
+                        "plural": {
+                            "one": "{count} jongere",
+                            "other": "{count} jongeren"
+                        }
                     },
                     "SENIOR": {
-                        "plural": { "one": "{count} senior", "other": "{count} senioren" }
+                        "plural": {
+                            "one": "{count} senior",
+                            "other": "{count} senioren"
+                        }
                     }
                 },
                 "ageFrom": "Leeftijd {min}+",
@@ -813,7 +856,7 @@
         "verifyCta": "Verifieer met e-mail + referentie"
     },
     "thankYou": {
-        "title": "Je bent geboekt, {name}!",
+        "title": "Je bent geboekt, {name}! 🌴",
         "subtitle": "Je {tour} is gereserveerd voor {date} om {time}.",
         "bookingRef": "Boekingsref:",
         "copy": "Kopieer",

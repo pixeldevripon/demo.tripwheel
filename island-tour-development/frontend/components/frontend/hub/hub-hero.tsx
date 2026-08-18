@@ -93,13 +93,19 @@ export function HubHero({
     };
 
     return (
-        // Figma: 465px (mobile) / 533px (desktop) band. Content is bottom-anchored
-        // (not centered) - 49px bottom gap on mobile, 100px on desktop - which
-        // reproduces the exact 152/154px top gaps at each breakpoint.
-        // Design v2 .hubhero: a 400px photo band, content LEFT-aligned and
-        // vertically centred, under the side-wash hub scrim.
+        // A 456px (mobile) / 533px (desktop) photo band, content LEFT-aligned
+        // and vertically centred under the side-wash hub scrim.
+        //
+        // Two comments used to sit here disagreeing - one claiming a 465/533
+        // bottom-anchored band, one claiming 400px centred - while the code did
+        // 400px centred at every width. The heights are the founder's (2026-08-18);
+        // the centred alignment is what actually ships.
+        //
+        // `min-h`, not `h`: at those heights the band is exactly as tall as
+        // asked, but a long hub name in DE or ZH grows it instead of being
+        // clipped by it.
         <section
-            className={`relative flex min-h-[400px] items-center overflow-hidden ${image ? 'bg-it-dark' : 'bg-it-bg'}`}>
+            className={`relative flex min-h-[456px] items-center overflow-hidden md:min-h-[533px] ${image ? 'bg-it-dark' : 'bg-it-bg'}`}>
             {image && (
                 <Image
                     src={image}
@@ -138,11 +144,11 @@ export function HubHero({
                     {/* Title + tagline */}
                     <MountReveal className='flex flex-col items-start'>
                         <h1
-                            className={`m-0 font-it-body text-[31px] md:text-[37px] font-medium leading-[1.2] tracking-[-0.012em] text-balance ${image ? 'text-it-white' : 'text-it-heading'}`}>
+                            className={`m-0 font-it-body text-[26px] md:text-[38px] font-medium leading-[1.2] tracking-[-0.012em] text-balance ${image ? 'text-it-white' : 'text-it-heading'}`}>
                             {title}
                         </h1>
                         <p
-                            className={`m-0 mt-2.5 text-[14.5px] md:text-[16.5px] font-medium leading-[1.6] tracking-[-0.012em] ${image ? 'text-it-white/92' : 'text-it-text-muted'}`}>
+                            className={`m-0 mt-2.5 text-[14.5px] md:text-[14.5px] font-medium leading-[1.6] tracking-[-0.012em] ${image ? 'text-it-white/92' : 'text-it-text-muted'}`}>
                             {tagline || dict.tagline}
                         </p>
                     </MountReveal>
@@ -220,7 +226,7 @@ export function HubHero({
                                             <motion.button
                                                 type='button'
                                                 aria-label={dict.selectDate}
-                                                className={`flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 whitespace-nowrap border-none bg-transparent py-[13px] pl-0 text-left text-[13.5px] font-medium leading-[1.6] transition-colors duration-300 ${date ? '' : 'text-it-text-muted tracking-[-0.012em]'}`}>
+                                                className={`flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 whitespace-nowrap border-none bg-transparent py-[13px] pl-0 text-left text-[13px] font-medium leading-[1.6] transition-colors duration-300 ${date ? '' : 'text-it-text-muted tracking-[-0.012em]'}`}>
                                                 <Image
                                                     src='/icons/filters/calendar-muted.svg'
                                                     alt=''
@@ -276,7 +282,7 @@ export function HubHero({
                                     onClick={handleCheckAvailability}
                                     whileTap={{ scale: 0.98 }}
                                     transition={springPop}
-                                    className='shrink-0 cursor-pointer rounded-it-sm border-none bg-it-primary px-[22px] py-[13px] text-[14px] font-medium leading-[1.6] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover tracking-[-0.012em]'>
+                                    className='shrink-0 cursor-pointer rounded-it-sm border-none bg-it-primary px-[22px] py-[13px] text-[13px] font-medium leading-[1.6] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover tracking-[-0.012em]'>
                                     {dict.checkAvailability}
                                 </motion.button>
                             </div>

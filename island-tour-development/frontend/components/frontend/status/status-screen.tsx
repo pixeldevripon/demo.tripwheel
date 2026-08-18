@@ -113,7 +113,7 @@ export function StatusScreen({
                     uppercase + wide-tracking label is a DASHBOARD convention and
                     appears nowhere on the traveler-facing pages. */}
                 <span
-                    className={`mb-5 inline-flex items-center rounded-it-full px-4 py-2 text-[11.5px] font-bold uppercase leading-none tracking-[0.1em] ${EYEBROW[eyebrowTone]}`}>
+                    className={`mb-5 inline-flex items-center rounded-it-full px-4 py-2 text-[12px] font-bold uppercase leading-none tracking-[0.1em] ${EYEBROW[eyebrowTone]}`}>
                     {eyebrow}
                 </span>
 
@@ -121,7 +121,7 @@ export function StatusScreen({
                     {title}
                 </h1>
 
-                <p className='m-0 mt-4 max-w-[54ch] text-[14.5px] md:text-[16.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                <p className='m-0 mt-4 max-w-[54ch] text-[14.5px] md:text-[14.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                     {description}
                 </p>
 

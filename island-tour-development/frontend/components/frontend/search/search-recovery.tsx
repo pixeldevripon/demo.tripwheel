@@ -80,7 +80,7 @@ function ConstraintChip({
     return (
         <Link
             href={href}
-            className='inline-flex w-fit shrink-0 self-start items-center gap-2 rounded-it-full border border-it-primary bg-it-white py-2 pl-3.5 pr-3 text-[12.5px] font-medium leading-none text-it-primary-hover no-underline transition-colors hover:bg-it-primary-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary tracking-[-0.012em]'>
+            className='inline-flex w-fit shrink-0 self-start items-center gap-2 rounded-it-full border border-it-primary bg-it-white py-2 pl-3.5 pr-3 text-[12px] font-medium leading-none text-it-primary-hover no-underline transition-colors hover:bg-it-primary-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary tracking-[-0.012em]'>
             {icon}
             {label}
             <X className='size-3.5 shrink-0' strokeWidth={2.5} aria-hidden='true' />
@@ -255,7 +255,7 @@ export function SearchRecovery({
                                     }
                                 />
                                 {withoutDateCount > 0 && (
-                                    <p className='m-0 text-[13px] leading-[1.6] text-it-heading md:text-[14px] tracking-[-0.012em]'>
+                                    <p className='m-0 text-[13px] leading-[1.6] text-it-heading md:text-[13px] tracking-[-0.012em]'>
                                         {dict.dropDate
                                             .replace(
                                                 '{count}',

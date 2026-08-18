@@ -33,19 +33,19 @@ export function DestinationCollections({
            the last white section, and the cards sat flush against the grey FAQ
            band. When the feed IS on, it drops its own pt via the #collections+
            sibling variant, so the gap never doubles. */
-        <section
-            id='collections'
-            className='bg-it-white pt-11 pb-11 md:pt-14 md:pb-16'>
+        <section id='collections' className='bg-it-white it-section'>
             <div className='it-container'>
                 <Reveal className='flex flex-col gap-5'>
                     {/* ── Section heading (design v2 sechead) ───────────────── */}
-                    <h2 className='m-0 text-[27px] md:text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                    <h2 className='m-0 text-[26px] md:text-[26px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                         {dict.title}
                     </h2>
 
                     {/* ── Collections ────────────────────────────────────────────────
                         Mobile: stacked list (same rhythm as the tour grid).
-                        sm: 2-col · lg: 4-col grid. */}
+                        sm: 2-col · lg: 4-col grid (founder, 2026-08-18).
+                        `COLLECTION_RAIL` in skeleton-bar.ts mirrors this and
+                        has to move with it. */}
                     <div className='grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4 lg:gap-x-4 lg:gap-y-5'>
                         {collections.map(collection => (
                             <Reveal key={collection.id} width='auto' listItem>

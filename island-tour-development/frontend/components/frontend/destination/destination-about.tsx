@@ -59,7 +59,7 @@ export function DestinationAbout({
                     {/* Kicker + body copy (design v2 .about: the section header
                         carries the destination as a kicker line). */}
                     <div className='flex flex-col gap-3'>
-                        <h2 className='m-0 text-[21px] font-medium leading-[1.2] tracking-[-0.012em] text-it-ink lg:text-[32px]'>
+                        <h2 className='m-0 text-[20px] font-medium leading-[1.2] tracking-[-0.012em] text-it-ink lg:text-[26px]'>
                             {dict.title.replace(
                                 '{destination}',
                                 destinationName
@@ -70,8 +70,8 @@ export function DestinationAbout({
                             description={description}
                             moreLabel={dict.learnMore}
                             lessLabel={dict.readLess}
-                            className='m-0 text-[14.5px] md:text-[16.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'
-                            buttonClassName='ml-1.5 inline cursor-pointer border-none bg-transparent p-0 font-medium text-[14.5px] leading-[1.6] text-it-heading underline decoration-1 underline-offset-4 transition-colors duration-300 hover:text-it-primary tracking-[-0.012em]'
+                            className='m-0 text-[14.5px] md:text-[14.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'
+                            buttonClassName='mt-1.5 block cursor-pointer border-none bg-transparent p-0 font-medium text-[14.5px] leading-[1.6] text-it-heading underline decoration-1 underline-offset-4 transition-colors duration-300 hover:text-it-primary tracking-[-0.012em]'
                         />
                     </div>
 
@@ -86,7 +86,7 @@ export function DestinationAbout({
                                     {section.heading}
                                 </h3>
                                 {section.body && (
-                                    <p className='m-0 text-[14px] leading-[1.7] text-it-text-muted tracking-[-0.006em]'>
+                                    <p className='m-0 text-[13px] leading-[1.7] text-it-text-muted tracking-[-0.006em]'>
                                         {section.body}
                                     </p>
                                 )}

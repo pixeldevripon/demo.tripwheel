@@ -107,7 +107,7 @@ export function UnsubscribeConfirm({
             href={browseHref}
             whileTap={{ scale: 0.98 }}
             transition={springPop}
-            className='mt-8 inline-flex items-center justify-center rounded-it-full border border-it-border bg-it-white px-8 py-[13px] font-medium text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading no-underline transition-colors hover:border-it-heading'>
+            className='mt-8 inline-flex items-center justify-center rounded-it-full border border-it-border bg-it-white px-8 py-[13px] font-medium text-[13px] leading-[1.6] tracking-[-0.012em] text-it-heading no-underline transition-colors hover:border-it-heading'>
             {browseLabel}
         </MotionLink>
     );
@@ -120,10 +120,10 @@ export function UnsubscribeConfirm({
         // neither does the page - one shared state, no oracle.
         body = (
             <>
-                <h1 className='mx-auto mb-0 max-w-md text-[21px] leading-[1.25] tracking-[-0.012em] text-it-heading sm:text-[24px] font-medium'>
+                <h1 className='mx-auto mb-0 max-w-md text-[20px] leading-[1.25] tracking-[-0.012em] text-it-heading sm:text-[26px] font-medium'>
                     {dict.invalidTitle}
                 </h1>
-                <p className='mx-auto mt-3 mb-0 max-w-md text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                <p className='mx-auto mt-3 mb-0 max-w-md text-[13px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                     {dict.invalidBody}
                 </p>
                 {/* A dead end is where people leave - give them somewhere to
@@ -138,16 +138,16 @@ export function UnsubscribeConfirm({
         // click didn't count.
         body = (
             <>
-                <h1 className='mx-auto mb-0 max-w-md text-[21px] leading-[1.25] tracking-[-0.012em] text-it-heading sm:text-[24px] font-medium'>
+                <h1 className='mx-auto mb-0 max-w-md text-[20px] leading-[1.25] tracking-[-0.012em] text-it-heading sm:text-[26px] font-medium'>
                     {info.optedOut ? dict.alreadyTitle : dict.successTitle}
                 </h1>
-                <p className='mx-auto mt-3 mb-0 max-w-md text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                <p className='mx-auto mt-3 mb-0 max-w-md text-[13px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                     {info.optedOut ? dict.alreadyBody : dict.successBody}
                 </p>
                 {/* The line that keeps this page from scaring people off
                     their own bookings: opting out never touches booking
                     email. */}
-                <p className='mx-auto mt-3 mb-0 max-w-md text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                <p className='mx-auto mt-3 mb-0 max-w-md text-[13px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                     {dict.transactionalNote}
                 </p>
                 {browseLink}
@@ -156,17 +156,17 @@ export function UnsubscribeConfirm({
     } else {
         body = (
             <>
-                <h1 className='mx-auto mb-0 max-w-md text-[21px] leading-[1.25] tracking-[-0.012em] text-it-heading sm:text-[24px] font-medium'>
+                <h1 className='mx-auto mb-0 max-w-md text-[20px] leading-[1.25] tracking-[-0.012em] text-it-heading sm:text-[26px] font-medium'>
                     {info.stream === 'LIFECYCLE'
                         ? dict.titleLifecycle
                         : dict.titleMarketing}
                 </h1>
-                <p className='mx-auto mt-3 mb-0 max-w-md text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                <p className='mx-auto mt-3 mb-0 max-w-md text-[13px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                     {info.stream === 'LIFECYCLE'
                         ? dict.bodyLifecycle
                         : dict.bodyMarketing}
                 </p>
-                <p className='mx-auto mt-4 mb-0 max-w-md text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                <p className='mx-auto mt-4 mb-0 max-w-md text-[13px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                     {dict.emailLine.replace('{email}', info.email)}
                 </p>
 
@@ -176,7 +176,7 @@ export function UnsubscribeConfirm({
                     disabled={status === 'working'}
                     whileTap={{ scale: 0.98 }}
                     transition={springPop}
-                    className='mx-auto mt-8 inline-flex cursor-pointer items-center justify-center gap-2 rounded-it-full border-none bg-it-primary px-8 py-[13px] font-medium text-[14px] leading-[1.6] tracking-[-0.012em] text-it-white transition-colors hover:bg-it-primary-hover disabled:cursor-default disabled:opacity-70'>
+                    className='mx-auto mt-8 inline-flex cursor-pointer items-center justify-center gap-2 rounded-it-full border-none bg-it-primary px-8 py-[13px] font-medium text-[13px] leading-[1.6] tracking-[-0.012em] text-it-white transition-colors hover:bg-it-primary-hover disabled:cursor-default disabled:opacity-70'>
                     {status === 'working' && (
                         // Same spinner the checkout submit uses - a ring on
                         // the button's own ink, so the two read as one system.

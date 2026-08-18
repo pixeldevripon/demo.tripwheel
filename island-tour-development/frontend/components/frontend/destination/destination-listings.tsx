@@ -125,13 +125,15 @@ export function DestinationListings({
                     {/* ── See-all CTA (design v2 .seeall, C21 count rule) ────
                         A LINK, not a filled button (Figma 48506:21404) - and
                         the same `SeeAllLink` the "Explore by type" head above
-                        renders, one size up on desktop because this one stands
-                        alone under the grid instead of beside a title. */}
-                    <div className='mt-2 flex justify-center'>
+                        renders, one size up on desktop and in its `rule` shape:
+                        this one closes the section on its own, so it sits
+                        centred on a hairline rather than beside a title. */}
+                    <div className='pt-18'>
                         <SeeAllLink
                             href={browseHref}
                             label={browseLabel}
                             className='md:text-[14.5px]'
+                            rule
                         />
                     </div>
                 </Reveal>

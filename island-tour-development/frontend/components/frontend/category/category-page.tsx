@@ -7,9 +7,9 @@ import {
     getDestinationCategories,
 } from '@/lib/api/public';
 import { type Locale } from '@/lib/constants/locales';
+import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { buildBreadcrumbJsonLd } from '@/lib/seo/jsonld';
 import { getSiteUrl } from '@/lib/seo/site-url';
-import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { JsonLd } from '../seo/json-ld';
@@ -41,7 +41,6 @@ import { ToursListingSection } from '../tours/tours-listing-section';
  *   - Slugs are English at every locale - the URL never changes per locale.
  */
 
-
 interface CategoryPageProps {
     /** Destination slug from the URL (e.g. `curacao`). */
     destinationSlug: string;
@@ -70,19 +69,21 @@ export async function CategoryPage({
     // categories (for related links) and the destination (for its id, used to
     // scope the dynamic listing) in parallel. The detail gate is authoritative -
     // a `null` means 0 published tours → notFound().
-    const [category, pageContent, faqs, activeCategories, destination, siteUrl] =
-        await Promise.all([
-            getCategoryBySlugForDestination(
-                destinationSlug,
-                categorySlug,
-                locale
-            ),
-            getCategoryPageContent(categoryId, locale),
-            getCategoryFaqs(categoryId, locale),
-            getDestinationCategories(destinationSlug, locale),
-            getDestinationBySlug(destinationSlug, locale),
-            getSiteUrl(),
-        ]);
+    const [
+        category,
+        pageContent,
+        faqs,
+        activeCategories,
+        destination,
+        siteUrl,
+    ] = await Promise.all([
+        getCategoryBySlugForDestination(destinationSlug, categorySlug, locale),
+        getCategoryPageContent(categoryId, locale),
+        getCategoryFaqs(categoryId, locale),
+        getDestinationCategories(destinationSlug, locale),
+        getDestinationBySlug(destinationSlug, locale),
+        getSiteUrl(),
+    ]);
 
     if (!category) notFound();
     // The category belongs to a destination; a null here means the destination
@@ -169,7 +170,7 @@ export async function CategoryPage({
                 dict={{ home: t.breadcrumb.home, current: breadcrumbLabel }}
             />
 
-            <section className='bg-it-white'>
+            <section className=' bg-it-white  pt-11 md:pt-14 pb-0'>
                 {/* Page header (.pagehead) - the crumbs render above inside
                     the same container; the sticky filter row + grid stream in
                     below at FULL WIDTH (the toolbar owns its own containers,
@@ -228,7 +229,9 @@ export async function CategoryPage({
             />
 
             {/* Category FAQs - title + accordion only (Figma 47070:2456). */}
-            <FaqSection dict={faqDict} minimal />
+            <div className='pt-14 bg-it-white'>
+                <FaqSection dict={faqDict} minimal />
+            </div>
         </>
     );
 }

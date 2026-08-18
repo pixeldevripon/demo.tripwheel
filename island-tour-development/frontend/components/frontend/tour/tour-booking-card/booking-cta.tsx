@@ -38,7 +38,7 @@ export function BookingCta() {
     // shows a disabled notice in place of the CTA and trust lines.
     if (bookingBlocked) {
         return (
-            <div className='flex w-full items-center justify-center rounded-it-full bg-it-border px-10 py-[19px] text-center font-medium text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-ink-muted'>
+            <div className='flex w-full items-center justify-center rounded-[50px] bg-it-border px-10 py-4 text-center font-medium text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-ink-muted'>
                 {dict.bookingUnavailable}
             </div>
         );
@@ -83,9 +83,10 @@ export function BookingCta() {
                     aria-busy={navigating || undefined}
                     whileTap={navigating ? undefined : { scale: 0.98 }}
                     transition={springPop}
-                    // `.wcta` (mck-15): full width, 10px radius, 14px of
-                    // padding, 16.5px bold.
-                    className={`flex w-full items-center justify-center rounded-it-sm border-none bg-it-primary px-8 py-3.5 text-[15px] font-bold leading-[1.6] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover ${
+                    // Figma 48256:16622: a full-width PILL (radius 50) at
+                    // 56px tall, label 16/510 - medium, not bold. Shipping the
+                    // label at 14.5 with the rest of the page's step down.
+                    className={`flex w-full items-center justify-center rounded-[50px] border-none bg-it-primary px-8 py-4 text-[14.5px] font-medium leading-[1.6] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover ${
                         navigating
                             ? 'cursor-default opacity-80'
                             : 'cursor-pointer'

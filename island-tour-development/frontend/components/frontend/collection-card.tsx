@@ -34,10 +34,10 @@ export function CollectionCard({
         <Link
             href={href}
             aria-label={collection.name}
-            className='block h-full rounded-[16px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary'>
+            className='block h-full rounded-[8px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary'>
             <article
                 className={cn(
-                    '@container group flex h-full flex-col overflow-hidden rounded-it-md border border-transparent bg-it-white will-change-transform transition-all duration-(--it-duration-md) ease-(--it-ease) hover:-translate-y-0.5 hover:shadow-it-card-hover hover:border-it-card-hover-border',
+                    '@container group flex h-full flex-col overflow-hidden rounded-it-md border border-transparent bg-it-white transition-all duration-(--it-duration-md) ease-(--it-ease) hover:shadow-it-card-hover hover:border-it-card-hover-border',
                     // Same uniform row height as the mobile tour cards.
                     'max-sm:flex-row max-sm:border-it-divider max-sm:min-h-[170px]',
                     className
@@ -62,13 +62,13 @@ export function CollectionCard({
 
                 {/* ── Card info ──────────────────────────────────────────── */}
                 <div className='flex flex-1 min-w-0 flex-col gap-1 px-3 pt-2.5 pb-3 @[220px]:px-3.5 @[220px]:pt-3 @[220px]:pb-3.5'>
-                    <h3 className='m-0 text-[13px] @[220px]:text-[14.5px] leading-[1.4] tracking-[-0.012em] text-it-heading line-clamp-2 font-medium'>
+                    <h3 className='m-0 text-[13px] @[220px]:text-[14.5px] leading-[1.4] tracking-[-0.012em] text-it-heading line-clamp-2 font-medium transition-colors duration-(--it-duration-md) ease-(--it-ease-out) group-hover:text-it-primary'>
                         {collection.name}
                     </h3>
 
                     {/* Explore indicator - pinned to the card foot. */}
                     <div className='mt-auto flex items-center gap-1 pt-2'>
-                        <span className='text-[11.5px] @[220px]:text-[11.5px] font-medium leading-[1.6] text-it-primary-hover tracking-[-0.012em]'>
+                        <span className='text-[12px] @[220px]:text-[12px] font-medium leading-[1.6] text-it-primary-hover tracking-[-0.012em]'>
                             {dict.explore}
                         </span>
                         <Image

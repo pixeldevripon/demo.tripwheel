@@ -237,17 +237,26 @@
                     "adults": {
                         "label": "Adults",
                         "hint": "12 or older",
-                        "word": { "one": "Adult", "other": "Adults" }
+                        "word": {
+                            "one": "Adult",
+                            "other": "Adults"
+                        }
                     },
                     "children": {
                         "label": "Children",
                         "hint": "4 to 11",
-                        "word": { "one": "Child", "other": "Children" }
+                        "word": {
+                            "one": "Child",
+                            "other": "Children"
+                        }
                     },
                     "infants": {
                         "label": "Infants",
                         "hint": "Under 4 · Free on most tours",
-                        "word": { "one": "Infant", "other": "Infants" }
+                        "word": {
+                            "one": "Infant",
+                            "other": "Infants"
+                        }
                     }
                 },
                 "applyGuests": "Apply",
@@ -268,10 +277,22 @@
             },
             "trust": {
                 "checks": [
-                    "Free cancellation, no questions asked",
-                    "Pay as little as 20% today, the rest later",
-                    "Confirmed in seconds",
-                    "Safe & secure checkout"
+                    {
+                        "title": "Built by locals",
+                        "sub": "who grew up here"
+                    },
+                    {
+                        "title": "Free cancellation",
+                        "sub": "No questions asked"
+                    },
+                    {
+                        "title": "We're locals",
+                        "sub": "message us on WhatsApp"
+                    },
+                    {
+                        "title": "Pay as little as 20%",
+                        "sub": "today, the rest later"
+                    }
                 ],
                 "whatsapp": "Questions? Chat on WhatsApp →"
             },
@@ -432,6 +453,7 @@
                 "calendarNoDepartures": "No departure",
                 "calendarClosed": "Closed",
                 "calendarToday": "today",
+                "closeCalendar": "Close calendar",
                 "noDeparturesOnDateTitle": "Nothing runs on {date}",
                 "noDeparturesOnDateHint": "Pick another day - the calendar shows every date with space left.",
                 "deadEndTitle": "These trips still have departures this week",
@@ -439,23 +461,44 @@
                 "deadEndNext": "Next: {date}",
                 "deadEndNoAlternatives": "Nothing else on this island has room this week. Try another date range or another island.",
                 "onlyLeft": "Only {count} left",
-                "travelers": { "one": "{count} traveler", "other": "{count} travelers" },
-                "guests": { "one": "{count} guest", "other": "{count} guests" },
+                "travelers": {
+                    "one": "{count} traveler",
+                    "other": "{count} travelers"
+                },
+                "guests": {
+                    "one": "{count} guest",
+                    "other": "{count} guests"
+                },
                 "bands": {
                     "ADULT": {
-                        "plural": { "one": "{count} adult", "other": "{count} adults" }
+                        "plural": {
+                            "one": "{count} adult",
+                            "other": "{count} adults"
+                        }
                     },
                     "CHILD": {
-                        "plural": { "one": "{count} child", "other": "{count} children" }
+                        "plural": {
+                            "one": "{count} child",
+                            "other": "{count} children"
+                        }
                     },
                     "INFANT": {
-                        "plural": { "one": "{count} infant", "other": "{count} infants" }
+                        "plural": {
+                            "one": "{count} infant",
+                            "other": "{count} infants"
+                        }
                     },
                     "YOUTH": {
-                        "plural": { "one": "{count} youth", "other": "{count} youths" }
+                        "plural": {
+                            "one": "{count} youth",
+                            "other": "{count} youths"
+                        }
                     },
                     "SENIOR": {
-                        "plural": { "one": "{count} senior", "other": "{count} seniors" }
+                        "plural": {
+                            "one": "{count} senior",
+                            "other": "{count} seniors"
+                        }
                     }
                 },
                 "ageFrom": "Age {min}+",
@@ -813,7 +856,7 @@
         "verifyCta": "Verify with email + reference"
     },
     "thankYou": {
-        "title": "You're booked, {name}!",
+        "title": "You're booked, {name}! 🌴",
         "subtitle": "Your {tour} is reserved for {date} at {time}.",
         "bookingRef": "Booking ref:",
         "copy": "Copy",

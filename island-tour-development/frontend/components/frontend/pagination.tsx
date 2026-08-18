@@ -2,7 +2,6 @@
 
 import { springPop } from '@/lib/motion';
 import { motion } from 'framer-motion';
-import Image from 'next/image';
 
 /**
  * Reusable numbered pagination (Figma node 47167:4317): ‹ arrow · numbered pages
@@ -79,15 +78,17 @@ export function Pagination({
         );
     };
 
-    // Design v2 .pager cell: 38px bordered square, 13.5px bold tabular digits;
-    // the active page inverts to the dark surface.
+    // Figma 47167:4031: bare numerals on a 20px rhythm - no cells, no borders,
+    // no inverted square. The page you are on is full ink; the rest sit at 30%,
+    // which is the whole of the active/idle distinction. Digits are tabular so
+    // the row does not shift width as the numbers change.
     const cellBase =
-        'inline-flex h-[38px] min-w-[38px] cursor-pointer items-center justify-center rounded-it-sm border px-2.5 text-[12.5px] font-medium leading-none no-underline transition-colors duration-(--it-duration-xs) ease-(--it-ease) tabular-nums tracking-[-0.012em]';
+        'inline-flex cursor-pointer items-center justify-center border-none bg-transparent p-0 it-text tabular-nums no-underline transition-colors duration-(--it-duration-md) ease-(--it-ease-out) ';
 
     return (
         <nav
             aria-label={ariaLabel}
-            className='flex items-center justify-center gap-1.5'>
+            className='flex items-center py-14 justify-center gap-4 md:gap-5'>
             <motion.button
                 type='button'
                 aria-label='Previous page'
@@ -95,14 +96,10 @@ export function Pagination({
                 onClick={() => onPageChange(Math.max(1, page - 1))}
                 whileTap={page > 1 ? { scale: 0.95 } : undefined}
                 transition={springPop}
-                className={`${cellBase} border-it-border bg-it-white text-it-heading disabled:cursor-default disabled:opacity-40`}>
-                <Image
-                    src='/icons/filters/pager-arrow-ink.svg'
-                    alt=''
-                    width={24}
-                    height={24}
-                    className='size-[15px] rotate-180'
-                />
+                className={`${cellBase} text-it-heading hover:text-it-primary disabled:cursor-default disabled:text-it-heading/30 disabled:hover:text-it-heading/30`}>
+                <span aria-hidden='true' className='text-[14.5px] leading-none md:text-[18px]'>
+                    ←
+                </span>
             </motion.button>
 
             {pages.map(n => (
@@ -116,8 +113,8 @@ export function Pagination({
                             transition: springPop,
                             className: `${cellBase} ${
                                 n === page
-                                    ? 'border-it-dark bg-it-dark text-it-white tracking-[-0.012em]'
-                                    : 'border-it-border bg-it-white text-it-heading hover:bg-it-bg tracking-[-0.012em]'
+                                    ? 'font-medium text-it-heading'
+                                    : 'text-it-heading/30 hover:text-it-heading'
                             }`,
                         },
                         n
@@ -132,14 +129,10 @@ export function Pagination({
                 onClick={() => onPageChange(Math.min(pageCount, page + 1))}
                 whileTap={page < pageCount ? { scale: 0.95 } : undefined}
                 transition={springPop}
-                className={`${cellBase} border-it-border bg-it-white text-it-heading disabled:cursor-default disabled:opacity-40`}>
-                <Image
-                    src='/icons/filters/pager-arrow-ink.svg'
-                    alt=''
-                    width={24}
-                    height={24}
-                    className='size-[15px]'
-                />
+                className={`${cellBase} text-it-heading hover:text-it-primary disabled:cursor-default disabled:text-it-heading/30 disabled:hover:text-it-heading/30`}>
+                <span aria-hidden='true' className='text-[14.5px] leading-none md:text-[18px]'>
+                    →
+                </span>
             </motion.button>
         </nav>
     );

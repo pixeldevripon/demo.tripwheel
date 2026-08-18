@@ -66,20 +66,35 @@ export async function FaqSection({
         dict.items.map(it => ({ question: it.q, answer: it.a }))
     );
 
-    // Minimal (category page, design v2 .catcontent): a plain "Frequently
-    // asked questions" sub-head + the accordion in the 760px reading column on
-    // the white surface - no host/WhatsApp/payments rail.
+    // Minimal - the CATEGORY and HUB pages, and only those two (Figma
+    // 48024:12076). A grey panel with the heading held in the left column and
+    // the accordion in the right, no host/WhatsApp/payments rail.
+    //
+    // It was a single 760px reading column with the heading stacked on top.
+    // Figma splits it: on a 1440 frame the panel is inset 120px from the left
+    // (which is `--it-container-px`, so `it-container` gives it for free) with
+    // 130px of air above and below, and the two columns land at roughly half
+    // each.
+    //
+    // The heading is `sticky` in its column. The category FAQ runs to nine or
+    // ten questions, so the left column is mostly empty space by the time the
+    // reader is at the bottom of the list - the heading riding down with them
+    // is what makes a two-column split worth having over the stacked version.
     if (minimal) {
         return (
             <>
                 <JsonLd data={faqJsonLd} />
                 <section className='bg-it-white pb-20'>
                     <div className='it-container'>
-                        <Reveal className='flex max-w-[760px] flex-col gap-3'>
-                            <h2 className='m-0 mt-7 text-[21px] lg:text-[32px] leading-[1.2] text-it-ink font-medium tracking-[-0.012em]'>
-                                {dict.title}
-                            </h2>
-                            <FaqAccordion items={dict.items} />
+                        <Reveal className='flex flex-col gap-8 rounded-it-lg py-10  md:py-16 lg:flex-row lg:gap-16 lg:py-[130px]'>
+                            <div className='lg:w-[46%] lg:shrink-0'>
+                                <h2 className='m-0 text-[20px] lg:text-[26px] leading-[1.2] text-it-ink font-medium tracking-[-0.012em] lg:sticky lg:top-28'>
+                                    {dict.title}
+                                </h2>
+                            </div>
+                            <div className='min-w-0 flex-1'>
+                                <FaqAccordion items={dict.items} />
+                            </div>
                         </Reveal>
                     </div>
                 </section>
@@ -99,10 +114,10 @@ export async function FaqSection({
                             <div className='flex flex-col gap-8 lg:gap-10'>
                                 {/* Heading */}
                                 <div className='flex flex-col gap-2.5'>
-                                    <h2 className='m-0 text-[27px] lg:text-[32px] leading-[1.2] font-medium tracking-[-0.012em] text-it-ink'>
+                                    <h2 className='m-0 text-[26px] lg:text-[26px] leading-[1.2] font-medium tracking-[-0.012em] text-it-ink'>
                                         {dict.title}
                                     </h2>
-                                    <p className='m-0 max-w-[400px] text-[13px] lg:text-[14.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                                    <p className='m-0 max-w-[400px] it-text text-it-text-muted'>
                                         {dict.subtitle}
                                     </p>
                                 </div>
@@ -176,7 +191,7 @@ export async function FaqSection({
                                                     height={24}
                                                     className='size-6 shrink-0'
                                                 />
-                                                <span className='font-medium text-[13px] lg:text-[14.5px] leading-[1.6] text-it-heading tracking-[-0.012em]'>
+                                                <span className='font-medium it-text text-it-heading'>
                                                     {g}
                                                 </span>
                                             </li>

@@ -410,12 +410,12 @@ export function SavedToursView({
                                 {dict.sharedNote}
                             </p>
                         ) : (
-                            <p className='m-0 mt-1.5 text-[14.5px] font-medium leading-[1.4] text-it-heading max-sm:text-[13.5px] tracking-[-0.012em]'>
+                            <p className='m-0 mt-1.5 text-[14.5px] font-medium leading-[1.4] text-it-heading max-sm:text-[13px] tracking-[-0.012em]'>
                                 {dict.subtitle}
                             </p>
                         )}
 
-                        <p className='m-0 mt-3.5 text-[12.5px] font-medium leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                        <p className='m-0 mt-3.5 text-[12px] font-medium leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                             {formatPlural(
                                 dict.tourCount,
                                 visible.length,

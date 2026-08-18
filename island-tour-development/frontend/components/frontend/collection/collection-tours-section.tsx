@@ -1,3 +1,5 @@
+import { TOUR_CARD_GRID } from '@/lib/tours/listing';
+import { cn } from '@/lib/utils';
 import { MountReveal } from '../mount-reveal';
 import { Reveal } from '../reveal';
 import { TourCard, type TourCardDict, type TourListing } from '../tour-card';
@@ -26,7 +28,14 @@ export function CollectionToursSection({
         // the curated grid - 3-column LOCK (collections never go 4-up), no
         // sort, no filters, no peach: the editorial order is the product and
         // the rank circle is the signal.
-        <section className='bg-it-white pb-4'>
+        //
+        // Three, NOT the sitewide four (founder, 2026-08-18 - briefly widened
+        // and reversed the same day). A ranked collection card is a filled
+        // panel carrying a description line that the plain tour card does not
+        // have; at quarter width that copy collapses. The four-up grid the
+        // founder asked for that day is the COLLECTION rail on the destination
+        // page, which is a different listing - see destination-collections.
+        <section className='bg-it-white it-section pt-11! md:pt-14!'>
             <div className='it-container'>
                 <Reveal className='flex flex-col'>
                     <p className='m-0 max-w-[660px] pt-[34px] pb-3.5 text-[14.5px] leading-[1.6] text-it-heading text-pretty tracking-[-0.012em]'>

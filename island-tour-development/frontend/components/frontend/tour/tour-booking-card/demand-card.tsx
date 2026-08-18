@@ -57,7 +57,7 @@ export function DemandCard() {
                 <span className='text-[13px] font-medium leading-[1.5] text-it-heading tracking-[-0.012em]'>
                     {dict.sellOutTitle}
                 </span>
-                <span className='text-[11.5px] leading-[1.5] text-it-text-muted tracking-[-0.012em]'>
+                <span className='text-[12px] leading-[1.5] text-it-text-muted tracking-[-0.012em]'>
                     {dict.sellOutSubtitle}
                 </span>
             </div>

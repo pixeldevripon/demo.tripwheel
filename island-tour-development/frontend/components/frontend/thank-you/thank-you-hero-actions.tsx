@@ -42,15 +42,42 @@ export function BookingRefCopy({
     }
 
     return (
+        // Figma 47745:10842: an ICON inside the ref pill, not a "Copy" text
+        // link beside it - the pill is a value plus its one affordance.
+        //
+        // The confirmation is the glyph swapping to a green tick, which is the
+        // only thing left to say "copied" once the word is gone. The accessible
+        // name swaps with it, and `aria-live` announces the change, so a screen
+        // reader is told what a sighted user is shown.
         <motion.button
             type='button'
             onClick={handleCopy}
-            whileTap={{ scale: 0.97 }}
+            whileTap={{ scale: 0.9 }}
             transition={springPop}
-            aria-label={ariaLabel}
+            aria-label={copied ? copiedLabel : `${copyLabel} ${ariaLabel}`}
             aria-live='polite'
-            className='cursor-pointer border-none bg-transparent p-0 text-[11.5px] font-medium leading-[1.4] text-it-primary-hover underline underline-offset-2 tracking-[-0.012em]'>
-            {copied ? copiedLabel : copyLabel}
+            className='grid size-5 shrink-0 cursor-pointer place-items-center border-none bg-transparent p-0'>
+            <AnimatePresence mode='wait' initial={false}>
+                <motion.span
+                    key={copied ? 'copied' : 'copy'}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={swapFade}
+                    className='grid place-items-center'>
+                    <Image
+                        src={
+                            copied
+                                ? '/icons/check-green.svg'
+                                : '/icons/typ/copy.svg'
+                        }
+                        alt=''
+                        width={20}
+                        height={20}
+                        className='size-5 shrink-0'
+                    />
+                </motion.span>
+            </AnimatePresence>
         </motion.button>
     );
 }
@@ -104,7 +131,7 @@ export function AddToCalendar({
     }, [open]);
 
     const itemClass =
-        'flex w-full cursor-pointer items-center gap-2.5 rounded-it-sm px-3 py-2.5 text-left text-[12.5px] font-medium leading-[1.4] text-it-heading no-underline transition-colors duration-(--it-duration-xs) hover:bg-it-bg tracking-[-0.012em]';
+        'flex w-full cursor-pointer items-center gap-2.5 rounded-it-sm px-3 py-2.5 text-left text-[12px] font-medium leading-[1.4] text-it-heading no-underline transition-colors duration-(--it-duration-xs) hover:bg-it-bg tracking-[-0.012em]';
 
     const options = [
         {
@@ -150,21 +177,18 @@ export function AddToCalendar({
                 transition={springPop}
                 aria-expanded={open}
                 aria-haspopup='menu'
-                className='flex cursor-pointer items-center gap-[9px] rounded-it-sm border-none bg-it-primary px-[26px] py-[13px] text-[14.5px] font-medium leading-[1.5] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover tracking-[-0.012em]'>
-                <Image
-                    src='/icons/thank-you/calendar-white.svg'
-                    alt=''
-                    width={24}
-                    height={24}
-                    className='size-[17px] shrink-0'
-                />
+                className='flex cursor-pointer items-center gap-2.5 rounded-[50px] border-none bg-it-primary px-10 py-[15px] text-[14.5px] font-medium leading-[1.6] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover tracking-[-0.012em]'>
+                {/* Figma carries a chevron only - the leading calendar glyph is
+                    gone. The label already says "Add to calendar"; the icon was
+                    restating it, and the chevron is the one mark that says this
+                    opens a menu rather than firing. */}
                 {labels.button}
                 <Image
                     src='/icons/thank-you/arrow-down-white.svg'
                     alt=''
                     width={16}
                     height={16}
-                    className={`size-3.5 shrink-0 transition-transform duration-(--it-duration-xs) ${open ? 'rotate-180' : ''}`}
+                    className={`size-4 shrink-0 transition-transform duration-(--it-duration-xs) ${open ? 'rotate-180' : ''}`}
                 />
             </motion.button>
             <AnimatePresence>
@@ -284,7 +308,7 @@ export function ResendEmailLine({
                         onClick={handleResend}
                         disabled={state === 'sending'}
                         aria-live='polite'
-                        className='cursor-pointer text-it-primary-hover underline underline-offset-2 disabled:cursor-default disabled:no-underline disabled:opacity-60 tracking-[-0.012em]'>
+                        className='cursor-pointer font-medium text-it-primary underline underline-offset-2 disabled:cursor-default disabled:no-underline disabled:opacity-60 tracking-[-0.012em]'>
                         {state === 'sending' ? sendingLabel : resendLabel}
                     </button>
                 </motion.p>

@@ -237,17 +237,26 @@
                     "adults": {
                         "label": "成人",
                         "hint": "12 岁及以上",
-                        "word": { "one": "成人", "other": "成人" }
+                        "word": {
+                            "one": "成人",
+                            "other": "成人"
+                        }
                     },
                     "children": {
                         "label": "儿童",
                         "hint": "4 至 11 岁",
-                        "word": { "one": "儿童", "other": "儿童" }
+                        "word": {
+                            "one": "儿童",
+                            "other": "儿童"
+                        }
                     },
                     "infants": {
                         "label": "婴儿",
                         "hint": "4 岁以下 · 大多数行程免费",
-                        "word": { "one": "婴儿", "other": "婴儿" }
+                        "word": {
+                            "one": "婴儿",
+                            "other": "婴儿"
+                        }
                     }
                 },
                 "applyGuests": "应用",
@@ -268,10 +277,22 @@
             },
             "trust": {
                 "checks": [
-                    "免费取消，无需理由",
-                    "今天只需支付 20%，其余稍后支付",
-                    "秒速确认",
-                    "安全支付"
+                    {
+                        "title": "由当地人打造",
+                        "sub": "在此长大"
+                    },
+                    {
+                        "title": "免费取消",
+                        "sub": "无需理由"
+                    },
+                    {
+                        "title": "WhatsApp 支持",
+                        "sub": "我们是本地人"
+                    },
+                    {
+                        "title": "仅需 20% 定金",
+                        "sub": "即可预订"
+                    }
                 ],
                 "whatsapp": "有疑问？在 WhatsApp 上聊 →"
             },
@@ -432,6 +453,7 @@
                 "calendarNoDepartures": "无出发",
                 "calendarClosed": "已截止",
                 "calendarToday": "今天",
+                "closeCalendar": "关闭日历",
                 "noDeparturesOnDateTitle": "{date} 没有出发班次",
                 "noDeparturesOnDateHint": "请另选一天 - 日历会显示所有仍有名额的日期。",
                 "deadEndTitle": "这些行程本周仍有出发班次",
@@ -439,23 +461,44 @@
                 "deadEndNext": "下次出发：{date}",
                 "deadEndNoAlternatives": "本岛本周没有其他有名额的行程。请尝试其他日期或其他岛屿。",
                 "onlyLeft": "仅剩 {count} 个",
-                "travelers": { "one": "{count} 位旅客", "other": "{count} 位旅客" },
-                "guests": { "one": "{count} 位宾客", "other": "{count} 位宾客" },
+                "travelers": {
+                    "one": "{count} 位旅客",
+                    "other": "{count} 位旅客"
+                },
+                "guests": {
+                    "one": "{count} 位宾客",
+                    "other": "{count} 位宾客"
+                },
                 "bands": {
                     "ADULT": {
-                        "plural": { "one": "{count} 名成人", "other": "{count} 名成人" }
+                        "plural": {
+                            "one": "{count} 名成人",
+                            "other": "{count} 名成人"
+                        }
                     },
                     "CHILD": {
-                        "plural": { "one": "{count} 名儿童", "other": "{count} 名儿童" }
+                        "plural": {
+                            "one": "{count} 名儿童",
+                            "other": "{count} 名儿童"
+                        }
                     },
                     "INFANT": {
-                        "plural": { "one": "{count} 名婴儿", "other": "{count} 名婴儿" }
+                        "plural": {
+                            "one": "{count} 名婴儿",
+                            "other": "{count} 名婴儿"
+                        }
                     },
                     "YOUTH": {
-                        "plural": { "one": "{count} 名青少年", "other": "{count} 名青少年" }
+                        "plural": {
+                            "one": "{count} 名青少年",
+                            "other": "{count} 名青少年"
+                        }
                     },
                     "SENIOR": {
-                        "plural": { "one": "{count} 名长者", "other": "{count} 名长者" }
+                        "plural": {
+                            "one": "{count} 名长者",
+                            "other": "{count} 名长者"
+                        }
                     }
                 },
                 "ageFrom": "年龄 {min}+",
@@ -813,7 +856,7 @@
         "verifyCta": "使用邮箱 + 预订编号验证"
     },
     "thankYou": {
-        "title": "预订成功，{name}！",
+        "title": "预订成功，{name}！ 🌴",
         "subtitle": "您的{tour}已预订，时间为{date} {time}。",
         "bookingRef": "预订编号：",
         "copy": "复制",

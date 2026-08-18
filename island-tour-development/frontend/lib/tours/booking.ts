@@ -48,6 +48,14 @@ export type TourBookingDict = {
     calendarClosed: string;
     /** Accessible name for the ring on today's date. */
     calendarToday: string;
+    /**
+     * Accessible name for the calendar's close button.
+     *
+     * The popover covers the field stack, so the trigger that opened it sits
+     * UNDERNEATH the panel - the close control has to be inside the panel or
+     * there is no way out of it.
+     */
+    closeCalendar: string;
     /** Shown when the chosen day has no bookable departure at all. */
     noDeparturesOnDateTitle: string;
     noDeparturesOnDateHint: string;

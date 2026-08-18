@@ -129,7 +129,7 @@ export function DepartureTimes() {
                             // 13.5px time, the reserved 11px capacity line and
                             // the border), so resolving slots never jolts the
                             // card.
-                            className='h-[48.6px] w-[84px] it-skeleton rounded-it-sm'
+                            className='h-[62px] w-[84px] it-skeleton rounded-[8px]'
                         />
                     ))}
                 </motion.div>
@@ -149,7 +149,7 @@ export function DepartureTimes() {
                     // that made every panel shake as it opened.
                     className='pb-0.5'>
                     {/* `.slotlabel` (mck-15): 12px bold in the muted grey. */}
-                    <span className='mb-2 block text-[11.5px] font-medium leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                    <span className='mb-2 block text-[12px] font-medium leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                         {dict.departureTime}
                     </span>
                     {/* `.slotrow`: chips WRAP, they do not share a fixed grid.
@@ -203,13 +203,13 @@ export function DepartureTimes() {
                                 // 13.5px bold tabular, centred. Selection is
                                 // the orange border and tint; a sold-out chip
                                 // simply fades to half.
-                                className={`rounded-it-sm border px-3.5 py-2 text-center transition-colors duration-200 ${chipSkin} ${
+                                className={`rounded-[8px] border px-4 py-2 text-center transition-colors duration-200 ${chipSkin} ${
                                     soldOut
                                         ? 'cursor-not-allowed opacity-50'
                                         : 'cursor-pointer'
                                 }`}>
                                 <span
-                                    className={`block whitespace-nowrap text-[12.5px] font-bold leading-[1.25] tabular-nums ${
+                                    className={`block whitespace-nowrap text-[14.5px] font-medium leading-[1.4] tabular-nums ${
                                         isSelected
                                             ? 'text-it-primary-hover tracking-[-0.012em]'
                                             : ''
@@ -226,7 +226,7 @@ export function DepartureTimes() {
                                     would have made it jump taller the moment a
                                     departure filled. 11px at 1.25 = 13.75px,
                                     the exact line this holds open. */}
-                                <span className='block min-h-[13.75px] text-[11px] font-medium leading-[1.25] text-it-text-muted tracking-[-0.012em]'>
+                                <span className='block min-h-[13.75px] text-[13px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                                     {note}
                                 </span>
                             </motion.button>

@@ -175,7 +175,7 @@ export function AccountMenu({
                                 <span className='block text-[13px] leading-[1.4] font-medium text-it-heading truncate tracking-[-0.012em]'>
                                     {identityEmail}
                                 </span>
-                                <span className='block text-[11.5px] leading-[1.6] text-it-text-muted truncate tracking-[-0.012em]'>
+                                <span className='block text-[12px] leading-[1.6] text-it-text-muted truncate tracking-[-0.012em]'>
                                     {dict.account}
                                 </span>
                             </span>

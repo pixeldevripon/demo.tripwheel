@@ -7,7 +7,7 @@ import {
     type ReactElement,
     type ReactNode,
 } from 'react';
-import type { HubTourCardDict } from './hub-tour-card';
+import type { TourCardDict } from '../tour-card';
 import {
     HubTripsPanel,
     type HubTripsFilterDict,
@@ -27,10 +27,10 @@ type HubTripsDict = {
     selectDate: string;
     /** Copy for the date-availability filter on each trips/charters panel. */
     filter: HubTripsFilterDict;
-    card: HubTourCardDict;
+    card: TourCardDict;
 };
 
-export type { HubTripsPanelData, HubCardGroup } from './hub-trips-panel';
+export type { HubCardGroup, HubTripsPanelData } from './hub-trips-panel';
 
 /**
  * Hub trips/charters listing (Figma nodes 48024:11222 + 48024:11455). The panels
@@ -63,7 +63,8 @@ export function HubTripsSection({
     // is highlighted (the trailing children are not tabs).
     useEffect(() => {
         const onScroll = () => {
-            const line = (tabBarRef.current?.getBoundingClientRect().bottom ?? 0) + 8;
+            const line =
+                (tabBarRef.current?.getBoundingClientRect().bottom ?? 0) + 8;
             let current: number | null = 0;
             let lastEl: HTMLElement | null = null;
             for (let i = 0; i < dict.panels.length; i++) {
@@ -110,7 +111,7 @@ export function HubTripsSection({
             <section
                 key={dict.tabs[i]?.key ?? i}
                 id={sectionId(i)}
-                ref={(el) => {
+                ref={el => {
                     sectionRefs.current[i] = el;
                 }}
                 className='scroll-mt-32.5 md:scroll-mt-38'>
@@ -135,7 +136,7 @@ export function HubTripsSection({
         <div>
             {/* The trips section's old pt-7, kept outside the sticky strip so
                 the bar's natural resting position is unchanged. */}
-            <div className='h-7 bg-it-white' />
+            <div className='h-7 bg-it-white  pt-11 sm:pt-24' />
 
             {/* Sticky scroll-nav - a full-bleed frosted strip below the fixed
                 navbar (it also rides over the surface-tinted trailing sections,
@@ -155,7 +156,7 @@ export function HubTripsSection({
                 </div>
             </div>
 
-            <section className='bg-it-white pb-16'>
+            <section className='bg-it-white '>
                 <div className='it-container'>
                     {/* Stacked sections - each is a scroll target. The gap also
                         covers the old trailing block's leading padding. */}
@@ -171,3 +172,4 @@ export function HubTripsSection({
         </div>
     );
 }
+

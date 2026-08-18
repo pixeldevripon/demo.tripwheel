@@ -95,7 +95,7 @@ function EntityRow({
                         {label}
                     </span>
                     {subtitle && (
-                        <span className='mt-0.5 block truncate text-[11.5px] text-it-text-muted tracking-[-0.012em]'>
+                        <span className='mt-0.5 block truncate text-[12px] text-it-text-muted tracking-[-0.012em]'>
                             {subtitle}
                         </span>
                     )}
@@ -307,7 +307,7 @@ function TourRow({
                 </span>
                 <span className='min-w-0 flex-1'>
                     {contextLabel && (
-                        <span className='flex items-center gap-1 text-[11.5px] text-it-text-muted tracking-[-0.012em]'>
+                        <span className='flex items-center gap-1 text-[12px] text-it-text-muted tracking-[-0.012em]'>
                             {contextKind === 'category' ? (
                                 <Folder
                                     size={11}
@@ -328,11 +328,11 @@ function TourRow({
                         {hit.title}
                     </span>
                     {meta.length > 0 && (
-                        <span className='mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[11.5px] text-it-text-muted tracking-[-0.012em]'>
+                        <span className='mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[12px] text-it-text-muted tracking-[-0.012em]'>
                             {meta.map((node, i) => (
                                 <span
                                     key={i}
-                                    className='inline-flex items-center gap-1.5 text-[9px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
+                                    className='inline-flex items-center gap-1.5 text-[12px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
                                     {i > 0 && (
                                         <span className='text-it-heading/30 tracking-[-0.012em]'>
                                             ·
@@ -343,7 +343,7 @@ function TourRow({
                             ))}
                         </span>
                     )}
-                    <span className='mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[11.5px] tracking-[-0.012em]'>
+                    <span className='mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[12px] tracking-[-0.012em]'>
                         <span className='font-medium text-it-heading tracking-[-0.012em]'>
                             {dict.from}{' '}
                             {formatPriceFrom(

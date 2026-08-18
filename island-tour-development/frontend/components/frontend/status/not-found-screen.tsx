@@ -135,7 +135,7 @@ export function NotFoundScreen({
                                 {copy.title}
                             </h1>
 
-                            <p className='m-0 mt-4 max-w-[54ch] text-[14.5px] md:text-[16.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                            <p className='m-0 mt-4 max-w-[54ch] text-[14.5px] md:text-[14.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                                 {copy.description}
                             </p>
 
@@ -165,7 +165,7 @@ export function NotFoundScreen({
 
                             {quickLinks.length > 0 && (
                                 <div className='mt-9'>
-                                    <span className='block text-[11.5px] font-medium uppercase leading-none tracking-[0.12em] text-it-text-muted'>
+                                    <span className='block text-[12px] font-medium uppercase leading-none tracking-[0.12em] text-it-text-muted'>
                                         {copy.jumpLabel}
                                     </span>
                                     <div className='mt-3 flex flex-wrap items-center gap-2 md:gap-3'>
@@ -175,7 +175,7 @@ export function NotFoundScreen({
                                                 href={href(link.path)}
                                                 whileTap={{ scale: 0.97 }}
                                                 transition={springPop}
-                                                className='inline-flex items-center rounded-it-full border border-it-border bg-it-white px-4 py-[9px] text-[12.5px] font-medium leading-none text-it-heading no-underline transition-colors duration-(--it-duration-xs) hover:border-it-primary hover:bg-it-primary-subtle hover:text-it-primary-hover tracking-[-0.012em]'>
+                                                className='inline-flex items-center rounded-it-full border border-it-border bg-it-white px-4 py-[9px] text-[12px] font-medium leading-none text-it-heading no-underline transition-colors duration-(--it-duration-xs) hover:border-it-primary hover:bg-it-primary-subtle hover:text-it-primary-hover tracking-[-0.012em]'>
                                                 {link.name}
                                             </MotionLink>
                                         ))}
@@ -238,16 +238,16 @@ export function NotFoundScreen({
                         <Reveal>
                             <div className='mb-8 flex flex-wrap items-end justify-between gap-x-6 gap-y-4 md:mb-10'>
                                 <div>
-                                    <h2 className='m-0 font-it-display text-[23.5px] leading-[1.2] tracking-[-0.3px] text-it-heading font-medium'>
+                                    <h2 className='m-0 font-it-display text-[26px] leading-[1.2] tracking-[-0.3px] text-it-heading font-medium'>
                                         {copy.popularTitle}
                                     </h2>
-                                    <p className='m-0 mt-2 text-[13px] leading-[1.6] tracking-[-0.012em] text-it-text-muted md:text-[14.5px]'>
+                                    <p className='m-0 mt-2 it-text text-it-text-muted '>
                                         {copy.popularSubtitle}
                                     </p>
                                 </div>
                                 <Link
                                     href={href(popular.browsePath ?? '/search')}
-                                    className='inline-flex items-center gap-1 border-b-2 border-it-peach-border pb-0.5 text-[13.5px] font-medium leading-[1.3] text-it-heading no-underline transition-colors duration-(--it-duration-sm) hover:border-it-primary hover:text-it-primary-hover tracking-[-0.012em]'>
+                                    className='inline-flex items-center gap-1 border-b-2 border-it-peach-border pb-0.5 text-[13px] font-medium leading-[1.3] text-it-heading no-underline transition-colors duration-(--it-duration-sm) hover:border-it-primary hover:text-it-primary-hover tracking-[-0.012em]'>
                                     {popular.total
                                         ? copy.viewAllTours.replace(
                                               '{count}',

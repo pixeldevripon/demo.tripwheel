@@ -1,9 +1,9 @@
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 import { springPop } from '@/lib/motion';
 import Image from 'next/image';
-import Link from 'next/link';
 import { MotionLink } from './motion-link';
 import { Reveal } from './reveal';
+import { SeeAllLink } from './see-all-link';
 
 export type RelatedCategory = {
     name: string;
@@ -63,14 +63,14 @@ export function CategoryYouMightLike({
     if (!isCollection) {
         // ── Design v2 category variant (.relcats/.relgrid) ────────────────
         return (
-            <section className='bg-it-white'>
+            <section className='bg-it-white it-section pb-10! sm:pb-14!'>
                 <div className='it-container'>
                     <Reveal className='flex flex-col gap-4'>
-                        <h2 className='m-0 mt-11 text-[21px] md:text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                        <h2 className='it-h2 m-0 mt-11 text-it-heading'>
                             {title}
                         </h2>
 
-                        <div className='grid gap-3 md:grid-cols-3 md:gap-4'>
+                        <div className='grid gap-3 md:grid-cols-4 md:gap-4'>
                             {items.map(item => (
                                 <Reveal key={item.slug} width='auto' listItem>
                                     <MotionLink
@@ -92,11 +92,11 @@ export function CategoryYouMightLike({
                                                 />
                                             )}
                                         </div>
-                                        <b className='mt-2.5 block text-[14px] font-medium leading-[1.6] text-it-heading tracking-[-0.012em]'>
+                                        <b className='it-h3 mt-2.5 block text-it-heading'>
                                             {item.name}
                                         </b>
                                         {item.tours != null && (
-                                            <span className='text-[13px] leading-[1.6] text-it-white/70 tabular-nums tracking-[-0.012em]'>
+                                            <span className='it-meta block text-it-text-muted tabular-nums'>
                                                 {item.tours} {toursWord}
                                             </span>
                                         )}
@@ -114,10 +114,10 @@ export function CategoryYouMightLike({
     // photo tiles as the category grid - name BELOW the photo - plus the
     // subtle text-link recovery CTA (never a button).
     return (
-        <section className='bg-it-white pt-16 pb-20'>
+        <section className='bg-it-white pb-0!'>
             <div className='it-container'>
                 <Reveal className='flex flex-col gap-4'>
-                    <h2 className='m-0 text-[21px] md:text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                    <h2 className='it-h2 m-0 text-it-heading'>
                         {title}
                     </h2>
 
@@ -143,7 +143,7 @@ export function CategoryYouMightLike({
                                             />
                                         )}
                                     </div>
-                                    <b className='mt-2.5 block text-[14px] font-medium leading-[1.6] text-it-heading tracking-[-0.012em]'>
+                                    <b className='it-h3 mt-2.5 block text-it-heading'>
                                         {item.name}
                                     </b>
                                 </MotionLink>
@@ -154,15 +154,18 @@ export function CategoryYouMightLike({
                     {/* Recovery CTA - a subtle text link to the destination
                         page (5.6: never a button). */}
                     {footer && (
-                        <div className='mt-3.5'>
-                            <span className='text-[14.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
-                                {footer.prompt}
-                            </span>{' '}
-                            <Link
+                        <div className='pt-14'>
+                            <SeeAllLink
                                 href={localizeHref(locale, footer.href)}
-                                className='text-[13.5px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-[3px] transition-colors duration-300 hover:text-it-primary tracking-[-0.012em]'>
-                                {footer.cta} →
-                            </Link>
+                                label={footer.cta}
+                                className='md:text-[14.5px]'
+                                rule
+                                prefix={
+                                    <span className='text-[14.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                                        {footer.prompt}
+                                    </span>
+                                }
+                            />
                         </div>
                     )}
                 </Reveal>

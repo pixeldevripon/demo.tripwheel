@@ -36,15 +36,19 @@ export function PriceHeader() {
     // the whole departure, so the traveler gets exclusive use.
     const isPrivateCharter = isUnit && data.bookingType === 'PRIVATE';
 
-    // `.wprice` (mck-15): a 13px muted line with a 22px/800 figure inside it.
-    // No rule underneath - the card is one 20px-padded box, and the divider
-    // that used to sit here fenced the price off from the fields it belongs
-    // with.
+    // Figma 48256:16637 draws this as a white band ruled off from a #f8f8f8
+    // card body. The card is WHITE (founder, 2026-08-18 - the grey fill was
+    // tried and reverted), so both the band and the rule are dropped: on a
+    // white card the band is invisible and the rule is just a fence between
+    // the price and the fields it belongs with.
+    //
+    // The TYPE is Figma's, a step down: 24/28/24 becomes 20/24/20, matching
+    // the reduction the rest of the tour page took the same day.
     return (
-        <div className='flex flex-col gap-0.5 px-5 pt-5'>
-            <div className='flex items-baseline gap-1 text-it-text-muted tracking-[-0.012em]'>
+        <div className='flex flex-col gap-0.5 px-4 pt-4'>
+            <div className='flex flex-wrap items-baseline gap-x-1 text-[18px] leading-[1.2] tracking-[-0.012em] text-it-heading lg:text-[20px]'>
                 <span>{dict.from}</span>
-                <b className='mr-1 text-[19.5px] font-medium leading-[1.2] tracking-[-0.012em] text-it-heading tabular-nums'>
+                <b className='text-[20px] font-bold leading-[1.4] tracking-[-0.012em] text-it-heading tabular-nums lg:text-[26px]'>
                     {money(data.priceFrom)}
                 </b>
                 <span>{unitLabel}</span>
@@ -55,7 +59,7 @@ export function PriceHeader() {
                 </span>
             )}
             {isPrivateCharter && (
-                <span className='mt-1 inline-flex w-fit items-center rounded-it-full bg-it-primary/10 px-3 py-1 font-medium text-[11.5px] leading-[1.4] tracking-[-0.012em] text-it-primary'>
+                <span className='mt-1 inline-flex w-fit items-center rounded-it-full bg-it-primary/10 px-3 py-1 font-medium text-[12px] leading-[1.4] tracking-[-0.012em] text-it-primary'>
                     {dict.privateCharter}
                 </span>
             )}

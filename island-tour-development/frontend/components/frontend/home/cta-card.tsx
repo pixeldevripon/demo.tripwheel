@@ -47,12 +47,12 @@ export function CtaCard({
                         <h2 className='m-0 text-[clamp(21px,3vw,28px)] leading-[1.15] tracking-[-0.012em] text-it-white font-medium'>
                             {dict.title}
                         </h2>
-                        <p className='m-0 mt-2.5 text-[14px] leading-[1.6] text-it-footer-muted tracking-[-0.012em]'>
+                        <p className='m-0 mt-2.5 text-[13px] leading-[1.6] text-it-footer-muted tracking-[-0.012em]'>
                             {dict.body}
                         </p>
                         <MotionLink
                             href={ctaHref}
-                            className='mt-6 inline-flex items-center gap-2 rounded-it-sm bg-it-primary px-7 py-3.5 no-underline cursor-pointer border-none text-[15.5px] md:text-[17px] font-medium text-it-white transition-colors hover:bg-it-primary-hover tracking-[-0.012em]'
+                            className='mt-6 inline-flex items-center gap-2 rounded-it-sm bg-it-primary px-7 py-3.5 no-underline cursor-pointer border-none text-[14.5px] md:text-[18px] font-medium text-it-white transition-colors hover:bg-it-primary-hover tracking-[-0.012em]'
                             initial='rest'
                             animate='rest'
                             whileTap='tap'

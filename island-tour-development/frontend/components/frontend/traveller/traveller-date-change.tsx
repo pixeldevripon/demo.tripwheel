@@ -92,7 +92,7 @@ export function TravellerDateChange({
                             {dict.dateChangeNote}
                         </p>
                         {loading ? (
-                            <p className='mt-3 mb-0 flex items-center gap-2 text-[12.5px] text-it-text-muted tracking-[-0.012em]'>
+                            <p className='mt-3 mb-0 flex items-center gap-2 text-[12px] text-it-text-muted tracking-[-0.012em]'>
                                 <Loader2
                                     className='size-4 animate-spin'
                                     strokeWidth={2}
@@ -100,7 +100,7 @@ export function TravellerDateChange({
                                 {dict.dateChangeLoading}
                             </p>
                         ) : options && options.length === 0 ? (
-                            <p className='mt-3 mb-0 text-[12.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                            <p className='mt-3 mb-0 text-[12px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                                 {dict.dateChangeNoOptions}
                             </p>
                         ) : options ? (
@@ -109,7 +109,7 @@ export function TravellerDateChange({
                                     value={selected}
                                     onChange={e => setSelected(e.target.value)}
                                     aria-label={dict.dateChangeTitle}
-                                    className='mt-3 w-full cursor-pointer rounded-[10px] border border-it-border bg-it-white px-3.5 py-2.5 text-[14.5px] md:text-[13px] text-it-heading focus:border-transparent focus:outline-2 focus:outline-it-primary tracking-[-0.012em]'>
+                                    className='mt-3 w-full cursor-pointer rounded-[10px] border border-it-border bg-it-white px-3.5 py-2.5 text-[16px] md:text-[14.5px] text-it-heading focus:border-transparent focus:outline-2 focus:outline-it-primary tracking-[-0.012em]'>
                                     {options.map(o => (
                                         <option
                                             key={o.departureId}

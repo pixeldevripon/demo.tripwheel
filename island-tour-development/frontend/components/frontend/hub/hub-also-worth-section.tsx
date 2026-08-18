@@ -30,11 +30,11 @@ export function HubAlsoWorthSection({
     if (items.length === 0) return null;
 
     return (
-        <section className='it-section max-md:py-[32px]! bg-it-white'>
+        <section className='pt-0! pb-14 bg-it-white'>
             <div className='it-container'>
                 {/* 24px heading→cards on mobile, 48px on desktop (Figma). */}
                 <Reveal className='flex flex-col gap-[22px]'>
-                    <h2 className='m-0 text-[21px] md:text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                    <h2 className='m-0 text-[20px] md:text-[26px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                         {title}
                     </h2>
 
@@ -67,7 +67,7 @@ export function HubAlsoWorthSection({
                                         <div className='pointer-events-none absolute inset-0 bg-linear-to-b from-transparent from-40% to-it-dark/78' />
                                     )}
                                     <span
-                                        className={`relative z-2 font-it-display text-[16.5px] font-bold leading-[1.3] tracking-[-0.01em] ${item.image ? 'text-it-white tracking-[-0.012em]' : ''}`}>
+                                        className={`relative z-2 font-it-display text-[14.5px] font-bold leading-[1.3] tracking-[-0.01em] ${item.image ? 'text-it-white tracking-[-0.012em]' : ''}`}>
                                         {item.name}
                                     </span>
                                 </Link>

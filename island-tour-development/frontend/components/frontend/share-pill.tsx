@@ -73,15 +73,15 @@ export function SharePill({
             whileTap={{ scale: 0.97 }}
             transition={springPop}
             className={cn(
-                'inline-flex cursor-pointer items-center gap-[7px] rounded-it-full border border-it-border bg-it-white/92 px-[15px] py-[9px] shadow-it-sm transition-transform duration-(--it-duration-xs) ease-(--it-ease) hover:-translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary',
+                'inline-flex cursor-pointer items-center gap-2 rounded-full border-none bg-it-white px-4 py-2.5 it-text font-medium text-it-heading shadow-it-sm transition-colors duration-(--it-duration-md) ease-(--it-ease-out) hover:bg-it-bg ',
                 className
             )}>
             <Image
-                src='/icons/share-outline.svg'
+                src='/icons/share-solid.svg'
                 alt=''
                 width={24}
                 height={24}
-                className='size-[15px] shrink-0'
+                className='size-4 shrink-0 md:size-[17px]'
             />
             <AnimatePresence mode='wait' initial={false}>
                 <motion.span

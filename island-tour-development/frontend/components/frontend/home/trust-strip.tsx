@@ -42,10 +42,10 @@ function TrustCard({ icon, item }: { icon: string; item: TrustItem }) {
                 className='size-8 shrink-0'
             />
             <div className='flex flex-col items-center gap-1'>
-                <h3 className='m-0 text-[16.5px] font-medium leading-[1.6] tracking-[-0.012em] text-it-heading md:text-[18px]'>
+                <h3 className='m-0 text-[14.5px] font-medium leading-[1.6] tracking-[-0.012em] text-it-heading md:text-[18px]'>
                     {item.title}
                 </h3>
-                <p className='m-0 text-[13.5px] leading-[1.6] tracking-[-0.012em] text-it-text-muted md:text-[14.5px]'>
+                <p className='m-0 text-[13px] leading-[1.6] tracking-[-0.012em] text-it-text-muted md:text-[14.5px]'>
                     {item.body}
                 </p>
             </div>

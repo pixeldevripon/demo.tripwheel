@@ -181,7 +181,7 @@ export function TourGallery({
                                 ))}
                             </div>
                         ) : (
-                            <span className='absolute bottom-3 left-3 z-10 rounded-it-full bg-it-ink/60 px-2.5 py-1 text-[11.5px] leading-[1.4] tracking-[-0.012em] text-it-white tabular-nums'>
+                            <span className='absolute bottom-3 left-3 z-10 rounded-it-full bg-it-ink/60 px-2.5 py-1 text-[12px] leading-[1.4] tracking-[-0.012em] text-it-white tabular-nums'>
                                 {slide + 1} / {images.length}
                             </span>
                         )}
@@ -196,20 +196,20 @@ export function TourGallery({
                     onClick={() => openAt(slide)}
                     whileTap={{ scale: 0.97 }}
                     transition={springPop}
-                    className='absolute right-3 bottom-3 z-10 inline-flex cursor-pointer items-center gap-1.5 rounded-it-sm border-none bg-it-white/94 px-2.5 py-1.5 text-[11.5px] font-medium leading-[1.4] text-it-heading shadow-it-sm tracking-[-0.012em]'>
+                    className='absolute right-3 bottom-3 z-10 inline-flex cursor-pointer items-center gap-1.5 rounded-it-sm border-none bg-it-white/94 px-2.5 py-1.5 text-[12px] font-medium leading-[1.4] text-it-heading shadow-it-sm tracking-[-0.012em]'>
                     <Image
                         src='/icons/gallery-photos.svg'
                         alt=''
                         width={24}
                         height={24}
-                        className='size-5 shrink-0'
+                        className='size-4 shrink-0'
                     />
                     {showAllPhotosLabel} ({images.length})
                 </motion.button>
             </div>
 
             {/* Desktop: 5-tile collage - big tile + 2x2 small tiles. */}
-            <div className='relative hidden overflow-hidden rounded-it-lg lg:grid lg:grid-cols-[2fr_1fr_1fr] lg:grid-rows-[175px_175px] lg:gap-2.5'>
+            <div className='relative hidden lg:grid lg:grid-cols-[396fr_190fr_190fr] lg:grid-rows-[220px_220px] lg:gap-2'>
                 <motion.button
                     type='button'
                     onClick={() => openAt(0)}
@@ -253,21 +253,30 @@ export function TourGallery({
                         />
                     </motion.button>
                 ))}
-                {/* "Show all photos" - bottom-right of the collage. */}
+                {/* "Show all photos" (Figma 47972:3681) - a 174px pill inside
+                    the LAST tile: 8px off its bottom and 8px off each side, so
+                    it reads as belonging to that photo rather than floating over
+                    the collage. White with a 10% ink hairline, radius 40, and
+                    the label in deep orange at 16/510.
+
+                    It no longer carries the photo count. Figma's label is bare,
+                    and the count pushed the pill past its fixed 174px. The
+                    MOBILE button below still shows it, which is where a reader
+                    most needs to know there is more than one photo. */}
                 <motion.button
                     type='button'
                     onClick={() => openAt(0)}
                     whileTap={{ scale: 0.97 }}
                     transition={springPop}
-                    className='absolute right-3 bottom-3 z-10 inline-flex cursor-pointer items-center gap-2 rounded-it-sm border-none bg-it-white/94 px-3.5 py-[9px] text-[12px] font-medium leading-[1.4] text-it-heading shadow-it-sm transition-transform duration-(--it-duration-xs) ease-(--it-ease) hover:-translate-y-px tracking-[-0.012em]'>
+                    className='absolute right-2 bottom-2 z-10 inline-flex w-[174px] cursor-pointer items-center justify-center gap-2 rounded-[40px] border border-it-heading/10 bg-it-white px-3 py-[7px] text-[13px] font-medium leading-[1.4] text-it-primary transition-transform duration-(--it-duration-xs) ease-(--it-ease) hover:-translate-y-px tracking-[-0.012em]'>
                     <Image
-                        src='/icons/gallery-photos.svg'
+                        src='/icons/tour/photos.svg'
                         alt=''
                         width={24}
                         height={24}
-                        className='size-6 shrink-0'
+                        className='size-5 shrink-0'
                     />
-                    {showAllPhotosLabel} ({images.length})
+                    {showAllPhotosLabel}
                 </motion.button>
             </div>
 

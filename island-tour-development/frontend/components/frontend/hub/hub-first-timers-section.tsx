@@ -31,26 +31,26 @@ export type HubFirstTimersDict = {
  */
 export function HubFirstTimersSection({ dict }: { dict: HubFirstTimersDict }) {
     return (
-        <section className='it-section pt-0! bg-it-white'>
+        <section className='it-section pb-0!  bg-it-white'>
             <div className='it-container'>
                 <Reveal className='flex flex-col gap-[26px]'>
                     {/* Heading + quick takeaways (grouped: 24px gap on mobile,
                         48px on desktop). */}
                     <div className='flex flex-col gap-[22px]'>
-                        <h2 className='m-0 text-[21px] md:text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                        <h2 className='m-0 text-[20px] md:text-[26px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                             {dict.title}
                         </h2>
 
                         {/* Takeaways stacked (mobile) / spread (desktop) + divider.
                             Hidden when the hub has no HIGHLIGHT sections. */}
                         {dict.highlights.length > 0 && (
-                            <div className='flex flex-col gap-6 md:gap-10'>
+                            <div className='flex flex-col gap-3 md:gap-10'>
                                 {/* .checksrow: three bordered white cards */}
                                 <ul className='m-0 grid list-none grid-cols-1 gap-3.5 p-0 md:grid-cols-3'>
                                     {dict.highlights.map((highlight, i) => (
                                         <li
                                             key={i}
-                                            className='flex items-center gap-[9px] rounded-it-md border border-it-divider bg-it-white px-4 py-3.5 shadow-it-sm'>
+                                            className='flex items-center gap-[9px] px-4 py-3.5'>
                                             <Image
                                                 src='/icons/trust-check-green.svg'
                                                 alt=''
@@ -58,7 +58,7 @@ export function HubFirstTimersSection({ dict }: { dict: HubFirstTimersDict }) {
                                                 height={24}
                                                 className='size-4 shrink-0'
                                             />
-                                            <span className='text-[13px] md:text-[14.5px] font-medium leading-[1.6] text-it-heading tracking-[-0.012em]'>
+                                            <span className='it-text  font-medium text-it-heading'>
                                                 {highlight}
                                             </span>
                                         </li>
@@ -70,7 +70,7 @@ export function HubFirstTimersSection({ dict }: { dict: HubFirstTimersDict }) {
 
                     {/* Tips - title + orange-ruled body */}
                     {/* .tips: titled tips over the peach left rule */}
-                    <div className='flex max-w-[820px] flex-col gap-5'>
+                    <div className='flex max-w-[820px] flex-col gap-8 pt-5'>
                         {dict.tips.map(tip => (
                             <Reveal
                                 key={tip.title}
@@ -80,8 +80,8 @@ export function HubFirstTimersSection({ dict }: { dict: HubFirstTimersDict }) {
                                 <h3 className='m-0 text-[14.5px] md:text-[18px] leading-[1.6] text-it-heading font-medium tracking-[-0.012em]'>
                                     {tip.title}
                                 </h3>
-                                <div className='border-l-[3px] border-it-peach-border py-0.5 pl-4'>
-                                    <p className='m-0 text-[13px] md:text-[14.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                                <div className='border-l-[3px] border-it-primary py-0.5 pl-4'>
+                                    <p className='m-0 it-text text-it-text-muted'>
                                         {tip.body}
                                     </p>
                                 </div>
