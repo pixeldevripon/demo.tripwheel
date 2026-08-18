@@ -31,7 +31,7 @@ export function CookieSettingsButton() {
             <button
                 type='button'
                 onClick={openSettings}
-                className='inline-flex cursor-pointer items-center rounded-full border-none bg-it-primary px-6 py-3 text-[15px] font-bold text-it-primary-fg transition-colors hover:bg-it-primary-hover active:bg-it-primary-active'>
+                className='inline-flex cursor-pointer items-center rounded-full border-none bg-it-primary px-6 py-3 text-[15px] font-medium text-it-primary-fg transition-colors hover:bg-it-primary-hover active:bg-it-primary-active'>
                 Open your cookie settings
             </button>
             {unavailable && (

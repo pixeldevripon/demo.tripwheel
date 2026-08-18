@@ -280,7 +280,7 @@ export function NavSearch({
                                 onFocus={() => setFocused(true)}
                                 placeholder={rotating ? '' : nav.search}
                                 aria-label={nav.search}
-                                className='w-full bg-transparent border-none outline-none text-[16px] md:text-[13.5px] font-semibold text-it-ink placeholder:font-bold placeholder:text-it-ink-muted [&::-webkit-search-cancel-button]:appearance-none'
+                                className='w-full bg-transparent border-none outline-none text-[16px] md:text-[13.5px] font-semibold text-it-ink placeholder:font-medium placeholder:text-it-ink-muted [&::-webkit-search-cancel-button]:appearance-none'
                             />
                             {rotating && query === '' && (
                                 <RotatingSearchPlaceholder

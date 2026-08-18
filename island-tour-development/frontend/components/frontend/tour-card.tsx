@@ -124,7 +124,7 @@ export type TourListing = {
  */
 function HubEyebrow({ name }: { name: string }) {
     return (
-        <span className='inline-flex w-max items-center gap-[5px] rounded-it-full border border-it-peach-border bg-it-white py-[3px] pl-2 pr-2.5 text-[11.5px] font-bold leading-none text-it-primary-hover shadow-it-sm'>
+        <span className='inline-flex w-max items-center gap-[5px] rounded-it-full border border-it-peach-border bg-it-white py-[3px] pl-2 pr-2.5 text-[11.5px] font-medium leading-none text-it-primary-hover shadow-it-sm'>
             <MapPin
                 className='size-3 shrink-0 text-it-primary'
                 strokeWidth={2}
@@ -388,7 +388,7 @@ function DefaultTourCard({
                     <div className='mb-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10.5px] @[220px]:text-[12.5px] leading-[1.6]'>
                         {isRated && (
                             <span className='inline-flex items-center gap-1.5'>
-                                <span className='font-bold text-it-star'>
+                                <span className='font-medium text-it-star'>
                                     ★ {tour.rating}
                                 </span>
                                 <span className='text-it-text-muted tabular-nums'>
@@ -402,7 +402,7 @@ function DefaultTourCard({
 
                 {/* Tour title - the stored title is hub-free (mck-18 §3); the
                     hub context around it is the eyebrow's job. */}
-                <h3 className='m-0 font-it-body font-bold text-[13px] @[220px]:text-[15.5px] leading-[1.3] tracking-[-0.005em] text-it-ink line-clamp-2 @[220px]:min-h-[2.6em]'>
+                <h3 className='m-0 font-it-body text-[13px] @[220px]:text-[15.5px] leading-[1.3] tracking-[-0.012em] text-it-ink line-clamp-2 @[220px]:min-h-[2.6em]'>
 {tour.title}
                 </h3>
 
@@ -443,7 +443,7 @@ function DefaultTourCard({
                 {availability && (
                     <p
                         className={cn(
-                            'm-0 mt-2.5 inline-flex items-center gap-[7px] text-[12.5px] font-bold leading-[1.6]',
+                            'm-0 mt-2.5 inline-flex items-center gap-[7px] text-[12.5px] font-medium leading-[1.6]',
                             availability.available
                                 ? 'text-it-green-text'
                                 : 'text-it-ink-muted'
@@ -466,7 +466,7 @@ function DefaultTourCard({
                 <div className='mt-auto flex flex-col gap-[3px] pt-2'>
                     <div className='flex items-baseline flex-wrap gap-x-1 text-[11px] @[220px]:text-[12.5px] leading-[1.6] text-it-text-muted'>
                         <span>{dict.from}</span>
-                        <span className='font-bold text-[14px] @[220px]:text-[17px] leading-[1.3] tracking-[-0.01em] text-it-ink tabular-nums'>
+                        <span className='font-medium text-[14px] @[220px]:text-[17px] leading-[1.3] tracking-[-0.012em] text-it-ink tabular-nums'>
                             {tour.priceDisplay}
                         </span>
                         <span>{priceLabel}</span>
@@ -593,7 +593,7 @@ function RankedTourCard({
                 />
                 {/* Rank circle (top-left) + Wishlist (top-right) */}
                 <div className='absolute inset-x-2.5 top-2.5 z-10 flex items-start justify-between gap-2'>
-                    <span className='grid size-[34px] place-items-center rounded-it-full bg-it-primary text-[13px] font-bold text-it-white shadow-it-sm tabular-nums'>
+                    <span className='grid size-[34px] place-items-center rounded-it-full bg-it-primary text-[13px] font-medium text-it-white shadow-it-sm tabular-nums'>
                         {rank}
                     </span>
                     <motion.button
@@ -642,7 +642,7 @@ function RankedTourCard({
                         <HubEyebrow name={tour.hub.name} />
                     </div>
                 )}
-                <h3 className='m-0 font-it-body font-bold text-[13px] @[220px]:text-[15.5px] leading-[1.3] tracking-[-0.005em] text-it-ink line-clamp-2'>
+                <h3 className='m-0 font-it-body text-[13px] @[220px]:text-[15.5px] leading-[1.3] tracking-[-0.012em] text-it-ink line-clamp-2'>
 {tour.title}
                 </h3>
 
@@ -657,7 +657,7 @@ function RankedTourCard({
                 <div className='mt-0.5 flex flex-wrap items-center gap-[5px] text-[11px] @[220px]:text-[12.5px] leading-[1.6] text-it-text-muted'>
                     {isRated && (
                         <>
-                            <span className='font-bold text-it-star'>
+                            <span className='font-medium text-it-star'>
                                 ★ {tour.rating}
                             </span>
                             <span className='tabular-nums'>
@@ -686,7 +686,7 @@ function RankedTourCard({
                 {/* Price - pinned to the card foot. */}
                 <div className='mt-auto pt-2 text-[11px] @[220px]:text-[12.5px] leading-[1.6] text-it-text-muted'>
                     {dict.from}
-                    <b className='ml-1 text-[14px] @[220px]:text-[17px] font-bold tracking-[-0.01em] text-it-ink tabular-nums'>
+                    <b className='ml-1 text-[14px] @[220px]:text-[17px] font-medium tracking-[-0.012em] text-it-ink tabular-nums'>
                         {tour.priceDisplay}
                     </b>
                 </div>
@@ -699,7 +699,7 @@ function RankedTourCard({
             <Link
                 href={tour.href}
                 aria-label={tour.title}
-                className='block h-full rounded-it-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary'>
+                className='block h-full rounded-[16px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary'>
                 {card}
             </Link>
         );

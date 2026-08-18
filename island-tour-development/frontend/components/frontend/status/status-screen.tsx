@@ -117,11 +117,11 @@ export function StatusScreen({
                     {eyebrow}
                 </span>
 
-                <h1 className='m-0 max-w-175 font-it-display font-bold text-[clamp(30px,4vw,46px)] leading-[1.08] tracking-[-0.018em] text-it-ink'>
+                <h1 className='m-0 max-w-175 font-it-display text-[clamp(30px,4vw,46px)] leading-[1.15] tracking-[-0.012em] text-it-ink'>
                     {title}
                 </h1>
 
-                <p className='m-0 mt-4 max-w-[54ch] text-[17px] leading-[1.6] text-it-text-muted'>
+                <p className='m-0 mt-4 max-w-[54ch] text-[16px] md:text-[18px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                     {description}
                 </p>
 
@@ -145,8 +145,8 @@ export function StatusScreen({
  * `whileTap` on the caller's MotionLink/MotionButton.
  */
 export const statusPrimaryClass =
-    'inline-flex cursor-pointer items-center justify-center gap-[9px] rounded-it-sm border-none bg-it-primary px-[22px] py-3.5 text-[15.5px] font-bold leading-none text-it-white no-underline shadow-it-sm transition-all duration-(--it-duration-sm) ease-(--it-ease) hover:-translate-y-px hover:bg-it-primary-hover';
+    'inline-flex cursor-pointer items-center justify-center gap-[9px] rounded-it-sm border-none bg-it-primary px-[22px] py-3.5 text-[15.5px] font-medium leading-none text-it-white no-underline shadow-it-sm transition-all duration-(--it-duration-sm) ease-(--it-ease) hover:-translate-y-px hover:bg-it-primary-hover';
 
 export const statusSecondaryClass =
-    'inline-flex cursor-pointer items-center justify-center gap-[9px] rounded-it-sm border border-it-border bg-it-white px-[22px] py-3.5 text-[15.5px] font-bold leading-none text-it-ink no-underline transition-colors duration-(--it-duration-sm) ease-(--it-ease) hover:bg-it-bg';
+    'inline-flex cursor-pointer items-center justify-center gap-[9px] rounded-it-sm border border-it-border bg-it-white px-[22px] py-3.5 text-[15.5px] font-medium leading-none text-it-ink no-underline transition-colors duration-(--it-duration-sm) ease-(--it-ease) hover:bg-it-bg';
 

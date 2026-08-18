@@ -401,16 +401,16 @@ export function SavedToursView({
                             is only on a phone, where the header goes full
                             width, that anything of ours runs under it - and
                             only for the heading's one line. */}
-                        <h1 className='m-0 font-it-display text-[clamp(24px,3vw,32px)] font-bold leading-[1.12] tracking-[-0.015em] text-it-heading max-sm:pr-28'>
+                        <h1 className='m-0 font-it-display text-[clamp(24px,3vw,32px)] leading-[1.15] tracking-[-0.012em] text-it-heading max-sm:pr-28'>
                             {dict.title}
                         </h1>
 
                         {isShared ? (
-                            <p className='m-0 mt-1.5 text-[16px] font-semibold leading-[1.45] text-it-ink max-sm:text-[13px]'>
+                            <p className='m-0 mt-1.5 text-[16px] font-semibold leading-[1.4] text-it-ink max-sm:text-[13px]'>
                                 {dict.sharedNote}
                             </p>
                         ) : (
-                            <p className='m-0 mt-1.5 text-[16px] font-semibold leading-[1.45] text-it-ink max-sm:text-[14.5px]'>
+                            <p className='m-0 mt-1.5 text-[16px] font-semibold leading-[1.4] text-it-ink max-sm:text-[14.5px]'>
                                 {dict.subtitle}
                             </p>
                         )}

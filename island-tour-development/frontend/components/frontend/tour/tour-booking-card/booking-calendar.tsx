@@ -209,7 +209,7 @@ export function BookingCalendar() {
                     empty input and starts looking like an answer you can edit
                     (mck-15 `.wfield .chg`). Nothing to change before then. */}
                 {selectedDate && (
-                    <span className='ml-auto text-[12px] font-bold leading-[1.6] text-it-primary-hover underline underline-offset-2'>
+                    <span className='ml-auto text-[12px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-2'>
                         {dict.change}
                     </span>
                 )}
@@ -232,7 +232,7 @@ export function BookingCalendar() {
                                     left: coords.left,
                                     width: coords.width,
                                 }}
-                                // 10px, the fields' radius - not the mockup's
+                                // 10px, the fields'radius - not the mockup's
                                 // own 16px (`.wcal`). Every box inside this
                                 // card now speaks one radius: the fields, the
                                 // travelers panel and this. At 16px the corner
@@ -240,7 +240,7 @@ export function BookingCalendar() {
                                 // and the tight layer of the e3 shadow traced a
                                 // second arc just inside it. Ripon's call,
                                 // 2026-08-09.
-                                className='fixed z-[90] rounded-it-sm border border-it-border bg-it-white p-4 shadow-it-lg'>
+                                className='fixed z-[90] rounded-[16px] border border-it-border bg-it-white p-4 shadow-it-lg'>
                                 {/* Month nav: a chevron on each end, the month
                                     and its year CENTRED between them.
                                     mck-15 puts the next month's name on the
@@ -254,7 +254,7 @@ export function BookingCalendar() {
 
                                     Each button's accessible name is the month it
                                     goes TO, so a screen reader hears "July 2026,
-                                    button" rather than a bare "previous" - and
+                                    button"rather than a bare"previous" - and
                                     it needs no new copy in seven locales. */}
                                 <div className='mb-3 flex items-center justify-between gap-2'>
                                     <motion.button
@@ -274,7 +274,7 @@ export function BookingCalendar() {
                                     </motion.button>
                                     <span
                                         aria-live='polite'
-                                        className='text-[14.5px] font-bold leading-[1.6] text-it-ink'>
+                                        className='text-[14.5px] font-medium leading-[1.6] text-it-ink'>
                                         {`${monthName(
                                             view.month,
                                             view.year,
@@ -313,7 +313,7 @@ export function BookingCalendar() {
                                     {weekdays.map(w => (
                                         <span
                                             key={w}
-                                            className='py-1 text-[10px] font-bold uppercase leading-[1.6] tracking-[0.06em] text-it-ink-muted'>
+                                            className='py-1 text-[10px] font-medium uppercase leading-[1.6] tracking-[0.06em] text-it-ink-muted'>
                                             {w}
                                         </span>
                                     ))}
@@ -479,11 +479,11 @@ export function BookingCalendar() {
                                                         // stopped the selected
                                                         // chip getting its fill.
                                                         isSelected
-                                                            ? 'bg-it-primary font-extrabold text-it-white'
+                                                            ? 'bg-it-primary font-medium text-it-white'
                                                             : disabled
-                                                              ? 'cursor-not-allowed font-normal text-it-ink-muted'
+                                                              ? 'cursor-not-allowed font-medium text-it-ink-muted'
                                                               : isFirstOpen
-                                                                ? 'cursor-pointer bg-it-bg font-extrabold text-it-primary-hover'
+                                                                ? 'cursor-pointer bg-it-bg font-medium text-it-primary-hover'
                                                                 : isToday
                                                                   ? // Today, and
                                                                     // bookable:
@@ -496,7 +496,7 @@ export function BookingCalendar() {
                                                                     // legible
                                                                     // even at
                                                                     // 12.5px.
-                                                                    'cursor-pointer font-extrabold text-it-ink hover:bg-it-bg'
+                                                                    'cursor-pointer font-medium text-it-ink hover:bg-it-bg'
                                                                   : 'cursor-pointer font-semibold text-it-ink hover:bg-it-bg',
                                                     ]
                                                         .filter(Boolean)

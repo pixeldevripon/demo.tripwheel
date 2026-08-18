@@ -73,7 +73,7 @@ export function CancelRequestCard({
                         animate={{ opacity: 1, y: 0 }}
                         transition={crossFade}
                         className='flex flex-col gap-2.5'>
-                        <span className='font-normal text-[18px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
+                        <span className='font-medium text-[18px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
                             {dict.sentTitle}
                         </span>
                         <span className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
@@ -84,7 +84,7 @@ export function CancelRequestCard({
                             the thank-you page. */}
                         <Link
                             href={thankYouHref}
-                            className='mt-3 w-fit rounded-[10px] border-[1.5px] border-it-heading/20 px-4.5 py-2.75 text-[14px] font-normal leading-[1.2] text-it-heading no-underline transition-colors duration-300 hover:border-it-heading/40'>
+                            className='mt-3 w-fit rounded-[10px] border-[1.5px] border-it-heading/20 px-4.5 py-2.75 text-[14px] font-medium leading-[1.2] text-it-heading no-underline transition-colors duration-300 hover:border-it-heading/40'>
                             {dict.seeStatus}
                         </Link>
                     </motion.div>
@@ -95,7 +95,7 @@ export function CancelRequestCard({
                         animate={{ opacity: 1, y: 0 }}
                         transition={crossFade}
                         className='flex flex-col'>
-                        <span className='font-bold text-[18px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
+                        <span className='font-medium text-[18px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
                             {title}
                         </span>
                         {displayRef && (
@@ -105,7 +105,7 @@ export function CancelRequestCard({
                         )}
 
                         {refundLabel && (
-                            <span className='mt-3 w-fit rounded-full bg-it-green/8 px-3 py-1 text-[14px] font-normal leading-[1.6] tracking-[-0.012em] text-it-green'>
+                            <span className='mt-3 w-fit rounded-full bg-it-green/8 px-3 py-1 text-[14px] font-medium leading-[1.6] tracking-[-0.012em] text-it-green'>
                                 {refundLabel}
                             </span>
                         )}
@@ -142,14 +142,14 @@ export function CancelRequestCard({
                                 whileTap={{ scale: 0.97 }}
                                 onClick={() => setConfirmOpen(true)}
                                 disabled={state === 'sending'}
-                                className='cursor-pointer rounded-[10px] border-none bg-it-heading px-4.5 py-2.75 text-[14px] font-normal leading-[1.2] text-it-white transition-opacity duration-300 hover:opacity-90 disabled:cursor-default disabled:opacity-60'>
+                                className='cursor-pointer rounded-[10px] border-none bg-it-heading px-4.5 py-2.75 text-[14px] font-medium leading-[1.2] text-it-white transition-opacity duration-300 hover:opacity-90 disabled:cursor-default disabled:opacity-60'>
                                 {state === 'sending'
                                     ? dict.sending
                                     : dict.confirm}
                             </motion.button>
                             <Link
                                 href={thankYouHref}
-                                className='rounded-[10px] border-[1.5px] border-it-heading/20 px-4.5 py-2.75 text-[14px] font-normal leading-[1.2] text-it-heading no-underline transition-colors duration-300 hover:border-it-heading/40'>
+                                className='rounded-[10px] border-[1.5px] border-it-heading/20 px-4.5 py-2.75 text-[14px] font-medium leading-[1.2] text-it-heading no-underline transition-colors duration-300 hover:border-it-heading/40'>
                                 {dict.keep}
                             </Link>
                         </div>

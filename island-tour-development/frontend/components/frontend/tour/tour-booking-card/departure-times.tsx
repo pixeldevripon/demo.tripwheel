@@ -149,7 +149,7 @@ export function DepartureTimes() {
                     // that made every panel shake as it opened.
                     className='pb-0.5'>
                     {/* `.slotlabel` (mck-15): 12px bold in the muted grey. */}
-                    <span className='mb-2 block text-[12px] font-bold leading-[1.6] text-it-text-muted'>
+                    <span className='mb-2 block text-[12px] font-medium leading-[1.6] text-it-text-muted'>
                         {dict.departureTime}
                     </span>
                     {/* `.slotrow`: chips WRAP, they do not share a fixed grid.

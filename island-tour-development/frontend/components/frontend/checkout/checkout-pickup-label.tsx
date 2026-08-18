@@ -65,7 +65,7 @@ export function CheckoutSummaryPickupRow({ fallback }: { fallback: string }) {
     const { pickupLabel } = useContext(CheckoutLiveContext);
     return (
         <div className='flex items-center justify-between gap-2.5'>
-            <span className='flex items-center gap-2.5 text-[13.5px] leading-[1.6] text-it-ink'>
+            <span className='flex items-center gap-2.5 text-[16px] leading-[1.6] text-it-ink tracking-[-0.012em]'>
                 <Image
                     src='/icons/checkout/location.svg'
                     alt=''
@@ -124,8 +124,8 @@ export function CheckoutSummaryTotals({
     const lines = totals?.lines ?? fallbackLines ?? [];
     const money = (n: number) => formatCheckoutMoney(n, currency, locale);
     const row =
-        'flex items-center justify-between gap-1 text-[14px] leading-[1.6] text-it-ink';
-    const amt = 'font-bold tabular-nums';
+        'flex items-center justify-between gap-1 text-[16px] leading-[1.6] text-it-ink tracking-[-0.012em]';
+    const amt = 'font-medium tabular-nums';
     return (
         <>
             {/* Per-line breakdown (participants, extras, pickup) - the same

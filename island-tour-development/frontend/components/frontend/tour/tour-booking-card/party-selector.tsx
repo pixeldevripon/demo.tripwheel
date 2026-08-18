@@ -50,7 +50,7 @@ export function PartySelector() {
 
     // `.wfield` content: 17px icon, then the count at 14px semibold.
     const headerLabel = (
-        <span className='flex items-center gap-2.5 text-[14px] font-semibold leading-[1.6] text-it-ink'>
+        <span className='flex items-center gap-2.5 text-[16px] leading-[1.6] text-it-ink tracking-[-0.012em]'>
             <Image
                 src='/icons/booking-travelers.svg'
                 alt=''
@@ -108,7 +108,7 @@ export function PartySelector() {
                 field, 8px down, with the rows separated by hairlines rather
                 than floated on gaps. */}
             <Collapse open={showPartyBody}>
-                {/* 10px, the fields' radius - NOT the mockup's own 16px
+                {/* 10px, the fields'radius - NOT the mockup's own 16px
                     (`.trav` keeps the r-lg it has as a floating popover, and
                     `.travinline` never overrides it). Inline under a 10px
                     field, the softer corner read as a different kind of box;
@@ -126,7 +126,7 @@ export function PartySelector() {
                         under their own heading. */}
                     {spectatorsApplied && spectatorsOn && (
                         <>
-                            <div className='border-t border-it-divider pt-2.5 text-[12px] font-bold leading-[1.6] text-it-text-muted'>
+                            <div className='border-t border-it-divider pt-2.5 text-[12px] font-medium leading-[1.6] text-it-text-muted'>
                                 {dict.spectators}
                             </div>
                             {spectatorBands.map(band => (

@@ -74,7 +74,7 @@ export function DestinationSelector({
                     /* One-cell grid: the invisible spans reserve the width of the
                        longest possible label, so switching islands never shifts
                        the rest of the header. */
-                    <span className='inline-grid justify-items-start text-[13.5px] font-semibold text-it-ink whitespace-nowrap'>
+                    <span className='inline-grid justify-items-start text-base font-medium text-it-ink whitespace-nowrap'>
                         <span className='col-start-1 row-start-1'>
                             {currentIsland
                                 ? currentIsland.name
@@ -132,7 +132,7 @@ export function DestinationSelector({
                                     aria-current={
                                         island.slug === currentIsland?.slug
                                     }
-                                    className={`block px-5 py-3 text-sm no-underline hover:bg-it-surface transition-colors ${island.slug === currentIsland?.slug ? 'text-it-primary font-normal' : 'text-it-ink'}`}>
+                                    className={`block px-5 py-3 text-sm no-underline hover:bg-it-surface transition-colors ${island.slug === currentIsland?.slug ? 'text-it-primary font-medium' : 'text-it-ink'}`}>
                                     {island.name}
                                 </Link>
                             </motion.div>

@@ -222,7 +222,7 @@ export function TravellerLoginCard({
                     transition={crossFade}>
                     {step === 'email' ? (
                         <form onSubmit={sendCode} noValidate>
-                            <h1 className='mb-2 font-bold text-[26px] leading-[1.25] tracking-[-0.012em] text-it-heading'>
+                            <h1 className='mb-2 font-medium text-[26px] leading-[1.25] tracking-[-0.012em] text-it-heading'>
                                 {dict.loginTitle}
                             </h1>
                             <p className='mb-7 text-[15px] leading-[1.6] text-it-text-muted'>
@@ -271,7 +271,7 @@ export function TravellerLoginCard({
                         </form>
                     ) : (
                         <div>
-                            <h1 className='mb-2 font-bold text-[26px] leading-[1.25] tracking-[-0.012em] text-it-heading'>
+                            <h1 className='mb-2 font-medium text-[26px] leading-[1.25] tracking-[-0.012em] text-it-heading'>
                                 {dict.codeTitle}
                             </h1>
                             <p className='mb-7 text-[15px] leading-[1.6] text-it-text-muted'>
@@ -352,7 +352,7 @@ export function TravellerLoginCard({
                             href={whatsappHref}
                             target='_blank'
                             rel='noopener noreferrer'
-                            className='font-normal text-it-primary no-underline hover:opacity-80'>
+                            className='font-medium text-it-primary no-underline hover:opacity-80'>
                             {dict.whatsappUs}
                         </a>
                     </>

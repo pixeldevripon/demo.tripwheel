@@ -133,7 +133,7 @@ export function TravellerNextTrip({
                     <p className='m-0 text-[12.5px] font-semibold tracking-[0.08em] text-it-primary uppercase'>
                         {dict.nextTripKicker} · {when}
                     </p>
-                    <h2 className='mt-2 mb-0 font-bold text-[22px] leading-[1.3] tracking-[-0.012em] text-it-heading md:text-[24px]'>
+                    <h2 className='mt-2 mb-0 font-medium text-[22px] md:text-[24px] leading-[1.3] tracking-[-0.012em] text-it-heading'>
                         {booking.tourName}
                     </h2>
                     <p className='mt-1 mb-0 text-[15px] leading-[1.6] text-it-text-muted'>
@@ -169,7 +169,7 @@ export function TravellerNextTrip({
                                             href={maps}
                                             target='_blank'
                                             rel='noopener noreferrer'
-                                            className='font-normal text-it-primary no-underline hover:opacity-80'>
+                                            className='font-medium text-it-primary no-underline hover:opacity-80'>
                                             {dict.mapsLink}
                                         </a>
                                     </>

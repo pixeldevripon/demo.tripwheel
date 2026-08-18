@@ -159,7 +159,7 @@ export function BookingCta() {
  */
 function TrustRow({ children }: { children: React.ReactNode }) {
     return (
-        <span className='flex items-center gap-2 text-[13px] font-normal leading-[1.6] text-it-ink'>
+        <span className='flex items-center gap-2 text-[16px] leading-[1.6] text-it-ink tracking-[-0.012em]'>
             <Image
                 src='/icons/trust-check-green.svg'
                 alt=''
@@ -204,7 +204,7 @@ function TrustLink({
             aria-label={`${children}, ${hint}`}
             whileTap={{ scale: 0.98 }}
             transition={springPop}
-            className='cursor-pointer rounded-[2px] border-none bg-transparent p-0 text-left text-[13px] font-bold leading-[1.6] text-it-ink underline decoration-it-ink-muted underline-offset-[3px] transition-colors duration-300 hover:text-it-primary hover:decoration-it-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary'>
+            className='cursor-pointer rounded-[2px] border-none bg-transparent p-0 text-left text-[13px] font-medium leading-[1.6] text-it-ink underline decoration-it-ink-muted underline-offset-[3px] transition-colors duration-300 hover:text-it-primary hover:decoration-it-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary'>
             {children}
         </motion.button>
     );

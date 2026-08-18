@@ -194,7 +194,7 @@ export function CheckoutProcessing({
                 className='flex max-w-md flex-col items-center gap-6 text-center'>
                 <span className='size-12 shrink-0 animate-spin rounded-full border-4 border-it-border border-t-it-primary' />
                 <div className='flex flex-col gap-2'>
-                    <h1 className='font-normal text-[24px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
+                    <h1 className='font-medium text-[24px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
                         {dict.title}
                     </h1>
                     <p className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading/60'>
@@ -204,7 +204,7 @@ export function CheckoutProcessing({
                 {stalled && (
                     <Link
                         href={typHref}
-                        className='rounded-it-full bg-it-heading px-8 py-3.5 font-normal text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white no-underline transition-opacity hover:opacity-90'>
+                        className='rounded-it-full bg-it-heading px-8 py-3.5 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white no-underline transition-opacity hover:opacity-90'>
                         {dict.viewBooking}
                     </Link>
                 )}

@@ -812,7 +812,7 @@ export function CheckoutForm({
                             exit={{ opacity: 0 }}
                             whileTap={{ scale: 0.97 }}
                             transition={{ duration: 0.2 }}
-                            className='ml-auto shrink-0 cursor-pointer border-none bg-transparent p-0 text-[13px] font-bold leading-[1.6] text-it-primary-hover underline underline-offset-2'>
+                            className='ml-auto shrink-0 cursor-pointer border-none bg-transparent p-0 text-[13px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-2'>
                             {dict.edit}
                         </motion.button>
                     )}

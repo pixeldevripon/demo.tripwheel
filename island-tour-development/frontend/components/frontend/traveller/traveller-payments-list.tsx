@@ -131,7 +131,7 @@ export function TravellerPaymentsList({
                             className='rounded-[16px] border border-it-heading/10 bg-it-white p-5 sm:p-6'>
                             <div className='flex flex-wrap items-start justify-between gap-x-4 gap-y-3'>
                                 <div className='min-w-0 flex-1'>
-                                    <strong className='block text-[19px] leading-[1.4] tracking-[-0.012em] font-bold text-it-heading'>
+                                    <strong className='block text-[16px] leading-[1.5] tracking-[-0.012em] font-semibold text-it-heading'>
                                         {kindLabel}
                                         {payment.tourName && (
                                             <span className='font-normal text-it-text-muted'>
@@ -140,10 +140,10 @@ export function TravellerPaymentsList({
                                             </span>
                                         )}
                                     </strong>
-                                    <span className='mt-1 block text-[14.5px] leading-[1.6] text-it-text-muted'>
+                                    <span className='mt-1 block text-[14px] leading-[1.6] text-it-text-muted'>
                                         {dateLine}
                                     </span>
-                                    <span className='mt-1 flex flex-wrap items-center gap-x-3 font-mono text-[12.5px] text-it-text-muted'>
+                                    <span className='mt-1 flex flex-wrap items-center gap-x-3 font-mono text-[13px] text-it-text-muted'>
                                         {manageHref ? (
                                             <Link
                                                 href={manageHref}
@@ -159,7 +159,7 @@ export function TravellerPaymentsList({
                                                     locale,
                                                     `/traveller/receipt/${payment.id}`
                                                 )}
-                                                className='font-sans font-normal text-it-primary no-underline transition-opacity hover:opacity-80'>
+                                                className='font-sans font-medium text-it-primary no-underline transition-opacity hover:opacity-80'>
                                                 {dict.receiptLink}
                                             </Link>
                                         )}
@@ -199,7 +199,7 @@ export function TravellerPaymentsList({
 
 function TotalChip({ children }: { children: string }) {
     return (
-        <span className='inline-flex items-center rounded-full border border-it-heading/15 bg-it-white px-3.5 py-1.5 text-[13px] font-normal text-it-heading'>
+        <span className='inline-flex items-center rounded-full border border-it-heading/15 bg-it-white px-3.5 py-1.5 text-[13px] font-medium text-it-heading'>
             {children}
         </span>
     );

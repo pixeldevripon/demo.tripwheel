@@ -76,7 +76,7 @@ export function ToursBreadcrumb({
                     below, so the crumb only needs to identify the page. */}
                 <span
                     aria-current='page'
-                    className='max-w-[55vw] truncate font-semibold text-it-ink md:max-w-none'>
+                    className='max-w-[55vw] truncate text-it-ink md:max-w-none text-[14px] leading-[1.6] tracking-[-0.012em]'>
                     {dict.current}
                 </span>
             </nav>

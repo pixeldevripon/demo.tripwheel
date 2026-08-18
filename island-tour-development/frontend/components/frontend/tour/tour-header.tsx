@@ -38,7 +38,7 @@ export function TourHeader({
     if (rating != null) {
         metaItems.push(
             <span key='rating' className='flex items-center gap-1.5'>
-                <span className='font-bold text-it-star'>
+                <span className='font-medium text-it-star'>
                     ★ {rating.toFixed(1)}
                 </span>
                 <span className='tabular-nums'>
@@ -49,7 +49,7 @@ export function TourHeader({
     }
     if (isLocalsFavourite) {
         metaItems.push(
-            <span key='locals' className='font-bold text-it-primary-hover'>
+            <span key='locals' className='font-medium text-it-primary-hover'>
                 ✦ {dict.localsFavorite}
             </span>
         );
@@ -78,11 +78,11 @@ export function TourHeader({
                     floating in the middle of nothing. */}
                 <div className='flex flex-col pt-2.5 pb-4 lg:flex-row lg:items-end lg:justify-between lg:gap-6'>
                     <div className='flex min-w-0 flex-col'>
-                        <h1 className='m-0 max-w-[22em] font-it-display text-[clamp(24px,3vw,32px)] font-bold leading-[1.12] tracking-[-0.015em] text-balance text-it-ink'>
+                        <h1 className='m-0 max-w-[22em] font-it-display text-[clamp(24px,3vw,32px)] leading-[1.15] tracking-[-0.012em] text-balance text-it-ink'>
                             {title}
                         </h1>
                         {metaItems.length > 0 && (
-                            <div className='mt-2.5 flex flex-wrap items-center gap-[7px] text-[13.5px] font-normal leading-[1.6] text-it-text-muted'>
+                            <div className='mt-2.5 flex flex-wrap items-center gap-[7px] text-[13.5px] font-medium leading-[1.6] text-it-text-muted'>
                                 {metaItems.map((item, i) => (
                                     <span
                                         key={i}

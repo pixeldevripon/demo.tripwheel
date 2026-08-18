@@ -98,7 +98,7 @@ export function SavedEmailBox({
 
     return (
         <div className='rounded-it-lg bg-it-bg px-[22px] py-5'>
-            <b className='block font-it-display text-[17px] font-bold leading-[1.3] text-it-heading'>
+            <b className='block font-it-display text-[17px] font-medium leading-[1.3] text-it-heading'>
                 {dict.title}
             </b>
 
@@ -135,7 +135,7 @@ export function SavedEmailBox({
                     disabled={status === 'sending'}
                     whileTap={{ scale: 0.97 }}
                     transition={springPop}
-                    className='inline-flex shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap rounded-it-sm border-none bg-it-primary px-4 py-[11px] text-[13.5px] font-bold leading-[1.6] text-it-white transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:bg-it-primary-hover disabled:cursor-default disabled:opacity-70'>
+                    className='inline-flex shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap rounded-it-sm border-none bg-it-primary px-4 py-[11px] text-[13.5px] font-medium leading-[1.6] text-it-white transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:bg-it-primary-hover disabled:cursor-default disabled:opacity-70'>
                     {status === 'sending' ? (
                         // Same spinner the checkout submit uses - a ring on the
                         // button's own ink, so the two reads as one system.

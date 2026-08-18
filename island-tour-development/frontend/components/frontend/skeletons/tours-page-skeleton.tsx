@@ -19,9 +19,9 @@ export function ToursBreadcrumbSkeleton() {
             <nav
                 aria-hidden='true'
                 className='flex items-center gap-2 pt-[26px] pb-2.5'>
-                <Bar className='h-3.5 w-12 rounded-it-xs' />
-                <Bar className='h-3.5 w-20 rounded-it-xs' />
-                <Bar className='h-3.5 w-24 rounded-it-xs' />
+                <Bar className='h-3.5 w-12' />
+                <Bar className='h-3.5 w-20' />
+                <Bar className='h-3.5 w-24' />
             </nav>
         </div>
     );

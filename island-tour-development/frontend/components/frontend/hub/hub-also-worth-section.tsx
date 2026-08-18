@@ -34,7 +34,7 @@ export function HubAlsoWorthSection({
             <div className='it-container'>
                 {/* 24px heading→cards on mobile, 48px on desktop (Figma). */}
                 <Reveal className='flex flex-col gap-[22px]'>
-                    <h2 className='m-0 font-it-display text-[clamp(22px,2.8vw,30px)] font-bold leading-[1.2] tracking-[-0.015em] text-it-ink'>
+                    <h2 className='m-0 font-it-display text-[clamp(22px,2.8vw,30px)] leading-[1.2] tracking-[-0.012em] text-it-ink'>
                         {title}
                     </h2>
 

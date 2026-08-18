@@ -34,7 +34,7 @@ export function CollectionCard({
         <Link
             href={href}
             aria-label={collection.name}
-            className='block h-full rounded-it-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary'>
+            className='block h-full rounded-[16px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary'>
             <article
                 className={cn(
                     '@container group flex h-full flex-col overflow-hidden rounded-it-md border border-transparent bg-it-white will-change-transform transition-all duration-(--it-duration-md) ease-(--it-ease) hover:-translate-y-0.5 hover:shadow-it-card-hover hover:border-it-card-hover-border',
@@ -62,13 +62,13 @@ export function CollectionCard({
 
                 {/* ── Card info ──────────────────────────────────────────── */}
                 <div className='flex flex-1 min-w-0 flex-col gap-1 px-3 pt-2.5 pb-3 @[220px]:px-3.5 @[220px]:pt-3 @[220px]:pb-3.5'>
-                    <h3 className='m-0 font-it-body font-bold text-[13px] @[220px]:text-[15.5px] leading-[1.3] tracking-[-0.005em] text-it-ink line-clamp-2'>
+                    <h3 className='m-0 font-it-body text-[13px] @[220px]:text-[15.5px] leading-[1.3] tracking-[-0.012em] text-it-ink line-clamp-2'>
                         {collection.name}
                     </h3>
 
                     {/* Explore indicator - pinned to the card foot. */}
                     <div className='mt-auto flex items-center gap-1 pt-2'>
-                        <span className='text-[12px] @[220px]:text-[12.5px] font-bold leading-[1.6] text-it-primary-hover'>
+                        <span className='text-[12px] @[220px]:text-[12.5px] font-medium leading-[1.6] text-it-primary-hover'>
                             {dict.explore}
                         </span>
                         <Image

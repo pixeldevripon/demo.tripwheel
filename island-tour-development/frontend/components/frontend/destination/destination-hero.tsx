@@ -79,7 +79,7 @@ export function DestinationHero({
                 <div className='relative z-10 flex w-full max-w-[680px] flex-col items-center gap-7'>
                     {/* Heading group - title + subtitle */}
                     <div className='flex flex-col items-center gap-3 text-center'>
-                        <h1 className='m-0 font-it-display font-bold text-[clamp(31px,3.8vw,48px)] leading-[1.04] tracking-[-0.02em] text-balance text-it-white [text-shadow:0_2px_22px_rgba(0,0,0,0.32)]'>
+                        <h1 className='m-0 font-it-display text-[clamp(31px,3.8vw,48px)] leading-[1.15] tracking-[-0.012em] text-balance text-it-white [text-shadow:0_2px_22px_rgba(0,0,0,0.32)]'>
                             {destinationName} {dict.toursActivities}
                         </h1>
                         <p className='m-0 max-w-[34em] text-[clamp(15px,1.5vw,17.5px)] font-semibold leading-[1.6] text-it-white/95 [text-shadow:0_1px_14px_rgba(0,0,0,0.34)]'>

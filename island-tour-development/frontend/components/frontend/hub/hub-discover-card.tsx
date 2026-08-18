@@ -53,7 +53,7 @@ export function HubDiscoverCard({
             {/* Text content - inset 16px sides / 16px bottom / 10px top (mobile),
                 24px all (desktop); 8px title->body gap. */}
             <div className='flex flex-col gap-1.5 px-[22px] pt-[18px] pb-[22px]'>
-                <h3 className='m-0 text-[16px] font-bold leading-[1.4] tracking-[-0.005em] text-it-ink'>
+                <h3 className='m-0 text-[16px] leading-[1.4] tracking-[-0.012em] text-it-ink'>
                     {item.title}
                 </h3>
                 <p
@@ -65,7 +65,7 @@ export function HubDiscoverCard({
                 <button
                     type='button'
                     onClick={() => setExpanded(v => !v)}
-                    className='-mt-1 self-start cursor-pointer border-none bg-transparent p-0 font-normal text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading transition-colors hover:text-it-primary md:hidden'>
+                    className='-mt-1 self-start cursor-pointer border-none bg-transparent p-0 font-medium text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading transition-colors hover:text-it-primary md:hidden'>
                     {expanded ? dict.readLess : dict.learnMore}
                 </button>
             </div>

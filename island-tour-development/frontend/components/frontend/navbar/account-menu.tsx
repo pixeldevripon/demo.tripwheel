@@ -54,7 +54,7 @@ function isAccountGated(path: string): boolean {
 /** Active row: primary ink and medium weight, matching the locale menu. */
 const ROW =
     'flex w-full items-center gap-2.5 px-5 py-3 text-sm no-underline transition-colors duration-200 hover:bg-it-surface';
-const ROW_ACTIVE = 'text-it-primary font-normal';
+const ROW_ACTIVE = 'text-it-primary font-medium';
 const ROW_IDLE = 'text-it-ink';
 
 /**
@@ -162,7 +162,7 @@ export function AccountMenu({
                        menu feel heavy. */
                     <motion.div
                         {...dropdownMotion}
-                        className='absolute top-[calc(100%+18px)] right-0 w-64 origin-top-right bg-it-white border border-it-border-subtle rounded-it-sm shadow-it-lg overflow-hidden z-50'>
+                        className='absolute top-[calc(100%+18px)] right-0 w-64 origin-top-right bg-it-white border border-it-border-subtle rounded-it-lg shadow-it-lg overflow-hidden z-50'>
                         {/* The email the traveller signed in with - the only
                             identity the public site has. */}
                         <motion.div
@@ -172,7 +172,7 @@ export function AccountMenu({
                                 {identityEmail.trim().charAt(0)}
                             </span>
                             <span className='min-w-0'>
-                                <span className='block text-sm leading-[1.4] font-normal text-it-ink truncate'>
+                                <span className='block text-sm leading-[1.4] font-medium text-it-ink truncate'>
                                     {identityEmail}
                                 </span>
                                 <span className='block text-xs leading-[1.6] text-it-ink-muted truncate'>

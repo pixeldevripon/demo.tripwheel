@@ -71,7 +71,7 @@ export function TravellerChip({
     tone?: Tone;
 }) {
     return (
-        <span className='inline-flex items-center gap-1.5 rounded-full border border-it-heading/15 bg-it-white px-2.5 py-1 text-[12px] font-normal text-it-heading'>
+        <span className='inline-flex items-center gap-1.5 rounded-full border border-it-heading/15 bg-it-white px-2.5 py-1 text-[12px] font-medium text-it-heading'>
             <span
                 aria-hidden
                 className={`size-1.5 shrink-0 rounded-full ${DOT_CLASS[tone]}`}

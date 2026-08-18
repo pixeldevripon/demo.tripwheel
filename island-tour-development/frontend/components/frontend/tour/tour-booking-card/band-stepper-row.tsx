@@ -29,7 +29,7 @@ export function BandStepperRow({
                 <span className='text-[14px] font-semibold leading-[1.6] text-it-ink'>
                     {label}
                 </span>
-                <span className='text-[12px] leading-[1.6] text-it-text-muted'>
+                <span className='text-[14px] leading-[1.4] text-it-text-muted tracking-[-0.012em]'>
                     {bandPriceLabel(band)}
                 </span>
             </span>

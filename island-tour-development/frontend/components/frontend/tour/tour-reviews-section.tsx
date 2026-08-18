@@ -421,7 +421,7 @@ export function TourReviewsSection({
             {/* Header + rating summary */}
             <div className='flex flex-col gap-4'>
                 <div className='flex flex-col gap-2'>
-                    <h2 className='m-0 font-it-display text-[21px] font-bold leading-[1.2] tracking-[-0.012em] text-it-ink'>
+                    <h2 className='m-0 font-it-display text-[21px] leading-[1.2] tracking-[-0.012em] text-it-ink'>
                         {dict.title}
                     </h2>
                     <p className='m-0 flex flex-wrap items-center gap-[7px] text-[13px] leading-[1.6] text-it-text-muted'>
@@ -471,7 +471,7 @@ export function TourReviewsSection({
                         // Only reachable with `source === 'tour'`, which LD11
                         // guarantees means >= 3 reviews and a real rating.
                         <div className='flex flex-col'>
-                            <div className='m-0 font-it-display text-[44px] font-bold leading-none tracking-[-0.02em] text-it-ink'>
+                            <div className='m-0 font-it-display text-[44px] font-medium leading-none tracking-[-0.012em] text-it-ink'>
                                 <span className='align-[6px] text-[26px] text-it-star'>
                                     ★
                                 </span>{' '}
@@ -719,7 +719,7 @@ export function TourReviewsSection({
                 this filter" under a heading that says otherwise. */}
             {photoStrip.length > 0 && !isFiltered && (
                 <div className='flex flex-col gap-3'>
-                    <h3 className='m-0 font-normal text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                    <h3 className='m-0 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                         {dict.photosTitle}
                     </h3>
                     {/* Circle tiles (founder call 2026-08-02): the strip is a
@@ -825,7 +825,7 @@ export function TourReviewsSection({
                     disabled={loading}
                     whileTap={{ scale: 0.98 }}
                     transition={springPop}
-                    className='flex w-fit cursor-pointer items-center justify-center self-center rounded-it-full border border-it-primary bg-transparent px-10 py-[10px] font-normal text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary transition-colors hover:bg-it-primary/5 disabled:cursor-default disabled:opacity-60'>
+                    className='flex w-fit cursor-pointer items-center justify-center self-center rounded-it-full border border-it-primary bg-transparent px-10 py-[10px] font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary transition-colors hover:bg-it-primary/5 disabled:cursor-default disabled:opacity-60'>
                     {loading ? dict.loading : dict.showMore}
                 </MotionButton>
             )}
@@ -882,7 +882,7 @@ function ReviewCard({
                 <div className='flex items-center gap-2.5'>
                     <span
                         aria-hidden='true'
-                        className='grid size-[34px] shrink-0 place-items-center rounded-it-full bg-it-bg text-[12px] font-bold text-it-primary-hover'>
+                        className='grid size-[34px] shrink-0 place-items-center rounded-it-full bg-it-bg text-[12px] font-medium text-it-primary-hover'>
                         {review.name
                             .split(/\s+/)
                             .map(part => part[0])
@@ -890,9 +890,9 @@ function ReviewCard({
                             .slice(0, 2)
                             .toUpperCase()}
                     </span>
-                    <div className='flex flex-col text-[13px] leading-[1.5] text-it-text-muted'>
+                    <div className='flex flex-col text-it-text-muted'>
                         <span className='flex flex-wrap items-center gap-x-2'>
-                            <b className='text-[13.5px] font-bold text-it-ink'>
+                            <b className='text-[13.5px] font-medium text-it-ink'>
                                 {review.name}
                             </b>
                             {lead.slice(1).join(' · ')}
@@ -986,7 +986,7 @@ function ReviewCard({
                             {review.response.text}
                         </p>
                         <div className='flex flex-col'>
-                            <span className='font-normal text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                            <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                                 {review.response.name}
                             </span>
                             <span className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
@@ -1094,7 +1094,7 @@ function PhotoLightbox({
                 type='button'
                 aria-label={dict.photoClose}
                 onClick={onClose}
-                className='absolute top-5 right-5 cursor-pointer rounded-it-full border-0 bg-it-white/90 px-4 py-2 text-[14px] font-normal text-it-heading'>
+                className='absolute top-5 right-5 cursor-pointer rounded-it-full border-0 bg-it-white/90 px-4 py-2 text-[14px] font-medium text-it-heading'>
                 {dict.photoClose}
             </button>
         </div>

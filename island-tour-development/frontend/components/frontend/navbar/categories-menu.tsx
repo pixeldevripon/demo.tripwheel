@@ -92,7 +92,7 @@ export function CategoriesMenu({
                                     height={24}
                                     className='size-4 shrink-0'
                                 />
-                                <span className='text-[13.5px] font-semibold text-it-ink whitespace-nowrap'>
+                                <span className='text-base font-medium text-it-ink whitespace-nowrap'>
                                     {dict.categories}
                                 </span>
                             </motion.button>
@@ -125,7 +125,7 @@ export function CategoriesMenu({
                                                         <span className='size-11 shrink-0 rounded-it-md bg-it-bg' />
                                                     )}
                                                     <span className='min-w-0'>
-                                                        <b className='block truncate text-sm font-bold text-it-ink'>
+                                                        <b className='block truncate text-sm font-medium text-it-ink'>
                                                             {hub.name}
                                                         </b>
                                                         {hub.tours !==
@@ -171,7 +171,7 @@ export function CategoriesMenu({
                                                         <span className='size-11 shrink-0 rounded-it-md bg-it-bg' />
                                                     )}
                                                     <span className='min-w-0'>
-                                                        <b className='block truncate text-sm font-bold text-it-ink'>
+                                                        <b className='block truncate text-sm font-medium text-it-ink'>
                                                             {cat.name}
                                                         </b>
                                                         {cat.tours !==
@@ -195,7 +195,7 @@ export function CategoriesMenu({
                                                     onClick={() =>
                                                         setOpen(false)
                                                     }
-                                                    className='block rounded-it-md px-2.5 py-2 text-[13.5px] font-bold text-it-primary-hover no-underline transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:bg-it-bg'>
+                                                    className='block rounded-it-md px-2.5 py-2 text-[13.5px] font-medium text-it-primary-hover no-underline transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:bg-it-bg'>
                                                     {dict.allIslandTours.replace(
                                                         '{destination}',
                                                         currentIsland.name

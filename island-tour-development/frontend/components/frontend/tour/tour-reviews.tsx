@@ -78,12 +78,12 @@ export function TourReviews({
                 line under the title (the client's ask), and `ml-auto` only
                 pushes it right once there is room for it beside the title. */}
             <div className='mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1.5'>
-                <h2 className='m-0 font-it-display text-[18px] font-bold leading-[1.2] tracking-[-0.01em] text-it-ink'>
+                <h2 className='m-0 font-it-display text-[18px] leading-[1.2] tracking-[-0.012em] text-it-ink'>
                     {dict.title}
                 </h2>
                 {rating != null && reviewCount > 0 && (
                     <span className='text-[13px] leading-[1.6] text-it-text-muted tabular-nums'>
-                        <span className='font-bold text-it-star'>
+                        <span className='font-medium text-it-star'>
                             ★ {rating.toFixed(1)}
                         </span>{' '}
                         ({reviewCount})
@@ -100,7 +100,7 @@ export function TourReviews({
                 <SmoothScrollLink
                     targetId='tour-reviews'
                     offset={REVIEWS_SCROLL_OFFSET}
-                    className='w-full text-[13px] font-bold leading-[1.6] text-it-primary-hover no-underline transition-colors hover:text-it-primary sm:ml-auto sm:w-auto'>
+                    className='w-full text-[13px] font-medium leading-[1.6] text-it-primary-hover no-underline transition-colors hover:text-it-primary sm:ml-auto sm:w-auto'>
                     {dict.seeAll} →
                 </SmoothScrollLink>
             </div>
@@ -132,8 +132,8 @@ function ReviewCard({
 
     return (
         <article className='h-full rounded-it-md border border-it-divider bg-it-white px-4 py-3.5'>
-            <div className='flex flex-wrap items-center gap-2 text-[12.5px] leading-[1.6] text-it-text-muted'>
-                <span className='font-bold text-it-star'>
+            <div className='flex flex-wrap items-center gap-2 text-it-text-muted'>
+                <span className='font-medium text-it-star'>
                     ★ {review.rating.toFixed(1)}
                 </span>
                 <span>
@@ -142,14 +142,14 @@ function ReviewCard({
                         .join(' · ')}
                 </span>
             </div>
-            <div className='mt-1.5 text-[13.5px] leading-[1.55] text-it-ink'>
+            <div className='mt-1.5 text-[13.5px] leading-[1.5] text-it-ink'>
                 <ExpandableText
                     text={review.text}
                     moreLabel={dict.readMore}
                     lessLabel={dict.readLess}
                     sentenceLimit={PREVIEW_SENTENCES}
                     className='m-0'
-                    buttonClassName='cursor-pointer whitespace-nowrap border-none bg-transparent p-0 text-[13.5px] leading-[1.55] text-it-primary-hover'
+                    buttonClassName='cursor-pointer whitespace-nowrap border-none bg-transparent p-0 text-[13.5px] leading-[1.5] text-it-primary-hover'
                 />
             </div>
         </article>

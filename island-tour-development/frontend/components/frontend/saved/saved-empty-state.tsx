@@ -98,7 +98,7 @@ export function SavedEmptyState({
                 aria-hidden='true'
             />
 
-            <h1 className='m-0 mt-3.5 font-it-display text-[clamp(24px,3vw,32px)] font-bold leading-[1.12] tracking-[-0.015em] text-it-heading'>
+            <h1 className='m-0 mt-3.5 font-it-display text-[clamp(24px,3vw,32px)] leading-[1.15] tracking-[-0.012em] text-it-heading'>
                 {dict.title}
             </h1>
             <p className='m-0 mt-2 max-w-[520px] text-[15.5px] leading-[1.6] text-it-text-muted'>
@@ -108,14 +108,14 @@ export function SavedEmptyState({
             {island && (
                 <Link
                     href={localizeHref(locale, `/${island.slug}/tours`)}
-                    className='mt-[18px] w-fit rounded-it-full bg-it-primary px-[22px] py-[13px] text-[14px] font-bold leading-[1.6] text-it-white no-underline transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:bg-it-primary-hover'>
+                    className='mt-[18px] w-fit rounded-it-full bg-it-primary px-[22px] py-[13px] text-[14px] font-medium leading-[1.6] text-it-white no-underline transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:bg-it-primary-hover'>
                     {dict.cta.replace('{destination}', island.name)} &rarr;
                 </Link>
             )}
             {!island && (
                 <Link
                     href={localizeHref(locale, '/search')}
-                    className='mt-[18px] w-fit rounded-it-full bg-it-primary px-[22px] py-[13px] text-[14px] font-bold leading-[1.6] text-it-white no-underline hover:bg-it-primary-hover'>
+                    className='mt-[18px] w-fit rounded-it-full bg-it-primary px-[22px] py-[13px] text-[14px] font-medium leading-[1.6] text-it-white no-underline hover:bg-it-primary-hover'>
                     {dict.ctaGeneric} &rarr;
                 </Link>
             )}
@@ -138,7 +138,7 @@ export function SavedEmptyState({
 
             {island && island.favourites.length > 0 && (
                 <section className='mt-10'>
-                    <h2 className='m-0 font-it-display text-[22px] font-bold leading-[1.2] text-it-heading'>
+                    <h2 className='m-0 font-it-display text-[22px] leading-[1.2] text-it-heading'>
                         {island.curated
                             ? dict.favouritesTitle
                             : dict.popularTitle.replace(

@@ -42,20 +42,20 @@ export function PriceHeader() {
     // with.
     return (
         <div className='flex flex-col gap-0.5 px-5 pt-5'>
-            <div className='flex items-baseline gap-1 text-[13px] leading-[1.6] text-it-text-muted'>
+            <div className='flex items-baseline gap-1 text-it-text-muted'>
                 <span>{dict.from}</span>
-                <b className='mr-1 text-[22px] font-extrabold leading-[1.2] tracking-[-0.01em] text-it-ink tabular-nums'>
+                <b className='mr-1 text-[22px] font-medium leading-[1.2] tracking-[-0.012em] text-it-ink tabular-nums'>
                     {money(data.priceFrom)}
                 </b>
                 <span>{unitLabel}</span>
             </div>
             {subLine && (
-                <span className='text-[12.5px] leading-[1.5] text-it-ink-muted'>
+                <span className='text-[14px] leading-[1.5] text-it-ink-muted tracking-[-0.012em]'>
                     {subLine}
                 </span>
             )}
             {isPrivateCharter && (
-                <span className='mt-1 inline-flex w-fit items-center rounded-it-full bg-it-primary/10 px-3 py-1 font-normal text-[12px] leading-[1.4] tracking-[-0.012em] text-it-primary'>
+                <span className='mt-1 inline-flex w-fit items-center rounded-it-full bg-it-primary/10 px-3 py-1 font-medium text-[12px] leading-[1.4] tracking-[-0.012em] text-it-primary'>
                     {dict.privateCharter}
                 </span>
             )}

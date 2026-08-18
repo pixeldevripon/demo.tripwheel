@@ -52,7 +52,7 @@ export function TravellerSessionRow({
                 type='button'
                 onClick={() => void handleLogout()}
                 disabled={busy}
-                className='inline-flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-[13.5px] font-normal text-it-heading transition-colors hover:text-it-primary disabled:opacity-60'>
+                className='inline-flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-[13.5px] font-medium text-it-heading transition-colors hover:text-it-primary disabled:opacity-60'>
                 {busy ? (
                     <Loader2
                         className='size-3.5 animate-spin'

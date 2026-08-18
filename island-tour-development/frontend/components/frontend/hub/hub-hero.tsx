@@ -276,7 +276,7 @@ export function HubHero({
                                     onClick={handleCheckAvailability}
                                     whileTap={{ scale: 0.98 }}
                                     transition={springPop}
-                                    className='shrink-0 cursor-pointer rounded-it-sm border-none bg-it-primary px-[22px] py-[13px] text-[15px] font-bold leading-[1.6] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover'>
+                                    className='shrink-0 cursor-pointer rounded-it-sm border-none bg-it-primary px-[22px] py-[13px] text-[15px] font-medium leading-[1.6] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover'>
                                     {dict.checkAvailability}
                                 </motion.button>
                             </div>

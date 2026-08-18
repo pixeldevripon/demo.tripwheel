@@ -20,11 +20,11 @@ export function DestinationHeroSkeleton() {
                     <div className='flex w-full max-w-[680px] flex-col items-center gap-7'>
                         <div className='flex w-full flex-col items-center gap-3'>
                             <Bar className='h-9 w-3/4 max-w-md md:h-11' />
-                            <Bar className='h-5 w-2/3 max-w-sm rounded-it-sm' />
+                            <Bar className='h-5 w-2/3 max-w-sm' />
                         </div>
                         <div className='flex w-full flex-col items-center gap-4'>
                             <Bar className='h-[62px] w-full rounded-it-lg' />
-                            <Bar className='h-4 w-64 max-w-full rounded-it-sm' />
+                            <Bar className='h-4 w-64 max-w-full' />
                         </div>
                     </div>
                 </div>
@@ -116,8 +116,8 @@ export function DestinationAboutSkeleton() {
             <div className='it-container flex flex-col gap-5'>
                 <Bar className='h-3 w-44 rounded-it-xs' />
                 <div className='flex flex-col gap-2.5'>
-                    <Bar className='h-4 w-full rounded-it-sm' />
-                    <Bar className='h-4 w-4/5 rounded-it-sm' />
+                    <Bar className='h-4 w-full' />
+                    <Bar className='h-4 w-4/5' />
                 </div>
                 <div className='grid grid-cols-1 gap-6 md:grid-cols-3 md:gap-8'>
                     {Array.from({ length: 3 }).map((_, i) => (

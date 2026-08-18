@@ -149,7 +149,7 @@ export function ExploreTypesRail({
                                         />
                                     )}
                                 </div>
-                                <b className='mt-2.5 block text-[14.5px] font-bold tracking-[-0.005em] text-it-ink'>
+                                <b className='mt-2.5 block text-[14.5px] font-medium tracking-[-0.012em] text-it-ink'>
                                     {cat.name}
                                 </b>
                                 <span className='text-[12.5px] leading-[1.6] text-it-text-muted tabular-nums'>

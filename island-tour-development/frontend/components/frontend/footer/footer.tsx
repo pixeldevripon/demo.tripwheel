@@ -376,7 +376,7 @@ export async function Footer({
 
                                 <div className='flex flex-col gap-2 lg:gap-3'>
                                     {/* /about doesn't exist yet - plain text until it does. */}
-                                    <span className='inline-block w-fit cursor-default text-[13.5px] font-semibold leading-[1.6] text-it-ink-on-dark'>
+                                    <span className='inline-block w-fit cursor-default text-sm lg:text-base leading-[1.6] text-it-ink-on-dark tracking-[-0.012em]'>
                                         {dict.ourStory}
                                     </span>
                                     {socials.length > 0 && (

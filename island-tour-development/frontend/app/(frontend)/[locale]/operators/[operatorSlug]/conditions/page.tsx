@@ -74,7 +74,7 @@ export default async function OperatorConditionsPage({
         <section className='it-section bg-it-white'>
             <div className='it-container'>
                 <div className='mx-auto max-w-[720px]'>
-                    <h1 className='m-0 font-it-display text-[28px] font-bold leading-[1.2] tracking-[-0.012em] text-it-heading sm:text-[32px]'>
+                    <h1 className='m-0 font-it-display text-[28px] leading-[1.2] tracking-[-0.012em] text-it-heading sm:text-[32px]'>
                         {dict.checkout.operatorTermsReaderTitle}
                     </h1>
                     <p className='mb-6 mt-2 text-[13.5px] leading-[1.6] text-it-text-muted'>

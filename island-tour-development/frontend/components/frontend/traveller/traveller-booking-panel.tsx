@@ -87,14 +87,14 @@ export function TravellerBookingPanel({
                 <div className='mb-4 flex items-center gap-2.5 border-b border-it-heading/10 pb-4'>
                     <Link
                         href={manageHref}
-                        className='inline-flex items-center gap-2 text-[13.5px] font-normal text-it-ink/70 no-underline transition-colors hover:text-it-heading'>
+                        className='inline-flex items-center gap-2 text-[13.5px] font-medium text-it-ink/70 no-underline transition-colors hover:text-it-heading'>
                         <SquareArrowOutUpRight
                             className='size-4'
                             strokeWidth={2}
                         />
                         {dict.openBookingPage}
                     </Link>
-                    <span className='inline-flex items-center gap-1.5 rounded-full border border-it-green/25 bg-it-green-subtle px-2.5 py-0.5 text-[12px] font-normal text-it-green'>
+                    <span className='inline-flex items-center gap-1.5 rounded-full border border-it-green/25 bg-it-green-subtle px-2.5 py-0.5 text-[12px] font-medium text-it-green'>
                         <span
                             aria-hidden
                             className='size-1.5 rounded-full bg-it-green'
@@ -147,7 +147,7 @@ export function TravellerBookingPanel({
                                         href={maps}
                                         target='_blank'
                                         rel='noopener noreferrer'
-                                        className='font-normal text-it-primary no-underline hover:opacity-80'>
+                                        className='font-medium text-it-primary no-underline hover:opacity-80'>
                                         {dict.mapsLink}
                                     </a>
                                 </>
@@ -242,7 +242,7 @@ export function TravellerBookingPanel({
                                 href={whatsappHref}
                                 target='_blank'
                                 rel='noopener noreferrer'
-                                className='font-normal text-it-primary no-underline hover:opacity-80'>
+                                className='font-medium text-it-primary no-underline hover:opacity-80'>
                                 {dict.whatsappUs}
                             </a>
                         </span>
@@ -336,7 +336,7 @@ function QuietLink({ href, children }: { href: string; children: ReactNode }) {
     return (
         <Link
             href={href}
-            className='inline-flex items-center gap-1 text-[13.5px] font-normal text-it-primary no-underline transition-opacity hover:opacity-80'>
+            className='inline-flex items-center gap-1 text-[13.5px] font-medium text-it-primary no-underline transition-opacity hover:opacity-80'>
             {children}
             <ArrowUpRight className='size-3.5' strokeWidth={2} />
         </Link>

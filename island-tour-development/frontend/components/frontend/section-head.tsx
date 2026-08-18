@@ -34,11 +34,11 @@ export function SectionHead({
             className={cn('flex items-end justify-between gap-6', className)}>
             <div>
                 {kicker && (
-                    <div className='mb-2 text-[11.5px] font-bold uppercase tracking-[0.13em] text-it-primary-hover'>
+                    <div className='mb-2 text-[11.5px] font-medium uppercase tracking-[0.13em] text-it-primary-hover'>
                         {kicker}
                     </div>
                 )}
-                <h2 className='m-0 text-[clamp(22px,2.6vw,30px)] font-bold leading-[1.1] tracking-[-0.015em] text-it-ink'>
+                <h2 className='m-0 text-[clamp(22px,2.6vw,30px)] leading-[1.15] tracking-[-0.012em] text-it-ink'>
                     {title}
                 </h2>
             </div>

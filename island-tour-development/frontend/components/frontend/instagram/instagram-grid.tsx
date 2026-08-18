@@ -13,7 +13,7 @@ export function InstagramGrid({ posts }: { posts: Tile[] }) {
                 <InstagramTile
                     key={post.id}
                     post={post}
-                    className='rounded-it-md'
+                    className='rounded-[16px]'
                     aspectRatio='1 / 1'
                     sizes='(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 190px'
                 />

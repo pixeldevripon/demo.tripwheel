@@ -28,9 +28,9 @@ import Image from 'next/image';
  */
 
 /** Sub-heading: lead sentence, "HOW IT WORKS", and the closing heading. */
-const SUBHEAD = 'font-bold text-[14.5px] leading-[1.6] tracking-[-0.005em]';
+const SUBHEAD = 'font-medium text-[14.5px] leading-[1.6] tracking-[-0.012em]';
 /** Body copy under a sub-heading. */
-const BODY = 'text-[14.5px] leading-[1.68]';
+const BODY = 'text-[14.5px] leading-[1.7]';
 
 export function PolicyModal({
     open,
@@ -59,7 +59,7 @@ export function PolicyModal({
                 of the title now. */}
             <div className='flex shrink-0 flex-col gap-4'>
                 <div className='flex items-start justify-between gap-4'>
-                    <h2 className='m-0 font-it-display text-[21px] font-bold leading-[1.2] tracking-[-0.012em] text-it-heading sm:text-[24px]'>
+                    <h2 className='m-0 font-it-display text-[21px] leading-[1.2] tracking-[-0.012em] text-it-heading sm:text-[24px]'>
                         {fill(content.title)}
                     </h2>
                     <motion.button
@@ -114,7 +114,7 @@ export function PolicyModal({
                             </div>
 
                 {/* Closing block */}
-                <div className='flex flex-col gap-1.5'>
+                <div className='flex flex-col gap-1.5 text-[14px] sm:text-[16px] text-[#8b390e] leading-[26px] tracking-[-0.19px]'>
                     <span className={`${SUBHEAD} text-it-ink`}>
                         {fill(content.outroTitle)}
                     </span>

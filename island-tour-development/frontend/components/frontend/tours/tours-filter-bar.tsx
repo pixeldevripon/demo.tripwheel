@@ -147,7 +147,7 @@ const CHIP_INACTIVE = 'border-it-border bg-it-white text-it-ink';
 const CHIP_ACTIVE =
     'border-it-primary bg-it-primary-subtle text-it-primary-hover';
 const CHIP_BASE =
-    'flex shrink-0 items-center gap-2 whitespace-nowrap rounded-it-full border text-[13.5px] font-bold leading-[1.6] transition-colors duration-(--it-duration-xs) ease-(--it-ease)';
+    'flex shrink-0 items-center gap-2 whitespace-nowrap rounded-it-full border text-[13.5px] font-medium leading-[1.6] transition-colors duration-(--it-duration-xs) ease-(--it-ease)';
 
 // Edge fade over the category track. `pointer-events-none` is load-bearing: the
 // fade sits ON TOP of the first/last chip, and without it that chip stops taking
@@ -545,7 +545,7 @@ export function ToursFilterBar({
                         <PopoverTrigger asChild>
                             <motion.button
                                 type='button'
-                                className='flex cursor-pointer items-center gap-[7px] whitespace-nowrap border-none bg-transparent px-1.5 py-[9px] text-[13.5px] font-bold leading-[1.6] text-it-ink'>
+                                className='flex cursor-pointer items-center gap-[7px] whitespace-nowrap border-none bg-transparent px-1.5 py-[9px] text-[13.5px] font-medium leading-[1.6] text-it-ink'>
                                 <span className='font-semibold text-it-text-muted'>
                                     {dict.sortBy}
                                 </span>
@@ -580,7 +580,7 @@ export function ToursFilterBar({
                                     }}
                                     className={`flex w-full cursor-pointer items-center justify-between rounded-it-sm border-none bg-transparent px-3 py-2.5 text-left text-[13.5px] leading-[1.6] transition-colors duration-(--it-duration-xs) hover:bg-it-bg ${
                                         opt.value === sort
-                                            ? 'font-bold text-it-primary-hover'
+                                            ? 'font-medium text-it-primary-hover'
                                             : 'font-semibold text-it-ink'
                                     }`}>
                                     {opt.label}
@@ -739,10 +739,10 @@ export function ToursFilterBar({
                                                 key={type}
                                                 className={`flex items-center justify-between py-[9px] ${i < arr.length - 1 ? 'border-b border-it-divider' : ''}`}>
                                                 <div>
-                                                    <b className='block text-[14px] font-bold leading-[1.6] text-it-ink'>
+                                                    <b className='block text-[14px] font-medium leading-[1.6] text-it-ink'>
                                                         {t.label}
                                                     </b>
-                                                    <span className='text-[12px] leading-[1.6] text-it-text-muted'>
+                                                    <span className='text-[14px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                                                         {t.hint}
                                                     </span>
                                                 </div>
@@ -764,10 +764,10 @@ export function ToursFilterBar({
                                                                 : undefined
                                                         }
                                                         transition={springPop}
-                                                        className='grid size-[30px] cursor-pointer place-items-center rounded-full border border-it-border bg-it-white text-[16px] font-bold text-it-ink disabled:cursor-default disabled:opacity-30'>
+                                                        className='grid size-[30px] cursor-pointer place-items-center rounded-full border border-it-border bg-it-white text-[16px] font-medium text-it-ink disabled:cursor-default disabled:opacity-30'>
                                                         −
                                                     </motion.button>
-                                                    <i className='min-w-[18px] text-center text-[15px] not-italic font-bold text-it-ink tabular-nums'>
+                                                    <i className='min-w-[18px] text-center text-[15px] not-italic font-medium text-it-ink tabular-nums'>
                                                         {guestDraft[type]}
                                                     </i>
                                                     <motion.button
@@ -787,7 +787,7 @@ export function ToursFilterBar({
                                                                 : undefined
                                                         }
                                                         transition={springPop}
-                                                        className='grid size-[30px] cursor-pointer place-items-center rounded-full border border-it-border bg-it-white text-[16px] font-bold text-it-ink disabled:cursor-default disabled:opacity-30'>
+                                                        className='grid size-[30px] cursor-pointer place-items-center rounded-full border border-it-border bg-it-white text-[16px] font-medium text-it-ink disabled:cursor-default disabled:opacity-30'>
                                                         +
                                                     </motion.button>
                                                 </div>
@@ -801,7 +801,7 @@ export function ToursFilterBar({
                                         }
                                         whileTap={{ scale: 0.98 }}
                                         transition={springPop}
-                                        className='mt-3 w-full cursor-pointer rounded-it-sm border-none bg-it-dark py-[11px] text-[14px] font-bold text-it-white'>
+                                        className='mt-3 w-full cursor-pointer rounded-it-sm border-none bg-it-dark py-[11px] text-[14px] font-medium text-it-white'>
                                         {dict.applyGuests}
                                     </motion.button>
                                 </div>
@@ -829,7 +829,7 @@ export function ToursFilterBar({
                             />
                             {dict.filters}
                             {activeFilterCount > 0 && (
-                                <span className='inline-flex h-[17px] min-w-[17px] items-center justify-center rounded-it-full bg-it-primary px-1 text-[10.5px] font-bold leading-none text-it-white tabular-nums'>
+                                <span className='inline-flex h-[17px] min-w-[17px] items-center justify-center rounded-it-full bg-it-primary px-1 text-[10.5px] font-medium leading-none text-it-white tabular-nums'>
                                     {activeFilterCount}
                                 </span>
                             )}
@@ -889,7 +889,7 @@ export function ToursFilterBar({
                     activeFilterCount > 0) && (
                     <div className='it-container flex flex-wrap items-center gap-3 gap-y-2.5 pt-3.5'>
                     {showCount && (
-                        <p className='m-0 shrink-0 whitespace-nowrap text-[14px] font-bold leading-[1.6] text-it-ink tabular-nums'>
+                        <p className='m-0 shrink-0 whitespace-nowrap text-[14px] md:text-[16px] leading-[1.6] text-it-ink tabular-nums tracking-[-0.012em]'>
                             {counterLabel} {dict.toursWord}
                         </p>
                     )}
@@ -922,7 +922,7 @@ export function ToursFilterBar({
                                         exit={{ opacity: 0, scale: 0.96 }}
                                         transition={swapFade}
                                         whileTap={{ scale: 0.95 }}
-                                        className='inline-flex shrink-0 cursor-pointer items-center gap-[7px] whitespace-nowrap rounded-it-full border border-it-primary/25 bg-it-primary-subtle px-[11px] py-1.5 text-[12.5px] font-bold leading-[1.2] text-it-primary-hover'>
+                                        className='inline-flex shrink-0 cursor-pointer items-center gap-[7px] whitespace-nowrap rounded-it-full border border-it-primary/25 bg-it-primary-subtle px-[11px] py-1.5 text-[12.5px] font-medium leading-[1.2] text-it-primary-hover'>
                                         {chip.label}
                                         <Image
                                             src='/icons/filters/close-deep.svg'
@@ -938,7 +938,7 @@ export function ToursFilterBar({
                             <button
                                 type='button'
                                 onClick={clearAll}
-                                className='shrink-0 cursor-pointer whitespace-nowrap border-none bg-transparent p-0 text-[12.5px] font-bold leading-[1.6] text-it-text-muted underline underline-offset-2'>
+                                className='shrink-0 cursor-pointer whitespace-nowrap border-none bg-transparent p-0 text-[14px] md:text-[16px] font-medium leading-[1.6] text-it-text-muted underline underline-offset-2 tracking-[-0.012em]'>
                                 {dict.clearAll}
                             </button>
                         </ScrollTrack>

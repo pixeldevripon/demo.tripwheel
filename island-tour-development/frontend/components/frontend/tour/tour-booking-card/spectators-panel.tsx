@@ -118,7 +118,7 @@ export function SpectatorsPanel() {
                         onClick={() => setSpectatorsApplied(true)}
                         whileTap={{ scale: 0.97 }}
                         transition={springPop}
-                        className='flex cursor-pointer items-center gap-2.5 self-center border-none bg-transparent font-normal text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary transition-colors duration-300 hover:text-it-primary-hover'>
+                        className='flex cursor-pointer items-center gap-2.5 self-center border-none bg-transparent font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary transition-colors duration-300 hover:text-it-primary-hover'>
                         {dict.apply}
                         <Image
                             src='/icons/cta-arrow-right.svg'

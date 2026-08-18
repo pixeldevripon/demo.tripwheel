@@ -56,23 +56,23 @@ export function ThankYouHero({
                             className='h-11 w-auto'
                         />
                     </MotionSpan>
-                    <h1 className='m-0 font-it-display text-[clamp(28px,4vw,40px)] font-bold leading-[1.08] tracking-[-0.018em] text-it-ink'>
+                    <h1 className='m-0 font-it-display text-[clamp(28px,4vw,40px)] leading-[1.15] tracking-[-0.012em] text-it-ink'>
                         {dict.title.replace('{name}', booking.guestFirstName)}
                     </h1>
                     <p className='m-0 mt-3 text-[16.5px] leading-[1.6] text-it-ink'>
                         {renderTemplate(dict.subtitle, {
                             tour: (
-                                <b className='font-normal'>
+                                <b className='font-medium'>
                                     {booking.tourTitle}
                                 </b>
                             ),
                             date: (
-                                <b className='font-normal'>
+                                <b className='font-medium'>
                                     {booking.dateLabel}
                                 </b>
                             ),
                             time: (
-                                <b className='font-bold'>
+                                <b className='font-medium'>
                                     {booking.startTimeLabel}
                                 </b>
                             ),
@@ -131,7 +131,7 @@ export function ThankYouHero({
                         <p className='m-0'>
                             {renderTemplate(dict.emailSentTo, {
                                 email: (
-                                    <b className='font-bold'>
+                                    <b className='font-medium'>
                                         {booking.guestEmail}
                                     </b>
                                 ),

@@ -146,7 +146,7 @@ export function MobileSearchLayer({
                                 weekday:
                                     'flex-1 text-[13px] font-semibold text-it-text-muted select-none',
                                 caption_label:
-                                    'text-[15.5px] font-bold text-it-ink',
+                                    'text-[15.5px] font-medium text-it-ink',
                             }}
                         />
                     </div>

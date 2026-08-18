@@ -90,7 +90,7 @@ export function ErrorDebugPanel({
     return (
         <div className='w-full max-w-3xl text-left'>
             <div className='mb-3 flex items-center justify-between gap-4'>
-                <span className='text-[13px] font-normal leading-none tracking-[-0.012em] text-it-error'>
+                <span className='text-[13px] font-medium leading-none tracking-[-0.012em] text-it-error'>
                     Debug details (temporary - NEXT_PUBLIC_ERROR_DEBUG)
                 </span>
                 <button

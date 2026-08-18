@@ -557,7 +557,7 @@ export async function TourDetailContent({
                                                 />
                                             </span>
                                             <span className='flex flex-col'>
-                                                <b className='text-[13.5px] font-bold leading-[1.5] tracking-[-0.005em] text-it-ink'>
+                                                <b className='text-[13.5px] font-medium leading-[1.5] tracking-[-0.012em] text-it-ink'>
                                                     {qi.title}
                                                 </b>
                                                 <span className='text-[12px] leading-[1.5] text-it-text-muted'>
@@ -648,7 +648,7 @@ export async function TourDetailContent({
                                     id='tour-overview'
                                     title={tourDict.sections.overview}>
                                     {overviewParagraphs.length > 0 && (
-                                        <div className='flex flex-col gap-4 text-[14.5px] leading-[1.68] text-it-ink'>
+                                        <div className='flex flex-col gap-4 text-[16px] leading-[1.6] text-it-ink tracking-[-0.012em]'>
                                             {overviewParagraphs.map((p, i) => (
                                                 <p key={i} className='m-0'>
                                                     {p}
@@ -668,7 +668,7 @@ export async function TourDetailContent({
                                                     className='flex items-start gap-[9px] text-[14px] font-semibold leading-[1.6] text-it-ink'>
                                                     <span
                                                         aria-hidden='true'
-                                                        className='font-bold text-it-primary'>
+                                                        className='font-medium text-it-primary'>
                                                         •
                                                     </span>
                                                     {h}
@@ -690,7 +690,7 @@ export async function TourDetailContent({
                                             />
                                             <div>
                                                 {localTipTitle && (
-                                                    <b className='mb-[3px] block text-[12px] font-bold uppercase tracking-[0.08em] text-it-primary-hover'>
+                                                    <b className='mb-[3px] block text-[12px] font-medium uppercase tracking-[0.08em] text-it-primary-hover'>
                                                         {localTipTitle}
                                                     </b>
                                                 )}
@@ -754,7 +754,7 @@ export async function TourDetailContent({
                                             id='tour-expect'
                                             title={tourDict.sections.expect}>
                                             {expectIntro && (
-                                                <p className='m-0 max-w-172 text-[14.5px] leading-[1.68] text-it-text-muted'>
+                                                <p className='m-0 max-w-172 text-[16px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                                                     {expectIntro}
                                                 </p>
                                             )}
@@ -794,13 +794,13 @@ export async function TourDetailContent({
                                                                         className='relative z-10'
                                                                     />
                                                                     <div className='flex flex-col gap-0.5'>
-                                                                        <span className='text-[14.5px] font-bold leading-[1.6] text-it-ink'>
+                                                                        <span className='text-[14.5px] font-medium leading-[1.6] text-it-ink'>
                                                                             {
                                                                                 step.title
                                                                             }
                                                                         </span>
                                                                         {step.detail && (
-                                                                            <span className='text-[13.5px] leading-[1.6] text-it-text-muted'>
+                                                                            <span className='text-[16px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                                                                                 {
                                                                                     step.detail
                                                                                 }
@@ -843,7 +843,7 @@ export async function TourDetailContent({
                                                         key={group.title}
                                                         listItem
                                                         className='flex flex-col gap-1.5'>
-                                                        <h3 className='m-0 text-[15px] font-bold leading-[1.6] text-it-ink'>
+                                                        <h3 className='m-0 text-[15px] leading-[1.6] text-it-ink'>
                                                             {group.title}
                                                         </h3>
                                                         <ul className='m-0 mt-1 list-none p-0'>
@@ -876,7 +876,7 @@ export async function TourDetailContent({
                                             (para, i) => (
                                                 <p
                                                     key={i}
-                                                    className='m-0 text-[14.5px] leading-[1.68] text-it-ink'>
+                                                    className='m-0 text-[14.5px] leading-[1.7] text-it-ink'>
                                                     {para}
                                                 </p>
                                             )

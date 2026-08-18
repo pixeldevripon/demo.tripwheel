@@ -51,11 +51,11 @@ export default function GlobalError({
                             />
                         </div>
 
-                        <span className='mb-5 inline-flex items-center rounded-it-full bg-it-surface px-4 py-2 text-[13px] font-normal leading-none tracking-[-0.012em] text-it-ink-secondary'>
+                        <span className='mb-5 inline-flex items-center rounded-it-full bg-it-surface px-4 py-2 text-[13px] font-medium leading-none tracking-[-0.012em] text-it-ink-secondary'>
                             {copy.eyebrow}
                         </span>
 
-                        <h1 className='m-0 max-w-175 font-normal text-[32px] md:text-[48px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
+                        <h1 className='m-0 max-w-175 font-medium text-[32px] md:text-[48px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
                             {copy.title}
                         </h1>
 
@@ -67,12 +67,12 @@ export default function GlobalError({
                             <button
                                 type='button'
                                 onClick={() => unstable_retry()}
-                                className='inline-flex cursor-pointer items-center justify-center rounded-it-full border-none bg-it-primary px-8 py-[15px] text-[16px] font-normal leading-[1.6] tracking-[-0.012em] text-it-white transition-colors duration-300 hover:bg-it-primary-hover md:px-10'>
+                                className='inline-flex cursor-pointer items-center justify-center rounded-it-full border-none bg-it-primary px-8 py-[15px] text-[16px] font-medium leading-[1.6] tracking-[-0.012em] text-it-white transition-colors duration-300 hover:bg-it-primary-hover md:px-10'>
                                 {copy.primaryCta}
                             </button>
                             <a
                                 href='/'
-                                className='inline-flex cursor-pointer items-center justify-center rounded-it-full border border-it-ink bg-transparent px-8 py-[15px] text-[16px] font-normal leading-[1.6] tracking-[-0.012em] text-it-ink no-underline transition-colors duration-300 hover:bg-it-ink hover:text-it-white md:px-10'>
+                                className='inline-flex cursor-pointer items-center justify-center rounded-it-full border border-it-ink bg-transparent px-8 py-[15px] text-[16px] font-medium leading-[1.6] tracking-[-0.012em] text-it-ink no-underline transition-colors duration-300 hover:bg-it-ink hover:text-it-white md:px-10'>
                                 {copy.secondaryCta}
                             </a>
                         </div>

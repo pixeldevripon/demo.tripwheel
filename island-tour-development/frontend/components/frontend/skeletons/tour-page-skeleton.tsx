@@ -119,7 +119,7 @@ function TourGallerySkeleton() {
     return (
         <div className='flex flex-col gap-6'>
             {/* Mobile: single tile. */}
-            <Bar className='aspect-396/300 w-full rounded-it-lg lg:hidden' />
+            <Bar className='aspect-396/300 w-full rounded-[16px] lg:hidden' />
             {/* Desktop: 5-tile collage (big tile + 2x2). */}
             <div className='hidden overflow-hidden rounded-it-lg lg:grid lg:grid-cols-[2fr_1fr_1fr] lg:grid-rows-[175px_175px] lg:gap-2.5'>
                 <Bar className='h-full w-full rounded-[16px] lg:row-span-2' />

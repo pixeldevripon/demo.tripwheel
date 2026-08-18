@@ -92,7 +92,7 @@ export function MobileMenu({
                                         className='my-2 h-px bg-it-divider'
                                     />
                                 )}
-                                <span className='px-1 pb-1 text-xs font-normal text-it-ink-muted'>
+                                <span className='px-1 pb-1 text-xs font-medium text-it-ink-muted'>
                                     {dict.categories}
                                 </span>
                                 {categories.map((cat, i) => (

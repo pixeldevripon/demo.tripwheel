@@ -62,7 +62,7 @@ export async function Testimonials() {
                     <div className='flex flex-wrap items-center justify-center gap-x-2.5 gap-y-2'>
                         <Stars className='text-it-star' />
                         <p className='m-0 flex flex-wrap items-baseline gap-x-1.5'>
-                            <span className='font-bold text-[16px] leading-[1.6] text-it-ink'>
+                            <span className='font-medium text-[16px] leading-[1.6] text-it-ink'>
                                 {data.rating ?? ''} on {providerLabel}
                             </span>
                             <span className='text-[14px] leading-[1.6] text-it-text-muted tabular-nums'>
@@ -85,14 +85,14 @@ export async function Testimonials() {
                                             className='text-it-star'
                                             count={Math.round(r.rating)}
                                         />
-                                        <p className='m-0 text-[14px] leading-[1.55] text-it-ink line-clamp-5 md:line-clamp-7'>
+                                        <p className='m-0 text-[14px] md:text-[16px] leading-[1.6] text-it-ink line-clamp-5 md:line-clamp-7 tracking-[-0.012em]'>
                                             {r.text}
                                         </p>
                                     </div>
 
                                     <div className='flex flex-col gap-0.5'>
                                         <div className='flex flex-wrap items-center gap-x-2 text-[12.5px] leading-[1.6] text-it-text-muted'>
-                                            <span className='font-bold text-it-ink'>
+                                            <span className='font-medium text-it-ink'>
                                                 {r.author}
                                             </span>
                                             {r.relativeTime && (

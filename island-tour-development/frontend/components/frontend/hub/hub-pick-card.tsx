@@ -79,7 +79,7 @@ export function HubPickCard({
                             height={24}
                             className='size-6 shrink-0'
                         />
-                        <span className='text-[11px] font-bold uppercase tracking-[0.12em] text-it-primary-hover'>
+                        <span className='text-[11px] font-medium uppercase tracking-[0.12em] text-it-primary-hover'>
                             {pick.labelText}
                         </span>
                     </div>
@@ -87,7 +87,7 @@ export function HubPickCard({
                     <div className='flex flex-col gap-3 md:gap-5'>
                         {/* Title + rating */}
                         <div className='flex flex-col gap-0.5'>
-                            <h3 className='m-0 font-it-display text-[20px] font-bold leading-[1.2] tracking-[-0.01em] text-it-ink'>
+                            <h3 className='m-0 font-it-display text-[20px] leading-[1.2] tracking-[-0.012em] text-it-ink'>
                                 {pick.title}
                             </h3>
                             <div className='flex items-center gap-4'>
@@ -130,7 +130,7 @@ export function HubPickCard({
                             <button
                                 type='button'
                                 onClick={() => setExpanded(v => !v)}
-                                className='-mt-1 self-start cursor-pointer border-none bg-transparent p-0 font-normal text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading underline decoration-1 underline-offset-4 transition-colors hover:text-it-primary md:hidden'>
+                                className='-mt-1 self-start cursor-pointer border-none bg-transparent p-0 font-medium text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading underline decoration-1 underline-offset-4 transition-colors hover:text-it-primary md:hidden'>
                                 {expanded ? dict.readLess : dict.learnMore}
                             </button>
 
@@ -141,7 +141,7 @@ export function HubPickCard({
                                 <span className='size-[3px] shrink-0 rounded-full bg-it-ink-muted' />
                                 <span className='text-[12.5px] leading-[1.6] text-it-text-muted tabular-nums'>
                                     {dict.from}{' '}
-                                    <b className='text-[15px] font-bold tracking-[-0.01em] text-it-ink'>
+                                    <b className='text-[15px] font-medium tracking-[-0.012em] text-it-ink'>
                                         {pick.priceDisplay}
                                     </b>
                                     {pick.priceUnit ? ` ${pick.priceUnit}` : ''}
@@ -156,7 +156,7 @@ export function HubPickCard({
                     href={pick.href}
                     whileTap={{ scale: 0.98 }}
                     transition={springPop}
-                    className='inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-it-full border-[1.5px] border-it-primary bg-transparent px-5 py-2.5 text-[13.5px] font-bold leading-[1.6] text-it-primary-hover no-underline transition-colors duration-(--it-duration-xs) hover:bg-it-primary-subtle md:w-auto md:self-start'>
+                    className='inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-it-full border-[1.5px] border-it-primary bg-transparent px-5 py-2.5 text-[13.5px] font-medium leading-[1.6] text-it-primary-hover no-underline transition-colors duration-(--it-duration-xs) hover:bg-it-primary-subtle md:w-auto md:self-start'>
                     {dict.bookTrip}
                 </MotionLink>
             </div>

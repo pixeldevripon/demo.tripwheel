@@ -30,7 +30,7 @@ export function ExploreIslands({
             <div className='it-container'>
                 <Reveal className='flex flex-col gap-[18px]'>
                     <div className='flex flex-col gap-1.5'>
-                        <h2 className='m-0 text-[clamp(22px,2.6vw,30px)] leading-[1.1] tracking-[-0.015em] text-it-ink font-bold'>
+                        <h2 className='m-0 text-[clamp(22px,2.6vw,30px)] leading-[1.15] tracking-[-0.012em] text-it-ink'>
                             {dict.title}
                         </h2>
                         {dict.subtitle && (
@@ -71,10 +71,10 @@ export function ExploreIslands({
                                     </div>
 
                                     <div className='flex flex-col px-4 pt-3.5 pb-4'>
-                                        <span className='font-it-display font-bold text-[20px] leading-[1.3] tracking-[-0.01em] text-it-ink'>
+                                        <span className='font-it-display font-medium text-[20px] leading-[1.3] tracking-[-0.012em] text-it-ink'>
                                             {island.name}
                                         </span>
-                                        <span className='text-[13px] font-bold leading-[1.6] text-it-text-muted tabular-nums'>
+                                        <span className='text-[13px] font-medium leading-[1.6] text-it-text-muted tabular-nums'>
                                             {island.tours} {dict.tours}
                                         </span>
                                     </div>

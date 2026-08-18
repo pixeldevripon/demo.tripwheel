@@ -200,7 +200,7 @@ export function TravellerCancelPanel({
                         className='mt-3 rounded-[12px] bg-it-surface p-4'>
                         {/* Refund segment only above zero (6.4 pattern) -
                             composed into stripTitle above. */}
-                        <p className='m-0 text-[14px] leading-[1.6] font-normal text-it-heading'>
+                        <p className='m-0 text-[14px] leading-[1.6] font-medium text-it-heading'>
                             {stripTitle}
                         </p>
                         <p className='mt-1.5 mb-0 text-[13px] leading-[1.6] text-it-text-muted'>
@@ -208,7 +208,7 @@ export function TravellerCancelPanel({
                         </p>
                         <label
                             htmlFor={`cancel-reason-${booking.id}`}
-                            className='mt-3 mb-1.5 block text-[13px] font-normal text-it-heading'>
+                            className='mt-3 mb-1.5 block text-[13px] font-medium text-it-heading'>
                             {dict.cancelReasonLabel}
                         </label>
                         <textarea

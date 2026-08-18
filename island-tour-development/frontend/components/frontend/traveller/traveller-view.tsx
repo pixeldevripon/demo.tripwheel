@@ -136,7 +136,7 @@ export function TravellerView({
                     <MountReveal>
                         <div className='flex flex-wrap items-start justify-between gap-4'>
                             <div>
-                                <h1 className='m-0 font-bold text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading md:text-[40px]'>
+                                <h1 className='m-0 font-medium text-[32px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
                                     {dict.title}
                                 </h1>
                                 <p className='mt-2 mb-0 text-[15px] leading-[1.6] text-it-text-muted md:text-[16px]'>

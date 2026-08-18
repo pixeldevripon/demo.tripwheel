@@ -29,7 +29,7 @@ export function StepNumberBadge({
     return (
         <span
             className={cn(
-                'grid size-[30px] shrink-0 place-items-center rounded-it-full bg-it-primary-subtle text-[13px] font-bold text-it-primary-hover tabular-nums',
+                'grid size-[30px] shrink-0 place-items-center rounded-it-full bg-it-primary-subtle text-[13px] font-medium text-it-primary-hover tabular-nums',
                 className
             )}>
             {step}

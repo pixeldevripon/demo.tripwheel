@@ -16,14 +16,14 @@ import { useId, type ReactNode } from 'react';
  * borders on inputs in any state (focus swaps to the orange primary).
  */
 
-export const labelClass = 'text-[13px] font-bold leading-[1.5] text-it-ink';
+export const labelClass = 'text-[13px] font-medium leading-[1.5] text-it-ink';
 export const helperClass = 'text-[12px] leading-[1.6] text-it-text-muted';
 // 16px below `md` - iOS Safari force-zooms the viewport on a focused input
 // under 16px. Zooming mid-checkout is the worst place on the site for it.
 export const inputBase =
     'w-full rounded-it-sm border bg-it-white px-[13px] text-[16px] md:text-[14px] leading-[1.6] text-it-ink placeholder:text-it-ink-muted outline-none transition-colors focus:border-it-primary';
 export const titleClass =
-    'font-it-display text-[17px] font-bold leading-[1.3] tracking-[-0.01em] text-it-ink';
+    'font-it-display text-[17px] font-medium leading-[1.3] tracking-[-0.012em] text-it-ink';
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -118,7 +118,7 @@ export function FieldLabel({
             {label}
             {required && <span className='text-it-primary'> *</span>}
             {note && (
-                <span className='font-normal text-it-text-muted'> {note}</span>
+                <span className='font-medium text-it-text-muted'> {note}</span>
             )}
         </>
     );
@@ -200,7 +200,7 @@ export function FieldError({ error }: { error?: string }) {
             {error && (
                 <motion.span
                     {...ERROR_REVEAL}
-                    className='text-[13px] leading-[1.5] text-it-primary'>
+                    className='text-[14px] leading-[1.5] text-it-primary tracking-[-0.012em]'>
                     {error}
                 </motion.span>
             )}
@@ -414,7 +414,7 @@ export function SecureCheckoutRow({
     dict: { secureCheckout: string; poweredBy: string };
 }) {
     return (
-        <div className='mb-3.5 flex items-center gap-2.5 rounded-it-md border border-it-border bg-it-bg px-3.5 py-[11px] text-[13px] font-bold leading-[1.5] text-it-ink'>
+        <div className='mb-3.5 flex items-center gap-2.5 rounded-it-md border border-it-border bg-it-bg px-3.5 py-[11px] text-[13px] font-medium leading-[1.5] text-it-ink'>
             <Image
                 src='/icons/checkout/lock-ink.svg'
                 alt=''
@@ -423,7 +423,7 @@ export function SecureCheckoutRow({
                 className='size-4 shrink-0'
             />
             {dict.secureCheckout}
-            <span className='ml-auto inline-flex items-center gap-1 rounded-[4px] bg-[#425466] px-[9px] py-1 text-[10.5px] font-bold tracking-[0.02em] text-it-white'>
+            <span className='ml-auto inline-flex items-center gap-1 rounded-[4px] bg-[#425466] px-[9px] py-1 text-[10.5px] font-medium tracking-[0.02em] text-it-white'>
                 {dict.poweredBy} <b>{psp}</b>
             </span>
         </div>

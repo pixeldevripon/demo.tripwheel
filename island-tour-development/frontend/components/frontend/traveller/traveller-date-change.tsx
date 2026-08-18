@@ -85,7 +85,7 @@ export function TravellerDateChange({
                         exit={{ opacity: 0, y: -8 }}
                         transition={crossFade}
                         className='rounded-[12px] bg-it-surface p-4'>
-                        <p className='m-0 text-[14px] leading-[1.6] font-normal text-it-heading'>
+                        <p className='m-0 text-[14px] leading-[1.6] font-medium text-it-heading'>
                             {dict.dateChangeTitle}
                         </p>
                         <p className='mt-1 mb-0 text-[13px] leading-[1.6] text-it-text-muted'>

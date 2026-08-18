@@ -101,7 +101,7 @@ export function TourDetailTabs({ tabs }: { tabs: TourTab[] }) {
                             aria-current={isActive ? 'true' : undefined}
                             className={`relative -mb-px shrink-0 cursor-pointer whitespace-nowrap border-none bg-transparent px-[13px] py-3 text-[13px] leading-[1.6] transition-colors duration-(--it-duration-xs) ease-(--it-ease) ${
                                 isActive
-                                    ? 'font-bold text-it-primary-hover'
+                                    ? 'font-medium text-it-primary-hover'
                                     : 'font-semibold text-it-text-muted hover:text-it-ink'
                             }`}>
                             {/* One-cell grid: the invisible bold twin reserves
@@ -113,7 +113,7 @@ export function TourDetailTabs({ tabs }: { tabs: TourTab[] }) {
                                 </span>
                                 <span
                                     aria-hidden
-                                    className='invisible col-start-1 row-start-1 font-bold'>
+                                    className='invisible col-start-1 row-start-1 font-medium'>
                                     {t.label}
                                 </span>
                             </span>

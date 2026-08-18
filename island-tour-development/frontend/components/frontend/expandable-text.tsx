@@ -99,7 +99,7 @@ export function ExpandableText({
                         transition={springPop}
                         className={
                             buttonClassName ??
-                            'cursor-pointer border-none bg-transparent p-0 font-normal text-[16px] leading-[1.6] tracking-[-0.012em] whitespace-nowrap text-it-primary'
+                            'cursor-pointer border-none bg-transparent p-0 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] whitespace-nowrap text-it-primary'
                         }>
                         {expanded ? lessLabel : moreLabel}
                     </motion.button>

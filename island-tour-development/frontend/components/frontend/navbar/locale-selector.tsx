@@ -76,7 +76,7 @@ export function LocaleSelector({
                     /* One-cell grid: invisible spans reserve the width of the
                        widest locale code, so switching locales never shifts
                        the rest of the header. */
-                    <span className='inline-grid justify-items-start text-[13px] font-semibold text-it-ink uppercase'>
+                    <span className='inline-grid justify-items-start text-base font-medium text-it-ink uppercase'>
                         <span className='col-start-1 row-start-1'>
                             {locale}
                         </span>
@@ -102,7 +102,7 @@ export function LocaleSelector({
                                 <button
                                     onClick={() => pickLocale(code)}
                                     aria-current={code === locale}
-                                    className={`flex w-full items-center justify-between gap-3 px-5 py-3 text-left text-sm bg-transparent border-none cursor-pointer transition-colors hover:bg-it-surface ${code === locale ? 'text-it-primary font-normal' : 'text-it-ink'}`}>
+                                    className={`flex w-full items-center justify-between gap-3 px-5 py-3 text-left text-sm bg-transparent border-none cursor-pointer transition-colors hover:bg-it-surface ${code === locale ? 'text-it-primary font-medium' : 'text-it-ink'}`}>
                                     <span>{LOCALE_NATIVE_LABELS[code]}</span>
                                     <span className='uppercase text-xs text-it-ink-muted'>
                                         {code}

@@ -44,7 +44,7 @@ export function EditorialBanner({
                 <Reveal className='relative lg:min-h-[372px]'>
                     {/* Backdrop - the mockup .edfig band: deep orange washing to
                         white toward the fan on desktop, solid wash on mobile. */}
-                    <div className='absolute inset-0 overflow-hidden rounded-it-xl [background-image:var(--it-editorial-gradient-v)] lg:[background-image:var(--it-editorial-gradient)]' />
+                    <div className='absolute inset-0 overflow-hidden rounded-[12px] lg:rounded-3xl [background-image:var(--it-editorial-gradient-v)] lg:[background-image:var(--it-editorial-gradient)]' />
 
                     {/* Mobile/tablet: stacked column · Desktop: full-height positioning context for the absolute copy + fan */}
                     <div className='relative flex flex-col gap-6 px-6 py-10 sm:px-10 sm:py-12 lg:block lg:min-h-[372px] lg:p-0'>
@@ -54,13 +54,13 @@ export function EditorialBanner({
                             of desktop its leftmost card reaches under this
                             column and must pass behind the words). */}
                         <div className='flex flex-col lg:absolute lg:left-[60px] lg:top-1/2 lg:z-3 lg:-translate-y-1/2 lg:max-w-[432px]'>
-                            <h2 className='m-0 font-it-display font-bold text-[clamp(26px,3.3vw,40px)] leading-[1.05] tracking-[-0.02em] text-it-white'>
+                            <h2 className='m-0 font-it-display text-[clamp(26px,3.3vw,40px)] leading-[1.15] tracking-[-0.012em] text-it-white'>
                                 <span className='block'>{dict.titleLine1}</span>
                                 <span className='block text-it-editorial-accent'>
                                     {dict.titleLine2}
                                 </span>
                             </h2>
-                            <p className='m-0 mt-3.5 max-w-[400px] text-[15px] leading-[1.55] text-it-white/90'>
+                            <p className='m-0 mt-3.5 max-w-[400px] text-[15px] leading-[1.5] text-it-white/90'>
                                 {dict.body}
                             </p>
 
@@ -75,7 +75,7 @@ export function EditorialBanner({
                                     tap: { scale: 0.99 },
                                 }}
                                 transition={springPop}>
-                                <span className='font-bold text-[14.5px] leading-[1.6] text-it-primary-hover'>
+                                <span className='font-medium text-[14.5px] leading-[1.6] text-it-primary-hover'>
                                     {dict.cta}
                                 </span>
                                 <MotionSpan

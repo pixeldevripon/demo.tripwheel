@@ -89,8 +89,8 @@ function EntityRow({
                     <span
                         className={`block truncate text-it-ink ${
                             compact
-                                ? 'text-[14px] font-semibold leading-[1.35]'
-                                : 'text-sm font-normal'
+                                ? 'text-[14px] font-semibold leading-[1.4]'
+                                : 'text-sm font-medium'
                         }`}>
                         {label}
                     </span>
@@ -222,7 +222,7 @@ function Panel({
         <motion.div
             ref={ref}
             {...dropdownMotion}
-            className='absolute left-0 right-0 top-[calc(100%+8px)] z-50 origin-top overflow-hidden rounded-it-sm border border-it-border-subtle bg-it-white shadow-it-lg'>
+            className='absolute left-0 right-0 top-[calc(100%+8px)] z-50 origin-top overflow-hidden rounded-it-lg border border-it-border-subtle bg-it-white shadow-it-lg'>
             {/* The class is the pre-measurement fallback (first paint, and any
                 browser without visualViewport); the measured value overrides it. */}
             <div
@@ -324,7 +324,7 @@ function TourRow({
                             <span className='truncate'>{contextLabel}</span>
                         </span>
                     )}
-                    <span className='block truncate text-sm font-normal text-it-ink'>
+                    <span className='block truncate text-sm font-medium text-it-ink'>
                         {hit.title}
                     </span>
                     {meta.length > 0 && (
@@ -344,7 +344,7 @@ function TourRow({
                         </span>
                     )}
                     <span className='mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs'>
-                        <span className='font-normal text-it-ink'>
+                        <span className='font-medium text-it-ink'>
                             {dict.from}{' '}
                             {formatPriceFrom(
                                 hit.money?.priceFrom ??
@@ -583,7 +583,7 @@ export function SearchTypeahead({
                         <Link
                             href={zeroState!.allTours.href}
                             onClick={onSelect}
-                            className='block border-t border-it-border px-5 py-3 text-center text-sm font-normal text-it-primary no-underline transition-colors hover:bg-it-surface'>
+                            className='block border-t border-it-border px-5 py-3 text-center text-sm font-medium text-it-primary no-underline transition-colors hover:bg-it-surface'>
                             {zeroState!.allTours.label}
                         </Link>
                     )}
@@ -738,7 +738,7 @@ export function SearchTypeahead({
                         <Link
                             href={searchHref(query)}
                             onClick={onSelect}
-                            className='block border-t border-it-border px-5 py-3 text-center text-sm font-normal text-it-primary no-underline transition-colors hover:bg-it-surface'>
+                            className='block border-t border-it-border px-5 py-3 text-center text-sm font-medium text-it-primary no-underline transition-colors hover:bg-it-surface'>
                             {dict.seeAll.replace(
                                 '{count}',
                                 String(suggest.total)

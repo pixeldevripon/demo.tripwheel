@@ -140,7 +140,7 @@ export function EditorialCardFan({
                         </span>
                         {/* Mockup `.lb` */}
                         <span className='block px-3 py-2.5 lg:px-[13px] lg:py-[11px]'>
-                            <span className='block text-[12px] font-bold leading-[1.2] text-it-ink lg:text-[13px]'>
+                            <span className='block text-[12px] font-medium leading-[1.2] text-it-ink lg:text-[13px]'>
                                 {title}
                             </span>
                             {priceFrom && (

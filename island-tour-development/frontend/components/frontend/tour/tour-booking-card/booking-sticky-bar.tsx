@@ -203,7 +203,7 @@ export function BookingStickyBar({
                             <div className='flex min-w-44 grow basis-44 flex-col gap-0.5'>
                                 <span className='flex items-baseline gap-1 text-[12px] leading-[1.4] text-it-text-muted'>
                                     <span>{dict.from}</span>
-                                    <b className='text-[17px] font-bold leading-[1.2] tracking-[-0.01em] text-it-ink tabular-nums'>
+                                    <b className='text-[17px] font-medium leading-[1.2] tracking-[-0.012em] text-it-ink tabular-nums'>
                                         {money(data.priceFrom)}
                                     </b>
                                     <span className='truncate'>

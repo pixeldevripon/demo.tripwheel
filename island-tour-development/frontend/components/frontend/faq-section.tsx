@@ -76,7 +76,7 @@ export async function FaqSection({
                 <section className='bg-it-white pb-20'>
                     <div className='it-container'>
                         <Reveal className='flex max-w-[760px] flex-col gap-3'>
-                            <h2 className='m-0 mt-7 text-[16px] font-bold leading-[1.6] text-it-ink'>
+                            <h2 className='m-0 mt-7 text-[16px] leading-[1.6] text-it-ink'>
                                 {dict.title}
                             </h2>
                             <FaqAccordion items={dict.items} />
@@ -99,7 +99,7 @@ export async function FaqSection({
                             <div className='flex flex-col gap-8 lg:gap-10'>
                                 {/* Heading */}
                                 <div className='flex flex-col gap-2.5'>
-                                    <h2 className='m-0 text-[clamp(22px,2.6vw,30px)] leading-[1.1] font-bold tracking-[-0.015em] text-it-ink'>
+                                    <h2 className='m-0 text-[24px] lg:text-[40px] leading-[1.2] font-medium tracking-[-0.012em] text-it-ink'>
                                         {dict.title}
                                     </h2>
                                     <p className='m-0 max-w-[400px] text-[14px] leading-[1.6] text-it-text-muted'>
@@ -157,7 +157,7 @@ export async function FaqSection({
                                                     height={24}
                                                     className='size-4'
                                                 />
-                                                <span className='font-bold text-[14.5px] leading-[1.6] text-it-white'>
+                                                <span className='font-medium text-[16px] leading-[1.6] text-it-white tracking-[-0.012em]'>
                                                     {dict.whatsapp}
                                                 </span>
                                             </MotionA>

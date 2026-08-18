@@ -144,7 +144,7 @@ async function ReceiptBody({
                         <div>
                             <MicroLabel>{t.receiptIssuedTo}</MicroLabel>
                             {receipt.payerName && (
-                                <p className='mt-1.5 mb-0 text-[15px] font-normal text-it-heading'>
+                                <p className='mt-1.5 mb-0 text-[15px] font-medium text-it-heading'>
                                     {receipt.payerName}
                                 </p>
                             )}
@@ -156,7 +156,7 @@ async function ReceiptBody({
                         </div>
                         <div className='sm:text-right'>
                             <MicroLabel>{t.receiptTour}</MicroLabel>
-                            <p className='mt-1.5 mb-0 text-[15px] font-normal text-it-heading'>
+                            <p className='mt-1.5 mb-0 text-[15px] font-medium text-it-heading'>
                                 {receipt.tourName}
                                 {receipt.destinationName
                                     ? ` · ${receipt.destinationName}`
@@ -297,7 +297,7 @@ async function ReceiptBody({
                     className='mt-5 flex flex-wrap items-center justify-between gap-3 print:hidden'>
                     <Link
                         href={`${localizeHref(locale, '/traveller')}?tab=payments`}
-                        className='text-[14px] font-normal text-it-heading no-underline transition-colors hover:text-it-primary'>
+                        className='text-[14px] font-medium text-it-heading no-underline transition-colors hover:text-it-primary'>
                         {t.receiptBack}
                     </Link>
                     <TravellerReceiptPrintButton label={t.receiptPrint} />
@@ -354,7 +354,7 @@ function ItemRow({
             <td className='py-3 pl-4 text-right font-mono text-[13.5px] text-it-heading'>
                 {unit}
             </td>
-            <td className='py-3 pl-4 text-right font-mono text-[13.5px] font-normal text-it-heading'>
+            <td className='py-3 pl-4 text-right font-mono text-[13.5px] font-medium text-it-heading'>
                 {amount}
             </td>
         </tr>

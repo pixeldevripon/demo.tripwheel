@@ -93,7 +93,7 @@ export function TravellerPaymentBox({
                 <span className='text-[14.5px] leading-[1.6] text-it-green'>
                     {dict.payPaidInFull}
                 </span>
-                <span className='text-right text-[14.5px] leading-[1.6] font-normal text-it-green'>
+                <span className='text-right text-[14.5px] leading-[1.6] font-medium text-it-green'>
                     {total}
                 </span>
             </div>
@@ -181,7 +181,7 @@ function MoneyRow({ label, value }: { label: string; value: string }) {
             <span className='text-[14.5px] leading-[1.6] text-it-text-muted'>
                 {label}
             </span>
-            <span className='text-right text-[14.5px] leading-[1.6] font-normal text-it-heading'>
+            <span className='text-right text-[14.5px] leading-[1.6] font-medium text-it-heading'>
                 {value}
             </span>
         </div>

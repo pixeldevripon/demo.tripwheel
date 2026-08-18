@@ -46,7 +46,7 @@ export function FaqAccordion({ items }: { items: { q: string; a: string }[] }) {
                                 onClick={() => setOpenIndex(open ? -1 : i)}
                                 transition={springPop}
                                 className='flex w-full items-center justify-between gap-3.5 border-none bg-transparent px-[18px] py-[15px] text-left cursor-pointer'>
-                                <span className='font-bold text-[14.5px] leading-[1.6] text-it-ink'>
+                                <span className='font-medium text-[14.5px] leading-[1.6] text-it-ink'>
                                     {faq.q}
                                 </span>
                                 <motion.span
@@ -82,7 +82,7 @@ export function FaqAccordion({ items }: { items: { q: string; a: string }[] }) {
                                             }}
                                             className='px-[18px] pb-[15px]'>
                                             <div className='mb-3 h-px w-full bg-it-divider' />
-                                            <p className='m-0 text-[13.5px] leading-[1.6] text-it-text-muted'>
+                                            <p className='m-0 text-[14px] lg:text-[16px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                                                 {faq.a}
                                             </p>
                                         </motion.div>

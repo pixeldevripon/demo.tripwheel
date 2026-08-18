@@ -102,7 +102,7 @@ export function CheckoutSummary({
             {/* Header */}
             <div className='flex flex-col gap-4'>
                 <div className='flex items-start justify-between gap-4'>
-                    <span className='font-it-display text-[16px] font-bold leading-[1.4] tracking-[-0.01em] text-it-ink'>
+                    <span className='font-it-display text-[16px] font-medium leading-[1.4] tracking-[-0.012em] text-it-ink'>
                         {dict.bookingSummary}
                     </span>
                     <Link
@@ -135,7 +135,7 @@ export function CheckoutSummary({
                             />
                         )}
                     </div>
-                    <span className='text-[13px] font-normal leading-[1.35] text-it-ink'>
+                    <span className='text-[13px] font-medium leading-[1.4] text-it-ink'>
                         {tourTitle}
                     </span>
                 </div>

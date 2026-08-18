@@ -68,7 +68,7 @@ export function PriceSummary() {
                 </Collapse>
                 <div className='flex items-center justify-between gap-2 py-[3px] tabular-nums'>
                     <span className='text-it-text-muted'>{dict.total}</span>
-                    <b className='text-[16px] font-extrabold text-it-ink'>
+                    <b className='text-[16px] font-medium text-it-ink'>
                         {money(total)}
                     </b>
                 </div>
@@ -81,7 +81,7 @@ export function PriceSummary() {
                         </span>
                         {/* `.pay` - the one figure the traveller is charged
                             now, and the only one carrying the brand colour. */}
-                        <b className='font-bold text-it-primary-hover'>
+                        <b className='font-medium text-it-primary-hover'>
                             {money(payToday)}
                         </b>
                     </div>
@@ -110,7 +110,7 @@ export function PriceSummary() {
                     onClick={() => toggleDetails()}
                     whileTap={{ scale: 0.97 }}
                     transition={springPop}
-                    className='mt-1.5 cursor-pointer self-start border-none bg-transparent text-[12.5px] font-bold leading-[1.6] text-it-primary-hover underline underline-offset-2'>
+                    className='mt-1.5 cursor-pointer self-start border-none bg-transparent text-[12.5px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-2'>
                     {detailsOpen ? dict.hideDetails : dict.showDetails}
                 </motion.button>
             </div>

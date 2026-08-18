@@ -173,7 +173,7 @@ export function MultiSelect({
                                         />
                                     </button>
                                 )}
-                                <span className='truncate text-xs font-normal'>
+                                <span className='truncate text-xs font-medium'>
                                     {opt.label}
                                 </span>
                                 {!disabled && (
