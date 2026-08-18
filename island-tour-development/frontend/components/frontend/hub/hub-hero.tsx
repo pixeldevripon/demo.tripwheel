@@ -222,7 +222,7 @@ export function HubHero({
                                                 aria-label={dict.selectDate}
                                                 className={`flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 whitespace-nowrap border-none bg-transparent py-[13px] pl-0 text-left text-[13.5px] font-medium leading-[1.6] transition-colors duration-300 ${date ? '' : 'text-it-text-muted tracking-[-0.012em]'}`}>
                                                 <Image
-                                                    src='/icons/calendar-soft.svg'
+                                                    src='/icons/filters/calendar.svg'
                                                     alt=''
                                                     width={24}
                                                     height={24}

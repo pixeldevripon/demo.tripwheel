@@ -644,7 +644,7 @@ export function ToursFilterBar({
                                         transition={springPop}
                                         className={`flex h-full cursor-pointer items-center gap-2 whitespace-nowrap border-none bg-transparent py-[9px] pl-[15px] text-inherit ${date ? 'pr-1' : 'pr-[15px]'}`}>
                                         <Image
-                                            src='/icons/calendar-soft.svg'
+                                            src='/icons/filters/calendar.svg'
                                             alt=''
                                             width={24}
                                             height={24}

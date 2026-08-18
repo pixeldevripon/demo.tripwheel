@@ -83,7 +83,7 @@ export function SavedDateCheck({
                                 : 'border-it-border bg-it-white text-it-heading hover:border-it-ink tracking-[-0.012em]'
                         )}>
                         <Image
-                            src='/icons/calendar-soft.svg'
+                            src='/icons/filters/calendar.svg'
                             alt=''
                             width={24}
                             height={24}
