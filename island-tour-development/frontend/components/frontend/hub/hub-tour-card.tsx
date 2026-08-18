@@ -184,7 +184,7 @@ export function HubTourCard({
 
                 {/* Title + attribute tags */}
                 <div className='flex flex-col gap-1 md:gap-1.5'>
-                    <h3 className='m-0 font-it-body text-[13px] @[220px]:text-[15.5px] leading-[1.3] tracking-[-0.012em] text-it-ink line-clamp-2'>
+                    <h3 className='m-0 font-it-body text-[13px] @[220px]:text-[15.5px] leading-[1.3] tracking-[-0.012em] text-it-heading line-clamp-2 font-medium'>
                         {tour.title}
                     </h3>
                     <ul className='m-0 flex flex-wrap items-center gap-x-2 gap-y-1 p-0'>
@@ -209,7 +209,7 @@ export function HubTourCard({
                     surcharge note keeps its space and wraps on narrow cards). */}
                 <p className='m-0 mt-auto pt-2 text-[11px] @[220px]:text-[12.5px] leading-[1.6] text-it-text-muted'>
                     {dict.from}
-                    <b className='ml-1 text-[14px] @[220px]:text-[17px] font-medium tracking-[-0.012em] text-it-ink tabular-nums'>
+                    <b className='ml-1 text-[14px] @[220px]:text-[17px] font-medium tracking-[-0.012em] text-it-heading tabular-nums'>
                         {tour.priceDisplay}
                     </b>
                     <span className='ml-0.5'>
@@ -220,7 +220,7 @@ export function HubTourCard({
 
                 {/* Free cancellation */}
                 {tour.freeCancellation && (
-                    <div className='flex items-center gap-1.5 text-[11px] @[220px]:text-[12.5px] font-semibold leading-[1.6] text-it-green-text max-sm:hidden'>
+                    <div className='flex items-center gap-1.5 text-[11px] @[220px]:text-[12.5px] font-medium leading-[1.6] text-it-green-text max-sm:hidden'>
                         <Image
                             src='/icons/trust-check-green.svg'
                             alt=''

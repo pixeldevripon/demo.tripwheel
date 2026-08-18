@@ -124,7 +124,7 @@ export type TourListing = {
  */
 function HubEyebrow({ name }: { name: string }) {
     return (
-        <span className='inline-flex w-max items-center gap-[5px] rounded-it-full border border-it-peach-border bg-it-white py-[3px] pl-2 pr-2.5 text-[11.5px] font-medium leading-none text-it-primary-hover shadow-it-sm'>
+        <span className='inline-flex w-max items-center gap-[5px] border border-it-peach-border bg-it-white py-[3px] pl-2 pr-2.5 text-[16px] font-medium leading-[1.6] text-it-white tracking-[-0.012em]'>
             <MapPin
                 className='size-3 shrink-0 text-it-primary'
                 strokeWidth={2}
@@ -402,7 +402,7 @@ function DefaultTourCard({
 
                 {/* Tour title - the stored title is hub-free (mck-18 §3); the
                     hub context around it is the eyebrow's job. */}
-                <h3 className='m-0 font-it-body text-[13px] @[220px]:text-[15.5px] leading-[1.3] tracking-[-0.012em] text-it-ink line-clamp-2 @[220px]:min-h-[2.6em]'>
+                <h3 className='m-0 text-[12px] @[220px]:text-[15.5px] leading-[1.4] tracking-[-0.012em] text-it-heading line-clamp-2 @[220px]:min-h-[2.6em] font-medium'>
 {tour.title}
                 </h3>
 
@@ -446,7 +446,7 @@ function DefaultTourCard({
                             'm-0 mt-2.5 inline-flex items-center gap-[7px] text-[12.5px] font-medium leading-[1.6]',
                             availability.available
                                 ? 'text-it-green-text'
-                                : 'text-it-ink-muted'
+                                : 'text-it-text-muted'
                         )}>
                         {availability.available && (
                             <Image
@@ -466,7 +466,7 @@ function DefaultTourCard({
                 <div className='mt-auto flex flex-col gap-[3px] pt-2'>
                     <div className='flex items-baseline flex-wrap gap-x-1 text-[11px] @[220px]:text-[12.5px] leading-[1.6] text-it-text-muted'>
                         <span>{dict.from}</span>
-                        <span className='font-medium text-[14px] @[220px]:text-[17px] leading-[1.3] tracking-[-0.012em] text-it-ink tabular-nums'>
+                        <span className='font-medium text-[14px] @[220px]:text-[17px] leading-[1.3] tracking-[-0.012em] text-it-heading tabular-nums'>
                             {tour.priceDisplay}
                         </span>
                         <span>{priceLabel}</span>
@@ -494,7 +494,7 @@ function DefaultTourCard({
                     {tour.freeCancellation && (
                         <p
                             className={cn(
-                                'm-0 inline-flex items-center gap-1.5 text-[11px] @[220px]:text-[12.5px] font-semibold leading-[1.6] text-it-green-text',
+                                'm-0 inline-flex items-center gap-1.5 text-[11px] @[220px]:text-[12.5px] font-medium leading-[1.6] text-it-green-text',
                                 // Mockup hides the note on the compact mobile
                                 // row card - the price line closes the card.
                                 mobileRow && 'max-sm:hidden'
@@ -642,13 +642,13 @@ function RankedTourCard({
                         <HubEyebrow name={tour.hub.name} />
                     </div>
                 )}
-                <h3 className='m-0 font-it-body text-[13px] @[220px]:text-[15.5px] leading-[1.3] tracking-[-0.012em] text-it-ink line-clamp-2'>
+                <h3 className='m-0 font-it-body text-[13px] @[220px]:text-[15.5px] leading-[1.3] tracking-[-0.012em] text-it-heading line-clamp-2 font-medium'>
 {tour.title}
                 </h3>
 
                 {/* Curation rationale - the required CMS line, italic. */}
                 {tour.description && (
-                    <p className='m-0 text-[11px] @[220px]:text-[12.5px] italic leading-[1.5] text-it-text-muted line-clamp-2'>
+                    <p className='m-0 text-[10px] @[220px]:text-[12.5px] italic leading-[1.6] text-it-text-muted line-clamp-2 tracking-[-0.012em]'>
                         {tour.description}
                     </p>
                 )}
@@ -663,14 +663,14 @@ function RankedTourCard({
                             <span className='tabular-nums'>
                                 ({tour.reviewCount?.toLocaleString()})
                             </span>
-                            <span className='text-it-ink-muted'>·</span>
+                            <span className='text-it-text-muted'>·</span>
                         </>
                     )}
                     <span>{tour.duration}</span>
                 </div>
 
                 {tour.freeCancellation && (
-                    <span className='mt-0.5 flex items-center gap-1.5 text-[11px] @[220px]:text-[12.5px] font-semibold leading-[1.6] text-it-green-text max-sm:hidden'>
+                    <span className='mt-0.5 flex items-center gap-1.5 text-[11px] @[220px]:text-[12.5px] font-medium leading-[1.6] text-it-green-text max-sm:hidden'>
                         <Image
                             src='/icons/trust-check-green.svg'
                             alt=''
@@ -686,7 +686,7 @@ function RankedTourCard({
                 {/* Price - pinned to the card foot. */}
                 <div className='mt-auto pt-2 text-[11px] @[220px]:text-[12.5px] leading-[1.6] text-it-text-muted'>
                     {dict.from}
-                    <b className='ml-1 text-[14px] @[220px]:text-[17px] font-medium tracking-[-0.012em] text-it-ink tabular-nums'>
+                    <b className='ml-1 text-[14px] @[220px]:text-[17px] font-medium tracking-[-0.012em] text-it-heading tabular-nums'>
                         {tour.priceDisplay}
                     </b>
                 </div>

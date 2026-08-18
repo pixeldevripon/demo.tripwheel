@@ -203,7 +203,7 @@ export function BookingStickyBar({
                             <div className='flex min-w-44 grow basis-44 flex-col gap-0.5'>
                                 <span className='flex items-baseline gap-1 text-[12px] leading-[1.4] text-it-text-muted'>
                                     <span>{dict.from}</span>
-                                    <b className='text-[17px] font-medium leading-[1.2] tracking-[-0.012em] text-it-ink tabular-nums'>
+                                    <b className='text-[17px] font-medium leading-[1.2] tracking-[-0.012em] text-it-heading tabular-nums'>
                                         {money(data.priceFrom)}
                                     </b>
                                     <span className='truncate'>
@@ -216,7 +216,7 @@ export function BookingStickyBar({
                                     a single line under a price is not a list,
                                     and the tick just crowded the tightest row
                                     on the page (founder, 2026-08-06). */}
-                                <span className='truncate text-[11.5px] font-semibold leading-[1.4] text-it-ink'>
+                                <span className='truncate text-[11.5px] font-medium leading-[1.4] text-it-heading'>
                                     {cancellation}
                                 </span>
                             </div>

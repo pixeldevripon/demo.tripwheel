@@ -105,13 +105,13 @@ export function DepartureTimes() {
                     animate={{ opacity: 1 }}
                     transition={swapFade}
                     className=''>
-                    <p className='m-0 text-[14px] font-semibold leading-[1.5] text-it-ink'>
+                    <p className='m-0 text-[14px] font-medium leading-[1.5] text-it-heading'>
                         {dict.noDeparturesOnDateTitle.replace(
                             '{date}',
                             formatSelectedDate(selectedDate!, locale)
                         )}
                     </p>
-                    <p className='m-0 mt-0.5 text-[13px] leading-[1.5] text-it-ink-muted'>
+                    <p className='m-0 mt-0.5 text-[13px] leading-[1.5] text-it-text-muted'>
                         {dict.noDeparturesOnDateHint}
                     </p>
                 </motion.div>
@@ -212,7 +212,7 @@ export function DepartureTimes() {
                                     className={`block whitespace-nowrap text-[13.5px] font-bold leading-[1.25] tabular-nums ${
                                         isSelected
                                             ? 'text-it-primary-hover'
-                                            : 'text-it-ink'
+                                            : 'text-it-heading'
                                     }`}>
                                     {formatTime(slot.time, locale)}
                                 </span>
@@ -226,7 +226,7 @@ export function DepartureTimes() {
                                     would have made it jump taller the moment a
                                     departure filled. 11px at 1.25 = 13.75px,
                                     the exact line this holds open. */}
-                                <span className='block min-h-[13.75px] text-[11px] font-semibold leading-[1.25] text-it-text-muted'>
+                                <span className='block min-h-[13.75px] text-[11px] font-medium leading-[1.25] text-it-text-muted'>
                                     {note}
                                 </span>
                             </motion.button>

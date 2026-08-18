@@ -35,7 +35,7 @@ export function ThankYouRelatedTours({
         <section className='bg-it-white pt-14 pb-0'>
             <div className='it-wrap flex flex-col'>
                 <Reveal>
-                    <h2 className='m-0 font-it-display text-[clamp(20px,2.4vw,26px)] leading-[1.2] tracking-[-0.012em] text-it-ink'>
+                    <h2 className='m-0 font-it-display text-[clamp(20px,2.4vw,26px)] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                         {dict.relatedTitle}
                     </h2>
                     <p className='m-0 mt-1.5 text-[16px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>

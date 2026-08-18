@@ -76,7 +76,7 @@ export async function FaqSection({
                 <section className='bg-it-white pb-20'>
                     <div className='it-container'>
                         <Reveal className='flex max-w-[760px] flex-col gap-3'>
-                            <h2 className='m-0 mt-7 text-[16px] leading-[1.6] text-it-ink'>
+                            <h2 className='m-0 mt-7 text-[24px] lg:text-[40px] leading-[1.2] text-it-heading font-medium tracking-[-0.012em]'>
                                 {dict.title}
                             </h2>
                             <FaqAccordion items={dict.items} />
@@ -99,10 +99,10 @@ export async function FaqSection({
                             <div className='flex flex-col gap-8 lg:gap-10'>
                                 {/* Heading */}
                                 <div className='flex flex-col gap-2.5'>
-                                    <h2 className='m-0 text-[24px] lg:text-[40px] leading-[1.2] font-medium tracking-[-0.012em] text-it-ink'>
+                                    <h2 className='m-0 text-[32px] lg:text-[40px] leading-[1.2] font-medium tracking-[-0.012em] text-it-heading'>
                                         {dict.title}
                                     </h2>
-                                    <p className='m-0 max-w-[400px] text-[14px] leading-[1.6] text-it-text-muted'>
+                                    <p className='m-0 max-w-[400px] text-[14px] lg:text-[16px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                                         {dict.subtitle}
                                     </p>
                                 </div>
@@ -176,7 +176,7 @@ export async function FaqSection({
                                                     height={24}
                                                     className='size-6 shrink-0'
                                                 />
-                                                <span className='font-semibold text-[14px] leading-[1.6] text-it-ink'>
+                                                <span className='font-medium text-[14px] lg:text-[16px] leading-[1.6] text-it-heading tracking-[-0.012em]'>
                                                     {g}
                                                 </span>
                                             </li>

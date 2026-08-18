@@ -277,7 +277,7 @@ export function TravellerView({
                                                     locale,
                                                     '/curacao/tours'
                                                 )}
-                                                className='mt-5 inline-block rounded-full bg-it-primary px-6 py-2.5 text-[14px] font-semibold text-it-primary-fg no-underline transition-[filter] hover:brightness-95'>
+                                                className='mt-5 inline-block rounded-full bg-it-primary px-6 py-2.5 text-[14px] font-medium text-it-primary-fg no-underline transition-[filter] hover:brightness-95'>
                                                 {dict.emptyBookingsCta}
                                             </Link>
                                         }
@@ -334,7 +334,7 @@ export function TravellerView({
                                     href={whatsappHref}
                                     target='_blank'
                                     rel='noopener noreferrer'
-                                    className='shrink-0 rounded-full bg-it-primary px-6 py-2.5 text-[14px] font-semibold text-it-primary-fg no-underline transition-[filter] hover:brightness-95'>
+                                    className='shrink-0 rounded-full bg-it-primary px-6 py-2.5 text-[14px] font-medium text-it-primary-fg no-underline transition-[filter] hover:brightness-95'>
                                     {dict.whatsappUs}
                                 </a>
                             </div>

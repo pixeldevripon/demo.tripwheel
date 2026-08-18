@@ -62,7 +62,7 @@ export function CollectionCard({
 
                 {/* ── Card info ──────────────────────────────────────────── */}
                 <div className='flex flex-1 min-w-0 flex-col gap-1 px-3 pt-2.5 pb-3 @[220px]:px-3.5 @[220px]:pt-3 @[220px]:pb-3.5'>
-                    <h3 className='m-0 font-it-body text-[13px] @[220px]:text-[15.5px] leading-[1.3] tracking-[-0.012em] text-it-ink line-clamp-2'>
+                    <h3 className='m-0 font-it-body text-[13px] @[220px]:text-[15.5px] leading-[1.3] tracking-[-0.012em] text-it-heading line-clamp-2 font-medium'>
                         {collection.name}
                     </h3>
 

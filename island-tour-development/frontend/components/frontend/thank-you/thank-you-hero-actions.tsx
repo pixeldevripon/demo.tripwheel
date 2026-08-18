@@ -104,7 +104,7 @@ export function AddToCalendar({
     }, [open]);
 
     const itemClass =
-        'flex w-full cursor-pointer items-center gap-2.5 rounded-it-sm px-3 py-2.5 text-left text-[13.5px] font-semibold leading-[1.4] text-it-ink no-underline transition-colors duration-(--it-duration-xs) hover:bg-it-bg';
+        'flex w-full cursor-pointer items-center gap-2.5 rounded-it-sm px-3 py-2.5 text-left text-[13.5px] font-medium leading-[1.4] text-it-heading no-underline transition-colors duration-(--it-duration-xs) hover:bg-it-bg';
 
     const options = [
         {

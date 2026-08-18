@@ -109,7 +109,7 @@ export function TravellerDateChange({
                                     value={selected}
                                     onChange={e => setSelected(e.target.value)}
                                     aria-label={dict.dateChangeTitle}
-                                    className='mt-3 w-full cursor-pointer rounded-[10px] border border-it-border bg-it-white px-3.5 py-2.5 text-[16px] md:text-[14px] text-it-ink focus:border-transparent focus:outline-2 focus:outline-it-primary'>
+                                    className='mt-3 w-full cursor-pointer rounded-[10px] border border-it-border bg-it-white px-3.5 py-2.5 text-[16px] md:text-[14px] text-it-heading focus:border-transparent focus:outline-2 focus:outline-it-primary'>
                                     {options.map(o => (
                                         <option
                                             key={o.departureId}
@@ -134,7 +134,7 @@ export function TravellerDateChange({
                                     disabled={moving}
                                     whileTap={{ scale: 0.98 }}
                                     onClick={() => void submit()}
-                                    className='rounded-full bg-it-primary px-4.5 py-2.25 text-[14px] font-semibold text-it-primary-fg transition-[filter] hover:brightness-95 disabled:opacity-60'>
+                                    className='rounded-full bg-it-primary px-4.5 py-2.25 text-[14px] font-medium text-it-primary-fg transition-[filter] hover:brightness-95 disabled:opacity-60'>
                                     {moving
                                         ? dict.dateChangeMoving
                                         : dict.dateChangeConfirm}
@@ -145,7 +145,7 @@ export function TravellerDateChange({
                                 disabled={moving}
                                 whileTap={{ scale: 0.98 }}
                                 onClick={() => setOpen(false)}
-                                className='rounded-full px-4.5 py-2.25 text-[14px] font-semibold text-it-text-muted transition-colors hover:text-it-heading disabled:opacity-60'>
+                                className='rounded-full px-4.5 py-2.25 text-[14px] font-medium text-it-text-muted transition-colors hover:text-it-heading disabled:opacity-60'>
                                 {dict.dateChangeKeep}
                             </motion.button>
                         </div>
@@ -160,7 +160,7 @@ export function TravellerDateChange({
                         transition={crossFade}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => void openPicker()}
-                        className='rounded-full border-[1.5px] border-it-heading/20 px-4.5 py-2.25 text-[14px] font-semibold text-it-heading transition-colors hover:border-it-heading/40'>
+                        className='rounded-full border-[1.5px] border-it-heading/20 px-4.5 py-2.25 text-[14px] font-medium text-it-heading transition-colors hover:border-it-heading/40'>
                         {dict.dateChangeCta}
                     </motion.button>
                 )}

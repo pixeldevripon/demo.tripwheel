@@ -75,7 +75,7 @@ export function HubDiscoverSection({
         <div className='flex flex-col gap-6'>
             <Reveal>
                 <div className='flex max-w-[640px] flex-col gap-2'>
-                    <h2 className='m-0 font-it-display text-[clamp(22px,2.8vw,30px)] leading-[1.2] tracking-[-0.012em] text-it-ink'>
+                    <h2 className='m-0 font-it-display text-[clamp(22px,2.8vw,30px)] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                         {dict.title}
                     </h2>
                     <p className='m-0 text-[14px] md:text-[16px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
@@ -110,7 +110,7 @@ export function HubDiscoverSection({
                 <Reveal>
                     <div className='flex flex-col gap-5 rounded-it-lg bg-it-primary-subtle p-6 md:flex-row md:items-center md:justify-between md:gap-8 md:px-8 md:py-7'>
                         <div className='flex max-w-[560px] flex-col gap-1'>
-                            <h3 className='m-0 font-it-display text-[19px] leading-[1.3] tracking-[-0.012em] text-it-ink md:text-[21px]'>
+                            <h3 className='m-0 font-it-display text-[19px] leading-[1.3] tracking-[-0.012em] text-it-heading md:text-[21px] font-medium'>
                                 {dict.cta.title}
                             </h3>
                             {dict.cta.fact && (

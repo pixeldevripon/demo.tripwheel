@@ -131,7 +131,7 @@ export function TravellerPaymentsList({
                             className='rounded-[16px] border border-it-heading/10 bg-it-white p-5 sm:p-6'>
                             <div className='flex flex-wrap items-start justify-between gap-x-4 gap-y-3'>
                                 <div className='min-w-0 flex-1'>
-                                    <strong className='block text-[16px] leading-[1.5] tracking-[-0.012em] font-semibold text-it-heading'>
+                                    <strong className='block text-[16px] leading-[1.5] tracking-[-0.012em] font-medium text-it-heading'>
                                         {kindLabel}
                                         {payment.tourName && (
                                             <span className='font-normal text-it-text-muted'>

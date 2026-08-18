@@ -276,11 +276,11 @@ async function DestinationContent({
                 className='it-container hidden py-4 text-[12.5px] leading-[1.6] text-it-text-muted md:block'>
                 <Link
                     href={localizeHref(locale, '/')}
-                    className='no-underline hover:underline'>
+                    className='no-underline hover:underline text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading hover:text-it-primary'>
                     {dict.destination.allTours.breadcrumb.home}
                 </Link>
-                <span className='mx-[7px] text-it-ink-muted'>›</span>
-                <span className='font-semibold text-it-ink'>
+                <span className='mx-[7px] text-it-text-muted'>›</span>
+                <span className='font-medium text-it-heading'>
                     {destinationName}
                 </span>
             </nav>

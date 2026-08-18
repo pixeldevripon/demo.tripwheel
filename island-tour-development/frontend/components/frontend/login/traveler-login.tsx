@@ -196,7 +196,7 @@ export function TravelerLogin({
                             href={whatsappHref}
                             target='_blank'
                             rel='noopener noreferrer'
-                            className='flex items-center gap-2 rounded-full bg-it-green px-3.5 py-2 text-[14px] font-semibold text-it-white transition-colors hover:bg-it-green/90'>
+                            className='flex items-center gap-2 rounded-full bg-it-green px-3.5 py-2 text-[14px] font-medium text-it-white transition-colors hover:bg-it-green/90'>
                             <Image
                                 src='/icons/whatsapp.svg'
                                 alt=''
@@ -216,7 +216,7 @@ export function TravelerLogin({
                     <MountReveal key={`${locale}:${panel}`}>
                         {panel === 'login' ? (
                             <>
-                                <h1 className='m-0 font-it-display text-[26px] font-semibold tracking-[-0.01em] text-it-heading'>
+                                <h1 className='m-0 font-it-display text-[26px] font-medium tracking-[-0.01em] text-it-heading'>
                                     {dict.title}
                                 </h1>
                                 <p className='mb-6 mt-2 text-[14.5px] text-it-text-muted'>
@@ -326,14 +326,14 @@ export function TravelerLogin({
                                 <button
                                     type='button'
                                     onClick={() => setPanel('login')}
-                                    className='mb-3.5 inline-flex items-center gap-1.5 text-[13.5px] font-semibold text-it-text-muted transition-colors hover:text-it-ink'>
+                                    className='mb-3.5 inline-flex items-center gap-1.5 text-[13.5px] font-medium text-it-text-muted transition-colors hover:text-it-heading'>
                                     <ArrowLeft
                                         className='size-3.5'
                                         strokeWidth={1.5}
                                     />
                                     {dict.back}
                                 </button>
-                                <h1 className='m-0 font-it-display text-[26px] font-semibold tracking-[-0.01em] text-it-heading'>
+                                <h1 className='m-0 font-it-display text-[26px] font-medium tracking-[-0.01em] text-it-heading'>
                                     {dict.lostTitle}
                                 </h1>
                                 <p className='mb-6 mt-2 text-[14.5px] text-it-text-muted'>
@@ -391,7 +391,7 @@ export function TravelerLogin({
 
             {/* ── Minimal footer ───────────────────────────────────────────── */}
             <footer className='flex flex-col items-center gap-2 px-5 pb-8.5 pt-6.5 text-[12.5px] text-it-text-muted'>
-                <div className='font-it-display text-[15px] font-bold text-it-ink'>
+                <div className='font-it-display text-[15px] font-bold text-it-heading'>
                     {dict.tagline}
                 </div>
                 <div className='flex gap-3.5'>

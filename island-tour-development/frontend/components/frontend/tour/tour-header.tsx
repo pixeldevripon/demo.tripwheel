@@ -56,7 +56,7 @@ export function TourHeader({
     }
     if (locationLabel) {
         metaItems.push(
-            <span key='location' className='flex items-center gap-[5px]'>
+            <span key='location' className='flex items-center gap-[5px] text-[16px] leading-[1.6] tracking-[-0.012em]'>
                 <Image
                     src='/icons/hero-location.svg'
                     alt=''
@@ -78,7 +78,7 @@ export function TourHeader({
                     floating in the middle of nothing. */}
                 <div className='flex flex-col pt-2.5 pb-4 lg:flex-row lg:items-end lg:justify-between lg:gap-6'>
                     <div className='flex min-w-0 flex-col'>
-                        <h1 className='m-0 max-w-[22em] font-it-display text-[clamp(24px,3vw,32px)] leading-[1.15] tracking-[-0.012em] text-balance text-it-ink'>
+                        <h1 className='m-0 max-w-[22em] font-it-display text-[clamp(24px,3vw,32px)] leading-[1.15] tracking-[-0.012em] text-balance text-it-heading font-medium'>
                             {title}
                         </h1>
                         {metaItems.length > 0 && (
@@ -88,7 +88,7 @@ export function TourHeader({
                                         key={i}
                                         className='flex items-center gap-[7px]'>
                                         {i > 0 && (
-                                            <span className='text-it-ink-muted'>
+                                            <span className='text-it-text-muted'>
                                                 ·
                                             </span>
                                         )}

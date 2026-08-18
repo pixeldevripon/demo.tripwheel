@@ -79,7 +79,7 @@ export function HubPickCard({
                             height={24}
                             className='size-6 shrink-0'
                         />
-                        <span className='text-[11px] font-medium uppercase tracking-[0.12em] text-it-primary-hover'>
+                        <span className='text-[16px] text-[#858585] uppercase tracking-[-0.012em] text-it-primary-hover leading-[1.6]'>
                             {pick.labelText}
                         </span>
                     </div>
@@ -87,7 +87,7 @@ export function HubPickCard({
                     <div className='flex flex-col gap-3 md:gap-5'>
                         {/* Title + rating */}
                         <div className='flex flex-col gap-0.5'>
-                            <h3 className='m-0 font-it-display text-[20px] leading-[1.2] tracking-[-0.012em] text-it-ink'>
+                            <h3 className='m-0 font-it-display text-[20px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                                 {pick.title}
                             </h3>
                             <div className='flex items-center gap-4'>
@@ -141,7 +141,7 @@ export function HubPickCard({
                                 <span className='size-[3px] shrink-0 rounded-full bg-it-ink-muted' />
                                 <span className='text-[12.5px] leading-[1.6] text-it-text-muted tabular-nums'>
                                     {dict.from}{' '}
-                                    <b className='text-[15px] font-medium tracking-[-0.012em] text-it-ink'>
+                                    <b className='text-[15px] font-medium tracking-[-0.012em] text-it-heading'>
                                         {pick.priceDisplay}
                                     </b>
                                     {pick.priceUnit ? ` ${pick.priceUnit}` : ''}

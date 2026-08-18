@@ -54,7 +54,7 @@ export function PriceSummary() {
                                 {/* A chosen band priced at zero (infants)
                                     reads as a fact, not as arithmetic about
                                     nothing. */}
-                                <span className='font-semibold text-it-ink'>
+                                <span className='font-medium text-it-heading'>
                                     {row.amount > 0
                                         ? money(row.amount)
                                         : dict.free}
@@ -68,7 +68,7 @@ export function PriceSummary() {
                 </Collapse>
                 <div className='flex items-center justify-between gap-2 py-[3px] tabular-nums'>
                     <span className='text-it-text-muted'>{dict.total}</span>
-                    <b className='text-[16px] font-medium text-it-ink'>
+                    <b className='text-[16px] font-medium text-it-heading'>
                         {money(total)}
                     </b>
                 </div>
@@ -91,12 +91,12 @@ export function PriceSummary() {
                         <span className='text-it-text-muted'>
                             {balanceLabel}
                         </span>
-                        <b className='font-semibold text-it-ink'>
+                        <b className='font-medium text-it-heading'>
                             {money(balanceLater)}
                         </b>
                     </div>
                 )}
-                <span className='mt-1 text-[12px] leading-[1.6] text-it-ink-muted'>
+                <span className='mt-1 text-[12px] leading-[1.6] text-it-text-muted'>
                     {dict.taxesIncluded}
                 </span>
 

@@ -84,7 +84,7 @@ export function CategoriesMenu({
                                 aria-expanded={open}
                                 whileTap={{ scale: 0.98 }}
                                 transition={pressSpring}
-                                className='flex items-center gap-[7px] rounded-it-full bg-transparent border-none cursor-pointer px-3 py-2 text-it-ink'>
+                                className='flex items-center gap-[7px] rounded-it-full bg-transparent border-none cursor-pointer px-3 py-2 text-it-heading'>
                                 <Image
                                     src='/icons/nav-categories-grid.svg'
                                     alt=''
@@ -92,7 +92,7 @@ export function CategoriesMenu({
                                     height={24}
                                     className='size-4 shrink-0'
                                 />
-                                <span className='text-base font-medium text-it-ink whitespace-nowrap'>
+                                <span className='text-base font-medium text-it-heading whitespace-nowrap'>
                                     {dict.categories}
                                 </span>
                             </motion.button>
@@ -125,7 +125,7 @@ export function CategoriesMenu({
                                                         <span className='size-11 shrink-0 rounded-it-md bg-it-bg' />
                                                     )}
                                                     <span className='min-w-0'>
-                                                        <b className='block truncate text-sm font-medium text-it-ink'>
+                                                        <b className='block truncate text-sm font-medium text-it-heading'>
                                                             {hub.name}
                                                         </b>
                                                         {hub.tours !==
@@ -171,7 +171,7 @@ export function CategoriesMenu({
                                                         <span className='size-11 shrink-0 rounded-it-md bg-it-bg' />
                                                     )}
                                                     <span className='min-w-0'>
-                                                        <b className='block truncate text-sm font-medium text-it-ink'>
+                                                        <b className='block truncate text-sm font-medium text-it-heading'>
                                                             {cat.name}
                                                         </b>
                                                         {cat.tours !==

@@ -59,7 +59,7 @@ export function DestinationAbout({
                     {/* Kicker + body copy (design v2 .about: the section header
                         carries the destination as a kicker line). */}
                     <div className='flex flex-col gap-3'>
-                        <h2 className='m-0 font-it-body text-[11.5px] uppercase leading-[1.6] tracking-[0.13em] text-it-primary-hover'>
+                        <h2 className='m-0 text-[32px] md:text-[40px] uppercase leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                             {dict.title.replace(
                                 '{destination}',
                                 destinationName
@@ -71,7 +71,7 @@ export function DestinationAbout({
                             moreLabel={dict.learnMore}
                             lessLabel={dict.readLess}
                             className='m-0 text-base md:text-lg leading-[1.6] text-it-text-muted tracking-[-0.012em]'
-                            buttonClassName='ml-1.5 inline cursor-pointer border-none bg-transparent p-0 font-medium text-[16px] leading-[1.6] text-it-ink underline decoration-1 underline-offset-4 transition-colors duration-300 hover:text-it-primary tracking-[-0.012em]'
+                            buttonClassName='ml-1.5 inline cursor-pointer border-none bg-transparent p-0 font-medium text-[16px] leading-[1.6] text-it-heading underline decoration-1 underline-offset-4 transition-colors duration-300 hover:text-it-primary tracking-[-0.012em]'
                         />
                     </div>
 
@@ -82,11 +82,11 @@ export function DestinationAbout({
                             <div
                                 key={section.heading}
                                 className='flex flex-col gap-2.5 border-t-2 border-it-peach-border pt-[18px]'>
-                                <h3 className='m-0 text-[19px] leading-[1.3] tracking-[-0.012em] text-it-ink'>
+                                <h3 className='m-0 text-[20px] leading-[1.3] tracking-[-0.012em] text-it-heading font-medium'>
                                     {section.heading}
                                 </h3>
                                 {section.body && (
-                                    <p className='m-0 text-[15px] leading-[1.7] text-it-text-muted tracking-[-0.012em]'>
+                                    <p className='m-0 text-[15px] leading-[1.7] text-it-text-muted tracking-[-0.006em]'>
                                         {section.body}
                                     </p>
                                 )}

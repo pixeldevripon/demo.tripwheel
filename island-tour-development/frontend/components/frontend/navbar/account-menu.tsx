@@ -55,7 +55,7 @@ function isAccountGated(path: string): boolean {
 const ROW =
     'flex w-full items-center gap-2.5 px-5 py-3 text-sm no-underline transition-colors duration-200 hover:bg-it-surface';
 const ROW_ACTIVE = 'text-it-primary font-medium';
-const ROW_IDLE = 'text-it-ink';
+const ROW_IDLE = 'text-it-heading';
 
 /**
  * Account entry in the navbar - a traveller surface driven ONLY by the
@@ -168,14 +168,14 @@ export function AccountMenu({
                         <motion.div
                             {...dropdownItemMotion}
                             className='flex items-center gap-3 px-5 py-4'>
-                            <span className='flex size-9 shrink-0 items-center justify-center rounded-it-full bg-it-surface text-sm font-semibold uppercase text-it-ink'>
+                            <span className='flex size-9 shrink-0 items-center justify-center rounded-it-full bg-it-surface text-sm font-medium uppercase text-it-heading'>
                                 {identityEmail.trim().charAt(0)}
                             </span>
                             <span className='min-w-0'>
-                                <span className='block text-sm leading-[1.4] font-medium text-it-ink truncate'>
+                                <span className='block text-sm leading-[1.4] font-medium text-it-heading truncate'>
                                     {identityEmail}
                                 </span>
-                                <span className='block text-xs leading-[1.6] text-it-ink-muted truncate'>
+                                <span className='block text-xs leading-[1.6] text-it-text-muted truncate'>
                                     {dict.account}
                                 </span>
                             </span>
@@ -200,7 +200,7 @@ export function AccountMenu({
                                 <UserRound
                                     size={16}
                                     strokeWidth={1.5}
-                                    className={`shrink-0 ${accountActive ? 'text-it-primary' : 'text-it-ink-muted'}`}
+                                    className={`shrink-0 ${accountActive ? 'text-it-primary' : 'text-it-text-muted'}`}
                                 />
                                 {dict.myAccount}
                             </Link>
@@ -230,13 +230,13 @@ export function AccountMenu({
                                     <Loader2
                                         size={16}
                                         strokeWidth={1.5}
-                                        className='shrink-0 animate-spin text-it-ink-muted'
+                                        className='shrink-0 animate-spin text-it-text-muted'
                                     />
                                 ) : (
                                     <LogOut
                                         size={16}
                                         strokeWidth={1.5}
-                                        className='shrink-0 text-it-ink-muted'
+                                        className='shrink-0 text-it-text-muted'
                                     />
                                 )}
                                 {dict.logout}

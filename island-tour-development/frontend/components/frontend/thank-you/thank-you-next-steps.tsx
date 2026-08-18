@@ -59,7 +59,7 @@ export function ThankYouNextSteps({
             className={`bg-it-white pt-14 ${flushBottom ? 'pb-2' : 'pb-14'}`}>
             <div className='it-wrap flex flex-col'>
                 <Reveal>
-                    <h2 className='m-0 mb-7 text-center font-it-display text-[clamp(20px,2.4vw,26px)] leading-[1.2] tracking-[-0.012em] text-it-ink'>
+                    <h2 className='m-0 mb-7 text-center font-it-display text-[clamp(20px,2.4vw,26px)] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                         {dict.nextTitle}
                     </h2>
                 </Reveal>
@@ -95,7 +95,7 @@ export function ThankYouNextSteps({
                                 <span className='absolute top-4 left-4 grid size-7 place-items-center rounded-it-full border-2 border-it-border bg-it-white text-[12.5px] font-medium text-it-text-muted tabular-nums md:hidden'>
                                     {i + 1}
                                 </span>
-                                <b className='block text-[14.5px] font-medium leading-[1.5] text-it-ink'>
+                                <b className='block text-[14.5px] font-medium leading-[1.5] text-it-heading'>
                                     {step.title}
                                 </b>
                                 {step.sub && (

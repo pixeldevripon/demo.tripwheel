@@ -43,11 +43,11 @@ export function CtaCard({
                     {/* Dark wash so the on-photo copy stays readable. */}
                     <div className='absolute inset-0 bg-[linear-gradient(0deg,rgba(35,32,27,0.72)_0%,rgba(35,32,27,0.46)_100%)]' />
 
-                    <div className='relative z-2 px-6 py-14 md:px-8 md:py-16 text-it-ink-on-dark'>
-                        <h2 className='m-0 text-[clamp(24px,3vw,34px)] leading-[1.15] tracking-[-0.012em] text-it-ink-on-dark'>
+                    <div className='relative z-2 px-6 py-14 md:px-8 md:py-16 text-it-white'>
+                        <h2 className='m-0 text-[clamp(24px,3vw,34px)] leading-[1.15] tracking-[-0.012em] text-it-white font-medium'>
                             {dict.title}
                         </h2>
-                        <p className='m-0 mt-2.5 text-[15px] leading-[1.6] text-it-soft-on-dark'>
+                        <p className='m-0 mt-2.5 text-[15px] leading-[1.6] text-it-footer-muted'>
                             {dict.body}
                         </p>
                         <MotionLink

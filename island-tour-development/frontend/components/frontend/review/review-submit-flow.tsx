@@ -286,7 +286,7 @@ export function ReviewSubmitFlow({
                         separate from the tour question above. Shown to everyone. */}
                     {trustpilotUrl && (
                         <div className='mt-7 rounded-[12px] border border-it-border bg-it-surface p-5'>
-                            <h2 className='m-0 text-[17px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
+                            <h2 className='m-0 text-[17px] leading-[1.4] tracking-[-0.012em] text-it-heading font-medium'>
                                 {dict.step4Header}
                             </h2>
                             <p className='mt-1.5 mb-0 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
@@ -315,7 +315,7 @@ export function ReviewSubmitFlow({
                         is review gating and is not lawful. */}
                     {isLow && !feedbackSent && (
                         <div className='mt-4 rounded-[12px] border border-it-border bg-it-white p-5'>
-                            <h2 className='m-0 text-[17px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
+                            <h2 className='m-0 text-[17px] leading-[1.4] tracking-[-0.012em] text-it-heading font-medium'>
                                 {dict.recoveryHeader}
                             </h2>
                             <p className='mt-1.5 mb-0 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
@@ -382,7 +382,7 @@ function Step({
 }) {
     return (
         <div className='mt-7 border-t border-it-border/70 pt-7'>
-            <h2 className='m-0 text-[17px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
+            <h2 className='m-0 text-[17px] leading-[1.4] tracking-[-0.012em] text-it-heading font-medium'>
                 {header}
             </h2>
             {helper && (

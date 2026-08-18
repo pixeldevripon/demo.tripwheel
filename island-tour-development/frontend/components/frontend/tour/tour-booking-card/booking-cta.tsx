@@ -38,7 +38,7 @@ export function BookingCta() {
     // shows a disabled notice in place of the CTA and trust lines.
     if (bookingBlocked) {
         return (
-            <div className='flex w-full items-center justify-center rounded-it-sm bg-it-bg px-8 py-3.5 text-center text-[14px] font-semibold leading-[1.6] text-it-ink-muted'>
+            <div className='flex w-full items-center justify-center rounded-it-sm bg-it-bg px-8 py-3.5 text-center text-[14px] font-medium leading-[1.6] text-it-text-muted'>
                 {dict.bookingUnavailable}
             </div>
         );
@@ -152,14 +152,14 @@ export function BookingCta() {
  * A trust line: the check icon + its (partly clickable) copy.
  *
  * The sentence is `font-normal` so the clickable phrase inside it can be a
- * weight heavier and actually look like something. Both were `font-semibold`,
+ * weight heavier and actually look like something. Both were `font-medium`,
  * which left the underline doing the whole job of saying "this opens something"
  * - and that underline was `decoration-it-border` (#e5e7eb) on white, at 13px.
  * The client read the lines as static text (Pastel #42).
  */
 function TrustRow({ children }: { children: React.ReactNode }) {
     return (
-        <span className='flex items-center gap-2 text-[16px] leading-[1.6] text-it-ink tracking-[-0.012em]'>
+        <span className='flex items-center gap-2 text-[16px] leading-[1.6] text-it-heading tracking-[-0.012em]'>
             <Image
                 src='/icons/trust-check-green.svg'
                 alt=''
@@ -204,7 +204,7 @@ function TrustLink({
             aria-label={`${children}, ${hint}`}
             whileTap={{ scale: 0.98 }}
             transition={springPop}
-            className='cursor-pointer rounded-[2px] border-none bg-transparent p-0 text-left text-[13px] font-medium leading-[1.6] text-it-ink underline decoration-it-ink-muted underline-offset-[3px] transition-colors duration-300 hover:text-it-primary hover:decoration-it-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary'>
+            className='cursor-pointer border-none bg-transparent p-0 text-left text-[16px] leading-[1.6] text-it-heading underline decoration-it-ink-muted underline-offset-[3px] transition-colors duration-300 hover:text-it-primary hover:decoration-it-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary tracking-[-0.012em]'>
             {children}
         </motion.button>
     );

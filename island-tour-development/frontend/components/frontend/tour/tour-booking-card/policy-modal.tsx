@@ -59,7 +59,7 @@ export function PolicyModal({
                 of the title now. */}
             <div className='flex shrink-0 flex-col gap-4'>
                 <div className='flex items-start justify-between gap-4'>
-                    <h2 className='m-0 font-it-display text-[21px] leading-[1.2] tracking-[-0.012em] text-it-heading sm:text-[24px]'>
+                    <h2 className='m-0 font-it-display text-[21px] leading-[1.2] tracking-[-0.012em] text-it-heading sm:text-[24px] font-medium'>
                         {fill(content.title)}
                     </h2>
                     <motion.button
@@ -84,7 +84,7 @@ export function PolicyModal({
                         {/* Body */}
                         <div className='flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto sm:gap-6'>
                             <div className='flex flex-col gap-1.5'>
-                                <span className={`${SUBHEAD} text-it-ink`}>
+                                <span className={`${SUBHEAD} text-it-heading`}>
                                     {fill(content.introTitle)}
                                 </span>
                                 <p className={`m-0 ${BODY} text-it-text-muted`}>
@@ -105,7 +105,7 @@ export function PolicyModal({
                                             className='flex items-start gap-3'>
                                             <StepNumberBadge step={i + 1} />
                                             <span
-                                                className={`${BODY} pt-1 text-it-ink`}>
+                                                className={`${BODY} pt-1 text-it-heading`}>
                                                 {fill(step)}
                                             </span>
                                         </li>
@@ -115,7 +115,7 @@ export function PolicyModal({
 
                 {/* Closing block */}
                 <div className='flex flex-col gap-1.5 text-[14px] sm:text-[16px] text-[#8b390e] leading-[26px] tracking-[-0.19px]'>
-                    <span className={`${SUBHEAD} text-it-ink`}>
+                    <span className={`${SUBHEAD} text-it-heading`}>
                         {fill(content.outroTitle)}
                     </span>
                     <p className={`m-0 ${BODY} text-it-text-muted`}>

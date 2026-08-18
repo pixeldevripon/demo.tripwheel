@@ -47,13 +47,13 @@ export async function ToursHeader({
         // No own entrance animation: this header renders in the STATIC shell, so
         // the sitewide PageTransition already animates it in on navigation.
         <div className='flex flex-col'>
-            <h1 className='m-0 font-it-display text-[clamp(24px,3vw,32px)] leading-[1.15] tracking-[-0.012em] text-it-ink'>
+            <h1 className='m-0 text-[32px] md:text-[48px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                 {title}
             </h1>
-            <p className='m-0 mt-2 max-w-[640px] text-[14.5px] leading-[1.6] text-it-text-muted'>
+            <p className='m-0 mt-2 max-w-[640px] text-[14px] md:text-[16px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                 {subtitle}
             </p>
-            <p className='m-0 mt-1.5 text-[12.5px] leading-[1.6] text-it-ink-muted tabular-nums'>
+            <p className='m-0 mt-1.5 text-[12.5px] leading-[1.6] text-it-text-muted tabular-nums'>
                 {count} {dict.availableLabel}
             </p>
         </div>

@@ -190,7 +190,7 @@ function MoneyRow({ label, value }: { label: string; value: string }) {
 
 function Note({ children }: { children: string }) {
     return (
-        <p className='mt-1 mb-0 text-[13.5px] leading-[1.6] text-it-ink/80'>
+        <p className='mt-1 mb-0 text-[13.5px] leading-[1.6] text-it-heading/80'>
             {children}
         </p>
     );

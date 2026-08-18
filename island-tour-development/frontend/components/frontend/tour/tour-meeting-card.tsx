@@ -28,7 +28,7 @@ function SubBlock({
 }) {
     return (
         <div className='flex flex-col px-5 py-[18px]'>
-            <h3 className='m-0 mb-1.5 flex items-center gap-[9px] text-[15px] leading-[1.6] text-it-ink'>
+            <h3 className='m-0 mb-1.5 flex items-center gap-[9px] text-[15px] leading-[1.6] text-it-heading font-medium'>
                 <Image
                     src={icon}
                     alt=''
@@ -39,7 +39,7 @@ function SubBlock({
                 {info.label}
             </h3>
             {(info.title || info.detail) && (
-                <p className='m-0 whitespace-pre-line text-[14px] leading-[1.6] text-it-ink'>
+                <p className='m-0 whitespace-pre-line text-[14px] leading-[1.6] text-it-heading'>
                     {[info.title, info.detail].filter(Boolean).join('\n')}
                 </p>
             )}
@@ -72,7 +72,7 @@ export function TourMeetingCard({
                         rel='noopener noreferrer'
                         whileTap={{ scale: 0.97 }}
                         transition={springPop}
-                        className='mt-2 flex w-fit items-center gap-[7px] text-[13.5px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-[3px] transition-colors duration-300 hover:text-it-primary'>
+                        className='mt-2 flex w-fit items-center gap-[7px] text-[16px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-[3px] transition-colors duration-300 hover:text-it-primary tracking-[-0.012em]'>
                         <Image
                             src='/icons/pin-deep.svg'
                             alt=''

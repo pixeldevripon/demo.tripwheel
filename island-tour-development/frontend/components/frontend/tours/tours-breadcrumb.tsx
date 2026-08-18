@@ -39,10 +39,10 @@ export function ToursBreadcrumb({
     // shrink-0 + the nav's nowrap/overflow: crumbs must never wrap into
     // multi-line stacks on mobile - the row stays one line and scrolls.
     const linkClass =
-        'shrink-0 text-it-text-muted no-underline hover:underline';
+        'shrink-0 text-it-text-muted no-underline hover:underline text-[14px] leading-[1.6] tracking-[-0.012em]';
 
     const separator = (
-        <span aria-hidden='true' className='mx-[7px] shrink-0 text-it-ink-muted'>
+        <span aria-hidden='true' className='mx-[7px] shrink-0 text-it-text-muted'>
             ›
         </span>
     );
@@ -76,7 +76,7 @@ export function ToursBreadcrumb({
                     below, so the crumb only needs to identify the page. */}
                 <span
                     aria-current='page'
-                    className='max-w-[55vw] truncate text-it-ink md:max-w-none text-[14px] leading-[1.6] tracking-[-0.012em]'>
+                    className='max-w-[55vw] truncate text-it-white md:max-w-none text-[16px] leading-[1.6] tracking-[-0.012em] font-medium'>
                     {dict.current}
                 </span>
             </nav>

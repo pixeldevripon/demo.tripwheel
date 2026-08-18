@@ -118,12 +118,12 @@ export function CollectionHero({
                                 </p>
                             )}
                             <h1
-                                className={`m-0 mt-2 font-it-display text-[clamp(26px,3.6vw,38px)] font-bold leading-[1.1] tracking-[-0.015em] ${heroImage ? 'text-it-white' : 'text-it-ink'}`}>
+                                className={`m-0 mt-2 font-it-display text-[clamp(26px,3.6vw,38px)] font-bold leading-[1.1] tracking-[-0.015em] ${heroImage ? 'text-it-white font-medium' : 'text-it-heading font-medium'}`}>
                                 {title}
                             </h1>
                             {subtitle && (
                                 <p
-                                    className={`m-0 mt-2.5 text-[15px] font-semibold leading-[1.6] ${heroImage ? 'text-it-white/92' : 'text-it-text-muted'}`}>
+                                    className={`m-0 mt-2.5 text-[15px] font-medium leading-[1.6] ${heroImage ? 'text-it-white/92' : 'text-it-text-muted'}`}>
                                     {subtitle}
                                 </p>
                             )}
@@ -134,7 +134,7 @@ export function CollectionHero({
                     {tourCount > 0 && (
                         <MountReveal delay={0.2} yOffset={20}>
                             <div
-                                className={`mt-2 flex items-center gap-2 text-[13px] font-semibold leading-[1.6] tabular-nums ${heroImage ? 'text-it-white/85' : 'text-it-text-muted'}`}>
+                                className={`mt-2 flex items-center gap-2 text-[13px] font-medium leading-[1.6] tabular-nums ${heroImage ? 'text-it-white/85' : 'text-it-text-muted'}`}>
                                 <span>
                                     {tourCount} {dict.tours}
                                 </span>
@@ -145,7 +145,7 @@ export function CollectionHero({
                                             className={
                                                 heroImage
                                                     ? 'text-it-white/55'
-                                                    : 'text-it-ink-muted'
+                                                    : 'text-it-text-muted'
                                             }>
                                             ·
                                         </span>

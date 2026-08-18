@@ -50,7 +50,7 @@ export function PartySelector() {
 
     // `.wfield` content: 17px icon, then the count at 14px semibold.
     const headerLabel = (
-        <span className='flex items-center gap-2.5 text-[16px] leading-[1.6] text-it-ink tracking-[-0.012em]'>
+        <span className='flex items-center gap-2.5 text-[16px] leading-[1.6] text-it-heading tracking-[-0.012em]'>
             <Image
                 src='/icons/booking-travelers.svg'
                 alt=''

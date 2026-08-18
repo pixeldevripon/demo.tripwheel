@@ -120,7 +120,7 @@ export function UnsubscribeConfirm({
         // neither does the page - one shared state, no oracle.
         body = (
             <>
-                <h1 className='mx-auto mb-0 max-w-md text-[24px] leading-[1.25] tracking-[-0.012em] text-it-heading sm:text-[28px]'>
+                <h1 className='mx-auto mb-0 max-w-md text-[24px] leading-[1.25] tracking-[-0.012em] text-it-heading sm:text-[28px] font-medium'>
                     {dict.invalidTitle}
                 </h1>
                 <p className='mx-auto mt-3 mb-0 max-w-md text-[15px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
@@ -138,7 +138,7 @@ export function UnsubscribeConfirm({
         // click didn't count.
         body = (
             <>
-                <h1 className='mx-auto mb-0 max-w-md text-[24px] leading-[1.25] tracking-[-0.012em] text-it-heading sm:text-[28px]'>
+                <h1 className='mx-auto mb-0 max-w-md text-[24px] leading-[1.25] tracking-[-0.012em] text-it-heading sm:text-[28px] font-medium'>
                     {info.optedOut ? dict.alreadyTitle : dict.successTitle}
                 </h1>
                 <p className='mx-auto mt-3 mb-0 max-w-md text-[15px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
@@ -156,7 +156,7 @@ export function UnsubscribeConfirm({
     } else {
         body = (
             <>
-                <h1 className='mx-auto mb-0 max-w-md text-[24px] leading-[1.25] tracking-[-0.012em] text-it-heading sm:text-[28px]'>
+                <h1 className='mx-auto mb-0 max-w-md text-[24px] leading-[1.25] tracking-[-0.012em] text-it-heading sm:text-[28px] font-medium'>
                     {info.stream === 'LIFECYCLE'
                         ? dict.titleLifecycle
                         : dict.titleMarketing}
@@ -192,7 +192,7 @@ export function UnsubscribeConfirm({
                     card's persistent live region below, and the button above
                     stays so "try again" is the same tap that failed. */}
                 {status === 'error' && (
-                    <p className='mx-auto mt-3 mb-0 max-w-md text-[13px] font-semibold leading-[1.5] text-it-error'>
+                    <p className='mx-auto mt-3 mb-0 max-w-md text-[13px] font-medium leading-[1.5] text-it-error'>
                         {dict.error} {dict.retry}
                     </p>
                 )}

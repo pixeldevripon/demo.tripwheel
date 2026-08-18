@@ -29,7 +29,7 @@ export function BookingRefPill({
         <div
             className={`flex items-center gap-2.5 rounded-it-full border border-it-border bg-it-bg px-4 py-[9px] text-[13.5px] leading-[1.5] ${className}`}>
             <span className='text-it-text-muted'>{dict.bookingRef}</span>
-            <code className='font-mono font-medium tracking-[0.02em] text-it-ink'>
+            <code className='font-mono font-medium tracking-[0.02em] text-it-heading'>
                 {displayRef}
             </code>
             <BookingRefCopy

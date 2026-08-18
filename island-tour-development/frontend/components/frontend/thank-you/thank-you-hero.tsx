@@ -56,10 +56,10 @@ export function ThankYouHero({
                             className='h-11 w-auto'
                         />
                     </MotionSpan>
-                    <h1 className='m-0 font-it-display text-[clamp(28px,4vw,40px)] leading-[1.15] tracking-[-0.012em] text-it-ink'>
+                    <h1 className='m-0 font-it-display text-[clamp(28px,4vw,40px)] leading-[1.15] tracking-[-0.012em] text-it-heading font-medium'>
                         {dict.title.replace('{name}', booking.guestFirstName)}
                     </h1>
-                    <p className='m-0 mt-3 text-[16.5px] leading-[1.6] text-it-ink'>
+                    <p className='m-0 mt-3 text-[16.5px] leading-[1.6] text-it-heading'>
                         {renderTemplate(dict.subtitle, {
                             tour: (
                                 <b className='font-medium'>
@@ -89,7 +89,7 @@ export function ThankYouHero({
                                     {i > 0 && (
                                         <span
                                             aria-hidden='true'
-                                            className='text-it-ink-muted'>
+                                            className='text-it-text-muted'>
                                             ·
                                         </span>
                                     )}

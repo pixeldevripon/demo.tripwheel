@@ -255,7 +255,7 @@ export function SearchRecovery({
                                     }
                                 />
                                 {withoutDateCount > 0 && (
-                                    <p className='m-0 text-[14px] leading-[1.6] text-it-ink md:text-[15px]'>
+                                    <p className='m-0 text-[14px] leading-[1.6] text-it-heading md:text-[15px]'>
                                         {dict.dropDate
                                             .replace(
                                                 '{count}',
@@ -294,7 +294,7 @@ export function SearchRecovery({
                     sentence is faster than scanning a grid of pills. */}
                 {popular.length > 0 && destinationSlug && (
                     <p className='m-0 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[14px] leading-[1.6]'>
-                        <span className='font-medium text-it-ink'>
+                        <span className='font-medium text-it-heading'>
                             {dict.popularSearches}
                         </span>
                         <span aria-hidden='true' className='text-it-text-muted'>
@@ -318,7 +318,7 @@ export function SearchRecovery({
                                             `/${destinationSlug}/${p.slug}`
                                         )
                                     )}
-                                    className='font-semibold text-it-ink no-underline underline-offset-[3px] transition-colors hover:text-it-primary-hover hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary'>
+                                    className='font-medium text-it-heading no-underline underline-offset-[3px] transition-colors hover:text-it-primary-hover hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary'>
                                     {p.name}
                                 </Link>
                             </span>

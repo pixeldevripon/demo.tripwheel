@@ -30,7 +30,7 @@ export function WishlistLink({
             aria-label={dict.saved}
             className='relative flex items-center gap-1.5 no-underline'>
             {/* Mockup navpill: "Saved" label beside the heart. */}
-            <span className='text-[13px] font-semibold text-it-ink'>
+            <span className='text-[13px] font-medium text-it-heading'>
                 {dict.saved}
             </span>
             <motion.span className='inline-flex' {...iconPress}>

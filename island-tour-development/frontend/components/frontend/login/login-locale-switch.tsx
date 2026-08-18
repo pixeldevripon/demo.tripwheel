@@ -67,7 +67,7 @@ export function LoginLocaleSwitch() {
                 aria-busy={isPending}
                 whileTap={{ scale: 0.98 }}
                 transition={springPop}
-                className={`flex items-center gap-2 rounded-full border border-it-border bg-it-white px-3.5 py-2 text-it-ink transition-[box-shadow,opacity] duration-300 hover:shadow-it-sm ${isPending ? 'opacity-50' : 'opacity-100'}`}>
+                className={`flex items-center gap-2 rounded-full border border-it-border bg-it-white px-3.5 py-2 text-it-heading transition-[box-shadow,opacity] duration-300 hover:shadow-it-sm ${isPending ? 'opacity-50' : 'opacity-100'}`}>
                 <Image
                     src='/icons/nav-globe.svg'
                     alt=''
@@ -75,7 +75,7 @@ export function LoginLocaleSwitch() {
                     height={24}
                     className='size-4.5 shrink-0'
                 />
-                <span className='text-[14px] font-semibold uppercase'>
+                <span className='text-[14px] font-medium uppercase'>
                     {locale}
                 </span>
             </motion.button>
@@ -94,9 +94,9 @@ export function LoginLocaleSwitch() {
                                     type='button'
                                     onClick={() => switchLocale(code)}
                                     aria-current={code === locale}
-                                    className={`flex w-full cursor-pointer items-center justify-between gap-3 border-none bg-transparent px-5 py-3 text-left text-sm transition-colors hover:bg-it-surface ${code === locale ? 'font-medium text-it-primary' : 'text-it-ink'}`}>
+                                    className={`flex w-full cursor-pointer items-center justify-between gap-3 border-none bg-transparent px-5 py-3 text-left text-sm transition-colors hover:bg-it-surface ${code === locale ? 'font-medium text-it-primary' : 'text-it-heading'}`}>
                                     <span>{LOCALE_NATIVE_LABELS[code]}</span>
-                                    <span className='text-xs uppercase text-it-ink-muted'>
+                                    <span className='text-xs uppercase text-it-text-muted'>
                                         {code}
                                     </span>
                                 </button>

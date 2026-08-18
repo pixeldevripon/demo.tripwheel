@@ -105,7 +105,7 @@ export function BookingManageHeader({
                         <h1 className='m-0 font-medium text-[32px] md:text-[44px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
                             {dict.manageTitle}
                         </h1>
-                        <p className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-ink/60'>
+                        <p className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading/60'>
                             {dict.manageSubtitle
                                 .replace('{tour}', booking.tourTitle)
                                 .replace('{date}', booking.dateLabel)
@@ -126,7 +126,7 @@ export function BookingManageHeader({
                         pending is not left guessing whether it registered -
                         the reason the cancel form kept getting re-submitted. */}
                     {stateNote && (
-                        <p className='m-0 max-w-160 text-[15px] leading-[1.6] tracking-[-0.012em] text-it-ink/60'>
+                        <p className='m-0 max-w-160 text-[15px] leading-[1.6] tracking-[-0.012em] text-it-heading/60'>
                             {stateNote}
                         </p>
                     )}
@@ -144,7 +144,7 @@ export function BookingManageHeader({
                                 <span className='font-medium text-[16px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
                                     {dict.reviewPrompt}
                                 </span>
-                                <span className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-ink/60'>
+                                <span className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/60'>
                                     {dict.reviewPromptBody}
                                 </span>
                             </div>
@@ -205,7 +205,7 @@ export function BookingManageHeader({
                 {!cancelled && !cancellationPending && (
                     <MountReveal
                         delay={0.15}
-                        className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-ink/60'>
+                        className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading/60'>
                         <ResendEmailLine
                             publicRef={booking.publicRef}
                             helpPrefix={dict.emailHelpPrefix}

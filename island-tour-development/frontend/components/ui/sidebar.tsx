@@ -341,7 +341,7 @@ function SidebarHeader({ className, ...props }: React.ComponentProps<'div'>) {
         <div
             data-slot='sidebar-header'
             data-sidebar='header'
-            className={cn('flex flex-col gap-2 p-2 ', className)}
+            className={cn('flex flex-col gap-2 p-2', className)}
             {...props}
         />
     );
@@ -378,7 +378,7 @@ function SidebarContent({ className, ...props }: React.ComponentProps<'div'>) {
             data-slot='sidebar-content'
             data-sidebar='content'
             className={cn(
-                'no-scrollbar flex min-h-0 flex-1 flex-col gap-2 overflow-auto  group-data-[collapsible=icon]:overflow-hidden',
+                'no-scrollbar flex min-h-0 flex-1 flex-col gap-2 overflow-auto group-data-[collapsible=icon]:overflow-hidden',
                 className
             )}
             {...props}
@@ -412,7 +412,7 @@ function SidebarGroupLabel({
             data-slot='sidebar-group-label'
             data-sidebar='group-label'
             className={cn(
-                'flex h-10 shrink-0 items-center rounded-md px-3 text-sm font-semibold tracking-wider text-sidebar-foreground/70 uppercase ring-sidebar-ring outline-hidden transition-[margin,opacity] duration-200 ease-linear group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0 focus-visible:ring-2 [&>svg]:size-3.5 [&>svg]:shrink-0',
+                'flex h-10 shrink-0 items-center rounded-md px-3 text-sm font-medium tracking-wider text-sidebar-foreground/70 uppercase ring-sidebar-ring outline-hidden transition-[margin,opacity] duration-200 ease-linear group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0 focus-visible:ring-2 [&>svg]:size-3.5 [&>svg]:shrink-0',
                 className
             )}
             {...props}

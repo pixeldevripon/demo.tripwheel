@@ -38,7 +38,7 @@ export function SectionHead({
                         {kicker}
                     </div>
                 )}
-                <h2 className='m-0 text-[clamp(22px,2.6vw,30px)] leading-[1.15] tracking-[-0.012em] text-it-ink'>
+                <h2 className='m-0 text-[clamp(22px,2.6vw,30px)] leading-[1.15] tracking-[-0.012em] text-it-heading font-medium'>
                     {title}
                 </h2>
             </div>

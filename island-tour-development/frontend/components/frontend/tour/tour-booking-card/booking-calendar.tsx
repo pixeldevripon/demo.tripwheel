@@ -198,8 +198,8 @@ export function BookingCalendar() {
                     loading='eager'
                 />
                 <span
-                    className={`text-[14px] font-semibold leading-[1.6] ${
-                        selectedDate ? 'text-it-ink' : 'text-it-ink-muted'
+                    className={`text-[14px] font-medium leading-[1.6] ${
+                        selectedDate ? 'text-it-heading' : 'text-it-text-muted'
                     }`}>
                     {selectedDate
                         ? formatSelectedDate(selectedDate, locale)
@@ -274,7 +274,7 @@ export function BookingCalendar() {
                                     </motion.button>
                                     <span
                                         aria-live='polite'
-                                        className='text-[14.5px] font-medium leading-[1.6] text-it-ink'>
+                                        className='text-[14.5px] font-medium leading-[1.6] text-it-heading'>
                                         {`${monthName(
                                             view.month,
                                             view.year,
@@ -313,7 +313,7 @@ export function BookingCalendar() {
                                     {weekdays.map(w => (
                                         <span
                                             key={w}
-                                            className='py-1 text-[10px] font-medium uppercase leading-[1.6] tracking-[0.06em] text-it-ink-muted'>
+                                            className='py-1 text-[10px] font-medium uppercase leading-[1.6] tracking-[0.06em] text-it-text-muted'>
                                             {w}
                                         </span>
                                     ))}
@@ -481,7 +481,7 @@ export function BookingCalendar() {
                                                         isSelected
                                                             ? 'bg-it-primary font-medium text-it-white'
                                                             : disabled
-                                                              ? 'cursor-not-allowed font-medium text-it-ink-muted'
+                                                              ? 'cursor-not-allowed font-medium text-it-text-muted'
                                                               : isFirstOpen
                                                                 ? 'cursor-pointer bg-it-bg font-medium text-it-primary-hover'
                                                                 : isToday
@@ -496,8 +496,8 @@ export function BookingCalendar() {
                                                                     // legible
                                                                     // even at
                                                                     // 12.5px.
-                                                                    'cursor-pointer font-medium text-it-ink hover:bg-it-bg'
-                                                                  : 'cursor-pointer font-semibold text-it-ink hover:bg-it-bg',
+                                                                    'cursor-pointer font-medium text-it-heading hover:bg-it-bg'
+                                                                  : 'cursor-pointer font-medium text-it-heading hover:bg-it-bg',
                                                     ]
                                                         .filter(Boolean)
                                                         .join(' ')}>

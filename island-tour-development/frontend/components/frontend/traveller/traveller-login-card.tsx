@@ -284,7 +284,7 @@ export function TravellerLoginCard({
                             <div ref={codeRef} className='mb-4'>
                                 <label
                                     htmlFor='traveller-code'
-                                    className='mb-2.5 block text-[13px] font-semibold text-it-heading'>
+                                    className='mb-2.5 block text-[13px] font-medium text-it-heading'>
                                     {dict.codeLabel}
                                 </label>
                                 <TravellerOtpField

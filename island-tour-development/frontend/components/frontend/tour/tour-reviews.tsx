@@ -78,11 +78,11 @@ export function TourReviews({
                 line under the title (the client's ask), and `ml-auto` only
                 pushes it right once there is room for it beside the title. */}
             <div className='mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1.5'>
-                <h2 className='m-0 font-it-display text-[18px] leading-[1.2] tracking-[-0.012em] text-it-ink'>
+                <h2 className='m-0 text-[24px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                     {dict.title}
                 </h2>
                 {rating != null && reviewCount > 0 && (
-                    <span className='text-[13px] leading-[1.6] text-it-text-muted tabular-nums'>
+                    <span className='text-it-text-muted tabular-nums'>
                         <span className='font-medium text-it-star'>
                             ★ {rating.toFixed(1)}
                         </span>{' '}
@@ -142,7 +142,7 @@ function ReviewCard({
                         .join(' · ')}
                 </span>
             </div>
-            <div className='mt-1.5 text-[13.5px] leading-[1.5] text-it-ink'>
+            <div className='mt-1.5 text-[13.5px] leading-[1.5] text-it-heading'>
                 <ExpandableText
                     text={review.text}
                     moreLabel={dict.readMore}

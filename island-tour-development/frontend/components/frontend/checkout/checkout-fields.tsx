@@ -16,14 +16,14 @@ import { useId, type ReactNode } from 'react';
  * borders on inputs in any state (focus swaps to the orange primary).
  */
 
-export const labelClass = 'text-[13px] font-medium leading-[1.5] text-it-ink';
+export const labelClass = 'text-[13px] font-medium leading-[1.5] text-it-heading';
 export const helperClass = 'text-[12px] leading-[1.6] text-it-text-muted';
 // 16px below `md` - iOS Safari force-zooms the viewport on a focused input
 // under 16px. Zooming mid-checkout is the worst place on the site for it.
 export const inputBase =
-    'w-full rounded-it-sm border bg-it-white px-[13px] text-[16px] md:text-[14px] leading-[1.6] text-it-ink placeholder:text-it-ink-muted outline-none transition-colors focus:border-it-primary';
+    'w-full rounded-it-sm border bg-it-white px-[13px] text-[16px] md:text-[14px] leading-[1.6] text-it-heading placeholder:text-it-text-muted outline-none transition-colors focus:border-it-primary';
 export const titleClass =
-    'font-it-display text-[17px] font-medium leading-[1.3] tracking-[-0.012em] text-it-ink';
+    'font-it-display text-[17px] font-medium leading-[1.3] tracking-[-0.012em] text-it-heading';
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -33,7 +33,7 @@ export function FreeCancelNote({ label }: { label: string }) {
         // items-start + the icon's optical offset: when the line WRAPS on a
         // narrow viewport the check stays with the first line instead of
         // floating centred between both.
-        <div className='mt-3 flex items-start justify-center gap-[7px] text-center text-[13px] font-semibold leading-[1.5] text-it-green-text'>
+        <div className='mt-3 flex items-start justify-center gap-[7px] text-center text-[13px] font-medium leading-[1.5] text-it-green-text'>
             <Image
                 src='/icons/booking-check.svg'
                 alt=''
@@ -67,7 +67,7 @@ export function ConsentLine({
     locale: Locale;
 }) {
     const linkClass =
-        'font-semibold text-it-text-muted underline underline-offset-2';
+        'font-medium text-it-text-muted underline underline-offset-2';
     return (
         <p className='mt-2.5 text-center text-[12px] leading-[1.6] text-it-text-muted'>
             {securePayment && (
@@ -307,7 +307,7 @@ export function SelectField({
                     value={value}
                     onChange={e => onChange(e.target.value)}
                     className={`${inputBase} h-[46px] cursor-pointer appearance-none border-it-border pr-11 ${
-                        value === placeholderValue ? 'text-it-ink-muted' : ''
+                        value === placeholderValue ? 'text-it-text-muted' : ''
                     }`}>
                     {groups
                         ? groups.map(g => (
@@ -414,7 +414,7 @@ export function SecureCheckoutRow({
     dict: { secureCheckout: string; poweredBy: string };
 }) {
     return (
-        <div className='mb-3.5 flex items-center gap-2.5 rounded-it-md border border-it-border bg-it-bg px-3.5 py-[11px] text-[13px] font-medium leading-[1.5] text-it-ink'>
+        <div className='mb-3.5 flex items-center gap-2.5 rounded-it-md border border-it-border bg-it-bg px-3.5 py-[11px] text-[13px] font-medium leading-[1.5] text-it-heading'>
             <Image
                 src='/icons/checkout/lock-ink.svg'
                 alt=''

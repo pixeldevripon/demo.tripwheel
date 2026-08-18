@@ -320,7 +320,7 @@ export function TopExperiences({
         <section className='bg-it-white it-section'>
             <div className='it-container'>
                 <Reveal className='flex flex-col items-center gap-4! md:gap-1! '>
-                    <h2 className='m-0 text-[clamp(22px,2.6vw,30px)] leading-[1.15] tracking-[-0.012em] text-it-ink text-center'>
+                    <h2 className='m-0 text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading text-center font-medium'>
                         {dict.title}
                     </h2>
 
@@ -552,7 +552,7 @@ export function TopExperiences({
                                                 </motion.button>
                                             ) : (
                                                 <span className='absolute top-3 right-3 z-20 flex size-[30px] items-center justify-center rounded-full bg-it-white/40 border border-it-white/55'>
-                                                    <Play className='size-3 fill-it-ink-muted text-it-ink-muted' />
+                                                    <Play className='size-3 fill-it-ink-muted text-it-text-muted' />
                                                 </span>
                                             )}
 

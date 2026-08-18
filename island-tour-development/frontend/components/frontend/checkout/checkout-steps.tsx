@@ -63,8 +63,8 @@ function Step({
                 )}
             </span>
             <span
-                className={`text-[13.5px] font-semibold leading-[1.6] ${
-                    state === 'upcoming' ? 'text-it-text-muted' : 'text-it-ink'
+                className={`text-[13.5px] font-medium leading-[1.6] ${
+                    state === 'upcoming' ? 'text-it-text-muted' : 'text-it-heading'
                 }`}>
                 {label}
             </span>

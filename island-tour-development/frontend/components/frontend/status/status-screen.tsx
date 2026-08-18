@@ -117,7 +117,7 @@ export function StatusScreen({
                     {eyebrow}
                 </span>
 
-                <h1 className='m-0 max-w-175 font-it-display text-[clamp(30px,4vw,46px)] leading-[1.15] tracking-[-0.012em] text-it-ink'>
+                <h1 className='m-0 max-w-175 font-it-display text-[clamp(30px,4vw,46px)] leading-[1.15] tracking-[-0.012em] text-it-heading font-medium'>
                     {title}
                 </h1>
 
@@ -148,5 +148,5 @@ export const statusPrimaryClass =
     'inline-flex cursor-pointer items-center justify-center gap-[9px] rounded-it-sm border-none bg-it-primary px-[22px] py-3.5 text-[15.5px] font-medium leading-none text-it-white no-underline shadow-it-sm transition-all duration-(--it-duration-sm) ease-(--it-ease) hover:-translate-y-px hover:bg-it-primary-hover';
 
 export const statusSecondaryClass =
-    'inline-flex cursor-pointer items-center justify-center gap-[9px] rounded-it-sm border border-it-border bg-it-white px-[22px] py-3.5 text-[15.5px] font-medium leading-none text-it-ink no-underline transition-colors duration-(--it-duration-sm) ease-(--it-ease) hover:bg-it-bg';
+    'inline-flex cursor-pointer items-center justify-center gap-[9px] rounded-it-sm border border-it-border bg-it-white px-[22px] py-3.5 text-[15.5px] font-medium leading-none text-it-heading no-underline transition-colors duration-(--it-duration-sm) ease-(--it-ease) hover:bg-it-bg';
 

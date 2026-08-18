@@ -35,7 +35,7 @@ export async function ToursTrustStrip({ dict }: { dict: ToursTrustDict }) {
                         {dict.checks.map(check => (
                             <span
                                 key={check}
-                                className='flex items-center gap-2 text-[13.5px] font-semibold leading-[1.6] text-it-ink'>
+                                className='flex items-center gap-2 text-[13.5px] font-medium leading-[1.6] text-it-heading'>
                                 <Image
                                     src='/icons/trust-check-green.svg'
                                     alt=''

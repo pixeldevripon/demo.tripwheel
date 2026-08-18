@@ -124,7 +124,7 @@ export function SavedEmailBox({
                     aria-invalid={fieldError ? true : undefined}
                     aria-describedby={fieldError ? ERROR_ID : undefined}
                     className={cn(
-                        'min-w-0 flex-1 rounded-it-sm border bg-it-white px-[13px] py-[11px] font-it-body text-[13.5px] leading-[1.6] text-it-ink outline-none',
+                        'min-w-0 flex-1 rounded-it-sm border bg-it-white px-[13px] py-[11px] font-it-body text-[13.5px] leading-[1.6] text-it-heading outline-none',
                         fieldError
                             ? 'border-it-error focus-visible:border-it-error'
                             : 'border-it-border focus-visible:border-it-primary'
@@ -162,7 +162,7 @@ export function SavedEmailBox({
             {fieldError && (
                 <p
                     id={ERROR_ID}
-                    className='m-0 mt-2 text-[12px] font-semibold leading-[1.5] text-it-error'>
+                    className='m-0 mt-2 text-[12px] font-medium leading-[1.5] text-it-error'>
                     {fieldError}
                 </p>
             )}

@@ -60,7 +60,7 @@ function SelectorPill({
                 className={`flex h-11 w-full cursor-pointer items-center justify-between gap-2 rounded-it-full border-none bg-it-white px-4 transition-opacity duration-300 ${busy ? 'opacity-50' : 'opacity-100'}`}>
                 <span className='flex items-center gap-2.5'>
                     {icon}
-                    <span className='text-[13.5px] font-semibold leading-[1.6] text-it-ink'>
+                    <span className='text-sm lg:text-base leading-[1.6] text-it-heading tracking-[-0.012em]'>
                         {label}
                     </span>
                 </span>
@@ -189,9 +189,9 @@ export function CurrencySelector({
                             type='button'
                             onClick={() => selectCurrency(code)}
                             aria-current={code === currency}
-                            className={`flex w-full cursor-pointer items-center justify-between gap-3 border-none bg-transparent px-4 py-2.5 text-left text-sm transition-colors hover:bg-it-surface ${code === currency ? 'font-medium text-it-primary' : 'text-it-ink'}`}>
+                            className={`flex w-full cursor-pointer items-center justify-between gap-3 border-none bg-transparent px-4 py-2.5 text-left text-sm transition-colors hover:bg-it-surface ${code === currency ? 'font-medium text-it-primary' : 'text-it-heading'}`}>
                             <span>{CURRENCY_NAMES[code]}</span>
-                            <span className='text-xs uppercase text-it-ink-muted'>
+                            <span className='text-xs uppercase text-it-text-muted'>
                                 {code}
                             </span>
                         </button>
@@ -260,9 +260,9 @@ export function LanguageSelector({
                             type='button'
                             onClick={() => pickLocale(code)}
                             aria-current={code === locale}
-                            className={`flex w-full cursor-pointer items-center justify-between gap-3 border-none bg-transparent px-4 py-2.5 text-left text-sm transition-colors hover:bg-it-surface ${code === locale ? 'font-medium text-it-primary' : 'text-it-ink'}`}>
+                            className={`flex w-full cursor-pointer items-center justify-between gap-3 border-none bg-transparent px-4 py-2.5 text-left text-sm transition-colors hover:bg-it-surface ${code === locale ? 'font-medium text-it-primary' : 'text-it-heading'}`}>
                             <span>{LOCALE_NATIVE_LABELS[code]}</span>
-                            <span className='text-xs uppercase text-it-ink-muted'>
+                            <span className='text-xs uppercase text-it-text-muted'>
                                 {code}
                             </span>
                         </button>

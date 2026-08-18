@@ -44,13 +44,13 @@ export function PriceHeader() {
         <div className='flex flex-col gap-0.5 px-5 pt-5'>
             <div className='flex items-baseline gap-1 text-it-text-muted'>
                 <span>{dict.from}</span>
-                <b className='mr-1 text-[22px] font-medium leading-[1.2] tracking-[-0.012em] text-it-ink tabular-nums'>
+                <b className='mr-1 text-[22px] font-medium leading-[1.2] tracking-[-0.012em] text-it-heading tabular-nums'>
                     {money(data.priceFrom)}
                 </b>
                 <span>{unitLabel}</span>
             </div>
             {subLine && (
-                <span className='text-[14px] leading-[1.5] text-it-ink-muted tracking-[-0.012em]'>
+                <span className='text-[14px] leading-[1.5] text-it-text-muted tracking-[-0.012em]'>
                     {subLine}
                 </span>
             )}

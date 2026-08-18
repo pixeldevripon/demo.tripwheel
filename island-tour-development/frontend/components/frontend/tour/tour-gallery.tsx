@@ -196,7 +196,7 @@ export function TourGallery({
                     onClick={() => openAt(slide)}
                     whileTap={{ scale: 0.97 }}
                     transition={springPop}
-                    className='absolute right-3 bottom-3 z-10 inline-flex cursor-pointer items-center gap-1.5 rounded-it-sm border-none bg-it-white/94 px-2.5 py-1.5 text-[12.5px] font-medium leading-[1.4] text-it-ink shadow-it-sm'>
+                    className='absolute right-3 bottom-3 z-10 inline-flex cursor-pointer items-center gap-1.5 rounded-it-sm border-none bg-it-white/94 px-2.5 py-1.5 text-[12.5px] font-medium leading-[1.4] text-it-heading shadow-it-sm'>
                     <Image
                         src='/icons/gallery-photos.svg'
                         alt=''
@@ -259,7 +259,7 @@ export function TourGallery({
                     onClick={() => openAt(0)}
                     whileTap={{ scale: 0.97 }}
                     transition={springPop}
-                    className='absolute right-3 bottom-3 z-10 inline-flex cursor-pointer items-center gap-2 rounded-it-sm border-none bg-it-white/94 px-3.5 py-[9px] text-[13px] font-medium leading-[1.4] text-it-ink shadow-it-sm transition-transform duration-(--it-duration-xs) ease-(--it-ease) hover:-translate-y-px'>
+                    className='absolute right-3 bottom-3 z-10 inline-flex cursor-pointer items-center gap-2 rounded-it-sm border-none bg-it-white/94 px-3.5 py-[9px] text-[13px] font-medium leading-[1.4] text-it-heading shadow-it-sm transition-transform duration-(--it-duration-xs) ease-(--it-ease) hover:-translate-y-px'>
                     <Image
                         src='/icons/gallery-photos.svg'
                         alt=''

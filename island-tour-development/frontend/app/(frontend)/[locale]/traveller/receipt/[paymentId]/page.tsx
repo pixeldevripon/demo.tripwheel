@@ -126,7 +126,7 @@ async function ReceiptBody({
                             className='h-10 w-auto object-contain'
                         />
                         <div className='text-right'>
-                            <p className='m-0 text-[22px] font-semibold tracking-[0.14em] text-it-heading uppercase'>
+                            <p className='m-0 text-[22px] font-medium tracking-[0.14em] text-it-heading uppercase'>
                                 {t.receiptTitle}
                             </p>
                             <p className='mt-1.5 mb-0 font-mono text-[12.5px] text-it-text-muted'>
@@ -258,13 +258,13 @@ async function ReceiptBody({
                                 />
                             )}
                         <div className='mt-2.5 flex items-baseline justify-between gap-6 border-t-[1.5px] border-it-heading/60 pt-2.5'>
-                            <span className='text-[12px] font-semibold tracking-[0.08em] text-it-heading uppercase'>
+                            <span className='text-[12px] font-medium tracking-[0.08em] text-it-heading uppercase'>
                                 {isRefund
                                     ? t.receiptThisRefund
                                     : t.receiptThisPayment}
                             </span>
                             <span
-                                className={`font-mono text-[24px] font-semibold tracking-[-0.01em] ${
+                                className={`font-mono text-[24px] font-medium tracking-[-0.01em] ${
                                     isRefund
                                         ? 'text-it-green'
                                         : 'text-it-heading'
@@ -309,7 +309,7 @@ async function ReceiptBody({
 
 function MicroLabel({ children }: { children: React.ReactNode }) {
     return (
-        <p className='m-0 text-[11px] font-semibold tracking-[0.12em] text-it-text-muted uppercase'>
+        <p className='m-0 text-[11px] font-medium tracking-[0.12em] text-it-text-muted uppercase'>
             {children}
         </p>
     );
@@ -324,7 +324,7 @@ function Th({
 }) {
     return (
         <th
-            className={`pb-2 text-[11px] font-semibold tracking-[0.12em] text-it-text-muted uppercase ${
+            className={`pb-2 text-[11px] font-medium tracking-[0.12em] text-it-text-muted uppercase ${
                 align === 'right' ? 'text-right' : 'text-left'
             }`}>
             {children}

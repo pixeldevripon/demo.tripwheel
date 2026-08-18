@@ -72,7 +72,7 @@ export default function GlobalError({
                             </button>
                             <a
                                 href='/'
-                                className='inline-flex cursor-pointer items-center justify-center rounded-it-full border border-it-ink bg-transparent px-8 py-[15px] text-[16px] font-medium leading-[1.6] tracking-[-0.012em] text-it-ink no-underline transition-colors duration-300 hover:bg-it-ink hover:text-it-white md:px-10'>
+                                className='inline-flex cursor-pointer items-center justify-center rounded-it-full border border-it-ink bg-transparent px-8 py-[15px] text-[16px] font-medium leading-[1.6] tracking-[-0.012em] text-it-heading no-underline transition-colors duration-300 hover:bg-it-ink hover:text-it-white md:px-10'>
                                 {copy.secondaryCta}
                             </a>
                         </div>

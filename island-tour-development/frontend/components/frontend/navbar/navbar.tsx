@@ -345,7 +345,7 @@ export function Navbar({
                         icons' centers - the reported nav misalignment.
                         `relative` anchors the saved-count badge below. */}
                     <motion.button
-                        className='relative flex items-center bg-transparent border-none cursor-pointer p-0 text-it-ink'
+                        className='relative flex items-center bg-transparent border-none cursor-pointer p-0 text-it-heading'
                         whileTap={{ scale: 0.9 }}
                         transition={pressSpring}
                         aria-label={mobileOpen ? dict.close : dict.menu}

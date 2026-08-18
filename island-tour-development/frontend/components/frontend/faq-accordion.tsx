@@ -46,11 +46,11 @@ export function FaqAccordion({ items }: { items: { q: string; a: string }[] }) {
                                 onClick={() => setOpenIndex(open ? -1 : i)}
                                 transition={springPop}
                                 className='flex w-full items-center justify-between gap-3.5 border-none bg-transparent px-[18px] py-[15px] text-left cursor-pointer'>
-                                <span className='font-medium text-[14.5px] leading-[1.6] text-it-ink'>
+                                <span className='font-medium text-[16px] lg:text-[18px] leading-[1.6] text-it-heading tracking-[-0.012em]'>
                                     {faq.q}
                                 </span>
                                 <motion.span
-                                    className='inline-flex shrink-0 text-it-ink'
+                                    className='inline-flex shrink-0 text-it-heading'
                                     animate={{ rotate: open ? 180 : 0 }}
                                     transition={{
                                         duration: 0.6,

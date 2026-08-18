@@ -11,7 +11,7 @@ import { Fragment, type ReactNode } from 'react';
 
 type ThankYouDict = Dictionary['thankYou'];
 
-const factText = 'text-[13px] font-semibold leading-[1.6] text-it-ink';
+const factText = 'text-[13px] font-medium leading-[1.6] text-it-heading';
 const factTextSm =
     'text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/70';
 
@@ -30,7 +30,7 @@ const EyebrowMark = (
     />
 );
 const dot = (
-    <span aria-hidden='true' className='text-it-ink-muted'>
+    <span aria-hidden='true' className='text-it-text-muted'>
         ·
     </span>
 );
@@ -125,7 +125,7 @@ function buildFacts(
             node: (
                 <span className={cls}>
                     {dict.from}{' '}
-                    {/* The record's OWN currency, never a literal '$'. */}
+                    {/* The record's OWN currency, never a literal'$'. */}
                     {currencySymbol(r.currency)}
                     {r.priceAmount}
                     {/* "/per night" is a STAY unit - only shown when the pick has
@@ -245,7 +245,7 @@ function AptCard({
                         </span>
                     </div>
                 )}
-                <h3 className='m-0 mt-2 font-it-display text-[20px] leading-[1.3] tracking-[-0.012em] text-it-ink'>
+                <h3 className='m-0 mt-2 font-it-display text-[20px] leading-[1.3] tracking-[-0.012em] text-it-heading font-medium'>
                     {title}
                 </h3>
                 {recommendation.descriptionLines.length > 0 && (
@@ -272,7 +272,7 @@ function AptCard({
                 {ctaLabel && (
                     <Cta
                         r={recommendation}
-                        className='mt-3.5 inline-flex items-center gap-2 self-start rounded-it-sm border border-it-border bg-it-white px-[18px] py-2.5 text-[13.5px] font-medium leading-[1.4] text-it-ink no-underline transition-colors duration-(--it-duration-xs) hover:bg-it-bg'>
+                        className='mt-3.5 inline-flex items-center gap-2 self-start rounded-it-sm border border-it-border bg-it-white px-[18px] py-2.5 text-[13.5px] font-medium leading-[1.4] text-it-heading no-underline transition-colors duration-(--it-duration-xs) hover:bg-it-bg'>
                         {ctaLabel}
                         {recommendation.external && (
                             <Image

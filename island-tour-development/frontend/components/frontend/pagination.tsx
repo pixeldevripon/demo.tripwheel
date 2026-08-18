@@ -95,7 +95,7 @@ export function Pagination({
                 onClick={() => onPageChange(Math.max(1, page - 1))}
                 whileTap={page > 1 ? { scale: 0.95 } : undefined}
                 transition={springPop}
-                className={`${cellBase} border-it-border bg-it-white text-it-ink disabled:cursor-default disabled:opacity-40`}>
+                className={`${cellBase} border-it-border bg-it-white text-it-heading disabled:cursor-default disabled:opacity-40`}>
                 <Image
                     src='/icons/filters/pager-arrow-ink.svg'
                     alt=''
@@ -116,8 +116,8 @@ export function Pagination({
                             transition: springPop,
                             className: `${cellBase} ${
                                 n === page
-                                    ? 'border-it-dark bg-it-dark text-it-ink-on-dark'
-                                    : 'border-it-border bg-it-white text-it-ink hover:bg-it-bg'
+                                    ? 'border-it-dark bg-it-dark text-it-white'
+                                    : 'border-it-border bg-it-white text-it-heading hover:bg-it-bg'
                             }`,
                         },
                         n
@@ -132,7 +132,7 @@ export function Pagination({
                 onClick={() => onPageChange(Math.min(pageCount, page + 1))}
                 whileTap={page < pageCount ? { scale: 0.95 } : undefined}
                 transition={springPop}
-                className={`${cellBase} border-it-border bg-it-white text-it-ink disabled:cursor-default disabled:opacity-40`}>
+                className={`${cellBase} border-it-border bg-it-white text-it-heading disabled:cursor-default disabled:opacity-40`}>
                 <Image
                     src='/icons/filters/pager-arrow-ink.svg'
                     alt=''

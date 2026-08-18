@@ -13,7 +13,7 @@ export function TravellerReceiptPrintButton({ label }: { label: string }) {
         <button
             type='button'
             onClick={() => window.print()}
-            className='inline-flex cursor-pointer items-center gap-2 rounded-full bg-it-primary px-5 py-2.5 text-[14px] font-semibold text-it-primary-fg transition-[filter] hover:brightness-95'>
+            className='inline-flex cursor-pointer items-center gap-2 rounded-full bg-it-primary px-5 py-2.5 text-[14px] font-medium text-it-primary-fg transition-[filter] hover:brightness-95'>
             <Printer className='size-4' strokeWidth={2} />
             {label}
         </button>

@@ -131,7 +131,7 @@ export function NotFoundScreen({
                                 404
                             </span>
 
-                            <h1 className='m-0 mt-2.5 font-it-display text-[clamp(34px,4.4vw,52px)] leading-[1.15] tracking-[-0.5px] text-it-ink'>
+                            <h1 className='m-0 mt-2.5 font-it-display text-[clamp(34px,4.4vw,52px)] leading-[1.15] tracking-[-0.5px] text-it-heading font-medium'>
                                 {copy.title}
                             </h1>
 
@@ -165,7 +165,7 @@ export function NotFoundScreen({
 
                             {quickLinks.length > 0 && (
                                 <div className='mt-9'>
-                                    <span className='block text-[11.5px] font-medium uppercase leading-none tracking-[0.12em] text-it-ink-muted'>
+                                    <span className='block text-[11.5px] font-medium uppercase leading-none tracking-[0.12em] text-it-text-muted'>
                                         {copy.jumpLabel}
                                     </span>
                                     <div className='mt-3 flex flex-wrap items-center gap-2 md:gap-3'>
@@ -175,7 +175,7 @@ export function NotFoundScreen({
                                                 href={href(link.path)}
                                                 whileTap={{ scale: 0.97 }}
                                                 transition={springPop}
-                                                className='inline-flex items-center rounded-it-full border border-it-border bg-it-white px-4 py-[9px] text-[13.5px] font-medium leading-none text-it-ink no-underline transition-colors duration-(--it-duration-xs) hover:border-it-primary hover:bg-it-primary-subtle hover:text-it-primary-hover'>
+                                                className='inline-flex items-center rounded-it-full border border-it-border bg-it-white px-4 py-[9px] text-[13.5px] font-medium leading-none text-it-heading no-underline transition-colors duration-(--it-duration-xs) hover:border-it-primary hover:bg-it-primary-subtle hover:text-it-primary-hover'>
                                                 {link.name}
                                             </MotionLink>
                                         ))}
@@ -238,7 +238,7 @@ export function NotFoundScreen({
                         <Reveal>
                             <div className='mb-8 flex flex-wrap items-end justify-between gap-x-6 gap-y-4 md:mb-10'>
                                 <div>
-                                    <h2 className='m-0 font-it-display text-[27px] leading-[1.2] tracking-[-0.3px] text-it-ink'>
+                                    <h2 className='m-0 font-it-display text-[27px] leading-[1.2] tracking-[-0.3px] text-it-heading font-medium'>
                                         {copy.popularTitle}
                                     </h2>
                                     <p className='m-0 mt-2 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted md:text-[16px]'>
@@ -247,7 +247,7 @@ export function NotFoundScreen({
                                 </div>
                                 <Link
                                     href={href(popular.browsePath ?? '/search')}
-                                    className='inline-flex items-center gap-1 border-b-2 border-it-peach-border pb-0.5 text-[14.5px] font-medium leading-[1.3] text-it-ink no-underline transition-colors duration-(--it-duration-sm) hover:border-it-primary hover:text-it-primary-hover'>
+                                    className='inline-flex items-center gap-1 border-b-2 border-it-peach-border pb-0.5 text-[14.5px] font-medium leading-[1.3] text-it-heading no-underline transition-colors duration-(--it-duration-sm) hover:border-it-primary hover:text-it-primary-hover'>
                                     {popular.total
                                         ? copy.viewAllTours.replace(
                                               '{count}',

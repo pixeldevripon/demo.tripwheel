@@ -14,14 +14,14 @@ type ThankYouDict = Dictionary['thankYou'];
 const rowClass =
     'flex items-start justify-between gap-[18px] border-b border-it-divider py-[11px] text-[14px] leading-[1.6] last:border-b-0';
 const labelClass =
-    'flex flex-none items-center gap-[9px] font-semibold text-it-text-muted';
-const valueClass = 'min-w-0 text-right font-medium text-it-ink';
+    'flex flex-none items-center gap-[9px] font-medium text-it-text-muted';
+const valueClass = 'min-w-0 text-right font-medium text-it-heading';
 /** Faint sub-line under a value (time range, card used). */
 const subClass =
-    'mt-[3px] block text-[12px] font-medium leading-[1.5] text-it-ink-muted';
+    'mt-[3px] block text-[12px] font-medium leading-[1.5] text-it-text-muted';
 /** Tappable contact value (mailto/tel/map) - deep-orange underlined. */
 const rowLink =
-    'break-words font-semibold text-it-primary-hover underline underline-offset-2 transition-opacity hover:opacity-80';
+    'break-words font-medium text-it-primary-hover underline underline-offset-2 transition-opacity hover:opacity-80';
 
 /** Google Maps search link for a meeting-point address. */
 const mapUrl = (query: string) =>
@@ -99,7 +99,7 @@ export function ThankYouSummary({
         <section className='bg-it-bg py-[52px]'>
             <div className='it-wrap flex flex-col'>
                 <Reveal>
-                    <h2 className='m-0 mb-[22px] font-it-display text-[clamp(21px,2.5vw,28px)] leading-[1.2] tracking-[-0.012em] text-it-ink'>
+                    <h2 className='m-0 mb-[22px] font-it-display text-[clamp(21px,2.5vw,28px)] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                         {dict.summaryTitle}
                     </h2>
                 </Reveal>
@@ -145,7 +145,7 @@ export function ThankYouSummary({
                                         cancelHref ? (
                                             <a
                                                 href={cancelHref}
-                                                className='font-semibold text-it-primary-hover underline underline-offset-2 transition-opacity hover:opacity-80'>
+                                                className='font-medium text-it-primary-hover underline underline-offset-2 transition-opacity hover:opacity-80'>
                                                 {dict.needToCancel}
                                             </a>
                                         ) : undefined
@@ -282,10 +282,10 @@ export function ThankYouSummary({
                                 )}
                                 {/* Total: heavier top rule, larger value (.brow2.tot). */}
                                 <div className='mt-1 flex items-start justify-between gap-[18px] border-t border-it-border py-[11px] pt-[13px] text-[14px] leading-[1.6]'>
-                                    <span className='font-medium text-it-ink'>
+                                    <span className='font-medium text-it-heading'>
                                         {dict.total}
                                     </span>
-                                    <span className='text-right text-[16px] font-medium text-it-ink tabular-nums'>
+                                    <span className='text-right text-[16px] font-medium text-it-heading tabular-nums'>
                                         {money(payment.total)}
                                     </span>
                                 </div>
@@ -293,7 +293,7 @@ export function ThankYouSummary({
                                     <span className={labelClass}>
                                         {dict.ref}
                                     </span>
-                                    <code className='text-right font-mono text-[13.5px] font-medium tracking-[0.02em] text-it-ink'>
+                                    <code className='text-right font-mono text-[13.5px] font-medium tracking-[0.02em] text-it-heading'>
                                         {booking.displayRef}
                                     </code>
                                 </div>
@@ -306,7 +306,7 @@ export function ThankYouSummary({
                                             dict.operatorLinkNote,
                                             {
                                                 operator: (
-                                                    <b className='font-medium text-it-ink'>
+                                                    <b className='font-medium text-it-heading'>
                                                         {
                                                             booking.operatorShortName
                                                         }

@@ -127,7 +127,7 @@ export function TravellerCancelPanel({
                     disabled={busy}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => void withdraw()}
-                    className='mt-3 rounded-full border-[1.5px] border-it-heading/20 px-4.5 py-2.25 text-[14px] font-semibold text-it-heading transition-colors hover:border-it-heading/40 disabled:opacity-60'>
+                    className='mt-3 rounded-full border-[1.5px] border-it-heading/20 px-4.5 py-2.25 text-[14px] font-medium text-it-heading transition-colors hover:border-it-heading/40 disabled:opacity-60'>
                     {busy ? dict.cancelWithdrawing : dict.cancelWithdraw}
                 </motion.button>
             </div>
@@ -217,7 +217,7 @@ export function TravellerCancelPanel({
                             maxLength={500}
                             value={reason}
                             onChange={e => setReason(e.target.value)}
-                            className='w-full rounded-[10px] border border-it-border bg-it-white px-3.5 py-2.5 text-[16px] md:text-[14px] text-it-ink focus:border-transparent focus:outline-2 focus:outline-it-primary'
+                            className='w-full rounded-[10px] border border-it-border bg-it-white px-3.5 py-2.5 text-[16px] md:text-[14px] text-it-heading focus:border-transparent focus:outline-2 focus:outline-it-primary'
                         />
                         {failed && (
                             <p
@@ -235,7 +235,7 @@ export function TravellerCancelPanel({
                                 disabled={busy}
                                 whileTap={{ scale: 0.98 }}
                                 onClick={() => void submit()}
-                                className='rounded-full border-[1.5px] border-it-error px-4.5 py-2.25 text-[14px] font-semibold text-it-error transition-colors hover:bg-it-error-subtle disabled:opacity-60'>
+                                className='rounded-full border-[1.5px] border-it-error px-4.5 py-2.25 text-[14px] font-medium text-it-error transition-colors hover:bg-it-error-subtle disabled:opacity-60'>
                                 {busy ? dict.cancelSending : dict.cancelConfirm}
                             </motion.button>
                             <motion.button
@@ -243,7 +243,7 @@ export function TravellerCancelPanel({
                                 disabled={busy}
                                 whileTap={{ scale: 0.98 }}
                                 onClick={() => setConfirming(false)}
-                                className='rounded-full px-4.5 py-2.25 text-[14px] font-semibold text-it-text-muted transition-colors hover:text-it-heading disabled:opacity-60'>
+                                className='rounded-full px-4.5 py-2.25 text-[14px] font-medium text-it-text-muted transition-colors hover:text-it-heading disabled:opacity-60'>
                                 {dict.cancelKeep}
                             </motion.button>
                         </div>
@@ -258,7 +258,7 @@ export function TravellerCancelPanel({
                         transition={crossFade}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => setConfirming(true)}
-                        className='mt-3 rounded-full border-[1.5px] border-it-heading/20 px-4.5 py-2.25 text-[14px] font-semibold text-it-heading transition-colors hover:border-it-heading/40'>
+                        className='mt-3 rounded-full border-[1.5px] border-it-heading/20 px-4.5 py-2.25 text-[14px] font-medium text-it-heading transition-colors hover:border-it-heading/40'>
                         {dict.cancelCta}
                     </motion.button>
                 )}

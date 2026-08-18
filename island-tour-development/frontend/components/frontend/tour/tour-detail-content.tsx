@@ -74,7 +74,7 @@ function formatClockTime(hhmm: string, locale: string): string {
 // (green check) and not included / add-ons (orange cross). An exclusion's suffix
 // is derived from its `type` + optional `priceText`: paid add-ons with a price
 // read "(available - $X)", pay-on-site items with no price read "(pay on the
-// day)", pay-in-advance items with no price read "(available)", and
+// day)", pay-in-advance items with no price read"(available)", and
 // unavailable / not-permitted items carry no suffix (the label says it).
 function exclusionSuffix(
     exclusion: PublicTourExclusion,
@@ -557,7 +557,7 @@ export async function TourDetailContent({
                                                 />
                                             </span>
                                             <span className='flex flex-col'>
-                                                <b className='text-[13.5px] font-medium leading-[1.5] tracking-[-0.012em] text-it-ink'>
+                                                <b className='text-[13.5px] font-medium leading-[1.5] tracking-[-0.012em] text-it-heading'>
                                                     {qi.title}
                                                 </b>
                                                 <span className='text-[12px] leading-[1.5] text-it-text-muted'>
@@ -648,7 +648,7 @@ export async function TourDetailContent({
                                     id='tour-overview'
                                     title={tourDict.sections.overview}>
                                     {overviewParagraphs.length > 0 && (
-                                        <div className='flex flex-col gap-4 text-[16px] leading-[1.6] text-it-ink tracking-[-0.012em]'>
+                                        <div className='flex flex-col gap-4 text-[16px] leading-[1.6] text-it-heading tracking-[-0.012em]'>
                                             {overviewParagraphs.map((p, i) => (
                                                 <p key={i} className='m-0'>
                                                     {p}
@@ -665,7 +665,7 @@ export async function TourDetailContent({
                                                     key={i}
                                                     width='auto'
                                                     listItem
-                                                    className='flex items-start gap-[9px] text-[14px] font-semibold leading-[1.6] text-it-ink'>
+                                                    className='flex items-start gap-[9px] text-it-heading'>
                                                     <span
                                                         aria-hidden='true'
                                                         className='font-medium text-it-primary'>
@@ -695,7 +695,7 @@ export async function TourDetailContent({
                                                     </b>
                                                 )}
                                                 {localTipBody && (
-                                                    <span className='text-it-ink'>
+                                                    <span className='text-it-heading'>
                                                         {localTipBody}
                                                     </span>
                                                 )}
@@ -716,7 +716,7 @@ export async function TourDetailContent({
                                                         key={item.id}
                                                         width='auto'
                                                         listItem
-                                                        className='flex items-start gap-[9px] py-[5px] text-[14px] leading-[1.6] text-it-ink'>
+                                                        className='flex items-start gap-[9px] py-[5px] text-[16px] leading-[1.6] text-it-heading tracking-[-0.012em]'>
                                                         <Image
                                                             src='/icons/trust-check-green.svg'
                                                             alt=''
@@ -732,7 +732,7 @@ export async function TourDetailContent({
                                                         key={item.id}
                                                         width='auto'
                                                         listItem
-                                                        className='flex items-start gap-[9px] py-[5px] text-[14px] leading-[1.6] text-it-text-muted'>
+                                                        className='flex items-start gap-[9px] py-[5px] text-[16px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                                                         <Image
                                                             src='/icons/x-faint.svg'
                                                             alt=''
@@ -794,7 +794,7 @@ export async function TourDetailContent({
                                                                         className='relative z-10'
                                                                     />
                                                                     <div className='flex flex-col gap-0.5'>
-                                                                        <span className='text-[14.5px] font-medium leading-[1.6] text-it-ink'>
+                                                                        <span className='text-[14.5px] font-medium leading-[1.6] text-it-heading'>
                                                                             {
                                                                                 step.title
                                                                             }
@@ -843,7 +843,7 @@ export async function TourDetailContent({
                                                         key={group.title}
                                                         listItem
                                                         className='flex flex-col gap-1.5'>
-                                                        <h3 className='m-0 text-[15px] leading-[1.6] text-it-ink'>
+                                                        <h3 className='m-0 text-[16px] leading-[1.6] text-it-heading font-medium tracking-[-0.012em]'>
                                                             {group.title}
                                                         </h3>
                                                         <ul className='m-0 mt-1 list-none p-0'>
@@ -851,7 +851,7 @@ export async function TourDetailContent({
                                                                 (item, i) => (
                                                                     <li
                                                                         key={`${group.title}-${i}`}
-                                                                        className='relative py-[5px] pl-[22px] text-[14px] leading-[1.6] text-it-ink'>
+                                                                        className='relative py-[5px] pl-[22px] text-it-heading'>
                                                                         <span
                                                                             aria-hidden='true'
                                                                             className={`absolute top-[13px] left-1 size-[5px] rounded-it-full ${group.warn ? 'bg-it-star' : 'bg-it-ink-muted'}`}
@@ -876,7 +876,7 @@ export async function TourDetailContent({
                                             (para, i) => (
                                                 <p
                                                     key={i}
-                                                    className='m-0 text-[14.5px] leading-[1.7] text-it-ink'>
+                                                    className='m-0 text-[14.5px] leading-[1.7] text-it-heading'>
                                                     {para}
                                                 </p>
                                             )
@@ -942,7 +942,7 @@ export async function TourDetailContent({
                                     conditions URL; in-app it opens as the
                                     intercepted overlay. */}
                                 {detail.operatorName && (
-                                    <p className='m-0 text-[12.5px] leading-[1.6] text-it-ink-muted'>
+                                    <p className='m-0 text-[12.5px] leading-[1.6] text-it-text-muted'>
                                         {cancelDict.suppliedBy}{' '}
                                         {detail.operatorName}
                                         {detail.operatorTerms?.kind ===
@@ -956,7 +956,7 @@ export async function TourDetailContent({
                                                             `/operators/${detail.operatorSlug}/conditions`
                                                         )}
                                                         scroll={false}
-                                                        className='font-semibold text-it-ink-muted underline underline-offset-2'>
+                                                        className='font-medium text-it-text-muted underline underline-offset-2'>
                                                         {
                                                             cancelDict.operatorConditionsApply
                                                         }

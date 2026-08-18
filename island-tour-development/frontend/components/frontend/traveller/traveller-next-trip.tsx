@@ -130,7 +130,7 @@ export function TravellerNextTrip({
                     </div>
                 )}
                 <div className='min-w-0 flex-1 p-5 sm:p-7'>
-                    <p className='m-0 text-[12.5px] font-semibold tracking-[0.08em] text-it-primary uppercase'>
+                    <p className='m-0 text-[12.5px] font-medium tracking-[0.08em] text-it-primary uppercase'>
                         {dict.nextTripKicker} · {when}
                     </p>
                     <h2 className='mt-2 mb-0 font-medium text-[22px] md:text-[24px] leading-[1.3] tracking-[-0.012em] text-it-heading'>
@@ -204,12 +204,12 @@ export function TravellerNextTrip({
                             onClick={() => setOpen(v => !v)}
                             aria-expanded={open}
                             aria-controls='traveller-next-panel'
-                            className='rounded-full bg-it-primary px-5 py-2.5 text-[14px] font-semibold text-it-primary-fg transition-[filter] hover:brightness-95'>
+                            className='rounded-full bg-it-primary px-5 py-2.5 text-[14px] font-medium text-it-primary-fg transition-[filter] hover:brightness-95'>
                             {open ? dict.hideDetails : dict.viewDetails}
                         </motion.button>
                         <a
                             href={bookingIcsUrl(booking.publicRef)}
-                            className='rounded-full border-[1.5px] border-it-heading/20 px-5 py-2.5 text-[14px] font-semibold text-it-heading no-underline transition-colors hover:border-it-heading/40'>
+                            className='rounded-full border-[1.5px] border-it-heading/20 px-5 py-2.5 text-[14px] font-medium text-it-heading no-underline transition-colors hover:border-it-heading/40'>
                             {dict.addToCalendar}
                         </a>
                     </div>

@@ -79,10 +79,10 @@ export function Hero({
                 <div className='flex flex-col items-center gap-7 w-full max-w-[680px]'>
                     {/* Heading + subtitle */}
                     <Reveal className='flex flex-col items-center gap-3 text-center'>
-                        <h1 className='m-0 font-it-display text-[clamp(31px,3.7vw,48px)] leading-[1.15] tracking-[-0.012em] text-balance text-it-white [text-shadow:0_2px_22px_rgba(0,0,0,0.32)]'>
+                        <h1 className='m-0 font-it-body text-[32px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-balance text-it-white [text-shadow:0_2px_22px_rgba(0,0,0,0.32)] font-medium'>
                             {dict.title}
                         </h1>
-                        <p className='m-0 text-[16px] md:text-[17px] font-semibold leading-[1.6] text-it-white/95 [text-shadow:0_1px_14px_rgba(0,0,0,0.34)]'>
+                        <p className='m-0 text-base md:text-lg leading-[1.6] text-it-white/95 [text-shadow:0_1px_14px_rgba(0,0,0,0.34)] tracking-[-0.012em]'>
                             {dict.subtitle}
                         </p>
                     </Reveal>
@@ -100,7 +100,7 @@ export function Hero({
 
                         {/* Popular - clickable destinations (live) */}
                         {popular.length > 0 && (
-                            <p className='m-0 text-sm font-semibold text-center text-it-white/90 [text-shadow:0_1px_10px_rgba(0,0,0,0.32)]'>
+                            <p className='m-0 text-sm font-medium text-center text-it-white/90 [text-shadow:0_1px_10px_rgba(0,0,0,0.32)]'>
                                 <span>{dict.popular}: </span>
                                 {popular.map((island, i) => (
                                     <span key={island.slug}>
@@ -109,7 +109,7 @@ export function Hero({
                                                 locale,
                                                 `/${island.slug}`
                                             )}
-                                            className='text-it-white underline underline-offset-[3px] transition-colors duration-300 hover:text-it-primary-subtle'>
+                                            className='text-it-white underline underline-offset-[3px] transition-colors duration-300 hover:text-it-primary-subtle text-sm lg:text-base leading-[1.6] tracking-[-0.012em]'>
                                             {island.name}
                                         </Link>
                                         {i < popular.length - 1 && (

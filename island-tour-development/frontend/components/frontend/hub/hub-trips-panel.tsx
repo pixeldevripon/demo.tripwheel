@@ -146,7 +146,7 @@ export function HubTripsPanel({
             {/* Heading + date chip */}
             <Reveal className='flex flex-col gap-4 md:gap-6'>
                 <div className='flex flex-col gap-1'>
-                    <h2 className='m-0 font-it-display text-[clamp(22px,2.8vw,30px)] leading-[1.2] tracking-[-0.012em] text-it-ink'>
+                    <h2 className='m-0 font-it-display text-[clamp(22px,2.8vw,30px)] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                         {panel.title}
                     </h2>
                     <p className='m-0 text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
@@ -254,7 +254,7 @@ export function HubTripsPanel({
                                   className='flex flex-col gap-6'>
                                   {group.title && (
                                       <Reveal>
-                                          <h3 className='m-0 text-[13px] uppercase tracking-[0.06em] text-it-ink'>
+                                          <h3 className='m-0 text-[13px] uppercase tracking-[0.06em] text-it-heading font-medium'>
                                               {group.title}
                                           </h3>
                                       </Reveal>

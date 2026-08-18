@@ -87,7 +87,7 @@ export function TravellerBookingPanel({
                 <div className='mb-4 flex items-center gap-2.5 border-b border-it-heading/10 pb-4'>
                     <Link
                         href={manageHref}
-                        className='inline-flex items-center gap-2 text-[13.5px] font-medium text-it-ink/70 no-underline transition-colors hover:text-it-heading'>
+                        className='inline-flex items-center gap-2 text-[13.5px] font-medium text-it-heading/70 no-underline transition-colors hover:text-it-heading'>
                         <SquareArrowOutUpRight
                             className='size-4'
                             strokeWidth={2}
@@ -282,7 +282,7 @@ export function TravellerBookingPanel({
 function Panel({ title, children }: { title: string; children: ReactNode }) {
     return (
         <div className='flex h-full flex-col gap-3 rounded-[16px] border border-it-heading/10 bg-it-white p-5'>
-            <h3 className='m-0 text-[13px] font-semibold tracking-[0.04em] text-it-text-muted uppercase'>
+            <h3 className='m-0 text-[13px] font-medium tracking-[0.04em] text-it-text-muted uppercase'>
                 {title}
             </h3>
             <div className='flex flex-col gap-2.5'>{children}</div>

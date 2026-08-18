@@ -25,7 +25,7 @@ function TrustCard({ icon, item }: { icon: string; item: TrustItem }) {
                 />
             </div>
             <div className='flex flex-col'>
-                <h3 className='m-0 font-it-body text-[15px] leading-[1.6] tracking-[-0.012em] text-it-ink'>
+                <h3 className='m-0 text-[18px] md:text-[20px] leading-[1.6] tracking-[-0.012em] text-it-heading font-medium'>
                     {item.title}
                 </h3>
                 <p className='m-0 text-sm md:text-base leading-[1.6] text-it-text-muted tracking-[-0.012em]'>

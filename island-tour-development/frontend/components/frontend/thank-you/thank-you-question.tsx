@@ -42,14 +42,14 @@ export function ThankYouQuestion({
             <div className='it-wrap'>
                 <Reveal className='mx-auto w-full max-w-[560px]'>
                     <div className='rounded-it-lg border border-it-divider bg-it-white px-5 py-[22px] shadow-it-sm md:px-8 md:py-7'>
-                        <h3 className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-ink'>
+                        <h3 className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading font-medium'>
                             {dict.questionTitle}
                         </h3>
                         <p className='m-0 mt-1.5 text-[14px] leading-[1.6] text-it-text-muted'>
                             {dict.talkLocals}
                         </p>
                         <div className='mt-4'>
-                            <b className='mb-1.5 block text-[15px] font-medium leading-[1.6] text-it-ink'>
+                            <b className='mb-1.5 block text-[15px] font-medium leading-[1.6] text-it-heading'>
                                 {booking.operatorName}
                             </b>
                             {/* Operator contact is withheld on the unverified
@@ -89,7 +89,7 @@ export function ThankYouQuestion({
                             )}
                         </div>
                         <div className='my-[18px] border-t border-it-divider' />
-                        <b className='block text-[14px] font-medium leading-[1.6] text-it-ink'>
+                        <b className='block text-[14px] font-medium leading-[1.6] text-it-heading'>
                             {dict.issueTitle}
                         </b>
                         <p className='m-0 mt-1 text-[13.5px] leading-[1.6] text-it-text-muted'>
@@ -101,7 +101,7 @@ export function ThankYouQuestion({
                             </a>
                             {tailBefore}
                             {showRef && (
-                                <code className='font-mono text-[12.5px] font-medium text-it-ink'>
+                                <code className='font-mono text-[12.5px] font-medium text-it-heading'>
                                     {booking.displayRef}
                                 </code>
                             )}

@@ -80,7 +80,7 @@ export function SavedDateCheck({
                             'inline-flex cursor-pointer items-center gap-[9px] rounded-it-full border px-[18px] py-[11px] text-[13.5px] font-medium leading-[1.6] transition-colors duration-(--it-duration-xs) ease-(--it-ease) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary',
                             selected
                                 ? 'border-it-primary bg-it-primary-subtle text-it-primary-hover'
-                                : 'border-it-border bg-it-white text-it-ink hover:border-it-ink'
+                                : 'border-it-border bg-it-white text-it-heading hover:border-it-ink'
                         )}>
                         <Image
                             src='/icons/calendar-soft.svg'
@@ -97,7 +97,7 @@ export function SavedDateCheck({
                 <PopoverContent
                     align='start'
                     sideOffset={10}
-                    className='w-auto rounded-it-lg border-none bg-it-white p-0 text-it-ink shadow-it-lg duration-300 ease-(--it-ease)'>
+                    className='w-auto rounded-it-lg border-none bg-it-white p-0 text-it-heading shadow-it-lg duration-300 ease-(--it-ease)'>
                     <Calendar
                         mode='single'
                         selected={selected}
@@ -146,7 +146,7 @@ export function SavedDateCheck({
                     <button
                         type='button'
                         onClick={() => onChange({ date: null, guests })}
-                        className='cursor-pointer border-none bg-transparent text-[13px] font-medium leading-[1.6] text-it-text-muted underline underline-offset-[3px] hover:text-it-ink'>
+                        className='cursor-pointer border-none bg-transparent text-[13px] font-medium leading-[1.6] text-it-text-muted underline underline-offset-[3px] hover:text-it-heading'>
                         {dict.clearDate}
                     </button>
                 </>

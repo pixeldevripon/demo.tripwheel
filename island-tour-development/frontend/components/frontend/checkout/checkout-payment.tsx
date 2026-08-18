@@ -399,7 +399,7 @@ function PaymentInner({
                 the free-cancellation line at the commit button below. */}
             <span
                 id={methodsLabelId}
-                className='mt-0.5 mb-2.5 text-[13.5px] font-medium leading-[1.5] text-it-ink'>
+                className='mt-0.5 mb-2.5 text-[13.5px] font-medium leading-[1.5] text-it-heading'>
                 {dict.selectPaymentMethod}
             </span>
             <SecureCheckoutRow psp='Stripe' dict={dict} />
@@ -786,7 +786,7 @@ function MethodRow({
                           : 'cursor-pointer bg-it-white'
                 }`}>
                 <Radio selected={open} />
-                <span className='text-[14px] font-medium leading-[1.5] text-it-ink'>
+                <span className='text-[14px] font-medium leading-[1.5] text-it-heading'>
                     {label}
                 </span>
                 {logos && (
@@ -796,7 +796,7 @@ function MethodRow({
                 )}
             </motion.button>
             {!eligible && (
-                <p className='px-4 pb-2.5 text-[12.5px] leading-[1.4] text-it-ink-muted'>
+                <p className='px-4 pb-2.5 text-[12.5px] leading-[1.4] text-it-text-muted'>
                     {hint}
                 </p>
             )}

@@ -143,10 +143,10 @@ function LinkColumn({
     className?: string;
 }) {
     const linkCls =
-        'inline-block text-[13.5px] leading-[1.6] text-it-soft-on-dark no-underline transition-colors duration-300 hover:text-it-ink-on-dark';
+        'inline-block text-sm lg:text-base leading-[1.6] text-it-footer-muted hover:text-it-white no-underline transition-colors duration-300 tracking-[-0.012em]';
     return (
         <div className={`flex flex-col gap-3.5 ${className ?? ''}`}>
-            <h3 className='m-0 font-it-body text-sm font-semibold leading-[1.6] text-it-ink-on-dark'>
+            <h3 className='m-0 text-lg lg:text-xl font-medium leading-[1.6] text-it-white tracking-[-0.012em]'>
                 {title}
             </h3>
             <ul className='m-0 flex list-none flex-col gap-2.5 p-0'>
@@ -167,7 +167,7 @@ function LinkColumn({
                                 {link.label}
                             </a>
                         ) : (
-                            <span className='inline-block cursor-default text-[13.5px] leading-[1.6] text-it-soft-on-dark'>
+                            <span className='inline-block cursor-default text-sm lg:text-base leading-[1.6] text-it-footer-muted tracking-[-0.012em]'>
                                 {link.label}
                             </span>
                         )}
@@ -345,7 +345,7 @@ export async function Footer({
     ];
 
     return (
-        <footer className='bg-it-dark text-it-ink-on-dark'>
+        <footer className='bg-it-dark text-it-white'>
             <div className='it-container pt-12 pb-6 lg:pt-16 lg:pb-8'>
                 <div className='flex flex-col gap-11'>
                     {/* ── Top section ──
@@ -369,14 +369,14 @@ export async function Footer({
                                             className='h-14 w-auto object-contain lg:h-19'
                                         />
                                     </Link>
-                                    <p className='m-0 text-[13.5px] leading-[1.6] text-it-soft-on-dark'>
+                                    <p className='m-0 text-sm lg:text-base leading-[1.6] text-it-footer-muted tracking-[-0.012em]'>
                                         {dict.tagline}
                                     </p>
                                 </div>
 
                                 <div className='flex flex-col gap-2 lg:gap-3'>
                                     {/* /about doesn't exist yet - plain text until it does. */}
-                                    <span className='inline-block w-fit cursor-default text-sm lg:text-base leading-[1.6] text-it-ink-on-dark tracking-[-0.012em]'>
+                                    <span className='inline-block w-fit cursor-default text-sm lg:text-base leading-[1.6] text-it-white tracking-[-0.012em]'>
                                         {dict.ourStory}
                                     </span>
                                     {socials.length > 0 && (
@@ -479,11 +479,11 @@ export async function Footer({
                         <div className='h-px w-full bg-it-ink-on-dark/15' />
                         <div className='flex flex-col gap-2.5 pt-5 lg:flex-row lg:items-center lg:justify-between lg:gap-4'>
                             <div className='flex flex-wrap items-center gap-3 lg:gap-4'>
-                                <span className='text-xs leading-[1.6] text-it-soft-on-dark'>
+                                <span className='text-xs leading-[1.6] text-it-footer-muted'>
                                     {copyrightLine}
                                 </span>
                                 <span className='size-1 shrink-0 rounded-full bg-it-soft-on-dark/60' />
-                                <span className='text-xs leading-[1.6] text-it-soft-on-dark'>
+                                <span className='text-xs leading-[1.6] text-it-footer-muted'>
                                     {registrationLine}
                                 </span>
                             </div>
@@ -491,7 +491,7 @@ export async function Footer({
                                 button reopens the Cookiebot dialog once it ships). */}
                             <Link
                                 href={localizeHref(locale, '/manage-cookies')}
-                                className='w-fit text-xs leading-[1.6] text-it-soft-on-dark no-underline transition-colors hover:text-it-ink-on-dark'>
+                                className='w-fit text-sm lg:text-base leading-[1.6] text-it-footer-muted no-underline transition-colors hover:text-it-white tracking-[-0.012em]'>
                                 {dict.manageCookies}
                             </Link>
                         </div>

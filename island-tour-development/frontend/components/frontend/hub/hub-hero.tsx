@@ -138,11 +138,11 @@ export function HubHero({
                     {/* Title + tagline */}
                     <MountReveal className='flex flex-col items-start'>
                         <h1
-                            className={`m-0 font-it-display text-[clamp(30px,4.4vw,46px)] font-bold leading-[1.05] tracking-[-0.02em] ${image ? 'text-it-white' : 'text-it-ink'}`}>
+                            className={`m-0 font-it-display text-[clamp(30px,4.4vw,46px)] font-bold leading-[1.05] tracking-[-0.02em] ${image ? 'text-it-white font-medium' : 'text-it-heading font-medium'}`}>
                             {title}
                         </h1>
                         <p
-                            className={`m-0 mt-2.5 text-[16px] font-semibold leading-[1.6] ${image ? 'text-it-white/92' : 'text-it-text-muted'}`}>
+                            className={`m-0 mt-2.5 text-[16px] font-medium leading-[1.6] ${image ? 'text-it-white/92' : 'text-it-text-muted'}`}>
                             {tagline || dict.tagline}
                         </p>
                     </MountReveal>
@@ -185,7 +185,7 @@ export function HubHero({
                                                     className='size-4 shrink-0 opacity-92'
                                                 />
                                                 <span
-                                                    className={`whitespace-nowrap text-[14px] font-semibold leading-[1.6] ${image ? 'text-it-white' : 'text-it-ink'}`}>
+                                                    className={`whitespace-nowrap text-[14px] font-medium leading-[1.6] ${image ? 'text-it-white' : 'text-it-heading'}`}>
                                                     {item.label}
                                                 </span>
                                             </li>
@@ -220,7 +220,7 @@ export function HubHero({
                                             <motion.button
                                                 type='button'
                                                 aria-label={dict.selectDate}
-                                                className={`flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 whitespace-nowrap border-none bg-transparent py-[13px] pl-0 text-left text-[14.5px] font-semibold leading-[1.6] transition-colors duration-300 ${date ? 'text-it-ink' : 'text-it-text-muted'}`}>
+                                                className={`flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 whitespace-nowrap border-none bg-transparent py-[13px] pl-0 text-left text-[14.5px] font-medium leading-[1.6] transition-colors duration-300 ${date ? 'text-it-heading' : 'text-it-text-muted'}`}>
                                                 <Image
                                                     src='/icons/calendar-soft.svg'
                                                     alt=''

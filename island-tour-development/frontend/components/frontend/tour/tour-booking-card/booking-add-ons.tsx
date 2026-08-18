@@ -45,7 +45,7 @@ export function BookingAddOns() {
                 whileTap={{ scale: 0.99 }}
                 transition={springPop}
                 className='flex w-full cursor-pointer items-center justify-between gap-2.5 border-none bg-transparent text-left'>
-                <span className='text-[14px] font-medium leading-[1.6] text-it-ink'>
+                <span className='text-[14px] font-medium leading-[1.6] text-it-heading'>
                     {dict.addOnsTitle}
                 </span>
                 <Image
@@ -75,7 +75,7 @@ export function BookingAddOns() {
                                 key={addOn.id}
                                 className='flex items-start gap-3 border-b border-it-divider py-2.5 last:border-b-0'>
                                 <div className='flex min-w-0 flex-col'>
-                                    <span className='text-[13.5px] font-medium leading-[1.6] text-it-ink'>
+                                    <span className='text-[13.5px] font-medium leading-[1.6] text-it-heading'>
                                         {addOn.name}
                                     </span>
                                     {addOn.description && (
@@ -83,7 +83,7 @@ export function BookingAddOns() {
                                             {addOn.description}
                                         </span>
                                     )}
-                                    <span className='text-[14px] leading-[1.5] text-it-ink-muted tracking-[-0.012em]'>
+                                    <span className='text-[14px] leading-[1.5] text-it-text-muted tracking-[-0.012em]'>
                                         {`${money(addOn.price)} ${priceSuffix}`}
                                     </span>
                                 </div>

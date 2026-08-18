@@ -111,7 +111,7 @@ export function HubCompareSection({
         <Reveal className='flex flex-col gap-[22px]'>
             {/* Header */}
             <header className='flex flex-col gap-1'>
-                <h2 className='m-0 font-it-display text-[clamp(22px,2.8vw,30px)] leading-[1.2] tracking-[-0.012em] text-it-ink'>
+                <h2 className='m-0 font-it-display text-[clamp(22px,2.8vw,30px)] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                     {dict.title}
                 </h2>
                 <p className='m-0 max-w-[530px] text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
@@ -153,7 +153,7 @@ function CompareTableCard({
         <div className='@container overflow-hidden rounded-it-lg border border-it-divider bg-it-white shadow-it-sm'>
             {/* Category bar */}
             <div className='border-b border-it-peach-border bg-it-primary-subtle px-4 py-2.5 lg:px-4'>
-                <span className='text-[11.5px] font-medium uppercase tracking-[0.12em] text-it-primary-hover'>
+                <span className='text-[16px] md:text-[18px] font-bold uppercase tracking-[-0.012em] text-it-primary-hover leading-[1.6]'>
                     {title}
                 </span>
             </div>
@@ -204,7 +204,7 @@ function CompareTableCard({
                     {rows.map((row, r) => (
                         <Fragment key={r}>
                             <span
-                                className={`${cell} border-r sticky left-0 z-10 bg-it-white font-bold text-it-ink`}>
+                                className={`${cell} border-r sticky left-0 z-10 bg-it-white font-bold text-it-heading`}>
                                 {row.label}
                             </span>
                             {row.cells.map((value, b) => {
@@ -296,7 +296,7 @@ function PriceLabel({ boat, from }: { boat: CompareBoat; from: string }) {
             )}
             <span className='text-it-text-muted'>
                 {from}{' '}
-                <span className='text-[15px] font-medium tracking-[-0.012em] text-it-ink'>
+                <span className='text-[15px] font-medium tracking-[-0.012em] text-it-heading'>
                     {boat.priceDisplay}
                 </span>
                 {boat.priceUnit ? ` ${boat.priceUnit}` : ''}

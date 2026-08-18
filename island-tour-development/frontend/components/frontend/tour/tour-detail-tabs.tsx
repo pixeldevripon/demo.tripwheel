@@ -102,7 +102,7 @@ export function TourDetailTabs({ tabs }: { tabs: TourTab[] }) {
                             className={`relative -mb-px shrink-0 cursor-pointer whitespace-nowrap border-none bg-transparent px-[13px] py-3 text-[13px] leading-[1.6] transition-colors duration-(--it-duration-xs) ease-(--it-ease) ${
                                 isActive
                                     ? 'font-medium text-it-primary-hover'
-                                    : 'font-semibold text-it-text-muted hover:text-it-ink'
+                                    : 'font-medium text-it-text-muted hover:text-it-heading'
                             }`}>
                             {/* One-cell grid: the invisible bold twin reserves
                                 the ACTIVE width, so the bold/semibold toggle

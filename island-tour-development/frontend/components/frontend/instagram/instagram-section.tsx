@@ -62,7 +62,7 @@ export async function InstagramSection({
                                 className='size-5'
                             />
                         </span>
-                        <h2 className='m-0 min-w-0 flex-1 truncate font-it-body text-[15.5px] leading-[1.4] text-it-ink'>
+                        <h2 className='m-0 min-w-0 flex-1 truncate font-it-body text-[15.5px] leading-[1.4] text-it-heading font-medium'>
                             @{feed.username}
                         </h2>
                         <a

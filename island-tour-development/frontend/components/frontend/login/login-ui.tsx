@@ -15,7 +15,7 @@ import Link from 'next/link';
 // 15px design size. Covers all three login doors, operator apply, forgot,
 // reset and the 2FA backup-code field, since they all share this class.
 export const inputClass =
-    'w-full rounded-[10px] border border-it-border bg-it-white px-3.5 py-2.75 text-[16px] md:text-[15px] text-it-ink placeholder:text-it-ink-placeholder focus:border-transparent focus:outline-2 focus:outline-it-primary';
+    'w-full rounded-[10px] border border-it-border bg-it-white px-3.5 py-2.75 text-[16px] md:text-[15px] text-it-heading placeholder:text-it-ink-placeholder focus:border-transparent focus:outline-2 focus:outline-it-primary';
 
 /**
  * Append to `inputClass` when a field has failed validation, so the field itself
@@ -26,10 +26,10 @@ export const inputClass =
 export const inputErrorClass = 'border-red-400 focus:outline-it-primary';
 
 export const primaryBtn =
-    'flex w-full items-center justify-center gap-2 rounded-full bg-it-primary px-5 py-3.25 text-[15px] font-semibold text-it-primary-fg transition-[filter] hover:brightness-95';
+    'flex w-full items-center justify-center gap-2 rounded-full bg-it-primary px-5 py-3.25 text-[15px] font-medium text-it-primary-fg transition-[filter] hover:brightness-95';
 
 export const quietLink =
-    'text-[13.5px] font-semibold text-it-text-muted transition-colors hover:text-it-primary';
+    'text-[13.5px] font-medium text-it-text-muted transition-colors hover:text-it-primary';
 
 export function Field({
     label,
@@ -44,7 +44,7 @@ export function Field({
         <div className='mb-4'>
             <label
                 htmlFor={htmlFor}
-                className='mb-1.5 block text-[13px] font-semibold text-it-heading'>
+                className='mb-1.5 block text-[13px] font-medium text-it-heading'>
                 {label}
             </label>
             {children}
@@ -113,7 +113,7 @@ export function SuccessBlock({
             {loginHref && (
                 <Link
                     href={loginHref}
-                    className='mt-5 inline-flex items-center justify-center rounded-full border border-it-border bg-it-white px-6 py-2.5 text-[14px] font-semibold text-it-heading transition-colors hover:border-it-primary hover:text-it-primary'>
+                    className='mt-5 inline-flex items-center justify-center rounded-full border border-it-border bg-it-white px-6 py-2.5 text-[14px] font-medium text-it-heading transition-colors hover:border-it-primary hover:text-it-primary'>
                     {loginLabel}
                 </Link>
             )}

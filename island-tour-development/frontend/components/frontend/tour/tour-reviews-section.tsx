@@ -421,10 +421,10 @@ export function TourReviewsSection({
             {/* Header + rating summary */}
             <div className='flex flex-col gap-4'>
                 <div className='flex flex-col gap-2'>
-                    <h2 className='m-0 font-it-display text-[21px] leading-[1.2] tracking-[-0.012em] text-it-ink'>
+                    <h2 className='m-0 font-it-display text-[21px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                         {dict.title}
                     </h2>
-                    <p className='m-0 flex flex-wrap items-center gap-[7px] text-[13px] leading-[1.6] text-it-text-muted'>
+                    <p className='m-0 flex flex-wrap items-center gap-[7px] text-[16px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                         <Image
                             src='/icons/trust-check-green.svg'
                             alt=''
@@ -471,7 +471,7 @@ export function TourReviewsSection({
                         // Only reachable with `source === 'tour'`, which LD11
                         // guarantees means >= 3 reviews and a real rating.
                         <div className='flex flex-col'>
-                            <div className='m-0 font-it-display text-[44px] font-medium leading-none tracking-[-0.012em] text-it-ink'>
+                            <div className='m-0 font-it-display text-[44px] font-medium leading-none tracking-[-0.012em] text-it-heading'>
                                 <span className='align-[6px] text-[26px] text-it-star'>
                                     ★
                                 </span>{' '}
@@ -892,7 +892,7 @@ function ReviewCard({
                     </span>
                     <div className='flex flex-col text-it-text-muted'>
                         <span className='flex flex-wrap items-center gap-x-2'>
-                            <b className='text-[13.5px] font-medium text-it-ink'>
+                            <b className='text-[13.5px] font-medium text-it-heading'>
                                 {review.name}
                             </b>
                             {lead.slice(1).join(' · ')}
@@ -950,7 +950,7 @@ function ReviewCard({
                     </div>
                 )}
 
-                <p className='m-0 mt-1 text-[14px] leading-[1.6] text-it-ink'>
+                <p className='m-0 mt-1 text-[16px] leading-[1.6] text-it-heading tracking-[-0.012em]'>
                     {body}
                 </p>
 
@@ -982,7 +982,7 @@ function ReviewCard({
             {review.response && (
                 <div className='flex flex-col gap-4'>
                     <div className='flex flex-col gap-3 rounded-it-md bg-it-bg px-4 py-3.5'>
-                        <p className='m-0 text-[13.5px] leading-[1.6] text-it-ink'>
+                        <p className='m-0 text-[16px] leading-[1.6] text-it-heading tracking-[-0.012em]'>
                             {review.response.text}
                         </p>
                         <div className='flex flex-col'>

@@ -76,7 +76,7 @@ export function SearchResultsHeader({
                     {destinationName}
                 </span>
             )}
-            <h1 className='m-0 text-[clamp(28px,4vw,40px)] leading-[1.15] tracking-[-0.012em] text-it-heading'>
+            <h1 className='m-0 text-[clamp(28px,4vw,40px)] leading-[1.15] tracking-[-0.012em] text-it-heading font-medium'>
                 {headline}
             </h1>
             <p className='m-0 text-[15px] leading-[1.6] text-it-text-muted md:text-[16px]'>
