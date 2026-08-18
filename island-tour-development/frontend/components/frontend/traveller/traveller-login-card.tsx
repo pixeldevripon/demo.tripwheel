@@ -225,7 +225,7 @@ export function TravellerLoginCard({
                             <h1 className='mb-2 font-medium text-[26px] leading-[1.25] tracking-[-0.012em] text-it-heading'>
                                 {dict.loginTitle}
                             </h1>
-                            <p className='mb-7 text-[15px] leading-[1.6] text-it-text-muted'>
+                            <p className='mb-7 text-[15px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                                 {dict.loginSubtitle}
                             </p>
                             {error && <ErrorNote>{error}</ErrorNote>}
@@ -274,7 +274,7 @@ export function TravellerLoginCard({
                             <h1 className='mb-2 font-medium text-[26px] leading-[1.25] tracking-[-0.012em] text-it-heading'>
                                 {dict.codeTitle}
                             </h1>
-                            <p className='mb-7 text-[15px] leading-[1.6] text-it-text-muted'>
+                            <p className='mb-7 text-[15px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                                 {dict.codeSentNote.replace(
                                     '{email}',
                                     email.trim()
@@ -284,7 +284,7 @@ export function TravellerLoginCard({
                             <div ref={codeRef} className='mb-4'>
                                 <label
                                     htmlFor='traveller-code'
-                                    className='mb-2.5 block text-[13px] font-medium text-it-heading'>
+                                    className='mb-2.5 block text-[13px] font-medium text-it-heading tracking-[-0.012em]'>
                                     {dict.codeLabel}
                                 </label>
                                 <TravellerOtpField
@@ -298,7 +298,7 @@ export function TravellerLoginCard({
                                             void submitCode(value);
                                     }}
                                 />
-                                <p className='mt-2.5 text-[13px] leading-[1.6] text-it-text-muted'>
+                                <p className='mt-2.5 text-[13px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                                     {dict.codeHint}
                                 </p>
                             </div>
@@ -343,7 +343,7 @@ export function TravellerLoginCard({
                 the booking confirmation. Everything past that (lost inbox
                 access) is deliberately support-only: a self-serve email change
                 on a booking would be an account-takeover vector. */}
-            <p className='mt-5 mb-0 text-center text-[13px] leading-[1.6] text-it-text-muted'>
+            <p className='mt-5 mb-0 text-center text-[13px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                 {dict.loginHelp}
                 {whatsappHref && (
                     <>
@@ -352,7 +352,7 @@ export function TravellerLoginCard({
                             href={whatsappHref}
                             target='_blank'
                             rel='noopener noreferrer'
-                            className='font-medium text-it-primary no-underline hover:opacity-80'>
+                            className='font-medium text-it-primary no-underline hover:opacity-80 tracking-[-0.012em]'>
                             {dict.whatsappUs}
                         </a>
                     </>

@@ -90,7 +90,7 @@ export function SharePill({
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -6 }}
                     transition={swapFade}
-                    className='text-[13px] font-medium leading-[1.4] text-it-heading'>
+                    className=''>
                     {copied ? copiedLabel : label}
                 </motion.span>
             </AnimatePresence>

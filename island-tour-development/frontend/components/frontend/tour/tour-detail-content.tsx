@@ -560,7 +560,7 @@ export async function TourDetailContent({
                                                 <b className='text-[13.5px] font-medium leading-[1.5] tracking-[-0.012em] text-it-heading'>
                                                     {qi.title}
                                                 </b>
-                                                <span className='text-[12px] leading-[1.5] text-it-text-muted'>
+                                                <span className='text-[12px] leading-[1.5] text-it-text-muted tracking-[-0.012em]'>
                                                     {qi.sub}
                                                 </span>
                                             </span>
@@ -648,7 +648,7 @@ export async function TourDetailContent({
                                     id='tour-overview'
                                     title={tourDict.sections.overview}>
                                     {overviewParagraphs.length > 0 && (
-                                        <div className='flex flex-col gap-4 text-[16px] leading-[1.6] text-it-heading tracking-[-0.012em]'>
+                                        <div className='flex flex-col gap-4 text-[16px] leading-[1.6] '>
                                             {overviewParagraphs.map((p, i) => (
                                                 <p key={i} className='m-0'>
                                                     {p}
@@ -665,10 +665,10 @@ export async function TourDetailContent({
                                                     key={i}
                                                     width='auto'
                                                     listItem
-                                                    className='flex items-start gap-[9px] text-it-heading'>
+                                                    className='flex items-start gap-[9px]'>
                                                     <span
                                                         aria-hidden='true'
-                                                        className='font-medium text-it-primary'>
+                                                        className='font-medium text-it-primary tracking-[-0.012em]'>
                                                         •
                                                     </span>
                                                     {h}
@@ -680,7 +680,7 @@ export async function TourDetailContent({
                                     over a muted description. Renders when either
                                     line is present; each line only if it exists. */}
                                     {(localTipTitle || localTipBody) && (
-                                        <div className='mt-1 flex items-start gap-[11px] rounded-it-md border border-it-peach-border bg-it-peach px-4 py-3.5 text-[13.5px] leading-[1.6]'>
+                                        <div className='mt-1 flex items-start gap-[11px] rounded-it-md border border-it-peach-border bg-it-peach px-4 py-3.5 text-[13.5px] leading-[1.6] tracking-[-0.012em]'>
                                             <Image
                                                 src='/icons/tip-sun.svg'
                                                 alt=''
@@ -695,7 +695,7 @@ export async function TourDetailContent({
                                                     </b>
                                                 )}
                                                 {localTipBody && (
-                                                    <span className='text-it-heading'>
+                                                    <span className=''>
                                                         {localTipBody}
                                                     </span>
                                                 )}
@@ -716,7 +716,7 @@ export async function TourDetailContent({
                                                         key={item.id}
                                                         width='auto'
                                                         listItem
-                                                        className='flex items-start gap-[9px] py-[5px] text-[16px] leading-[1.6] text-it-heading tracking-[-0.012em]'>
+                                                        className='flex items-start gap-[9px]py-[5px] text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                                                         <Image
                                                             src='/icons/trust-check-green.svg'
                                                             alt=''
@@ -732,7 +732,7 @@ export async function TourDetailContent({
                                                         key={item.id}
                                                         width='auto'
                                                         listItem
-                                                        className='flex items-start gap-[9px] py-[5px] text-[16px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                                                        className='flex items-start gap-[9px]py-[5px] text-[16px] leading-[1.6] tracking-[-0.012em] text-it-headingtext-it-heading tracking-[-0.012em]'>
                                                         <Image
                                                             src='/icons/x-faint.svg'
                                                             alt=''
@@ -794,7 +794,7 @@ export async function TourDetailContent({
                                                                         className='relative z-10'
                                                                     />
                                                                     <div className='flex flex-col gap-0.5'>
-                                                                        <span className='text-[14.5px] font-medium leading-[1.6] text-it-heading'>
+                                                                        <span className='text-[16px] font-medium leading-[1.6] tracking-[-0.012em] text-it-heading'>
                                                                             {
                                                                                 step.title
                                                                             }
@@ -851,7 +851,7 @@ export async function TourDetailContent({
                                                                 (item, i) => (
                                                                     <li
                                                                         key={`${group.title}-${i}`}
-                                                                        className='relative py-[5px] pl-[22px] text-it-heading'>
+                                                                        className='relative py-[5px] pl-[22px]'>
                                                                         <span
                                                                             aria-hidden='true'
                                                                             className={`absolute top-[13px] left-1 size-[5px] rounded-it-full ${group.warn ? 'bg-it-star' : 'bg-it-ink-muted'}`}
@@ -876,7 +876,7 @@ export async function TourDetailContent({
                                             (para, i) => (
                                                 <p
                                                     key={i}
-                                                    className='m-0 text-[14.5px] leading-[1.7] text-it-heading'>
+                                                    className='m-0 text-[14.5px] leading-[1.7] '>
                                                     {para}
                                                 </p>
                                             )
@@ -942,7 +942,7 @@ export async function TourDetailContent({
                                     conditions URL; in-app it opens as the
                                     intercepted overlay. */}
                                 {detail.operatorName && (
-                                    <p className='m-0 text-[12.5px] leading-[1.6] text-it-text-muted'>
+                                    <p className='m-0 text-[12.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                                         {cancelDict.suppliedBy}{' '}
                                         {detail.operatorName}
                                         {detail.operatorTerms?.kind ===
@@ -956,7 +956,7 @@ export async function TourDetailContent({
                                                             `/operators/${detail.operatorSlug}/conditions`
                                                         )}
                                                         scroll={false}
-                                                        className='font-medium text-it-text-muted underline underline-offset-2'>
+                                                        className='font-medium text-it-text-muted underline underline-offset-2 tracking-[-0.012em]'>
                                                         {
                                                             cancelDict.operatorConditionsApply
                                                         }

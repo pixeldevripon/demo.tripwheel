@@ -170,12 +170,12 @@ export function HubTourCard({
                     defaulted 0 here advertised a brand-new tour as "0 (0)",
                     which reads as a terrible tour rather than a new one. */}
                 {tour.rating !== undefined && (
-                    <div className='flex items-center gap-1.5 text-[10.5px] @[220px]:text-[12.5px] leading-[1.6]'>
-                        <span className='font-medium text-it-star'>
+                    <div className='flex items-center gap-1.5 text-[10.5px] @[220px]:text-[12.5px] leading-[1.6] tracking-[-0.012em]'>
+                        <span className='font-medium text-it-star tracking-[-0.012em]'>
                             ★ {tour.rating}
                         </span>
                         {tour.reviewCount !== undefined && (
-                            <span className='text-it-text-muted tabular-nums'>
+                            <span className='text-it-heading/50 tabular-nums'>
                                 ({tour.reviewCount.toLocaleString()})
                             </span>
                         )}
@@ -184,7 +184,7 @@ export function HubTourCard({
 
                 {/* Title + attribute tags */}
                 <div className='flex flex-col gap-1 md:gap-1.5'>
-                    <h3 className='m-0 font-it-body text-[13px] @[220px]:text-[15.5px] leading-[1.3] tracking-[-0.012em] text-it-heading line-clamp-2 font-medium'>
+                    <h3 className='m-0 text-[14px] @[220px]:text-[15.5px] leading-[1.4] tracking-[-0.012em] text-it-heading line-clamp-2 font-medium'>
                         {tour.title}
                     </h3>
                     <ul className='m-0 flex flex-wrap items-center gap-x-2 gap-y-1 p-0'>
@@ -196,7 +196,7 @@ export function HubTourCard({
                                         className='size-[3px] shrink-0 rounded-full bg-it-ink-muted'
                                     />
                                 )}
-                                <li className='text-[11px] @[220px]:text-[12.5px] leading-[1.6] text-it-text-muted'>
+                                <li className='text-[10px] md:text-[14px] @[220px]:text-[12.5px] leading-[1.6] text-it-heading/70 tracking-[-0.012em]'>
                                     {attr}
                                 </li>
                             </Fragment>
@@ -207,7 +207,7 @@ export function HubTourCard({
                 {/* Price - "from $140/per" or charter "from $2,200/10 people +
                     $220 per extra person" (Figma: unit sits flush to the price, the
                     surcharge note keeps its space and wraps on narrow cards). */}
-                <p className='m-0 mt-auto pt-2 text-[11px] @[220px]:text-[12.5px] leading-[1.6] text-it-text-muted'>
+                <p className='m-0 mt-auto pt-2 text-[10px] md:text-[14px] @[220px]:text-[12.5px] leading-[1.6] text-it-heading/70 tracking-[-0.012em]'>
                     {dict.from}
                     <b className='ml-1 text-[14px] @[220px]:text-[17px] font-medium tracking-[-0.012em] text-it-heading tabular-nums'>
                         {tour.priceDisplay}
@@ -220,7 +220,7 @@ export function HubTourCard({
 
                 {/* Free cancellation */}
                 {tour.freeCancellation && (
-                    <div className='flex items-center gap-1.5 text-[11px] @[220px]:text-[12.5px] font-medium leading-[1.6] text-it-green-text max-sm:hidden'>
+                    <div className='flex items-center gap-1.5 text-[11px] @[220px]:text-[12.5px] font-medium leading-[1.6] text-it-green-text max-sm:hidden tracking-[-0.012em]'>
                         <Image
                             src='/icons/trust-check-green.svg'
                             alt=''

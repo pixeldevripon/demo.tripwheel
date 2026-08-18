@@ -49,7 +49,7 @@ export function DestinationExploreTypes({
                         action={
                             <Link
                                 href={allToursHref}
-                                className='whitespace-nowrap text-sm font-medium text-it-primary-hover underline underline-offset-[3px] max-sm:hidden'>
+                                className='whitespace-nowrap text-sm font-medium text-it-primary-hover underline underline-offset-[3px] max-sm:hidden tracking-[-0.012em]'>
                                 {dict.allTours.replace(
                                     '{destination}',
                                     destinationName

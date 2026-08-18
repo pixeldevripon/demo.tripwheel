@@ -86,8 +86,8 @@ export function ConfirmDialog({
                                 onClick={onConfirm}
                                 className={`cursor-pointer rounded-full px-4.5 py-2.25 text-[14px] font-medium transition-colors disabled:cursor-default disabled:opacity-60 ${
                                     destructive
-                                        ? 'border-[1.5px] border-it-error bg-transparent text-it-error hover:bg-it-error-subtle'
-                                        : 'border-none bg-it-heading text-it-white hover:opacity-90'
+                                        ? 'border-[1.5px] border-it-error bg-transparent text-it-error hover:bg-it-error-subtle tracking-[-0.012em]'
+                                        : 'border-none bg-it-heading text-it-white hover:opacity-90 tracking-[-0.012em]'
                                 }`}>
                                 {confirmLabel}
                             </motion.button>
@@ -96,7 +96,7 @@ export function ConfirmDialog({
                                 disabled={busy}
                                 whileTap={{ scale: 0.97 }}
                                 onClick={onClose}
-                                className='cursor-pointer rounded-full border-none bg-transparent px-4.5 py-2.25 text-[14px] font-medium text-it-text-muted transition-colors hover:text-it-heading disabled:cursor-default disabled:opacity-60'>
+                                className='cursor-pointer rounded-full border-none bg-transparent px-4.5 py-2.25 text-[14px] font-medium text-it-text-muted transition-colors hover:text-it-heading disabled:cursor-default disabled:opacity-60 tracking-[-0.012em]'>
                                 {cancelLabel}
                             </motion.button>
                         </div>

@@ -45,11 +45,11 @@ export function ThankYouQuestion({
                         <h3 className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading font-medium'>
                             {dict.questionTitle}
                         </h3>
-                        <p className='m-0 mt-1.5 text-[14px] leading-[1.6] text-it-text-muted'>
+                        <p className='m-0 mt-1.5 text-[14px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                             {dict.talkLocals}
                         </p>
                         <div className='mt-4'>
-                            <b className='mb-1.5 block text-[15px] font-medium leading-[1.6] text-it-heading'>
+                            <b className='mb-1.5 block text-[15px] font-medium leading-[1.6] text-it-heading tracking-[-0.012em]'>
                                 {booking.operatorName}
                             </b>
                             {/* Operator contact is withheld on the unverified
@@ -58,7 +58,7 @@ export function ThankYouQuestion({
                             {booking.operatorEmail && (
                                 <a
                                     href={`mailto:${booking.operatorEmail}`}
-                                    className='flex w-fit items-center gap-[9px] py-1 text-[14px] leading-[1.6]'>
+                                    className='flex w-fit items-center gap-[9px] py-1 text-[14px] leading-[1.6] tracking-[-0.012em]'>
                                     <Image
                                         src='/icons/thank-you/detail-sms.svg'
                                         alt=''
@@ -74,7 +74,7 @@ export function ThankYouQuestion({
                             {booking.operatorPhone && (
                                 <a
                                     href={`tel:${booking.operatorPhone.replace(/\s/g, '')}`}
-                                    className='flex w-fit items-center gap-[9px] py-1 text-[14px] leading-[1.6]'>
+                                    className='flex w-fit items-center gap-[9px] py-1 text-[14px] leading-[1.6] tracking-[-0.012em]'>
                                     <Image
                                         src='/icons/thank-you/detail-call.svg'
                                         alt=''
@@ -89,10 +89,10 @@ export function ThankYouQuestion({
                             )}
                         </div>
                         <div className='my-[18px] border-t border-it-divider' />
-                        <b className='block text-[14px] font-medium leading-[1.6] text-it-heading'>
+                        <b className='block text-[14px] font-medium leading-[1.6] text-it-heading tracking-[-0.012em]'>
                             {dict.issueTitle}
                         </b>
-                        <p className='m-0 mt-1 text-[13.5px] leading-[1.6] text-it-text-muted'>
+                        <p className='m-0 mt-1 text-[13.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                             {issueBefore}
                             <a
                                 href={`mailto:${booking.supportEmail}`}
@@ -101,13 +101,13 @@ export function ThankYouQuestion({
                             </a>
                             {tailBefore}
                             {showRef && (
-                                <code className='font-mono text-[12.5px] font-medium text-it-heading'>
+                                <code className='font-mono text-[12.5px] font-medium text-it-heading tracking-[-0.012em]'>
                                     {booking.displayRef}
                                 </code>
                             )}
                             {tailAfter}
                         </p>
-                        <p className='m-0 mt-1 text-[13.5px] leading-[1.6] text-it-text-muted'>
+                        <p className='m-0 mt-1 text-[13.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                             {dict.replyTime}
                         </p>
                     </div>

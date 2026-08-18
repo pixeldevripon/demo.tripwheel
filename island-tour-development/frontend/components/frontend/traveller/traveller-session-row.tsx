@@ -45,14 +45,14 @@ export function TravellerSessionRow({
     }
 
     return (
-        <p className='m-0 flex items-center gap-1.5 text-[13.5px] leading-[1.6] text-it-text-muted'>
+        <p className='m-0 flex items-center gap-1.5 text-[13.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
             {dict.signedInAs.replace('{email}', maskEmail(email))}
             <span aria-hidden>·</span>
             <button
                 type='button'
                 onClick={() => void handleLogout()}
                 disabled={busy}
-                className='inline-flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-[13.5px] font-medium text-it-heading transition-colors hover:text-it-primary disabled:opacity-60'>
+                className='inline-flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-[13.5px] font-medium text-it-heading transition-colors hover:text-it-primary disabled:opacity-60 tracking-[-0.012em]'>
                 {busy ? (
                     <Loader2
                         className='size-3.5 animate-spin'

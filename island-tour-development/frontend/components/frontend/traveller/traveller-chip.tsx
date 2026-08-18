@@ -71,7 +71,7 @@ export function TravellerChip({
     tone?: Tone;
 }) {
     return (
-        <span className='inline-flex items-center gap-1.5 rounded-full border border-it-heading/15 bg-it-white px-2.5 py-1 text-[12px] font-medium text-it-heading'>
+        <span className='inline-flex items-center gap-1.5 rounded-full border border-it-heading/15 bg-it-white px-2.5 py-1 text-[12px] font-medium text-it-heading tracking-[-0.012em]'>
             <span
                 aria-hidden
                 className={`size-1.5 shrink-0 rounded-full ${DOT_CLASS[tone]}`}
@@ -94,8 +94,8 @@ export function TravellerPayChip({
         <span
             className={`inline-flex items-center rounded-full px-2.5 py-1 text-[12px] font-normal ${
                 settled
-                    ? 'bg-it-green-subtle text-it-green'
-                    : 'border border-it-heading/15 bg-it-surface text-it-text-muted'
+                    ? 'bg-it-green-subtle text-it-green tracking-[-0.012em]'
+                    : 'border border-it-heading/15 bg-it-surface text-it-text-muted tracking-[-0.012em]'
             }`}>
             {label}
         </span>

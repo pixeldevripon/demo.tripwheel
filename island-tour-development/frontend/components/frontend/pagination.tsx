@@ -82,7 +82,7 @@ export function Pagination({
     // Design v2 .pager cell: 38px bordered square, 13.5px bold tabular digits;
     // the active page inverts to the dark surface.
     const cellBase =
-        'inline-flex h-[38px] min-w-[38px] cursor-pointer items-center justify-center rounded-it-sm border px-2.5 text-[13.5px] font-medium leading-none no-underline transition-colors duration-(--it-duration-xs) ease-(--it-ease) tabular-nums';
+        'inline-flex h-[38px] min-w-[38px] cursor-pointer items-center justify-center rounded-it-sm border px-2.5 text-[13.5px] font-medium leading-none no-underline transition-colors duration-(--it-duration-xs) ease-(--it-ease) tabular-nums tracking-[-0.012em]';
 
     return (
         <nav
@@ -116,8 +116,8 @@ export function Pagination({
                             transition: springPop,
                             className: `${cellBase} ${
                                 n === page
-                                    ? 'border-it-dark bg-it-dark text-it-white'
-                                    : 'border-it-border bg-it-white text-it-heading hover:bg-it-bg'
+                                    ? 'border-it-dark bg-it-dark text-it-white tracking-[-0.012em]'
+                                    : 'border-it-border bg-it-white text-it-heading hover:bg-it-bg tracking-[-0.012em]'
                             }`,
                         },
                         n

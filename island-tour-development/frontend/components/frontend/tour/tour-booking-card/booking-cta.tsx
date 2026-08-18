@@ -38,7 +38,7 @@ export function BookingCta() {
     // shows a disabled notice in place of the CTA and trust lines.
     if (bookingBlocked) {
         return (
-            <div className='flex w-full items-center justify-center rounded-it-sm bg-it-bg px-8 py-3.5 text-center text-[14px] font-medium leading-[1.6] text-it-text-muted'>
+            <div className='flex w-full items-center justify-center rounded-it-sm bg-it-bg px-8 py-3.5 text-center text-[14px] font-medium leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                 {dict.bookingUnavailable}
             </div>
         );

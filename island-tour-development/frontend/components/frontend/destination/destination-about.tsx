@@ -82,7 +82,7 @@ export function DestinationAbout({
                             <div
                                 key={section.heading}
                                 className='flex flex-col gap-2.5 border-t-2 border-it-peach-border pt-[18px]'>
-                                <h3 className='m-0 text-[20px] leading-[1.3] tracking-[-0.012em] text-it-heading font-medium'>
+                                <h3 className='m-0 text-[20px] leading-[1.3] tracking-[-0.012em] text-it-heading font-semibold'>
                                     {section.heading}
                                 </h3>
                                 {section.body && (

@@ -26,10 +26,10 @@ function Step({
 }) {
     const circle =
         state === 'active'
-            ? 'bg-it-primary text-it-white'
+            ? 'bg-it-primary text-it-white tracking-[-0.012em]'
             : state === 'done'
-              ? 'bg-it-green text-it-white'
-              : 'border-[1.5px] border-it-border bg-it-white text-it-text-muted';
+              ? 'bg-it-green text-it-white tracking-[-0.012em]'
+              : 'border-[1.5px] border-it-border bg-it-white text-it-text-muted tracking-[-0.012em]';
     return (
         <button
             type='button'
@@ -57,14 +57,14 @@ function Step({
                         />
                     </motion.span>
                 ) : (
-                    <span className='text-[13px] font-medium leading-none tabular-nums'>
+                    <span className='text-[13px] font-medium leading-none tabular-nums tracking-[-0.012em]'>
                         {number}
                     </span>
                 )}
             </span>
             <span
                 className={`text-[13.5px] font-medium leading-[1.6] ${
-                    state === 'upcoming' ? 'text-it-text-muted' : 'text-it-heading'
+                    state === 'upcoming' ? 'text-it-text-muted tracking-[-0.012em]' : ''
                 }`}>
                 {label}
             </span>

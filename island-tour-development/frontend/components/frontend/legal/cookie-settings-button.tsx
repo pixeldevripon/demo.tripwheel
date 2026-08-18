@@ -31,11 +31,11 @@ export function CookieSettingsButton() {
             <button
                 type='button'
                 onClick={openSettings}
-                className='inline-flex cursor-pointer items-center rounded-full border-none bg-it-primary px-6 py-3 text-[15px] font-medium text-it-primary-fg transition-colors hover:bg-it-primary-hover active:bg-it-primary-active'>
+                className='inline-flex cursor-pointer items-center rounded-full border-none bg-it-primary px-6 py-3 text-[15px] font-medium text-it-primary-fg transition-colors hover:bg-it-primary-hover active:bg-it-primary-active tracking-[-0.012em]'>
                 Open your cookie settings
             </button>
             {unavailable && (
-                <p className='m-0 text-[14px] leading-[1.6] text-it-text-muted'>
+                <p className='m-0 text-[14px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                     Cookie settings are not available yet. Please check back
                     soon.
                 </p>

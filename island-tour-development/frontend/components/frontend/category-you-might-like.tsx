@@ -92,11 +92,11 @@ export function CategoryYouMightLike({
                                                 />
                                             )}
                                         </div>
-                                        <b className='mt-2.5 block text-[15px] font-medium leading-[1.6] text-it-heading'>
+                                        <b className='mt-2.5 block text-[15px] font-medium leading-[1.6] text-it-heading tracking-[-0.012em]'>
                                             {item.name}
                                         </b>
                                         {item.tours != null && (
-                                            <span className='text-[12.5px] leading-[1.6] text-it-text-muted tabular-nums'>
+                                            <span className='text-[14px] leading-[1.6] text-it-heading/70 tabular-nums tracking-[-0.012em]'>
                                                 {item.tours} {toursWord}
                                             </span>
                                         )}
@@ -117,7 +117,7 @@ export function CategoryYouMightLike({
         <section className='bg-it-white pt-16 pb-20'>
             <div className='it-container'>
                 <Reveal className='flex flex-col gap-4'>
-                    <h2 className='m-0 text-[24px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                    <h2 className='m-0 text-[20px] md:text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                         {title}
                     </h2>
 
@@ -143,7 +143,7 @@ export function CategoryYouMightLike({
                                             />
                                         )}
                                     </div>
-                                    <b className='mt-2.5 block text-[15px] font-medium leading-[1.6] text-it-heading'>
+                                    <b className='mt-2.5 block text-[15px] font-medium leading-[1.6] text-it-heading tracking-[-0.012em]'>
                                         {item.name}
                                     </b>
                                 </MotionLink>
@@ -160,7 +160,7 @@ export function CategoryYouMightLike({
                             </span>{' '}
                             <Link
                                 href={localizeHref(locale, footer.href)}
-                                className='text-[14.5px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-[3px] transition-colors duration-300 hover:text-it-primary'>
+                                className='text-[14.5px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-[3px] transition-colors duration-300 hover:text-it-primary tracking-[-0.012em]'>
                                 {footer.cta} →
                             </Link>
                         </div>

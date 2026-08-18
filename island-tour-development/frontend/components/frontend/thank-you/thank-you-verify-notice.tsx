@@ -28,7 +28,7 @@ export function ThankYouVerifyNotice({
                     <div className='flex flex-col items-start gap-5 rounded-[16px] border border-it-heading/10 bg-it-surface p-6 sm:flex-row sm:items-center sm:justify-between'>
                         <div className='flex items-start gap-4'>
                             <span className='flex size-10 shrink-0 items-center justify-center rounded-full bg-it-primary/8'>
-                                <Lock className='size-5 text-it-primary' />
+                                <Lock className='size-5 text-it-primary tracking-[-0.012em]' />
                             </span>
                             <div className='flex flex-col gap-1'>
                                 <p className='m-0 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>

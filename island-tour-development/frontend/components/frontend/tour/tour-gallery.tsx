@@ -196,7 +196,7 @@ export function TourGallery({
                     onClick={() => openAt(slide)}
                     whileTap={{ scale: 0.97 }}
                     transition={springPop}
-                    className='absolute right-3 bottom-3 z-10 inline-flex cursor-pointer items-center gap-1.5 rounded-it-sm border-none bg-it-white/94 px-2.5 py-1.5 text-[12.5px] font-medium leading-[1.4] text-it-heading shadow-it-sm'>
+                    className='absolute right-3 bottom-3 z-10 inline-flex cursor-pointer items-center gap-1.5 rounded-it-sm border-none bg-it-white/94 px-2.5 py-1.5 text-[12.5px] font-medium leading-[1.4] text-it-heading shadow-it-sm tracking-[-0.012em]'>
                     <Image
                         src='/icons/gallery-photos.svg'
                         alt=''
@@ -259,7 +259,7 @@ export function TourGallery({
                     onClick={() => openAt(0)}
                     whileTap={{ scale: 0.97 }}
                     transition={springPop}
-                    className='absolute right-3 bottom-3 z-10 inline-flex cursor-pointer items-center gap-2 rounded-it-sm border-none bg-it-white/94 px-3.5 py-[9px] text-[13px] font-medium leading-[1.4] text-it-heading shadow-it-sm transition-transform duration-(--it-duration-xs) ease-(--it-ease) hover:-translate-y-px'>
+                    className='absolute right-3 bottom-3 z-10 inline-flex cursor-pointer items-center gap-2 rounded-it-sm border-none bg-it-white/94 px-3.5 py-[9px] text-[13px] font-medium leading-[1.4] text-it-heading shadow-it-sm transition-transform duration-(--it-duration-xs) ease-(--it-ease) hover:-translate-y-px tracking-[-0.012em]'>
                     <Image
                         src='/icons/gallery-photos.svg'
                         alt=''
@@ -286,9 +286,9 @@ export function TourGallery({
                         className='fixed inset-0 z-100 flex flex-col bg-black/95'>
                         {/* Top bar: counter + close */}
                         <div
-                            className='flex items-center justify-between px-4 py-4 text-it-white md:px-6'
+                            className='flex items-center justify-between px-4 py-4 text-it-white md:px-6 tracking-[-0.012em]'
                             onClick={e => e.stopPropagation()}>
-                            <span className='text-[14px] leading-[1.6] tracking-[-0.012em] tabular-nums'>
+                            <span className='text-[14px] leading-[1.6] tracking-[-0.012em] tabular-nums text-it-heading/70'>
                                 {index + 1} / {images.length}
                             </span>
                             <motion.button
@@ -297,7 +297,7 @@ export function TourGallery({
                                 aria-label='Close'
                                 whileTap={{ scale: 0.9 }}
                                 transition={springPop}
-                                className='grid size-10 cursor-pointer place-items-center rounded-it-full border-none bg-white/10 text-it-white transition-colors duration-300 hover:bg-white/20'>
+                                className='grid size-10 cursor-pointer place-items-center rounded-it-full border-none bg-white/10 text-it-white transition-colors duration-300 hover:bg-white/20 tracking-[-0.012em]'>
                                 <X className='size-5' />
                             </motion.button>
                         </div>
@@ -314,7 +314,7 @@ export function TourGallery({
                                     aria-label='Previous photo'
                                     whileTap={{ scale: 0.9 }}
                                     transition={springPop}
-                                    className='absolute left-3 z-10 grid size-10 cursor-pointer place-items-center rounded-it-full border-none bg-white/10 text-it-white transition-colors duration-300 hover:bg-white/20 md:size-12'>
+                                    className='absolute left-3 z-10 grid size-10 cursor-pointer place-items-center rounded-it-full border-none bg-white/10 text-it-white transition-colors duration-300 hover:bg-white/20 md:size-12 tracking-[-0.012em]'>
                                     <ChevronLeft className='size-6' />
                                 </motion.button>
                             )}
@@ -350,7 +350,7 @@ export function TourGallery({
                                     aria-label='Next photo'
                                     whileTap={{ scale: 0.9 }}
                                     transition={springPop}
-                                    className='absolute right-3 z-10 grid size-10 cursor-pointer place-items-center rounded-it-full border-none bg-white/10 text-it-white transition-colors duration-300 hover:bg-white/20 md:size-12'>
+                                    className='absolute right-3 z-10 grid size-10 cursor-pointer place-items-center rounded-it-full border-none bg-white/10 text-it-white transition-colors duration-300 hover:bg-white/20 md:size-12 tracking-[-0.012em]'>
                                     <ChevronRight className='size-6' />
                                 </motion.button>
                             )}

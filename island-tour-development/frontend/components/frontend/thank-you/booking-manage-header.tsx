@@ -48,20 +48,20 @@ export function BookingManageHeader({
         ? {
               label: dict.statusCancelled,
               dot: 'bg-it-error',
-              text: 'text-it-error',
+              text: 'text-it-error tracking-[-0.012em]',
               bg: 'bg-it-error-subtle',
           }
         : cancellationPending
           ? {
                 label: dict.statusCancellationPending,
                 dot: 'bg-it-warning',
-                text: 'text-it-warning',
+                text: 'text-it-warning tracking-[-0.012em]',
                 bg: 'bg-it-warning-subtle',
             }
           : {
                 label: dict.statusConfirmed,
                 dot: 'bg-it-green',
-                text: 'text-it-green',
+                text: 'text-it-green tracking-[-0.012em]',
                 bg: 'bg-it-green/8',
             };
     /**

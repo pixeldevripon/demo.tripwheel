@@ -406,16 +406,16 @@ export function SavedToursView({
                         </h1>
 
                         {isShared ? (
-                            <p className='m-0 mt-1.5 text-[16px] font-medium leading-[1.4] text-it-heading max-sm:text-[13px]'>
+                            <p className='m-0 mt-1.5 text-[16px] font-medium leading-[1.4] text-it-heading max-sm:text-[13px] tracking-[-0.012em]'>
                                 {dict.sharedNote}
                             </p>
                         ) : (
-                            <p className='m-0 mt-1.5 text-[16px] font-medium leading-[1.4] text-it-heading max-sm:text-[14.5px]'>
+                            <p className='m-0 mt-1.5 text-[16px] font-medium leading-[1.4] text-it-heading max-sm:text-[14.5px] tracking-[-0.012em]'>
                                 {dict.subtitle}
                             </p>
                         )}
 
-                        <p className='m-0 mt-3.5 text-[13.5px] font-medium leading-[1.6] text-it-text-muted'>
+                        <p className='m-0 mt-3.5 text-[13.5px] font-medium leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                             {formatPlural(
                                 dict.tourCount,
                                 visible.length,
@@ -429,7 +429,7 @@ export function SavedToursView({
                             shown on a shared list: it is not that reader's
                             device the list is sitting on. */}
                         {!isShared && (
-                            <p className='m-0 mt-1.5 max-w-[430px] text-[13px] leading-[1.6] text-it-text-muted/80'>
+                            <p className='m-0 mt-1.5 max-w-[430px] text-[13px] leading-[1.6] text-it-text-muted/80 tracking-[-0.012em]'>
                                 {dict.deviceLine}
                             </p>
                         )}

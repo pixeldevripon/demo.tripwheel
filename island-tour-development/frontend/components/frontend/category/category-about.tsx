@@ -30,7 +30,7 @@ export function CategoryAbout({
                         description={description}
                         moreLabel={learnMoreLabel}
                         lessLabel={readLessLabel}
-                        className='m-0 text-[14.5px] leading-[1.7] text-it-heading'
+                        className='m-0 text-[14.5px] leading-[1.7] text-it-heading tracking-[-0.012em]'
                         buttonClassName='ml-1.5 inline cursor-pointer border-none bg-transparent p-0 text-[14px] md:text-[16px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-[3px] transition-colors duration-300 hover:text-it-primary tracking-[-0.012em]'
                     />
                 </Reveal>

@@ -126,7 +126,7 @@ export function PartySelector() {
                         under their own heading. */}
                     {spectatorsApplied && spectatorsOn && (
                         <>
-                            <div className='border-t border-it-divider pt-2.5 text-[12px] font-medium leading-[1.6] text-it-text-muted'>
+                            <div className='border-t border-it-divider pt-2.5 text-[12px] font-medium leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                                 {dict.spectators}
                             </div>
                             {spectatorBands.map(band => (

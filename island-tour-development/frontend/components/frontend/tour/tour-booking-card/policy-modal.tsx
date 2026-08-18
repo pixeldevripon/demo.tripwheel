@@ -28,9 +28,9 @@ import Image from 'next/image';
  */
 
 /** Sub-heading: lead sentence, "HOW IT WORKS", and the closing heading. */
-const SUBHEAD = 'font-medium text-[14.5px] leading-[1.6] tracking-[-0.012em]';
+const SUBHEAD = 'text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em]';
 /** Body copy under a sub-heading. */
-const BODY = 'text-[14.5px] leading-[1.7]';
+const BODY = 'text-[14.5px] leading-[1.7] tracking-[-0.012em]';
 
 export function PolicyModal({
     open,

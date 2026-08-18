@@ -56,11 +56,11 @@ export function EditorialBanner({
                         <div className='flex flex-col lg:absolute lg:left-[60px] lg:top-1/2 lg:z-3 lg:-translate-y-1/2 lg:max-w-[432px]'>
                             <h2 className='m-0 font-it-display text-[clamp(26px,3.3vw,40px)] leading-[1.15] tracking-[-0.012em] text-it-white font-medium'>
                                 <span className='block'>{dict.titleLine1}</span>
-                                <span className='block text-it-editorial-accent'>
+                                <span className='block tracking-[-0.012em]'>
                                     {dict.titleLine2}
                                 </span>
                             </h2>
-                            <p className='m-0 mt-3.5 max-w-[400px] text-[14px] sm:text-[16px] leading-[1.6] text-it-white/90 tracking-[-0.012em]'>
+                            <p className='m-0 mt-3.5 max-w-[400px] text-[14px] sm:text-[16px] leading-[1.6] text-it-white/80 tracking-[-0.012em]'>
                                 {dict.body}
                             </p>
 
@@ -75,7 +75,7 @@ export function EditorialBanner({
                                     tap: { scale: 0.99 },
                                 }}
                                 transition={springPop}>
-                                <span className='font-medium text-[16px] leading-[1.6] text-it-primary-hover tracking-[-0.012em]'>
+                                <span className='font-medium text-[16px] leading-[1.6] text-it-primary tracking-[-0.012em]'>
                                     {dict.cta}
                                 </span>
                                 <MotionSpan
@@ -83,7 +83,7 @@ export function EditorialBanner({
                                     variants={{ rest: { x: 0 }, tap: { x: 6 } }}
                                     transition={springPop}>
                                     <ArrowRight
-                                        className='size-4 text-it-primary-hover'
+                                        className='size-4 text-it-primary-hover tracking-[-0.012em]'
                                         strokeWidth={2.2}
                                     />
                                 </MotionSpan>

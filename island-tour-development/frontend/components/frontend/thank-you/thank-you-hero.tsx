@@ -56,30 +56,30 @@ export function ThankYouHero({
                             className='h-11 w-auto'
                         />
                     </MotionSpan>
-                    <h1 className='m-0 font-it-display text-[clamp(28px,4vw,40px)] leading-[1.15] tracking-[-0.012em] text-it-heading font-medium'>
+                    <h1 className='m-0 text-[28px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                         {dict.title.replace('{name}', booking.guestFirstName)}
                     </h1>
-                    <p className='m-0 mt-3 text-[16.5px] leading-[1.6] text-it-heading'>
+                    <p className='m-0 mt-3 text-[16.5px] leading-[1.6] text-it-heading tracking-[-0.012em]'>
                         {renderTemplate(dict.subtitle, {
                             tour: (
-                                <b className='font-medium'>
+                                <b className='tracking-[-0.012em] text-it-heading/70 text-[10px]'>
                                     {booking.tourTitle}
                                 </b>
                             ),
                             date: (
-                                <b className='font-medium'>
+                                <b className='tracking-[-0.012em] text-it-heading/70 text-[10px]'>
                                     {booking.dateLabel}
                                 </b>
                             ),
                             time: (
-                                <b className='font-medium'>
+                                <b className='tracking-[-0.012em] text-it-heading/70 text-[10px]'>
                                     {booking.startTimeLabel}
                                 </b>
                             ),
                         })}
                     </p>
                     {metaItems.length > 0 && (
-                        <div className='mt-2.5 flex flex-wrap items-center justify-center gap-2 text-[13.5px] leading-[1.6] text-it-text-muted'>
+                        <div className='mt-2.5 flex flex-wrap items-center justify-center gap-2 text-[13.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                             {/* Index key: a fixed-position array of
                                 independent strings, where two entries CAN
                                 coincide (operator name == party label is
@@ -89,7 +89,7 @@ export function ThankYouHero({
                                     {i > 0 && (
                                         <span
                                             aria-hidden='true'
-                                            className='text-it-text-muted'>
+                                            className='text-it-text-muted tracking-[-0.012em]'>
                                             ·
                                         </span>
                                     )}
@@ -127,11 +127,11 @@ export function ThankYouHero({
                             }}
                         />
                     </div>
-                    <div className='mt-[18px] flex flex-col items-center text-center text-[13px] leading-[1.6] text-it-text-muted'>
+                    <div className='mt-[18px] flex flex-col items-center text-center text-[13px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                         <p className='m-0'>
                             {renderTemplate(dict.emailSentTo, {
                                 email: (
-                                    <b className='font-medium'>
+                                    <b className='tracking-[-0.012em] text-it-heading/70 text-[10px]'>
                                         {booking.guestEmail}
                                     </b>
                                 ),

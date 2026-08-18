@@ -61,7 +61,7 @@ export function ThankYouRelatedTours({
                         href={toursHref}
                         whileTap={{ scale: 0.97 }}
                         transition={springPop}
-                        className='inline-block text-[14.5px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-[3px] transition-colors duration-300 hover:text-it-primary'>
+                        className='inline-block text-[14.5px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-[3px] transition-colors duration-300 hover:text-it-primary tracking-[-0.012em]'>
                         {dict.browsePicks} →
                     </MotionLink>
                 </Reveal>

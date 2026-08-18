@@ -58,7 +58,7 @@ export function HubDiscoverCard({
                 </h3>
                 <p
                     className={`m-0 text-[13.5px] leading-[1.65] text-it-text-muted ${
-                        expanded ? '' : 'line-clamp-4 md:line-clamp-none'
+                        expanded ? '' : 'line-clamp-4 md:line-clamp-none tracking-[-0.012em] leading-[1.6] text-[14px] md:text-[16px]'
                     }`}>
                     {item.body}
                 </p>

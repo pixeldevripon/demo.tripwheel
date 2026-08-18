@@ -101,21 +101,21 @@ export function SavedEmptyState({
             <h1 className='m-0 mt-3.5 font-it-display text-[clamp(24px,3vw,32px)] leading-[1.15] tracking-[-0.012em] text-it-heading font-medium'>
                 {dict.title}
             </h1>
-            <p className='m-0 mt-2 max-w-[520px] text-[15.5px] leading-[1.6] text-it-text-muted'>
+            <p className='m-0 mt-2 max-w-[520px] text-[15.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                 {dict.body}
             </p>
 
             {island && (
                 <Link
                     href={localizeHref(locale, `/${island.slug}/tours`)}
-                    className='mt-[18px] w-fit rounded-it-full bg-it-primary px-[22px] py-[13px] text-[14px] font-medium leading-[1.6] text-it-white no-underline transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:bg-it-primary-hover'>
+                    className='mt-[18px] w-fit rounded-it-full bg-it-primary px-[22px] py-[13px] text-[14px] font-medium leading-[1.6] text-it-white no-underline transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:bg-it-primary-hover tracking-[-0.012em]'>
                     {dict.cta.replace('{destination}', island.name)} &rarr;
                 </Link>
             )}
             {!island && (
                 <Link
                     href={localizeHref(locale, '/search')}
-                    className='mt-[18px] w-fit rounded-it-full bg-it-primary px-[22px] py-[13px] text-[14px] font-medium leading-[1.6] text-it-white no-underline hover:bg-it-primary-hover'>
+                    className='mt-[18px] w-fit rounded-it-full bg-it-primary px-[22px] py-[13px] text-[14px] font-medium leading-[1.6] text-it-white no-underline hover:bg-it-primary-hover tracking-[-0.012em]'>
                     {dict.ctaGeneric} &rarr;
                 </Link>
             )}
@@ -129,7 +129,7 @@ export function SavedEmptyState({
                                 locale,
                                 `/${island.slug}/${category.slug}`
                             )}
-                            className='rounded-it-full border border-it-border bg-it-white px-[15px] py-[9px] text-[13px] font-medium leading-[1.6] text-it-heading no-underline transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:border-it-ink'>
+                            className='rounded-it-full border border-it-border bg-it-white px-[15px] py-[9px] text-[13px] font-medium leading-[1.6] text-it-heading no-underline transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:border-it-ink tracking-[-0.012em]'>
                             {category.name}
                         </Link>
                     ))}
@@ -138,7 +138,7 @@ export function SavedEmptyState({
 
             {island && island.favourites.length > 0 && (
                 <section className='mt-10'>
-                    <h2 className='m-0 font-it-display text-[22px] leading-[1.2] text-it-heading font-medium'>
+                    <h2 className='m-0 font-it-display text-[22px] leading-[1.2] text-it-heading font-medium tracking-[-0.012em]'>
                         {island.curated
                             ? dict.favouritesTitle
                             : dict.popularTitle.replace(
@@ -146,7 +146,7 @@ export function SavedEmptyState({
                                   island.name
                               )}
                     </h2>
-                    <p className='m-0 mb-4 mt-[5px] text-[13.5px] leading-[1.6] text-it-text-muted'>
+                    <p className='m-0 mb-4 mt-[5px] text-[13.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                         {dict.favouritesHint}
                     </p>
                     {/* Three across, not the sitewide four (mockup `.g3`):

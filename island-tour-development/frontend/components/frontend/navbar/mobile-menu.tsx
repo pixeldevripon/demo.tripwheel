@@ -81,7 +81,7 @@ export function MobileMenu({
                                         <Link
                                             href={categoryHref(hub.slug)}
                                             onClick={onClose}
-                                            className='block text-it-heading text-base no-underline py-2'>
+                                            className='block text-it-heading text-base no-underline py-2 tracking-[-0.012em]'>
                                             {hub.name}
                                         </Link>
                                     </motion.div>
@@ -92,7 +92,7 @@ export function MobileMenu({
                                         className='my-2 h-px bg-it-divider'
                                     />
                                 )}
-                                <span className='px-1 pb-1 text-xs font-medium text-it-text-muted'>
+                                <span className='px-1 pb-1 text-xs font-medium text-it-text-muted tracking-[-0.012em]'>
                                     {dict.categories}
                                 </span>
                                 {categories.map((cat, i) => (
@@ -109,7 +109,7 @@ export function MobileMenu({
                                         <Link
                                             href={categoryHref(cat.slug)}
                                             onClick={onClose}
-                                            className='block text-it-heading text-base no-underline py-2'>
+                                            className='block text-it-heading text-base no-underline py-2 tracking-[-0.012em]'>
                                             {cat.name}
                                         </Link>
                                     </motion.div>
@@ -126,7 +126,7 @@ export function MobileMenu({
                             href={localizeHref(locale, '/saved')}
                             onClick={onClose}
                             aria-label={dict.saved}
-                            className='flex items-center gap-2.5 no-underline py-2 text-it-heading'>
+                            className='flex items-center gap-2.5 no-underline py-2 text-it-heading tracking-[-0.012em]'>
                             <Image
                                 src='/icons/nav-heart.svg'
                                 alt=''
@@ -134,7 +134,7 @@ export function MobileMenu({
                                 height={24}
                                 className='size-6'
                             />
-                            <span className='text-base'>
+                            <span className='text-base tracking-[-0.012em]'>
                                 {dict.saved}
                                 {count > 0 ? ` (${count})` : ''}
                             </span>

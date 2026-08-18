@@ -67,7 +67,7 @@ export function SearchResultsHeader({
     return (
         <div className='it-container flex flex-col items-start gap-2.5'>
             {destinationName && (
-                <span className='inline-flex items-center gap-1.5 rounded-it-full bg-it-primary-subtle px-3 py-1.5 text-[12.5px] font-medium leading-none text-it-primary-hover'>
+                <span className='inline-flex items-center gap-1.5 rounded-it-full bg-it-primary-subtle px-3 py-1.5 text-[12.5px] font-medium leading-none text-it-primary-hover tracking-[-0.012em]'>
                     <MapPin
                         className='size-3.5 shrink-0'
                         strokeWidth={2}
@@ -79,7 +79,7 @@ export function SearchResultsHeader({
             <h1 className='m-0 text-[clamp(28px,4vw,40px)] leading-[1.15] tracking-[-0.012em] text-it-heading font-medium'>
                 {headline}
             </h1>
-            <p className='m-0 text-[15px] leading-[1.6] text-it-text-muted md:text-[16px]'>
+            <p className='m-0 text-[15px] leading-[1.6] text-it-text-muted md:text-[16px] tracking-[-0.012em]'>
                 {subline}
             </p>
         </div>

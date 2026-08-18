@@ -45,7 +45,7 @@ export function OperatorConditionsOverlay({
                         <h2 className='m-0 font-it-display text-[21px] leading-[1.2] tracking-[-0.012em] text-it-heading sm:text-[22px] font-medium'>
                             {title}
                         </h2>
-                        <span className='text-[13px] leading-[1.5] text-it-text-muted'>
+                        <span className='text-[13px] leading-[1.5] text-it-text-muted tracking-[-0.012em]'>
                             {versionLine}
                         </span>
                     </div>

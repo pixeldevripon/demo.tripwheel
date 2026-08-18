@@ -54,7 +54,7 @@ export function HubWhySection({
         <section className='bg-it-white pt-16 pb-2.5 max-md:pt-8'>
             <div className='it-container'>
                 <Reveal className='flex flex-col gap-3.5'>
-                    <h2 className='m-0 font-it-display text-[clamp(22px,2.8vw,30px)] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                    <h2 className='m-0 text-[20px] md:text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                         {title}
                     </h2>
 
@@ -68,7 +68,7 @@ export function HubWhySection({
                         {body.map((paragraph, i) => (
                             <p
                                 key={i}
-                                className='m-0 hidden text-[14px] md:text-[16px] leading-[1.6] text-it-heading md:block tracking-[-0.012em]'>
+                                className='m-0 hidden text-[14px] md:text-[16px] leading-[1.6] text-it-text-muted md:block tracking-[-0.012em]'>
                                 {paragraph}
                             </p>
                         ))}
@@ -82,7 +82,7 @@ export function HubWhySection({
                                 moreLabel={readMoreLabel}
                                 lessLabel={showLessLabel}
                                 limit={MOBILE_CLAMP_CHARS}
-                                className='m-0 whitespace-pre-line text-[14.5px] leading-[1.6] text-it-heading md:hidden'
+                                className='m-0 whitespace-pre-line text-[14.5px] leading-[1.6] text-it-heading md:hidden tracking-[-0.012em]'
                                 buttonClassName='inline cursor-pointer whitespace-nowrap border-none bg-transparent p-0 text-[14px] font-medium leading-[1.6] tracking-[-0.012em] text-it-primary underline decoration-1 underline-offset-[3px]'
                             />
                         )}

@@ -29,7 +29,7 @@ export function ToursEmptyState({
             animate={{ opacity: 1, y: 0 }}
             transition={crossFade}
             className='flex flex-col items-center justify-center gap-4 px-6 py-16 text-center md:py-24'>
-            <span className='grid size-16 place-items-center rounded-it-full bg-it-surface text-it-text-muted md:size-20'>
+            <span className='grid size-16 place-items-center rounded-it-full bg-it-surface text-it-text-muted md:size-20 tracking-[-0.012em]'>
                 <SearchX className='size-7 md:size-8' strokeWidth={1.5} />
             </span>
 

@@ -11,7 +11,7 @@ import { Fragment, type ReactNode } from 'react';
 
 type ThankYouDict = Dictionary['thankYou'];
 
-const factText = 'text-[13px] font-medium leading-[1.6] text-it-heading';
+const factText = 'text-[13px] font-medium leading-[1.6] text-it-heading tracking-[-0.012em]';
 const factTextSm =
     'text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/70';
 
@@ -30,7 +30,7 @@ const EyebrowMark = (
     />
 );
 const dot = (
-    <span aria-hidden='true' className='text-it-text-muted'>
+    <span aria-hidden='true' className='text-it-text-muted tracking-[-0.012em]'>
         ·
     </span>
 );
@@ -272,7 +272,7 @@ function AptCard({
                 {ctaLabel && (
                     <Cta
                         r={recommendation}
-                        className='mt-3.5 inline-flex items-center gap-2 self-start rounded-it-sm border border-it-border bg-it-white px-[18px] py-2.5 text-[13.5px] font-medium leading-[1.4] text-it-heading no-underline transition-colors duration-(--it-duration-xs) hover:bg-it-bg'>
+                        className='mt-3.5 inline-flex items-center gap-2 self-start rounded-it-sm border border-it-border bg-it-white px-[18px] py-2.5 text-[13.5px] font-medium leading-[1.4] text-it-heading no-underline transition-colors duration-(--it-duration-xs) hover:bg-it-bg tracking-[-0.012em]'>
                         {ctaLabel}
                         {recommendation.external && (
                             <Image

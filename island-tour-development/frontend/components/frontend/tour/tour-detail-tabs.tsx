@@ -101,8 +101,8 @@ export function TourDetailTabs({ tabs }: { tabs: TourTab[] }) {
                             aria-current={isActive ? 'true' : undefined}
                             className={`relative -mb-px shrink-0 cursor-pointer whitespace-nowrap border-none bg-transparent px-[13px] py-3 text-[13px] leading-[1.6] transition-colors duration-(--it-duration-xs) ease-(--it-ease) ${
                                 isActive
-                                    ? 'font-medium text-it-primary-hover'
-                                    : 'font-medium text-it-text-muted hover:text-it-heading'
+                                    ? 'font-medium text-it-primary-hover tracking-[-0.012em]'
+                                    : 'font-medium text-it-text-muted hover:text-it-heading tracking-[-0.012em]'
                             }`}>
                             {/* One-cell grid: the invisible bold twin reserves
                                 the ACTIVE width, so the bold/semibold toggle
@@ -113,7 +113,7 @@ export function TourDetailTabs({ tabs }: { tabs: TourTab[] }) {
                                 </span>
                                 <span
                                     aria-hidden
-                                    className='invisible col-start-1 row-start-1 font-medium'>
+                                    className='invisible col-start-1 row-start-1 font-medium tracking-[-0.012em]'>
                                     {t.label}
                                 </span>
                             </span>

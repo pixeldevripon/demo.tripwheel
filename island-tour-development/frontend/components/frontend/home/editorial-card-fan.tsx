@@ -140,11 +140,11 @@ export function EditorialCardFan({
                         </span>
                         {/* Mockup `.lb` */}
                         <span className='block px-3 py-2.5 lg:px-[13px] lg:py-[11px]'>
-                            <span className='block text-[14px] lg:text-[20px] font-medium leading-[1.6] text-it-heading tracking-[-0.012em]'>
+                            <span className='block text-[14px] lg:text-[20px] font-medium leading-[1.6] text-it-white tracking-[-0.012em]'>
                                 {title}
                             </span>
                             {priceFrom && (
-                                <span className='mt-[3px] block text-[10px] leading-[1.2] text-it-text-muted lg:text-[11px]'>
+                                <span className='mt-[3px] block text-[10px] leading-[1.2] text-it-text-muted lg:text-[11px] tracking-[-0.012em]'>
                                     {priceFrom}
                                 </span>
                             )}

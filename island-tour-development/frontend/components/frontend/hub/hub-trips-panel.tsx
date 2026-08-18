@@ -146,7 +146,7 @@ export function HubTripsPanel({
             {/* Heading + date chip */}
             <Reveal className='flex flex-col gap-4 md:gap-6'>
                 <div className='flex flex-col gap-1'>
-                    <h2 className='m-0 font-it-display text-[clamp(22px,2.8vw,30px)] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                    <h2 className='m-0 text-[20px] md:text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                         {panel.title}
                     </h2>
                     <p className='m-0 text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
@@ -196,7 +196,7 @@ export function HubTripsPanel({
                     <PopoverContent
                         align='start'
                         sideOffset={12}
-                        className='w-auto rounded-[8px] bg-it-white p-0 text-it-heading duration-300 ease-[cubic-bezier(0.21,0.47,0.32,0.98)]'>
+                        className='w-auto rounded-[8px] bg-it-white p-0 text-it-heading duration-300 ease-[cubic-bezier(0.21,0.47,0.32,0.98)] tracking-[-0.012em]'>
                         <Calendar
                             mode='single'
                             selected={date}
@@ -232,7 +232,7 @@ export function HubTripsPanel({
                     animate={{ opacity: 1, y: 0 }}
                     transition={crossFade}
                     className='flex flex-col items-start gap-4 py-6 md:py-10'>
-                    <p className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                    <p className='m-0 text-[16px] md:text-[18px] leading-[1.6] tracking-[-0.012em] text-it-primary-subtle'>
                         {filter.noneOnDate}
                     </p>
                     <motion.button

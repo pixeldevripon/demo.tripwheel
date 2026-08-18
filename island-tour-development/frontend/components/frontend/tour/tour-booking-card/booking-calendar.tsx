@@ -199,7 +199,7 @@ export function BookingCalendar() {
                 />
                 <span
                     className={`text-[14px] font-medium leading-[1.6] ${
-                        selectedDate ? 'text-it-heading' : 'text-it-text-muted'
+                        selectedDate ? '' : 'text-it-text-muted tracking-[-0.012em]'
                     }`}>
                     {selectedDate
                         ? formatSelectedDate(selectedDate, locale)
@@ -209,7 +209,7 @@ export function BookingCalendar() {
                     empty input and starts looking like an answer you can edit
                     (mck-15 `.wfield .chg`). Nothing to change before then. */}
                 {selectedDate && (
-                    <span className='ml-auto text-[12px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-2'>
+                    <span className='ml-auto text-[12px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-2 tracking-[-0.012em]'>
                         {dict.change}
                     </span>
                 )}
@@ -274,7 +274,7 @@ export function BookingCalendar() {
                                     </motion.button>
                                     <span
                                         aria-live='polite'
-                                        className='text-[14.5px] font-medium leading-[1.6] text-it-heading'>
+                                        className='text-[16px] font-medium leading-[1.6] tracking-[-0.012em] text-it-heading'>
                                         {`${monthName(
                                             view.month,
                                             view.year,
@@ -452,7 +452,7 @@ export function BookingCalendar() {
                                                         // is what tells the two
                                                         // states apart at a
                                                         // glance.
-                                                        'mx-auto grid aspect-square w-full max-w-[34px] place-items-center rounded-[8px] border text-[12.5px] leading-[1.6] tabular-nums transition-colors duration-200',
+                                                        'mx-auto grid aspect-square w-full max-w-[34px] place-items-center rounded-[8px] border text-[12.5px] leading-[1.6] tabular-nums transition-colors duration-200 tracking-[-0.012em]',
                                                         struck && 'line-through',
                                                         isToday && 'rounded-full',
                                                         // The ring on today
@@ -479,11 +479,11 @@ export function BookingCalendar() {
                                                         // stopped the selected
                                                         // chip getting its fill.
                                                         isSelected
-                                                            ? 'bg-it-primary font-medium text-it-white'
+                                                            ? 'bg-it-primary font-medium text-it-white tracking-[-0.012em]'
                                                             : disabled
-                                                              ? 'cursor-not-allowed font-medium text-it-text-muted'
+                                                              ? 'cursor-not-allowed font-medium text-it-text-muted tracking-[-0.012em]'
                                                               : isFirstOpen
-                                                                ? 'cursor-pointer bg-it-bg font-medium text-it-primary-hover'
+                                                                ? 'cursor-pointer bg-it-bg font-medium text-it-primary-hover tracking-[-0.012em]'
                                                                 : isToday
                                                                   ? // Today, and
                                                                     // bookable:
@@ -496,8 +496,8 @@ export function BookingCalendar() {
                                                                     // legible
                                                                     // even at
                                                                     // 12.5px.
-                                                                    'cursor-pointer font-medium text-it-heading hover:bg-it-bg'
-                                                                  : 'cursor-pointer font-medium text-it-heading hover:bg-it-bg',
+                                                                    'cursor-pointer font-medium text-it-heading hover:bg-it-bg tracking-[-0.012em] text-[14px] md:text-[16px]'
+                                                                  : 'cursor-pointer font-medium text-it-heading hover:bg-it-bg tracking-[-0.012em] text-[14px] md:text-[16px]',
                                                     ]
                                                         .filter(Boolean)
                                                         .join(' ')}>

@@ -80,7 +80,7 @@ function ConstraintChip({
     return (
         <Link
             href={href}
-            className='inline-flex w-fit shrink-0 self-start items-center gap-2 rounded-it-full border border-it-primary bg-it-white py-2 pl-3.5 pr-3 text-[13.5px] font-medium leading-none text-it-primary-hover no-underline transition-colors hover:bg-it-primary-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary'>
+            className='inline-flex w-fit shrink-0 self-start items-center gap-2 rounded-it-full border border-it-primary bg-it-white py-2 pl-3.5 pr-3 text-[13.5px] font-medium leading-none text-it-primary-hover no-underline transition-colors hover:bg-it-primary-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary tracking-[-0.012em]'>
             {icon}
             {label}
             <X className='size-3.5 shrink-0' strokeWidth={2.5} aria-hidden='true' />
@@ -229,7 +229,7 @@ export function SearchRecovery({
                         seeAllHref && seeAllLabel ? (
                             <Link
                                 href={seeAllHref}
-                                className='whitespace-nowrap text-sm font-medium text-it-primary-hover underline underline-offset-[3px] max-sm:hidden'>
+                                className='whitespace-nowrap text-sm font-medium text-it-primary-hover underline underline-offset-[3px] max-sm:hidden tracking-[-0.012em]'>
                                 {seeAllLabel} →
                             </Link>
                         ) : undefined
@@ -255,7 +255,7 @@ export function SearchRecovery({
                                     }
                                 />
                                 {withoutDateCount > 0 && (
-                                    <p className='m-0 text-[14px] leading-[1.6] text-it-heading md:text-[15px]'>
+                                    <p className='m-0 text-[14px] leading-[1.6] text-it-heading md:text-[15px] tracking-[-0.012em]'>
                                         {dict.dropDate
                                             .replace(
                                                 '{count}',
@@ -282,7 +282,7 @@ export function SearchRecovery({
                         {clearFiltersHref && !isThin && (
                             <Link
                                 href={clearFiltersHref}
-                                className='w-fit self-start text-[14px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-[3px] transition-colors hover:text-it-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary'>
+                                className='w-fit self-start text-[14px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-[3px] transition-colors hover:text-it-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary tracking-[-0.012em]'>
                                 {dict.clearFilters}
                             </Link>
                         )}
@@ -293,11 +293,11 @@ export function SearchRecovery({
                     row. They are alternative TERMS, and reading them as a
                     sentence is faster than scanning a grid of pills. */}
                 {popular.length > 0 && destinationSlug && (
-                    <p className='m-0 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[14px] leading-[1.6]'>
-                        <span className='font-medium text-it-heading'>
+                    <p className='m-0 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[14px] leading-[1.6] tracking-[-0.012em]'>
+                        <span className='font-medium text-it-heading tracking-[-0.012em]'>
                             {dict.popularSearches}
                         </span>
-                        <span aria-hidden='true' className='text-it-text-muted'>
+                        <span aria-hidden='true' className='text-it-text-muted tracking-[-0.012em]'>
                             :
                         </span>
                         {popular.map((p, i) => (
@@ -307,7 +307,7 @@ export function SearchRecovery({
                                 {i > 0 && (
                                     <span
                                         aria-hidden='true'
-                                        className='text-it-text-muted'>
+                                        className='text-it-text-muted tracking-[-0.012em]'>
                                         ·
                                     </span>
                                 )}
@@ -318,7 +318,7 @@ export function SearchRecovery({
                                             `/${destinationSlug}/${p.slug}`
                                         )
                                     )}
-                                    className='font-medium text-it-heading no-underline underline-offset-[3px] transition-colors hover:text-it-primary-hover hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary'>
+                                    className='font-medium text-it-heading no-underline underline-offset-[3px] transition-colors hover:text-it-primary-hover hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary tracking-[-0.012em]'>
                                     {p.name}
                                 </Link>
                             </span>
@@ -368,7 +368,7 @@ export function SearchRecovery({
                 {seeAllHref && seeAllLabel && (
                     <Link
                         href={seeAllHref}
-                        className='w-fit text-[14px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-[3px] sm:hidden'>
+                        className='w-fit text-[14px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-[3px] sm:hidden tracking-[-0.012em]'>
                         {seeAllLabel} →
                     </Link>
                 )}

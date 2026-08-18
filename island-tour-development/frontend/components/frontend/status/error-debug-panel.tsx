@@ -125,7 +125,7 @@ export function ErrorDebugPanel({
                 widen the page (the sitewide rule: wide content scrolls inside
                 its own container, the body never scrolls sideways). */}
             {(server?.[0]?.stack || error.stack) && (
-                <pre className='mt-4 max-h-80 overflow-auto rounded-[12px] bg-it-surface p-4 text-[12px] leading-normal whitespace-pre text-it-ink-secondary'>
+                <pre className='mt-4 max-h-80 overflow-auto rounded-[12px] bg-it-surface p-4 text-[12px] leading-normal whitespace-pre text-it-ink-secondary tracking-[-0.012em]'>
                     {server?.[0]?.stack ?? error.stack}
                 </pre>
             )}
@@ -136,8 +136,8 @@ export function ErrorDebugPanel({
 function Row({ label, value }: { label: string; value: string }) {
     return (
         <>
-            <dt className='m-0 text-it-text-muted'>{label}</dt>
-            <dd className='m-0 wrap-break-word text-it-heading'>{value}</dd>
+            <dt className='m-0 text-it-text-muted tracking-[-0.012em]'>{label}</dt>
+            <dd className='m-0 wrap-break-word text-it-heading tracking-[-0.012em]'>{value}</dd>
         </>
     );
 }

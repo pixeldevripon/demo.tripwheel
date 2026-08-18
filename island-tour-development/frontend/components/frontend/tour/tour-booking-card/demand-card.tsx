@@ -54,10 +54,10 @@ export function DemandCard() {
                 loading='eager'
             />
             <div className='flex flex-col gap-0.5'>
-                <span className='text-[14px] font-medium leading-[1.5] text-it-heading'>
+                <span className='text-[14px] font-medium leading-[1.5] text-it-heading tracking-[-0.012em]'>
                     {dict.sellOutTitle}
                 </span>
-                <span className='text-[12.5px] leading-[1.5] text-it-text-muted'>
+                <span className='text-[12.5px] leading-[1.5] text-it-text-muted tracking-[-0.012em]'>
                     {dict.sellOutSubtitle}
                 </span>
             </div>

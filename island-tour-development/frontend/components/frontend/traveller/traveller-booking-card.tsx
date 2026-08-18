@@ -94,11 +94,11 @@ export function TravellerBookingCard({
                 <span className='min-w-0 flex-1'>
                     <strong
                         className={`block font-bold leading-[1.4] tracking-[-0.012em] text-it-heading ${
-                            variant === 'full' ? 'text-[19px]' : 'text-[17px]'
+                            variant === 'full' ? 'text-[19px] tracking-[-0.012em]' : 'text-[17px] tracking-[-0.012em]'
                         }`}>
                         {booking.tourName}
                     </strong>
-                    <span className='mt-1 block text-[14.5px] leading-[1.6] text-it-text-muted'>
+                    <span className='mt-1 block text-[14.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                         {metaLine}
                     </span>
                     <span className='mt-2 flex flex-wrap items-center gap-1.5'>
@@ -113,7 +113,7 @@ export function TravellerBookingCard({
                     <span className='block font-medium text-[19px] leading-[1.3] tracking-[-0.012em] text-it-heading'>
                         {money(booking.totalRetail, booking.currency, locale)}
                     </span>
-                    <span className='mt-0.5 block font-mono text-[12.5px] text-it-text-muted'>
+                    <span className='mt-0.5 block font-mono text-[12.5px] text-it-text-muted tracking-[-0.012em]'>
                         {booking.displayRef}
                     </span>
                 </span>
@@ -121,7 +121,7 @@ export function TravellerBookingCard({
                     aria-hidden
                     animate={{ rotate: open ? 180 : 0 }}
                     transition={crossFade}
-                    className='inline-flex shrink-0 text-it-text-muted'>
+                    className='inline-flex shrink-0 text-it-text-muted tracking-[-0.012em]'>
                     <ChevronDown className='size-5' strokeWidth={2} />
                 </motion.span>
             </button>

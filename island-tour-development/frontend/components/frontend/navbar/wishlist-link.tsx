@@ -30,7 +30,7 @@ export function WishlistLink({
             aria-label={dict.saved}
             className='relative flex items-center gap-1.5 no-underline'>
             {/* Mockup navpill: "Saved" label beside the heart. */}
-            <span className='text-[13px] font-medium text-it-heading'>
+            <span className='text-[13px] font-medium text-it-heading tracking-[-0.012em]'>
                 {dict.saved}
             </span>
             <motion.span className='inline-flex' {...iconPress}>
@@ -50,7 +50,7 @@ export function WishlistLink({
                         animate={{ scale: 1 }}
                         exit={{ scale: 0 }}
                         transition={pressSpring}
-                        className='absolute -top-2 -right-2 flex h-4 min-w-4 items-center justify-center rounded-it-full bg-it-primary px-1 text-[10px] font-medium leading-none text-it-white tabular-nums'>
+                        className='absolute -top-2 -right-2 flex h-4 min-w-4 items-center justify-center rounded-it-full bg-it-primary px-1 text-[10px] font-medium leading-none text-it-white tabular-nums tracking-[-0.012em]'>
                         {count}
                     </motion.span>
                 )}

@@ -62,14 +62,14 @@ export async function InstagramSection({
                                 className='size-5'
                             />
                         </span>
-                        <h2 className='m-0 min-w-0 flex-1 truncate font-it-body text-[15.5px] leading-[1.4] text-it-heading font-medium'>
+                        <h2 className='m-0 min-w-0 flex-1 truncate font-it-body text-[15.5px] leading-[1.4] text-it-heading font-medium tracking-[-0.012em]'>
                             @{feed.username}
                         </h2>
                         <a
                             href={profileUrl}
                             target='_blank'
                             rel='noopener noreferrer'
-                            className='ml-auto shrink-0 whitespace-nowrap text-[13.5px] font-medium text-it-primary-hover underline underline-offset-[3px] max-sm:ml-0 max-sm:basis-full max-sm:pl-[52px]'>
+                            className='ml-auto shrink-0 whitespace-nowrap text-[13.5px] font-medium text-it-primary-hover underline underline-offset-[3px] max-sm:ml-0 max-sm:basis-full max-sm:pl-[52px] tracking-[-0.012em]'>
                             {dict.viewMore || 'View more on Instagram'}
                         </a>
                     </div>

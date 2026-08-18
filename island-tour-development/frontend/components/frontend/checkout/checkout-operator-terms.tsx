@@ -63,7 +63,7 @@ export function OperatorTermsPendingPanel({
     ];
     return (
         <div className='flex flex-col'>
-            <span className='mt-0.5 mb-2.5 text-[13.5px] font-medium leading-[1.5] text-it-heading'>
+            <span className='mt-0.5 mb-2.5 text-[13.5px] font-medium leading-[1.5] text-it-heading tracking-[-0.012em]'>
                 {dict.selectPaymentMethod}
             </span>
             {/* Same bordered radio list as the live panel, non-interactive
@@ -74,7 +74,7 @@ export function OperatorTermsPendingPanel({
                         key={row.label}
                         className='flex items-center gap-3 border-t border-it-divider px-4 py-3.5 first:border-t-0'>
                         <Radio selected={false} />
-                        <span className='text-[14px] font-medium leading-[1.5] text-it-heading'>
+                        <span className='text-[14px] font-medium leading-[1.5] text-it-heading tracking-[-0.012em]'>
                             {row.label}
                         </span>
                         <span className='ml-auto flex items-center gap-1.5'>
@@ -198,7 +198,7 @@ export function CheckoutOperatorTerms({
                     />
                 )}
             </span>
-            <span className='text-[13.5px] leading-[1.6] text-it-heading'>
+            <span className='text-[14px] md:text-[16px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                 {label}
             </span>
         </motion.button>
@@ -231,7 +231,7 @@ export function CheckoutOperatorTerms({
                                 setReaderOpen(true);
                             }
                         }}
-                        className='cursor-pointer font-medium text-it-primary underline underline-offset-2'>
+                        className='cursor-pointer font-medium text-it-primary underline underline-offset-2 tracking-[-0.012em]'>
                         {dict.operatorTermsConditionsWord}
                     </span>
                 );
@@ -242,14 +242,14 @@ export function CheckoutOperatorTerms({
         <div className='mt-4 flex flex-col gap-2'>
             {kind === 'ACKNOWLEDGMENT' ? (
                 <div className='flex flex-col gap-2.5 rounded-it-md border-[1.5px] border-it-border bg-it-bg p-3.5'>
-                    <span className='text-[13px] font-medium leading-[1.5] text-it-heading'>
+                    <span className='text-[13px] font-medium leading-[1.5] text-it-heading tracking-[-0.012em]'>
                         {dict.operatorTermsConfirmHeading}
                     </span>
                     <ul className='m-0 flex list-disc flex-col gap-1 pl-5'>
                         {items.map((item, i) => (
                             <li
                                 key={i}
-                                className='text-[13px] leading-[1.6] text-it-text-muted'>
+                                className='text-[13px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                                 {item}
                             </li>
                         ))}
@@ -280,7 +280,7 @@ export function CheckoutOperatorTerms({
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
                         transition={{ duration: 0.2 }}
-                        className='m-0 text-[12.5px] leading-[1.5] text-it-error'>
+                        className='m-0 text-[12.5px] leading-[1.5] text-it-error tracking-[-0.012em]'>
                         {error}
                     </motion.p>
                 )}
@@ -372,7 +372,7 @@ function OperatorTermsReader({
                         <h2 className='m-0 font-it-display text-[21px] leading-[1.2] tracking-[-0.012em] text-it-heading sm:text-[22px] font-medium'>
                             {dict.operatorTermsReaderTitle}
                         </h2>
-                        <span className='text-[13px] leading-[1.5] text-it-text-muted'>
+                        <span className='text-[13px] leading-[1.5] text-it-text-muted tracking-[-0.012em]'>
                             {operatorName}
                             {body?.version
                                 ? ` · ${dict.operatorTermsReaderVersion.replace('{version}', body.version)}`
@@ -402,7 +402,7 @@ function OperatorTermsReader({
                         <div className='min-h-0 flex-1 overflow-y-auto'>
                             {state === 'ready' && body?.document ? (
                                 <div
-                                    className='flex flex-col gap-2 text-[14.5px] leading-[1.7] text-it-text-muted [&_h4]:m-0 [&_h4]:mt-3 [&_h4]:text-[14.5px] [&_h4]:font-bold [&_h4]:leading-[1.6] [&_h4]:text-it-heading [&_h4:first-child]:mt-0 [&_li]:mt-1 [&_p]:m-0 [&_ul]:m-0 [&_ul]:pl-5'
+                                    className='flex flex-col gap-2 text-[14.5px] leading-[1.7] text-it-text-muted [&_h4]:m-0 [&_h4]:mt-3 [&_h4]:text-[14.5px] [&_h4]:font-bold [&_h4]:leading-[1.6] [&_h4]:text-it-heading [&_h4:first-child]:mt-0 [&_li]:mt-1 [&_p]:m-0 [&_ul]:m-0 [&_ul]:pl-5 tracking-[-0.012em]'
                                     // Sanitized at write time (trusted seed /
                                     // admin CMS) - same contract as the page
                                     // editorial content this mirrors.
@@ -412,11 +412,11 @@ function OperatorTermsReader({
                                 />
                             ) : state === 'failed' ||
                               (state === 'ready' && !body?.document) ? (
-                                <p className='m-0 text-[14px] leading-[1.6] text-it-text-muted'>
+                                <p className='m-0 text-[14px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                                     {dict.operatorTermsReaderUnavailable}
                                 </p>
                             ) : (
-                                <p className='m-0 text-[14px] leading-[1.6] text-it-text-muted'>
+                                <p className='m-0 text-[14px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                                     {dict.operatorTermsReaderLoading}
                                 </p>
                             )}
@@ -430,7 +430,7 @@ function OperatorTermsReader({
                     onClick={onAgree}
                     whileTap={{ scale: 0.985 }}
                     transition={springPop}
-                    className='w-full cursor-pointer rounded-it-md border-none bg-it-primary px-5 py-3 text-[14.5px] font-medium leading-[1.5] text-it-white transition-colors duration-300 hover:bg-it-primary-hover'>
+                    className='w-full cursor-pointer rounded-it-md border-none bg-it-primary px-5 py-3 text-[14.5px] font-medium leading-[1.5] text-it-white transition-colors duration-300 hover:bg-it-primary-hover tracking-[-0.012em]'>
                     {dict.operatorTermsReaderAgree}
                 </motion.button>
             </div>

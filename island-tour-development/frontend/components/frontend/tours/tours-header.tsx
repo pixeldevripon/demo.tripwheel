@@ -53,7 +53,7 @@ export async function ToursHeader({
             <p className='m-0 mt-2 max-w-[640px] text-[14px] md:text-[16px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                 {subtitle}
             </p>
-            <p className='m-0 mt-1.5 text-[12.5px] leading-[1.6] text-it-text-muted tabular-nums'>
+            <p className='m-0 mt-1.5 text-[12.5px] leading-[1.6] text-it-text-muted tabular-nums tracking-[-0.012em]'>
                 {count} {dict.availableLabel}
             </p>
         </div>

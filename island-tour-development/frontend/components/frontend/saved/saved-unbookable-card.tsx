@@ -106,16 +106,16 @@ export function SavedUnbookableCard({
             </div>
 
             <div className='flex flex-1 min-w-0 flex-col gap-1 px-3 pt-2.5 pb-3 @[220px]:px-3.5 @[220px]:pt-3 @[220px]:pb-3.5'>
-                <h3 className='m-0 font-it-body text-[13px] @[220px]:text-[15.5px] leading-[1.3] tracking-[-0.012em] text-it-heading line-clamp-2 font-medium'>
+                <h3 className='m-0 text-[14px] @[220px]:text-[15.5px] leading-[1.4] tracking-[-0.012em] text-it-heading line-clamp-2 font-medium'>
                     {tour.title}
                 </h3>
-                <p className='m-0 mt-1 text-[13px] font-medium leading-[1.6] text-it-text-muted'>
+                <p className='m-0 mt-1 text-[13px] font-medium leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                     {dict.notBookable}
                 </p>
                 {similarHref && (
                     <Link
                         href={similarHref}
-                        className='mt-1.5 w-fit text-[13px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-[3px]'>
+                        className='mt-1.5 w-fit text-[13px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-[3px] tracking-[-0.012em]'>
                         {dict.seeSimilar} &rarr;
                     </Link>
                 )}

@@ -82,7 +82,7 @@ export function Hero({
                         <h1 className='m-0 font-it-body text-[32px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-balance text-it-white [text-shadow:0_2px_22px_rgba(0,0,0,0.32)] font-medium'>
                             {dict.title}
                         </h1>
-                        <p className='m-0 text-base md:text-lg leading-[1.6] text-it-white/95 [text-shadow:0_1px_14px_rgba(0,0,0,0.34)] tracking-[-0.012em]'>
+                        <p className='m-0 text-base md:text-lg leading-[1.6] text-it-primary-subtle [text-shadow:0_1px_14px_rgba(0,0,0,0.34)] tracking-[-0.012em]'>
                             {dict.subtitle}
                         </p>
                     </Reveal>
@@ -100,7 +100,7 @@ export function Hero({
 
                         {/* Popular - clickable destinations (live) */}
                         {popular.length > 0 && (
-                            <p className='m-0 text-sm font-medium text-center text-it-white/90 [text-shadow:0_1px_10px_rgba(0,0,0,0.32)]'>
+                            <p className='m-0 text-sm font-medium text-center text-it-white/90 [text-shadow:0_1px_10px_rgba(0,0,0,0.32)] tracking-[-0.012em]'>
                                 <span>{dict.popular}: </span>
                                 {popular.map((island, i) => (
                                     <span key={island.slug}>
@@ -109,7 +109,7 @@ export function Hero({
                                                 locale,
                                                 `/${island.slug}`
                                             )}
-                                            className='text-it-white underline underline-offset-[3px] transition-colors duration-300 hover:text-it-primary-subtle text-sm lg:text-base leading-[1.6] tracking-[-0.012em]'>
+                                            className='text-it-primary-subtle hover:text-it-primary underline underline-offset-[3px] transition-colors duration-300'>
                                             {island.name}
                                         </Link>
                                         {i < popular.length - 1 && (

@@ -116,7 +116,7 @@ export function MobileSearchLayer({
                     aria-label={closeLabel}
                     whileTap={{ scale: 0.9 }}
                     transition={springPop}
-                    className='grid size-[30px] shrink-0 cursor-pointer place-items-center rounded-full border-none bg-transparent text-it-heading'>
+                    className='grid size-[30px] shrink-0 cursor-pointer place-items-center rounded-full border-none bg-transparent text-it-heading tracking-[-0.012em]'>
                     <X size={18} strokeWidth={2} />
                 </motion.button>
                 <div className='min-w-0 flex-1'>{pill}</div>
@@ -141,12 +141,12 @@ export function MobileSearchLayer({
                             onSelect={onDateSelect}
                             disabled={{ before: new Date() }}
                             autoFocus
-                            className='w-full bg-it-white p-0 text-[15px] [--cell-radius:8px] [--cell-size:--spacing(11)]'
+                            className='w-full bg-it-white p-0 text-[15px] [--cell-radius:8px] [--cell-size:--spacing(11)] tracking-[-0.012em]'
                             classNames={{
                                 weekday:
-                                    'flex-1 text-[13px] font-medium text-it-text-muted select-none',
+                                    'flex-1 text-[13px] font-medium text-it-text-muted select-none tracking-[-0.012em]',
                                 caption_label:
-                                    'text-[15.5px] font-medium text-it-heading',
+                                    'text-[15.5px] font-medium text-it-heading tracking-[-0.012em]',
                             }}
                         />
                     </div>

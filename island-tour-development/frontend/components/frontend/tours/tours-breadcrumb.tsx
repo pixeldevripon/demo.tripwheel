@@ -42,7 +42,7 @@ export function ToursBreadcrumb({
         'shrink-0 text-it-text-muted no-underline hover:underline text-[14px] leading-[1.6] tracking-[-0.012em]';
 
     const separator = (
-        <span aria-hidden='true' className='mx-[7px] shrink-0 text-it-text-muted'>
+        <span aria-hidden='true' className='mx-[7px] shrink-0 text-it-text-muted tracking-[-0.012em]'>
             ›
         </span>
     );
@@ -51,7 +51,7 @@ export function ToursBreadcrumb({
         <div className='it-container'>
             <nav
                 aria-label='Breadcrumb'
-                className='flex items-center overflow-x-auto whitespace-nowrap pt-[26px] pb-2.5 text-[12.5px] leading-[1.6] text-it-text-muted [scrollbar-width:none] md:overflow-visible md:whitespace-normal [&::-webkit-scrollbar]:hidden'>
+                className='flex items-center overflow-x-auto whitespace-nowrap pt-[26px] pb-2.5 text-[12.5px] leading-[1.6] text-it-text-muted [scrollbar-width:none] md:overflow-visible md:whitespace-normal [&::-webkit-scrollbar]:hidden tracking-[-0.012em]'>
                 <Link href={localizeHref(locale, '/')} className={linkClass}>
                     {dict.home}
                 </Link>
@@ -76,7 +76,7 @@ export function ToursBreadcrumb({
                     below, so the crumb only needs to identify the page. */}
                 <span
                     aria-current='page'
-                    className='max-w-[55vw] truncate text-it-white md:max-w-none text-[16px] leading-[1.6] tracking-[-0.012em] font-medium'>
+                    className='max-w-[55vw] truncate md:max-w-none text-[16px] leading-[1.6] tracking-[-0.012em] font-medium text-it-white'>
                     {dict.current}
                 </span>
             </nav>

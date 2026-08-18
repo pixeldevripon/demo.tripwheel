@@ -139,7 +139,7 @@ export function TravellerView({
                                 <h1 className='m-0 font-medium text-[32px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
                                     {dict.title}
                                 </h1>
-                                <p className='mt-2 mb-0 text-[15px] leading-[1.6] text-it-text-muted md:text-[16px]'>
+                                <p className='mt-2 mb-0 text-[15px] leading-[1.6] text-it-text-muted md:text-[16px] tracking-[-0.012em]'>
                                     {dict.subtitle}
                                 </p>
                             </div>
@@ -186,11 +186,11 @@ export function TravellerView({
                                 onClick={() => selectTab(t.key)}
                                 className={`relative -mb-px cursor-pointer border-none bg-transparent px-0 pb-3.5 text-[16px] font-normal tracking-[-0.012em] transition-colors ${
                                     tab === t.key
-                                        ? 'text-it-heading'
-                                        : 'text-it-text-muted hover:text-it-heading'
+                                        ? ''
+                                        : 'text-it-text-muted hover:'
                                 }`}>
                                 {t.label}
-                                <span className='ml-1.5 text-[14px] text-it-text-muted'>
+                                <span className='ml-1.5 text-[14px] text-it-text-muted tracking-[-0.012em]'>
                                     {t.count}
                                 </span>
                                 {tab === t.key && (
@@ -277,7 +277,7 @@ export function TravellerView({
                                                     locale,
                                                     '/curacao/tours'
                                                 )}
-                                                className='mt-5 inline-block rounded-full bg-it-primary px-6 py-2.5 text-[14px] font-medium text-it-primary-fg no-underline transition-[filter] hover:brightness-95'>
+                                                className='mt-5 inline-block rounded-full bg-it-primary px-6 py-2.5 text-[14px] font-medium text-it-primary-fg no-underline transition-[filter] hover:brightness-95 tracking-[-0.012em]'>
                                                 {dict.emptyBookingsCta}
                                             </Link>
                                         }
@@ -326,7 +326,7 @@ export function TravellerView({
                                     <strong className='block font-medium text-[16px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
                                         {dict.needHelpTitle}
                                     </strong>
-                                    <p className='mt-1 mb-0 text-[14px] leading-[1.6] text-it-text-muted'>
+                                    <p className='mt-1 mb-0 text-[14px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                                         {dict.needHelpBody}
                                     </p>
                                 </div>
@@ -334,7 +334,7 @@ export function TravellerView({
                                     href={whatsappHref}
                                     target='_blank'
                                     rel='noopener noreferrer'
-                                    className='shrink-0 rounded-full bg-it-primary px-6 py-2.5 text-[14px] font-medium text-it-primary-fg no-underline transition-[filter] hover:brightness-95'>
+                                    className='shrink-0 rounded-full bg-it-primary px-6 py-2.5 text-[14px] font-medium text-it-primary-fg no-underline transition-[filter] hover:brightness-95 tracking-[-0.012em]'>
                                     {dict.whatsappUs}
                                 </a>
                             </div>
@@ -379,11 +379,11 @@ function CollapsibleGroup({
                 onClick={() => setOpen(v => !v)}
                 className={`flex cursor-pointer items-center gap-2 border-none bg-transparent p-0 font-normal tracking-[-0.012em] transition-colors ${
                     muted
-                        ? 'text-[17px] text-it-text-muted hover:text-it-heading'
-                        : 'text-[20px] leading-[1.3] text-it-heading'
+                        ? 'text-[17px] text-it-text-muted hover:'
+                        : 'text-[20px] leading-[1.3] '
                 }`}>
                 {title}
-                <span className='text-[14px] font-normal text-it-text-muted'>
+                <span className='text-[14px] font-normal text-it-text-muted tracking-[-0.012em]'>
                     {count === 1
                         ? dict.tripCountOne
                         : dict.tripsCount.replace('{count}', String(count))}
@@ -392,7 +392,7 @@ function CollapsibleGroup({
                     aria-hidden
                     animate={{ rotate: open ? 180 : 0 }}
                     transition={crossFade}
-                    className='inline-flex text-it-text-muted'>
+                    className='inline-flex text-it-text-muted tracking-[-0.012em]'>
                     <ChevronDown className='size-4' strokeWidth={2} />
                 </motion.span>
             </button>
@@ -431,10 +431,10 @@ function EmptyState({
             animate={{ opacity: 1 }}
             transition={crossFade}
             className='rounded-[16px] border border-dashed border-it-heading/15 bg-it-white px-6 py-16 text-center'>
-            <strong className='block font-medium text-[18px] text-it-heading'>
+            <strong className='block font-medium text-[18px] '>
                 {title}
             </strong>
-            <p className='mx-auto mt-2 mb-0 max-w-90 text-[15px] leading-[1.6] text-it-text-muted'>
+            <p className='mx-auto mt-2 mb-0 max-w-90 text-[15px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                 {body}
             </p>
             {cta}

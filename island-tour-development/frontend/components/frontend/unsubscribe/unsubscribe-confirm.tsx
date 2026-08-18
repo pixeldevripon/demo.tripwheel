@@ -192,7 +192,7 @@ export function UnsubscribeConfirm({
                     card's persistent live region below, and the button above
                     stays so "try again" is the same tap that failed. */}
                 {status === 'error' && (
-                    <p className='mx-auto mt-3 mb-0 max-w-md text-[13px] font-medium leading-[1.5] text-it-error'>
+                    <p className='mx-auto mt-3 mb-0 max-w-md text-[13px] font-medium leading-[1.5] text-it-error tracking-[-0.012em]'>
                         {dict.error} {dict.retry}
                     </p>
                 )}

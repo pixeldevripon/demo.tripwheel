@@ -38,7 +38,7 @@ export function TourHeader({
     if (rating != null) {
         metaItems.push(
             <span key='rating' className='flex items-center gap-1.5'>
-                <span className='font-medium text-it-star'>
+                <span className='font-medium text-it-star tracking-[-0.012em]'>
                     ★ {rating.toFixed(1)}
                 </span>
                 <span className='tabular-nums'>
@@ -49,14 +49,14 @@ export function TourHeader({
     }
     if (isLocalsFavourite) {
         metaItems.push(
-            <span key='locals' className='font-medium text-it-primary-hover'>
+            <span key='locals' className='font-medium text-it-primary-hover tracking-[-0.012em]'>
                 ✦ {dict.localsFavorite}
             </span>
         );
     }
     if (locationLabel) {
         metaItems.push(
-            <span key='location' className='flex items-center gap-[5px] text-[16px] leading-[1.6] tracking-[-0.012em]'>
+            <span key='location' className='flex items-center gap-[5px] text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                 <Image
                     src='/icons/hero-location.svg'
                     alt=''
@@ -82,13 +82,13 @@ export function TourHeader({
                             {title}
                         </h1>
                         {metaItems.length > 0 && (
-                            <div className='mt-2.5 flex flex-wrap items-center gap-[7px] text-[13.5px] font-medium leading-[1.6] text-it-text-muted'>
+                            <div className='mt-2.5 flex flex-wrap items-center gap-[7px] text-[13.5px] font-medium leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                                 {metaItems.map((item, i) => (
                                     <span
                                         key={i}
                                         className='flex items-center gap-[7px]'>
                                         {i > 0 && (
-                                            <span className='text-it-text-muted'>
+                                            <span className='text-it-text-muted tracking-[-0.012em]'>
                                                 ·
                                             </span>
                                         )}

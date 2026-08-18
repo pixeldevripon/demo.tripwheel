@@ -30,11 +30,11 @@ export type StatusTone = 'coral' | 'amber';
 
 const TONE = {
     coral: {
-        disc: 'bg-it-primary-subtle text-it-primary border-it-primary/15',
+        disc: 'bg-it-primary-subtle text-it-primary border-it-primary/15 tracking-[-0.012em]',
         marker: 'bg-it-primary',
     },
     amber: {
-        disc: 'bg-it-warning-subtle text-it-warning border-it-warning/15',
+        disc: 'bg-it-warning-subtle text-it-warning border-it-warning/15 tracking-[-0.012em]',
         marker: 'bg-it-warning',
     },
 } as const satisfies Record<StatusTone, Record<string, string>>;
@@ -46,8 +46,8 @@ const TONE = {
  * should not compete with the medallion.
  */
 const EYEBROW = {
-    neutral: 'bg-it-surface text-it-ink-secondary',
-    error: 'bg-it-error-subtle text-it-error',
+    neutral: 'bg-it-surface text-it-ink-secondary tracking-[-0.012em]',
+    error: 'bg-it-error-subtle text-it-error tracking-[-0.012em]',
 } as const;
 
 export function StatusScreen({
@@ -145,8 +145,8 @@ export function StatusScreen({
  * `whileTap` on the caller's MotionLink/MotionButton.
  */
 export const statusPrimaryClass =
-    'inline-flex cursor-pointer items-center justify-center gap-[9px] rounded-it-sm border-none bg-it-primary px-[22px] py-3.5 text-[15.5px] font-medium leading-none text-it-white no-underline shadow-it-sm transition-all duration-(--it-duration-sm) ease-(--it-ease) hover:-translate-y-px hover:bg-it-primary-hover';
+    'inline-flex cursor-pointer items-center justify-center gap-[9px] rounded-it-sm border-none bg-it-primary px-[22px] py-3.5 text-[15.5px] font-medium leading-none text-it-white no-underline shadow-it-sm transition-all duration-(--it-duration-sm) ease-(--it-ease) hover:-translate-y-px hover:bg-it-primary-hover tracking-[-0.012em]';
 
 export const statusSecondaryClass =
-    'inline-flex cursor-pointer items-center justify-center gap-[9px] rounded-it-sm border border-it-border bg-it-white px-[22px] py-3.5 text-[15.5px] font-medium leading-none text-it-heading no-underline transition-colors duration-(--it-duration-sm) ease-(--it-ease) hover:bg-it-bg';
+    'inline-flex cursor-pointer items-center justify-center gap-[9px] rounded-it-sm border border-it-border bg-it-white px-[22px] py-3.5 text-[15.5px] font-medium leading-none text-it-heading no-underline transition-colors duration-(--it-duration-sm) ease-(--it-ease) hover:bg-it-bg tracking-[-0.012em]';
 

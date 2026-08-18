@@ -21,7 +21,7 @@ export function TourRelatedSection({
     return (
         <div className='flex flex-col gap-3.5'>
             <Reveal>
-                <h2 className='m-0 font-it-display text-[20px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                <h2 className='m-0 text-[28px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                     {title}
                 </h2>
             </Reveal>

@@ -345,7 +345,7 @@ export function Navbar({
                         icons' centers - the reported nav misalignment.
                         `relative` anchors the saved-count badge below. */}
                     <motion.button
-                        className='relative flex items-center bg-transparent border-none cursor-pointer p-0 text-it-heading'
+                        className='relative flex items-center bg-transparent border-none cursor-pointer p-0 text-it-heading tracking-[-0.012em]'
                         whileTap={{ scale: 0.9 }}
                         transition={pressSpring}
                         aria-label={mobileOpen ? dict.close : dict.menu}
@@ -366,7 +366,7 @@ export function Navbar({
                                     exit={{ scale: 0 }}
                                     transition={pressSpring}
                                     aria-hidden
-                                    className='absolute -top-2 -right-2 flex h-4 min-w-4 items-center justify-center rounded-it-full bg-it-primary px-1 text-[10px] font-medium leading-none text-it-white tabular-nums'>
+                                    className='absolute -top-2 -right-2 flex h-4 min-w-4 items-center justify-center rounded-it-full bg-it-primary px-1 text-[10px] font-medium leading-none text-it-white tabular-nums tracking-[-0.012em]'>
                                     {wishlistCount}
                                 </motion.span>
                             )}

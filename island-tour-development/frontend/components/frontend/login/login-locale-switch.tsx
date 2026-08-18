@@ -75,7 +75,7 @@ export function LoginLocaleSwitch() {
                     height={24}
                     className='size-4.5 shrink-0'
                 />
-                <span className='text-[14px] font-medium uppercase'>
+                <span className='text-[14px] font-medium uppercase tracking-[-0.012em]'>
                     {locale}
                 </span>
             </motion.button>
@@ -94,9 +94,9 @@ export function LoginLocaleSwitch() {
                                     type='button'
                                     onClick={() => switchLocale(code)}
                                     aria-current={code === locale}
-                                    className={`flex w-full cursor-pointer items-center justify-between gap-3 border-none bg-transparent px-5 py-3 text-left text-sm transition-colors hover:bg-it-surface ${code === locale ? 'font-medium text-it-primary' : 'text-it-heading'}`}>
+                                    className={`flex w-full cursor-pointer items-center justify-between gap-3 border-none bg-transparent px-5 py-3 text-left text-sm transition-colors hover:bg-it-surface ${code === locale ? 'font-medium text-it-primary tracking-[-0.012em]' : ''}`}>
                                     <span>{LOCALE_NATIVE_LABELS[code]}</span>
-                                    <span className='text-xs uppercase text-it-text-muted'>
+                                    <span className='text-xs uppercase text-it-text-muted tracking-[-0.012em]'>
                                         {code}
                                     </span>
                                 </button>

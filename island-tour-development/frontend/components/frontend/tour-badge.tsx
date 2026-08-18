@@ -20,17 +20,17 @@ const BADGE_STYLE: Record<
     { className: string; label: string }
 > = {
     // Master §3.6: "rounded rectangle, gray" — neutral, never brand orange.
-    sponsored: { className: 'bg-[#f8f8f8] text-[#2c2c2c]', label: 'Sponsored' },
+    sponsored: { className: 'bg-[#f8f8f8] text-[#2c2c2c] tracking-[-0.012em]', label: 'Sponsored' },
     // Figma: bg #fdf6f0, text #2c2c2c
-    new: { className: 'bg-[#fdf6f0] text-[#2c2c2c]', label: 'New' },
+    new: { className: 'bg-[#fdf6f0] text-[#2c2c2c] tracking-[-0.012em]', label: 'New' },
     // Figma: bg #193c5e, text white
     likelyToSellOut: {
-        className: 'bg-[#193c5e] text-white',
+        className: 'bg-[#193c5e] text-white tracking-[-0.012em]',
         label: 'Likely to sell out',
     },
     // Figma: bg #e8611a, text white
     mostPopular: {
-        className: 'bg-[#e8611a] text-white',
+        className: 'bg-[#e8611a] text-white tracking-[-0.012em]',
         label: 'Most popular',
     },
 };
@@ -73,16 +73,16 @@ export function TourBadgeChip({
               // flex default (min-width: auto), so the chip can never be
               // squeezed narrower than its longest word and pushed into
               // overflow. It shrinks to that floor, then grows downward.
-              'px-[7px] py-[3px] text-[10px] @[220px]:px-[9px] @[220px]:py-1 @[220px]:text-[11.5px]'
+              'px-[7px] py-[3px] text-[10px] @[220px]:px-[9px] @[220px]:py-1 @[220px]:text-[11.5px] tracking-[-0.012em] font-normal'
             : // Dense UIs (dashboard) size to content already. `min-h-5` rather
               // than a fixed `h-5` so a wrapped label grows the chip instead of
               // spilling out of it.
-              'min-h-5 shrink-0 px-2.5 text-[11px]';
+              'min-h-5 shrink-0 px-2.5 text-[11px] tracking-[-0.012em]';
     return (
         <span
             className={[
                 // Design v2 .badge: small radius (6px), bold, tight tracking
-                'inline-flex items-center justify-center rounded-full text-center font-medium leading-[1.4] tracking-[-0.012em]',
+                'inline-flex items-center justify-center rounded-full text-center font-normal leading-[1.4] tracking-[-0.012em]',
                 sizeClass,
                 style.className,
                 className,

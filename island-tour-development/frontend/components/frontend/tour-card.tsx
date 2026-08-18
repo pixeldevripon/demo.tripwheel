@@ -126,7 +126,7 @@ function HubEyebrow({ name }: { name: string }) {
     return (
         <span className='inline-flex w-max items-center gap-[5px] border border-it-peach-border bg-it-white py-[3px] pl-2 pr-2.5 text-[16px] font-medium leading-[1.6] text-it-white tracking-[-0.012em]'>
             <MapPin
-                className='size-3 shrink-0 text-it-primary'
+                className='size-3 shrink-0 text-it-primary tracking-[-0.012em]'
                 strokeWidth={2}
                 aria-hidden='true'
             />
@@ -385,13 +385,13 @@ function DefaultTourCard({
                     with a hub still renders this row with the chip alone -
                     the hub label never comes and goes with the rating. */}
                 {(isRated || tour.hub) && (
-                    <div className='mb-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10.5px] @[220px]:text-[12.5px] leading-[1.6]'>
+                    <div className='mb-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10.5px] @[220px]:text-[12.5px] leading-[1.6] tracking-[-0.012em]'>
                         {isRated && (
-                            <span className='inline-flex items-center gap-1.5'>
-                                <span className='font-medium text-it-star'>
+                            <span className='inline-flex items-center gap-1.5 text-[9px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
+                                <span className='font-medium text-it-star tracking-[-0.012em]'>
                                     ★ {tour.rating}
                                 </span>
-                                <span className='text-it-text-muted tabular-nums'>
+                                <span className='text-it-heading/50 tabular-nums'>
                                     ({tour.reviewCount?.toLocaleString()})
                                 </span>
                             </span>
@@ -407,8 +407,8 @@ function DefaultTourCard({
                 </h3>
 
                 {/* Meta column: duration, pickup (design v2 .tc .meta) */}
-                <div className='flex flex-col items-start gap-[3px] text-[11px] @[220px]:text-[12.5px] leading-[1.6] text-it-text-muted'>
-                    <span className='inline-flex items-center gap-1.5'>
+                <div className='flex flex-col items-start gap-[3px] text-[11px] @[220px]:text-[12.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                    <span className='inline-flex items-center gap-1.5 text-[9px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
                         <Image
                             src='/icons/meta-clock.svg'
                             alt=''
@@ -421,7 +421,7 @@ function DefaultTourCard({
                     </span>
 
                     {tour.pickupAvailable && (
-                        <span className='inline-flex items-center gap-1.5'>
+                        <span className='inline-flex items-center gap-1.5 text-[9px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
                             <Image
                                 src='/icons/meta-pickup.svg'
                                 alt=''
@@ -443,10 +443,10 @@ function DefaultTourCard({
                 {availability && (
                     <p
                         className={cn(
-                            'm-0 mt-2.5 inline-flex items-center gap-[7px] text-[12.5px] font-medium leading-[1.6]',
+                            'm-0 mt-2.5 inline-flex items-center gap-[7px] text-[12.5px] font-medium leading-[1.6] tracking-[-0.012em]',
                             availability.available
-                                ? 'text-it-green-text'
-                                : 'text-it-text-muted'
+                                ? 'text-it-green-text tracking-[-0.012em]'
+                                : 'text-it-text-muted tracking-[-0.012em]'
                         )}>
                         {availability.available && (
                             <Image
@@ -464,7 +464,7 @@ function DefaultTourCard({
 
                 {/* Foot: price + free cancellation (pinned to the bottom) */}
                 <div className='mt-auto flex flex-col gap-[3px] pt-2'>
-                    <div className='flex items-baseline flex-wrap gap-x-1 text-[11px] @[220px]:text-[12.5px] leading-[1.6] text-it-text-muted'>
+                    <div className='flex items-baseline flex-wrap gap-x-1 text-[11px] @[220px]:text-[12.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                         <span>{dict.from}</span>
                         <span className='font-medium text-[14px] @[220px]:text-[17px] leading-[1.3] tracking-[-0.012em] text-it-heading tabular-nums'>
                             {tour.priceDisplay}
@@ -486,7 +486,7 @@ function DefaultTourCard({
                         saved, both directions, with no color and no animation.
                         Nothing at all when the price has not moved. */}
                     {priceNote && (
-                        <p className='m-0 text-[11px] @[220px]:text-[12.5px] leading-[1.6] text-it-text-muted'>
+                        <p className='m-0 text-[11px] @[220px]:text-[12.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                             {priceNote}
                         </p>
                     )}
@@ -494,7 +494,7 @@ function DefaultTourCard({
                     {tour.freeCancellation && (
                         <p
                             className={cn(
-                                'm-0 inline-flex items-center gap-1.5 text-[11px] @[220px]:text-[12.5px] font-medium leading-[1.6] text-it-green-text',
+                                'm-0 inline-flex items-center gap-1.5 text-[9px] leading-[1.6] tracking-[-0.012em] text-it-heading/70 text-[11px] @[220px]:text-[12.5px] font-medium leading-[1.6] text-it-green-text tracking-[-0.012em]',
                                 // Mockup hides the note on the compact mobile
                                 // row card - the price line closes the card.
                                 mobileRow && 'max-sm:hidden'
@@ -593,7 +593,7 @@ function RankedTourCard({
                 />
                 {/* Rank circle (top-left) + Wishlist (top-right) */}
                 <div className='absolute inset-x-2.5 top-2.5 z-10 flex items-start justify-between gap-2'>
-                    <span className='grid size-[34px] place-items-center rounded-it-full bg-it-primary text-[13px] font-medium text-it-white shadow-it-sm tabular-nums'>
+                    <span className='grid size-[34px] place-items-center rounded-it-full bg-it-primary text-[13px] font-medium text-it-white shadow-it-sm tabular-nums tracking-[-0.012em]'>
                         {rank}
                     </span>
                     <motion.button
@@ -642,7 +642,7 @@ function RankedTourCard({
                         <HubEyebrow name={tour.hub.name} />
                     </div>
                 )}
-                <h3 className='m-0 font-it-body text-[13px] @[220px]:text-[15.5px] leading-[1.3] tracking-[-0.012em] text-it-heading line-clamp-2 font-medium'>
+                <h3 className='m-0 text-[14px] @[220px]:text-[15.5px] leading-[1.4] tracking-[-0.012em] text-it-heading line-clamp-2 font-medium'>
 {tour.title}
                 </h3>
 
@@ -654,23 +654,23 @@ function RankedTourCard({
                 )}
 
                 {/* Meta: ★ rating (count) · duration */}
-                <div className='mt-0.5 flex flex-wrap items-center gap-[5px] text-[11px] @[220px]:text-[12.5px] leading-[1.6] text-it-text-muted'>
+                <div className='mt-0.5 flex flex-wrap items-center gap-[5px] text-[11px] @[220px]:text-[12.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                     {isRated && (
                         <>
-                            <span className='font-medium text-it-star'>
+                            <span className='font-medium text-it-star tracking-[-0.012em]'>
                                 ★ {tour.rating}
                             </span>
                             <span className='tabular-nums'>
                                 ({tour.reviewCount?.toLocaleString()})
                             </span>
-                            <span className='text-it-text-muted'>·</span>
+                            <span className='text-it-text-muted tracking-[-0.012em]'>·</span>
                         </>
                     )}
                     <span>{tour.duration}</span>
                 </div>
 
                 {tour.freeCancellation && (
-                    <span className='mt-0.5 flex items-center gap-1.5 text-[11px] @[220px]:text-[12.5px] font-medium leading-[1.6] text-it-green-text max-sm:hidden'>
+                    <span className='mt-0.5 flex items-center gap-1.5 text-[11px] @[220px]:text-[12.5px] font-medium leading-[1.6] text-it-green-text max-sm:hidden tracking-[-0.012em]'>
                         <Image
                             src='/icons/trust-check-green.svg'
                             alt=''
@@ -684,7 +684,7 @@ function RankedTourCard({
                 )}
 
                 {/* Price - pinned to the card foot. */}
-                <div className='mt-auto pt-2 text-[11px] @[220px]:text-[12.5px] leading-[1.6] text-it-text-muted'>
+                <div className='mt-auto pt-2 text-[11px] @[220px]:text-[12.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                     {dict.from}
                     <b className='ml-1 text-[14px] @[220px]:text-[17px] font-medium tracking-[-0.012em] text-it-heading tabular-nums'>
                         {tour.priceDisplay}

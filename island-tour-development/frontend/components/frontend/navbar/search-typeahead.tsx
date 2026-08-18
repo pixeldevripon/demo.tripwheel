@@ -89,13 +89,13 @@ function EntityRow({
                     <span
                         className={`block truncate text-it-heading ${
                             compact
-                                ? 'text-[14px] font-medium leading-[1.4]'
-                                : 'text-sm font-medium'
+                                ? 'text-[14px] font-medium leading-[1.4] tracking-[-0.012em]'
+                                : 'text-sm font-medium tracking-[-0.012em]'
                         }`}>
                         {label}
                     </span>
                     {subtitle && (
-                        <span className='mt-0.5 block truncate text-xs text-it-text-muted'>
+                        <span className='mt-0.5 block truncate text-xs text-it-text-muted tracking-[-0.012em]'>
                             {subtitle}
                         </span>
                     )}
@@ -103,7 +103,7 @@ function EntityRow({
                 <ChevronRight
                     size={16}
                     strokeWidth={1.5}
-                    className='shrink-0 text-it-text-muted'
+                    className='shrink-0 text-it-text-muted tracking-[-0.012em]'
                 />
             </Link>
         </li>
@@ -124,7 +124,7 @@ const CompactRows = createContext(false);
 /** Section header ("Tours in Aruba" / "Beyond Aruba"). */
 function SectionHeader({ children }: { children: React.ReactNode }) {
     return (
-        <p className='m-0 border-t border-it-border px-4 pt-3.5 pb-1.5 text-sm font-medium text-it-heading'>
+        <p className='m-0 border-t border-it-border px-4 pt-3.5 pb-1.5 text-sm font-medium text-it-heading tracking-[-0.012em]'>
             {children}
         </p>
     );
@@ -307,7 +307,7 @@ function TourRow({
                 </span>
                 <span className='min-w-0 flex-1'>
                     {contextLabel && (
-                        <span className='flex items-center gap-1 text-xs text-it-text-muted'>
+                        <span className='flex items-center gap-1 text-xs text-it-text-muted tracking-[-0.012em]'>
                             {contextKind === 'category' ? (
                                 <Folder
                                     size={11}
@@ -324,17 +324,17 @@ function TourRow({
                             <span className='truncate'>{contextLabel}</span>
                         </span>
                     )}
-                    <span className='block truncate text-sm font-medium text-it-heading'>
+                    <span className='block truncate text-sm font-medium text-it-heading tracking-[-0.012em]'>
                         {hit.title}
                     </span>
                     {meta.length > 0 && (
-                        <span className='mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-it-text-muted'>
+                        <span className='mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-it-text-muted tracking-[-0.012em]'>
                             {meta.map((node, i) => (
                                 <span
                                     key={i}
-                                    className='inline-flex items-center gap-1.5'>
+                                    className='inline-flex items-center gap-1.5 text-[9px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
                                     {i > 0 && (
-                                        <span className='text-it-heading/30'>
+                                        <span className='text-it-heading/30 tracking-[-0.012em]'>
                                             ·
                                         </span>
                                     )}
@@ -343,8 +343,8 @@ function TourRow({
                             ))}
                         </span>
                     )}
-                    <span className='mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs'>
-                        <span className='font-medium text-it-heading'>
+                    <span className='mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs tracking-[-0.012em]'>
+                        <span className='font-medium text-it-heading tracking-[-0.012em]'>
                             {dict.from}{' '}
                             {formatPriceFrom(
                                 hit.money?.priceFrom ??
@@ -362,8 +362,8 @@ function TourRow({
                         </span>
                         {(hit.cancellationHours ?? 0) > 0 && (
                             <>
-                                <span className='text-it-heading/30'>·</span>
-                                <span className='text-it-text-muted'>
+                                <span className='text-it-heading/30 tracking-[-0.012em]'>·</span>
+                                <span className='text-it-text-muted tracking-[-0.012em]'>
                                     {dict.freeCancellation}
                                 </span>
                             </>
@@ -523,7 +523,7 @@ export function SearchTypeahead({
                     {groups.map(({ heading, entries }, groupIndex) => (
                         <div key={heading}>
                             {groupIndex === 0 ? (
-                                <p className='m-0 px-4 pt-3.5 pb-1.5 text-sm font-medium text-it-heading'>
+                                <p className='m-0 px-4 pt-3.5 pb-1.5 text-sm font-medium text-it-heading tracking-[-0.012em]'>
                                     {heading}
                                 </p>
                             ) : (
@@ -556,7 +556,7 @@ export function SearchTypeahead({
                     {zeroState!.topTours.length > 0 && (
                         <>
                             {groups.length === 0 ? (
-                                <p className='m-0 px-4 pt-3.5 pb-1.5 text-sm font-medium text-it-heading'>
+                                <p className='m-0 px-4 pt-3.5 pb-1.5 text-sm font-medium text-it-heading tracking-[-0.012em]'>
                                     {dict.topTours}
                                 </p>
                             ) : (
@@ -583,7 +583,7 @@ export function SearchTypeahead({
                         <Link
                             href={zeroState!.allTours.href}
                             onClick={onSelect}
-                            className='block border-t border-it-border px-5 py-3 text-center text-sm font-medium text-it-primary no-underline transition-colors hover:bg-it-surface'>
+                            className='block border-t border-it-border px-5 py-3 text-center text-sm font-medium text-it-primary no-underline transition-colors hover:bg-it-surface tracking-[-0.012em]'>
                             {zeroState!.allTours.label}
                         </Link>
                     )}
@@ -595,11 +595,11 @@ export function SearchTypeahead({
     return (
         <Panel inline={inline}>
             {loading && !hasAnything ? (
-                <p className='m-0 px-5 py-4 text-sm text-it-text-muted'>
+                <p className='m-0 px-5 py-4 text-sm text-it-text-muted tracking-[-0.012em]'>
                     {dict.searching}
                 </p>
             ) : !hasAnything ? (
-                <p className='m-0 px-5 py-4 text-sm text-it-text-muted'>
+                <p className='m-0 px-5 py-4 text-sm text-it-text-muted tracking-[-0.012em]'>
                     {dict.noResults.replace('{query}', query)}
                 </p>
             ) : (
@@ -738,7 +738,7 @@ export function SearchTypeahead({
                         <Link
                             href={searchHref(query)}
                             onClick={onSelect}
-                            className='block border-t border-it-border px-5 py-3 text-center text-sm font-medium text-it-primary no-underline transition-colors hover:bg-it-surface'>
+                            className='block border-t border-it-border px-5 py-3 text-center text-sm font-medium text-it-primary no-underline transition-colors hover:bg-it-surface tracking-[-0.012em]'>
                             {dict.seeAll.replace(
                                 '{count}',
                                 String(suggest.total)

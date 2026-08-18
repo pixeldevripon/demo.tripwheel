@@ -129,11 +129,11 @@ async function ReceiptBody({
                             <p className='m-0 text-[22px] font-medium tracking-[0.14em] text-it-heading uppercase'>
                                 {t.receiptTitle}
                             </p>
-                            <p className='mt-1.5 mb-0 font-mono text-[12.5px] text-it-text-muted'>
+                            <p className='mt-1.5 mb-0 font-mono text-[12.5px] text-it-text-muted tracking-[-0.012em]'>
                                 {t.receiptNumber}{' '}
                                 {receipt.id.slice(0, 8).toUpperCase()}
                             </p>
-                            <p className='mt-0.5 mb-0 font-mono text-[12.5px] text-it-text-muted'>
+                            <p className='mt-0.5 mb-0 font-mono text-[12.5px] text-it-text-muted tracking-[-0.012em]'>
                                 {formatDay(receipt.createdAt, locale)}
                             </p>
                         </div>
@@ -144,25 +144,25 @@ async function ReceiptBody({
                         <div>
                             <MicroLabel>{t.receiptIssuedTo}</MicroLabel>
                             {receipt.payerName && (
-                                <p className='mt-1.5 mb-0 text-[15px] font-medium text-it-heading'>
+                                <p className='mt-1.5 mb-0 text-[15px] font-medium '>
                                     {receipt.payerName}
                                 </p>
                             )}
                             {method && (
-                                <p className='mt-0.5 mb-0 font-mono text-[13px] text-it-text-muted'>
+                                <p className='mt-0.5 mb-0 font-mono text-[13px] text-it-text-muted tracking-[-0.012em]'>
                                     {method}
                                 </p>
                             )}
                         </div>
                         <div className='sm:text-right'>
                             <MicroLabel>{t.receiptTour}</MicroLabel>
-                            <p className='mt-1.5 mb-0 text-[15px] font-medium text-it-heading'>
+                            <p className='mt-1.5 mb-0 text-[15px] font-medium '>
                                 {receipt.tourName}
                                 {receipt.destinationName
                                     ? ` · ${receipt.destinationName}`
                                     : ''}
                             </p>
-                            <p className='mt-0.5 mb-0 text-[13px] leading-[1.7] text-it-text-muted'>
+                            <p className='mt-0.5 mb-0 text-[13px] leading-[1.7] text-it-text-muted tracking-[-0.012em]'>
                                 {t.receiptTripDate}{' '}
                                 {[
                                     formatDay(receipt.bookingLocalDate, locale),
@@ -172,11 +172,11 @@ async function ReceiptBody({
                                     .join(' · ')}
                             </p>
                             {receipt.operatorName && (
-                                <p className='m-0 text-[13px] leading-[1.7] text-it-text-muted'>
+                                <p className='m-0 text-[13px] leading-[1.7] text-it-text-muted tracking-[-0.012em]'>
                                     {t.receiptOperator} {receipt.operatorName}
                                 </p>
                             )}
-                            <p className='m-0 font-mono text-[13px] leading-[1.7] text-it-text-muted'>
+                            <p className='m-0 font-mono text-[13px] leading-[1.7] text-it-text-muted tracking-[-0.012em]'>
                                 {receipt.bookingDisplayRef}
                             </p>
                         </div>
@@ -266,15 +266,15 @@ async function ReceiptBody({
                             <span
                                 className={`font-mono text-[24px] font-medium tracking-[-0.01em] ${
                                     isRefund
-                                        ? 'text-it-green'
-                                        : 'text-it-heading'
+                                        ? 'text-it-green tracking-[-0.012em]'
+                                        : ''
                                 }`}>
                                 {isRefund
                                     ? `+ ${fmt(receipt.amount)}`
                                     : fmt(receipt.amount)}
                             </span>
                         </div>
-                        <p className='mt-1 mb-0 text-right text-[12px] text-it-text-muted'>
+                        <p className='mt-1 mb-0 text-right text-[12px] text-it-text-muted tracking-[-0.012em]'>
                             {lookupLabel(t.paymentKind, receipt.kind)}
                             {'  ·  '}
                             {lookupLabel(t.paymentStatus, receipt.status)}
@@ -283,10 +283,10 @@ async function ReceiptBody({
 
                     {/* ── Notes ── */}
                     <div className='mt-9 border-t border-it-heading/10 pt-5'>
-                        <p className='m-0 text-[12px] leading-[1.7] text-it-text-muted'>
+                        <p className='m-0 text-[12px] leading-[1.7] text-it-text-muted tracking-[-0.012em]'>
                             {t.statementNote}
                         </p>
-                        <p className='mt-1.5 mb-0 text-[12px] leading-[1.7] text-it-text-muted'>
+                        <p className='mt-1.5 mb-0 text-[12px] leading-[1.7] text-it-text-muted tracking-[-0.012em]'>
                             {t.receiptNotInvoice}
                         </p>
                     </div>
@@ -297,7 +297,7 @@ async function ReceiptBody({
                     className='mt-5 flex flex-wrap items-center justify-between gap-3 print:hidden'>
                     <Link
                         href={`${localizeHref(locale, '/traveller')}?tab=payments`}
-                        className='text-[14px] font-medium text-it-heading no-underline transition-colors hover:text-it-primary'>
+                        className='text-[14px] font-medium text-it-heading no-underline transition-colors hover:text-it-primary tracking-[-0.012em]'>
                         {t.receiptBack}
                     </Link>
                     <TravellerReceiptPrintButton label={t.receiptPrint} />
@@ -345,16 +345,16 @@ function ItemRow({
 }) {
     return (
         <tr className='border-b border-it-heading/10'>
-            <td className='py-3 pr-4 text-[14px] leading-[1.5] text-it-heading'>
+            <td className='py-3 pr-4 text-[14px] leading-[1.5] '>
                 {name}
             </td>
-            <td className='py-3 pl-4 text-right font-mono text-[13.5px] text-it-heading'>
+            <td className='py-3 pl-4 text-right font-mono text-[13.5px] '>
                 {qty}
             </td>
-            <td className='py-3 pl-4 text-right font-mono text-[13.5px] text-it-heading'>
+            <td className='py-3 pl-4 text-right font-mono text-[13.5px] '>
                 {unit}
             </td>
-            <td className='py-3 pl-4 text-right font-mono text-[13.5px] font-medium text-it-heading'>
+            <td className='py-3 pl-4 text-right font-mono text-[13.5px] font-medium '>
                 {amount}
             </td>
         </tr>
@@ -364,8 +364,8 @@ function ItemRow({
 function TotalRow({ label, value }: { label: string; value: string }) {
     return (
         <div className='flex items-baseline justify-between gap-6 py-1'>
-            <span className='text-[13px] text-it-text-muted'>{label}</span>
-            <span className='font-mono text-[13.5px] text-it-heading'>
+            <span className='text-[13px] text-it-text-muted tracking-[-0.012em]'>{label}</span>
+            <span className='font-mono text-[13.5px] '>
                 {value}
             </span>
         </div>

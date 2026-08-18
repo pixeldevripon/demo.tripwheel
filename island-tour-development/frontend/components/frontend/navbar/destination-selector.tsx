@@ -60,8 +60,8 @@ export function DestinationSelector({
                 transition={pressSpring}
                 className={
                     variant === 'desktop'
-                        ? 'flex items-center gap-2 bg-transparent border border-it-border-subtle rounded-it-full px-3.5 py-2 cursor-pointer text-it-heading transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:border-it-border'
-                        : 'flex items-center gap-1.5 bg-transparent border border-it-border-subtle rounded-it-full px-2.5 py-[7px] cursor-pointer text-it-heading'
+                        ? 'flex items-center gap-2 bg-transparent border border-it-border-subtle rounded-it-full px-3.5 py-2 cursor-pointer text-it-heading transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:border-it-border tracking-[-0.012em]'
+                        : 'flex items-center gap-1.5 bg-transparent border border-it-border-subtle rounded-it-full px-2.5 py-[7px] cursor-pointer '
                 }>
                 <Image
                     src='/icons/nav-location.svg'
@@ -74,7 +74,7 @@ export function DestinationSelector({
                     /* One-cell grid: the invisible spans reserve the width of the
                        longest possible label, so switching islands never shifts
                        the rest of the header. */
-                    <span className='inline-grid justify-items-start text-base font-medium text-it-heading whitespace-nowrap'>
+                    <span className='inline-grid justify-items-start text-base font-medium text-it-heading whitespace-nowrap tracking-[-0.012em]'>
                         <span className='col-start-1 row-start-1'>
                             {currentIsland
                                 ? currentIsland.name
@@ -132,7 +132,7 @@ export function DestinationSelector({
                                     aria-current={
                                         island.slug === currentIsland?.slug
                                     }
-                                    className={`block px-5 py-3 text-sm no-underline hover:bg-it-surface transition-colors ${island.slug === currentIsland?.slug ? 'text-it-primary font-medium' : 'text-it-heading'}`}>
+                                    className={`block px-5 py-3 text-sm no-underline hover:bg-it-surface transition-colors ${island.slug === currentIsland?.slug ? 'text-it-primary font-medium tracking-[-0.012em]' : ''}`}>
                                     {island.name}
                                 </Link>
                             </motion.div>

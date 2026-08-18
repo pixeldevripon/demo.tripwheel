@@ -82,8 +82,8 @@ export function TourReviews({
                     {dict.title}
                 </h2>
                 {rating != null && reviewCount > 0 && (
-                    <span className='text-it-text-muted tabular-nums'>
-                        <span className='font-medium text-it-star'>
+                    <span className='text-it-heading/50 tabular-nums'>
+                        <span className='font-medium text-it-star tracking-[-0.012em]'>
                             ★ {rating.toFixed(1)}
                         </span>{' '}
                         ({reviewCount})
@@ -100,7 +100,7 @@ export function TourReviews({
                 <SmoothScrollLink
                     targetId='tour-reviews'
                     offset={REVIEWS_SCROLL_OFFSET}
-                    className='w-full text-[13px] font-medium leading-[1.6] text-it-primary-hover no-underline transition-colors hover:text-it-primary sm:ml-auto sm:w-auto'>
+                    className='w-full text-[13px] font-medium leading-[1.6] text-it-primary-hover no-underline transition-colors hover:text-it-primary sm:ml-auto sm:w-auto tracking-[-0.012em]'>
                     {dict.seeAll} →
                 </SmoothScrollLink>
             </div>
@@ -132,8 +132,8 @@ function ReviewCard({
 
     return (
         <article className='h-full rounded-it-md border border-it-divider bg-it-white px-4 py-3.5'>
-            <div className='flex flex-wrap items-center gap-2 text-it-text-muted'>
-                <span className='font-medium text-it-star'>
+            <div className='flex flex-wrap items-center gap-2 text-it-text-muted tracking-[-0.012em]'>
+                <span className='font-medium text-it-star tracking-[-0.012em]'>
                     ★ {review.rating.toFixed(1)}
                 </span>
                 <span>
@@ -142,14 +142,14 @@ function ReviewCard({
                         .join(' · ')}
                 </span>
             </div>
-            <div className='mt-1.5 text-[13.5px] leading-[1.5] text-it-heading'>
+            <div className='mt-1.5 text-[13.5px] leading-[1.5] text-it-heading tracking-[-0.012em]'>
                 <ExpandableText
                     text={review.text}
                     moreLabel={dict.readMore}
                     lessLabel={dict.readLess}
                     sentenceLimit={PREVIEW_SENTENCES}
                     className='m-0'
-                    buttonClassName='cursor-pointer whitespace-nowrap border-none bg-transparent p-0 text-[13.5px] leading-[1.5] text-it-primary-hover'
+                    buttonClassName='cursor-pointer whitespace-nowrap border-none bg-transparent p-0 text-[13.5px] leading-[1.5] text-it-primary-hover tracking-[-0.012em]'
                 />
             </div>
         </article>

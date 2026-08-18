@@ -16,12 +16,12 @@ import { useId, type ReactNode } from 'react';
  * borders on inputs in any state (focus swaps to the orange primary).
  */
 
-export const labelClass = 'text-[13px] font-medium leading-[1.5] text-it-heading';
-export const helperClass = 'text-[12px] leading-[1.6] text-it-text-muted';
+export const labelClass = 'text-[13px] font-medium leading-[1.5] text-it-heading tracking-[-0.012em]';
+export const helperClass = 'text-[12px] leading-[1.6] text-it-text-muted tracking-[-0.012em]';
 // 16px below `md` - iOS Safari force-zooms the viewport on a focused input
 // under 16px. Zooming mid-checkout is the worst place on the site for it.
 export const inputBase =
-    'w-full rounded-it-sm border bg-it-white px-[13px] text-[16px] md:text-[14px] leading-[1.6] text-it-heading placeholder:text-it-text-muted outline-none transition-colors focus:border-it-primary';
+    'w-full rounded-it-sm border bg-it-white px-[13px] text-[16px] md:text-[14px] leading-[1.6] text-it-heading placeholder:text-it-text-muted outline-none transition-colors focus:border-it-primary tracking-[-0.012em]';
 export const titleClass =
     'font-it-display text-[17px] font-medium leading-[1.3] tracking-[-0.012em] text-it-heading';
 
@@ -33,7 +33,7 @@ export function FreeCancelNote({ label }: { label: string }) {
         // items-start + the icon's optical offset: when the line WRAPS on a
         // narrow viewport the check stays with the first line instead of
         // floating centred between both.
-        <div className='mt-3 flex items-start justify-center gap-[7px] text-center text-[13px] font-medium leading-[1.5] text-it-green-text'>
+        <div className='mt-3 flex items-start justify-center gap-[7px] text-center text-[13px] font-medium leading-[1.5] text-it-green-text tracking-[-0.012em]'>
             <Image
                 src='/icons/booking-check.svg'
                 alt=''
@@ -67,9 +67,9 @@ export function ConsentLine({
     locale: Locale;
 }) {
     const linkClass =
-        'font-medium text-it-text-muted underline underline-offset-2';
+        'font-medium text-it-text-muted underline underline-offset-2 tracking-[-0.012em]';
     return (
-        <p className='mt-2.5 text-center text-[12px] leading-[1.6] text-it-text-muted'>
+        <p className='mt-2.5 text-center text-[12px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
             {securePayment && (
                 <>
                     {securePayment}.
@@ -116,9 +116,9 @@ export function FieldLabel({
     return (
         <>
             {label}
-            {required && <span className='text-it-primary'> *</span>}
+            {required && <span className='text-it-primary tracking-[-0.012em]'> *</span>}
             {note && (
-                <span className='font-medium text-it-text-muted'> {note}</span>
+                <span className='font-medium text-it-text-muted tracking-[-0.012em]'> {note}</span>
             )}
         </>
     );
@@ -171,7 +171,7 @@ export function Field({
                 aria-invalid={error ? true : undefined}
                 className={`${inputBase} h-[46px] ${
                     error ? 'border-it-primary' : 'border-it-border'
-                } ${readOnly ? 'bg-it-surface text-it-text-muted focus:border-it-border' : ''}`}
+                } ${readOnly ? 'bg-it-surface text-it-text-muted focus:border-it-border tracking-[-0.012em]' : ''}`}
             />
             <FieldError error={error} />
         </div>
@@ -307,7 +307,7 @@ export function SelectField({
                     value={value}
                     onChange={e => onChange(e.target.value)}
                     className={`${inputBase} h-[46px] cursor-pointer appearance-none border-it-border pr-11 ${
-                        value === placeholderValue ? 'text-it-text-muted' : ''
+                        value === placeholderValue ? 'text-it-text-muted tracking-[-0.012em]' : ''
                     }`}>
                     {groups
                         ? groups.map(g => (
@@ -414,7 +414,7 @@ export function SecureCheckoutRow({
     dict: { secureCheckout: string; poweredBy: string };
 }) {
     return (
-        <div className='mb-3.5 flex items-center gap-2.5 rounded-it-md border border-it-border bg-it-bg px-3.5 py-[11px] text-[13px] font-medium leading-[1.5] text-it-heading'>
+        <div className='mb-3.5 flex items-center gap-2.5 rounded-it-md border border-it-border bg-it-bg px-3.5 py-[11px] text-[13px] font-medium leading-[1.5] text-it-heading tracking-[-0.012em]'>
             <Image
                 src='/icons/checkout/lock-ink.svg'
                 alt=''
@@ -572,8 +572,8 @@ export function SectionBadge({
                         transition={springPop}
                         className={`text-[12.5px] font-bold leading-none tabular-nums ${
                             state === 'active'
-                                ? 'text-it-white'
-                                : 'text-it-text-muted'
+                                ? 'text-it-white tracking-[-0.012em]'
+                                : 'text-it-text-muted tracking-[-0.012em]'
                         }`}>
                         {number}
                     </motion.span>

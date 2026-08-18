@@ -168,7 +168,7 @@ export function ReviewPhotoUploader({
                             aria-label={dict.photoRemove}
                             whileTap={{ scale: 0.9 }}
                             transition={springPop}
-                            className='absolute right-1 top-1 flex size-6 items-center justify-center rounded-it-full bg-it-heading/70 text-[15px] leading-none text-it-white opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100'>
+                            className='absolute right-1 top-1 flex size-6 items-center justify-center rounded-it-full bg-it-heading/70 text-[15px] leading-none text-it-white opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 tracking-[-0.012em]'>
                             &times;
                         </MotionButton>
                     </div>
@@ -209,8 +209,8 @@ export function ReviewPhotoUploader({
                         }}
                         className={`flex size-20 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-[10px] border border-dashed text-center text-[11px] leading-[1.25] tracking-[-0.012em] transition-colors ${
                             dragging
-                                ? 'border-it-primary bg-it-primary/5 text-it-primary'
-                                : 'border-it-border text-it-text-muted hover:border-it-primary hover:text-it-primary'
+                                ? 'border-it-primary bg-it-primary/5 text-it-primary tracking-[-0.012em]'
+                                : 'border-it-border text-it-text-muted hover:border-it-primary hover:text-it-primary tracking-[-0.012em]'
                         }`}>
                         <input
                             ref={inputRef}
@@ -224,7 +224,7 @@ export function ReviewPhotoUploader({
                             }}
                             className='sr-only'
                         />
-                        <span aria-hidden className='text-[18px] leading-none'>
+                        <span aria-hidden className='text-[18px] leading-none tracking-[-0.012em]'>
                             +
                         </span>
                         {dict.photoAdd}

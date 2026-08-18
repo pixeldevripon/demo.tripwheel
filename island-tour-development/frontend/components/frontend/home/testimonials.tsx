@@ -60,12 +60,12 @@ export async function Testimonials() {
                 <Reveal className='flex flex-col items-center gap-[26px]'>
                     {/* Platform summary (Trustpilot / Google) */}
                     <div className='flex flex-wrap items-center justify-center gap-x-2.5 gap-y-2'>
-                        <Stars className='text-it-star' />
+                        <Stars className='text-it-star tracking-[-0.012em]' />
                         <p className='m-0 flex flex-wrap items-baseline gap-x-1.5'>
-                            <span className='font-medium text-[16px] leading-[1.6] text-it-heading'>
+                            <span className='font-medium text-[16px] leading-[1.6] text-it-heading tracking-[-0.012em]'>
                                 {data.rating ?? ''} on {providerLabel}
                             </span>
-                            <span className='text-[14px] leading-[1.6] text-it-text-muted tabular-nums'>
+                            <span className='text-[14px] leading-[1.6] text-it-text-muted tabular-nums tracking-[-0.012em]'>
                                 · {data.reviewCount} reviews
                             </span>
                         </p>
@@ -82,7 +82,7 @@ export async function Testimonials() {
                                 <article className='flex h-full flex-col justify-between gap-6 rounded-it-md border border-it-divider bg-it-bg shadow-it-sm px-5 py-[18px]'>
                                     <div className='flex flex-col gap-2'>
                                         <Stars
-                                            className='text-it-star'
+                                            className='text-it-star tracking-[-0.012em]'
                                             count={Math.round(r.rating)}
                                         />
                                         <p className='m-0 text-[14px] md:text-[16px] leading-[1.6] text-it-heading line-clamp-5 md:line-clamp-7 tracking-[-0.012em]'>
@@ -91,15 +91,15 @@ export async function Testimonials() {
                                     </div>
 
                                     <div className='flex flex-col gap-0.5'>
-                                        <div className='flex flex-wrap items-center gap-x-2 text-[12.5px] leading-[1.6] text-it-text-muted'>
-                                            <span className='font-medium text-it-heading'>
+                                        <div className='flex flex-wrap items-center gap-x-2 text-[12.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                                            <span className='font-medium text-it-heading tracking-[-0.012em]'>
                                                 {r.author}
                                             </span>
                                             {r.relativeTime && (
                                                 <span>· {r.relativeTime}</span>
                                             )}
                                         </div>
-                                        <span className='text-[12px] leading-[1.6] text-it-text-muted'>
+                                        <span className='text-[12px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                                             via {providerLabel}
                                         </span>
                                     </div>

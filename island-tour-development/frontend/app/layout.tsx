@@ -156,7 +156,7 @@ export default function RootLayout({
             className={cn(
                 'h-full antialiased',
                 jetbrainsMono.variable,
-                'font-sans'
+                'font-sans tracking-[-0.012em]'
             )}>
             <head>
                 <CustomScripts position='head' />

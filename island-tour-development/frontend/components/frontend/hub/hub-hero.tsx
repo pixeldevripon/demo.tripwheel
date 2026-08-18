@@ -138,11 +138,11 @@ export function HubHero({
                     {/* Title + tagline */}
                     <MountReveal className='flex flex-col items-start'>
                         <h1
-                            className={`m-0 font-it-display text-[clamp(30px,4.4vw,46px)] font-bold leading-[1.05] tracking-[-0.02em] ${image ? 'text-it-white font-medium' : 'text-it-heading font-medium'}`}>
+                            className={`m-0 font-it-display text-[clamp(30px,4.4vw,46px)] font-bold leading-[1.05] tracking-[-0.02em] ${image ? 'text-it-white font-medium tracking-[-0.012em]' : 'text-it-heading font-medium tracking-[-0.012em]'}`}>
                             {title}
                         </h1>
                         <p
-                            className={`m-0 mt-2.5 text-[16px] font-medium leading-[1.6] ${image ? 'text-it-white/92' : 'text-it-text-muted'}`}>
+                            className={`m-0 mt-2.5 text-[16px] font-medium leading-[1.6] ${image ? 'text-it-white/92 tracking-[-0.012em]' : 'text-it-text-muted tracking-[-0.012em]'}`}>
                             {tagline || dict.tagline}
                         </p>
                     </MountReveal>
@@ -185,7 +185,7 @@ export function HubHero({
                                                     className='size-4 shrink-0 opacity-92'
                                                 />
                                                 <span
-                                                    className={`whitespace-nowrap text-[14px] font-medium leading-[1.6] ${image ? 'text-it-white' : 'text-it-heading'}`}>
+                                                    className={`whitespace-nowrap text-[14px] font-medium leading-[1.6] ${image ? 'text-it-white tracking-[-0.012em]' : ''}`}>
                                                     {item.label}
                                                 </span>
                                             </li>
@@ -220,7 +220,7 @@ export function HubHero({
                                             <motion.button
                                                 type='button'
                                                 aria-label={dict.selectDate}
-                                                className={`flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 whitespace-nowrap border-none bg-transparent py-[13px] pl-0 text-left text-[14.5px] font-medium leading-[1.6] transition-colors duration-300 ${date ? 'text-it-heading' : 'text-it-text-muted'}`}>
+                                                className={`flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 whitespace-nowrap border-none bg-transparent py-[13px] pl-0 text-left text-[14.5px] font-medium leading-[1.6] transition-colors duration-300 ${date ? '' : 'text-it-text-muted tracking-[-0.012em]'}`}>
                                                 <Image
                                                     src='/icons/calendar-soft.svg'
                                                     alt=''
@@ -256,7 +256,7 @@ export function HubHero({
                                     <PopoverContent
                                         align='start'
                                         sideOffset={28}
-                                        className='w-auto rounded-[8px] bg-it-white p-0 text-it-heading duration-300 ease-[cubic-bezier(0.21,0.47,0.32,0.98)]'>
+                                        className='w-auto rounded-[8px] bg-it-white p-0 text-it-heading duration-300 ease-[cubic-bezier(0.21,0.47,0.32,0.98)] tracking-[-0.012em]'>
                                         <Calendar
                                             mode='single'
                                             selected={date}
@@ -276,7 +276,7 @@ export function HubHero({
                                     onClick={handleCheckAvailability}
                                     whileTap={{ scale: 0.98 }}
                                     transition={springPop}
-                                    className='shrink-0 cursor-pointer rounded-it-sm border-none bg-it-primary px-[22px] py-[13px] text-[15px] font-medium leading-[1.6] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover'>
+                                    className='shrink-0 cursor-pointer rounded-it-sm border-none bg-it-primary px-[22px] py-[13px] text-[15px] font-medium leading-[1.6] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover tracking-[-0.012em]'>
                                     {dict.checkAvailability}
                                 </motion.button>
                             </div>

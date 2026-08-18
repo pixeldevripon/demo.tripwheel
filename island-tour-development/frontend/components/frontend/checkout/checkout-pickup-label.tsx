@@ -125,7 +125,7 @@ export function CheckoutSummaryTotals({
     const money = (n: number) => formatCheckoutMoney(n, currency, locale);
     const row =
         'flex items-center justify-between gap-1 text-[16px] leading-[1.6] text-it-heading tracking-[-0.012em]';
-    const amt = 'font-medium tabular-nums';
+    const amt = 'font-medium tabular-nums tracking-[-0.012em]';
     return (
         <>
             {/* Per-line breakdown (participants, extras, pickup) - the same

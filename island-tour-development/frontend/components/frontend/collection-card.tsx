@@ -62,13 +62,13 @@ export function CollectionCard({
 
                 {/* ── Card info ──────────────────────────────────────────── */}
                 <div className='flex flex-1 min-w-0 flex-col gap-1 px-3 pt-2.5 pb-3 @[220px]:px-3.5 @[220px]:pt-3 @[220px]:pb-3.5'>
-                    <h3 className='m-0 font-it-body text-[13px] @[220px]:text-[15.5px] leading-[1.3] tracking-[-0.012em] text-it-heading line-clamp-2 font-medium'>
+                    <h3 className='m-0 text-[14px] @[220px]:text-[15.5px] leading-[1.4] tracking-[-0.012em] text-it-heading line-clamp-2 font-medium'>
                         {collection.name}
                     </h3>
 
                     {/* Explore indicator - pinned to the card foot. */}
                     <div className='mt-auto flex items-center gap-1 pt-2'>
-                        <span className='text-[12px] @[220px]:text-[12.5px] font-medium leading-[1.6] text-it-primary-hover'>
+                        <span className='text-[12px] @[220px]:text-[12.5px] font-medium leading-[1.6] text-it-primary-hover tracking-[-0.012em]'>
                             {dict.explore}
                         </span>
                         <Image

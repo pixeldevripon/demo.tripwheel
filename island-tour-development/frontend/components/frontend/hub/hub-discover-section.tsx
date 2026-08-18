@@ -75,7 +75,7 @@ export function HubDiscoverSection({
         <div className='flex flex-col gap-6'>
             <Reveal>
                 <div className='flex max-w-[640px] flex-col gap-2'>
-                    <h2 className='m-0 font-it-display text-[clamp(22px,2.8vw,30px)] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                    <h2 className='m-0 text-[20px] md:text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                         {dict.title}
                     </h2>
                     <p className='m-0 text-[14px] md:text-[16px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
@@ -114,14 +114,14 @@ export function HubDiscoverSection({
                                 {dict.cta.title}
                             </h3>
                             {dict.cta.fact && (
-                                <p className='m-0 text-[14.5px] leading-[1.6] text-it-ink-secondary'>
+                                <p className='m-0 text-[14.5px] leading-[1.6] text-it-ink-secondary tracking-[-0.012em]'>
                                     {dict.cta.fact}
                                 </p>
                             )}
                         </div>
                         <HubScrollButton
                             targetId={bookTripTargetId}
-                            className='inline-flex h-[46px] w-full shrink-0 cursor-pointer items-center justify-center rounded-it-full bg-it-primary-hover px-8 text-[14px] font-medium leading-none text-it-white no-underline transition-colors hover:bg-(--it-primary-active) md:h-12 md:w-auto md:text-[15px]'>
+                            className='inline-flex h-[46px] w-full shrink-0 cursor-pointer items-center justify-center rounded-it-full bg-it-primary-hover px-8 text-[14px] font-medium leading-none text-it-white no-underline transition-colors hover:bg-(--it-primary-active) md:h-12 md:w-auto md:text-[15px] tracking-[-0.012em]'>
                             {dict.cta.button}
                         </HubScrollButton>
                     </div>

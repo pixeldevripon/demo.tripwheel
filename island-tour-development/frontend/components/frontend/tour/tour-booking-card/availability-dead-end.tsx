@@ -192,10 +192,10 @@ function AlternativeRow({
                                             // page's lazy images.
                                             loading='eager'
                                         />
-                                        <span className='text-it-heading/70'>
+                                        <span className='text-it-heading/70 tracking-[-0.012em]'>
                                             {alt.aggregateRating?.toFixed(1)}
                                         </span>
-                                        <span className='text-it-heading/50'>
+                                        <span className='text-it-heading/50 tracking-[-0.012em]'>
                                             (
                                             {new Intl.NumberFormat(
                                                 locale
@@ -206,7 +206,7 @@ function AlternativeRow({
                                     {next && (
                                         <span
                                             aria-hidden
-                                            className='shrink-0 text-it-heading/30'>
+                                            className='shrink-0 text-it-heading/30 tracking-[-0.012em]'>
                                             &middot;
                                         </span>
                                     )}

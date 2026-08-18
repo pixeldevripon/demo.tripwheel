@@ -345,7 +345,7 @@ export async function Footer({
     ];
 
     return (
-        <footer className='bg-it-dark text-it-white'>
+        <footer className='bg-it-dark text-it-white tracking-[-0.012em]'>
             <div className='it-container pt-12 pb-6 lg:pt-16 lg:pb-8'>
                 <div className='flex flex-col gap-11'>
                     {/* ── Top section ──
@@ -479,11 +479,11 @@ export async function Footer({
                         <div className='h-px w-full bg-it-ink-on-dark/15' />
                         <div className='flex flex-col gap-2.5 pt-5 lg:flex-row lg:items-center lg:justify-between lg:gap-4'>
                             <div className='flex flex-wrap items-center gap-3 lg:gap-4'>
-                                <span className='text-xs leading-[1.6] text-it-footer-muted'>
+                                <span className='text-xs lg:text-base leading-[1.6] text-it-footer-muted tracking-[-0.012em]'>
                                     {copyrightLine}
                                 </span>
                                 <span className='size-1 shrink-0 rounded-full bg-it-soft-on-dark/60' />
-                                <span className='text-xs leading-[1.6] text-it-footer-muted'>
+                                <span className='text-xs lg:text-base leading-[1.6] text-it-footer-muted tracking-[-0.012em]'>
                                     {registrationLine}
                                 </span>
                             </div>

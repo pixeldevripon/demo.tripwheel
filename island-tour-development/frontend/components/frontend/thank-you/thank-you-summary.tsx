@@ -12,16 +12,16 @@ type ThankYouDict = Dictionary['thankYou'];
 /* Design v2 .brow2: hairline-divided rows, muted icon label left, bold value
    right. The LAST row drops its divider via `last:`. */
 const rowClass =
-    'flex items-start justify-between gap-[18px] border-b border-it-divider py-[11px] text-[14px] leading-[1.6] last:border-b-0';
+    'flex items-start justify-between gap-[18px] border-b border-it-divider py-[11px] text-[14px] leading-[1.6] last:border-b-0 tracking-[-0.012em]';
 const labelClass =
-    'flex flex-none items-center gap-[9px] font-medium text-it-text-muted';
-const valueClass = 'min-w-0 text-right font-medium text-it-heading';
+    'flex flex-none items-center gap-[9px] font-medium text-it-text-muted tracking-[-0.012em]';
+const valueClass = 'min-w-0 text-right font-medium text-it-heading tracking-[-0.012em]';
 /** Faint sub-line under a value (time range, card used). */
 const subClass =
-    'mt-[3px] block text-[12px] font-medium leading-[1.5] text-it-text-muted';
+    'mt-[3px] block text-[12px] font-medium leading-[1.5] text-it-text-muted tracking-[-0.012em]';
 /** Tappable contact value (mailto/tel/map) - deep-orange underlined. */
 const rowLink =
-    'break-words font-medium text-it-primary-hover underline underline-offset-2 transition-opacity hover:opacity-80';
+    'break-words font-medium text-it-primary-hover underline underline-offset-2 transition-opacity hover:opacity-80 tracking-[-0.012em]';
 
 /** Google Maps search link for a meeting-point address. */
 const mapUrl = (query: string) =>
@@ -145,7 +145,7 @@ export function ThankYouSummary({
                                         cancelHref ? (
                                             <a
                                                 href={cancelHref}
-                                                className='font-medium text-it-primary-hover underline underline-offset-2 transition-opacity hover:opacity-80'>
+                                                className='font-medium text-it-primary-hover underline underline-offset-2 transition-opacity hover:opacity-80 tracking-[-0.012em]'>
                                                 {dict.needToCancel}
                                             </a>
                                         ) : undefined
@@ -281,15 +281,15 @@ export function ThankYouSummary({
                                     </>
                                 )}
                                 {/* Total: heavier top rule, larger value (.brow2.tot). */}
-                                <div className='mt-1 flex items-start justify-between gap-[18px] border-t border-it-border py-[11px] pt-[13px] text-[14px] leading-[1.6]'>
-                                    <span className='font-medium text-it-heading'>
+                                <div className='mt-1 flex items-start justify-between gap-[18px] border-t border-it-border py-[11px] pt-[13px] text-[14px] leading-[1.6] tracking-[-0.012em]'>
+                                    <span className='font-medium text-it-heading tracking-[-0.012em]'>
                                         {dict.total}
                                     </span>
-                                    <span className='text-right text-[16px] font-medium text-it-heading tabular-nums'>
+                                    <span className='text-right text-[16px] font-medium text-it-heading tabular-nums tracking-[-0.012em]'>
                                         {money(payment.total)}
                                     </span>
                                 </div>
-                                <div className='flex items-start justify-between gap-[18px] py-[11px] text-[14px] leading-[1.6]'>
+                                <div className='flex items-start justify-between gap-[18px] py-[11px] text-[14px] leading-[1.6] tracking-[-0.012em]'>
                                     <span className={labelClass}>
                                         {dict.ref}
                                     </span>
@@ -301,12 +301,12 @@ export function ThankYouSummary({
                                     operator's own rails, so every surface stays NEUTRAL
                                     about how they collect - no "card only" claims. */}
                                 {payment.balance > 0 ? (
-                                    <p className='m-0 mt-3.5 text-[12.5px] leading-[1.5] text-it-text-muted'>
+                                    <p className='m-0 mt-3.5 text-[12.5px] leading-[1.5] text-it-text-muted tracking-[-0.012em]'>
                                         {renderTemplate(
                                             dict.operatorLinkNote,
                                             {
                                                 operator: (
-                                                    <b className='font-medium text-it-heading'>
+                                                    <b className='font-medium text-it-heading tracking-[-0.012em]'>
                                                         {
                                                             booking.operatorShortName
                                                         }
@@ -317,7 +317,7 @@ export function ThankYouSummary({
                                     </p>
                                 ) : (
                                     paidInFull && (
-                                        <p className='m-0 mt-3.5 text-[12.5px] leading-[1.5] text-it-text-muted'>
+                                        <p className='m-0 mt-3.5 text-[12.5px] leading-[1.5] text-it-text-muted tracking-[-0.012em]'>
                                             {dict.paidFullNote}
                                         </p>
                                     )

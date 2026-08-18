@@ -142,7 +142,7 @@ export function ReviewSubmitFlow({
                 {tourHref && (
                     <Link
                         href={tourHref}
-                        className='mt-5 inline-block w-fit rounded-[10px] bg-it-primary px-4.5 py-2.75 font-medium text-[14px] leading-[1.2] text-it-white no-underline transition-colors duration-300 hover:bg-it-primary-hover'>
+                        className='mt-5 inline-block w-fit rounded-[10px] bg-it-primary px-4.5 py-2.75 font-medium text-[14px] leading-[1.2] text-it-white no-underline transition-colors duration-300 hover:bg-it-primary-hover tracking-[-0.012em]'>
                         {dict.thanksCta}
                     </Link>
                 )}
@@ -228,7 +228,7 @@ export function ReviewSubmitFlow({
             )}
 
             {error && (
-                <p className='mt-3 mb-0 text-[14px] leading-[1.6] text-[#c0392b]'>
+                <p className='mt-3 mb-0 text-[14px] leading-[1.6] text-[#c0392b] tracking-[-0.012em]'>
                     {error}
                 </p>
             )}
@@ -273,8 +273,8 @@ export function ReviewSubmitFlow({
                                     }}
                                     className={`cursor-pointer rounded-it-full border px-5 py-2.5 text-[15px] leading-[1.2] transition-colors ${
                                         guestType === g.value
-                                            ? 'border-it-primary bg-it-primary text-it-white'
-                                            : 'border-it-border bg-it-white text-it-heading hover:border-it-primary'
+                                            ? 'border-it-primary bg-it-primary text-it-white tracking-[-0.012em]'
+                                            : 'border-it-border bg-it-white text-it-heading hover:border-it-primary tracking-[-0.012em]'
                                     }`}>
                                     {dict[g.labelKey]}
                                 </MotionButton>
@@ -297,13 +297,13 @@ export function ReviewSubmitFlow({
                                     href={trustpilotUrl}
                                     target='_blank'
                                     rel='noopener noreferrer'
-                                    className='rounded-[10px] bg-it-heading px-4.5 py-2.75 font-medium text-[14px] leading-[1.2] text-it-white no-underline transition-opacity duration-300 hover:opacity-90'>
+                                    className='rounded-[10px] bg-it-heading px-4.5 py-2.75 font-medium text-[14px] leading-[1.2] text-it-white no-underline transition-opacity duration-300 hover:opacity-90 tracking-[-0.012em]'>
                                     {dict.step4Cta}
                                 </a>
                                 <button
                                     type='button'
                                     onClick={() => setDone(true)}
-                                    className='cursor-pointer border-0 bg-transparent p-0 text-[14px] leading-[1.2] text-it-text-muted underline'>
+                                    className='cursor-pointer border-0 bg-transparent p-0 text-[14px] leading-[1.2] text-it-text-muted underline tracking-[-0.012em]'>
                                     {dict.step4Skip}
                                 </button>
                             </div>
@@ -334,7 +334,7 @@ export function ReviewSubmitFlow({
                                 whileTap={{ scale: 0.97 }}
                                 transition={springPop}
                                 onClick={() => void sendFeedback()}
-                                className='mt-3 cursor-pointer rounded-[10px] border-[1.5px] border-it-heading/20 bg-transparent px-4.5 py-2.75 font-medium text-[14px] leading-[1.2] text-it-heading transition-colors duration-300 hover:border-it-heading/40 disabled:opacity-50'>
+                                className='mt-3 cursor-pointer rounded-[10px] border-[1.5px] border-it-heading/20 bg-transparent px-4.5 py-2.75 font-medium text-[14px] leading-[1.2] text-it-heading transition-colors duration-300 hover:border-it-heading/40 disabled:opacity-50 tracking-[-0.012em]'>
                                 {busy ? dict.saving : dict.recoverySend}
                             </MotionButton>
                         </div>
@@ -350,7 +350,7 @@ export function ReviewSubmitFlow({
                         whileTap={{ scale: 0.97 }}
                         transition={springPop}
                         onClick={() => setDone(true)}
-                        className='mt-7 w-full cursor-pointer rounded-[10px] bg-it-primary px-4.5 py-3 font-medium text-[15px] leading-[1.2] text-it-white transition-colors duration-300 hover:bg-it-primary-hover'>
+                        className='mt-7 w-full cursor-pointer rounded-[10px] bg-it-primary px-4.5 py-3 font-medium text-[15px] leading-[1.2] text-it-white transition-colors duration-300 hover:bg-it-primary-hover tracking-[-0.012em]'>
                         {dict.save}
                     </MotionButton>
 

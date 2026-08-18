@@ -50,7 +50,7 @@ export function FaqAccordion({ items }: { items: { q: string; a: string }[] }) {
                                     {faq.q}
                                 </span>
                                 <motion.span
-                                    className='inline-flex shrink-0 text-it-heading'
+                                    className='inline-flex shrink-0 text-it-heading tracking-[-0.012em]'
                                     animate={{ rotate: open ? 180 : 0 }}
                                     transition={{
                                         duration: 0.6,

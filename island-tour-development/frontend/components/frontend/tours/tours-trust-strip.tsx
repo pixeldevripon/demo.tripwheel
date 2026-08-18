@@ -35,7 +35,7 @@ export async function ToursTrustStrip({ dict }: { dict: ToursTrustDict }) {
                         {dict.checks.map(check => (
                             <span
                                 key={check}
-                                className='flex items-center gap-2 text-[13.5px] font-medium leading-[1.6] text-it-heading'>
+                                className='flex items-center gap-2 text-[14px] md:text-[16px] leading-[1.6] text-it-heading tracking-[-0.012em]'>
                                 <Image
                                     src='/icons/trust-check-green.svg'
                                     alt=''
@@ -54,7 +54,7 @@ export async function ToursTrustStrip({ dict }: { dict: ToursTrustDict }) {
                             href={whatsappUrl}
                             target='_blank'
                             rel='noopener noreferrer'
-                            className='whitespace-nowrap text-[13.5px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-[3px] transition-colors duration-300 hover:text-it-primary'>
+                            className='whitespace-nowrap text-[13.5px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-[3px] transition-colors duration-300 hover:text-it-primary tracking-[-0.012em]'>
                             {dict.whatsapp}
                         </a>
                     )}

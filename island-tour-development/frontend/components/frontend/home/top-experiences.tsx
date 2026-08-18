@@ -543,16 +543,16 @@ export function TopExperiences({
                                                             className='inline-flex'>
                                                             {isPlaying &&
                                                             !paused ? (
-                                                                <Pause className='size-3.5 fill-it-white text-it-white' />
+                                                                <Pause className='size-3.5 fill-it-white text-it-white tracking-[-0.012em]' />
                                                             ) : (
-                                                                <Play className='size-3.5 fill-it-white text-it-white' />
+                                                                <Play className='size-3.5 fill-it-white text-it-white tracking-[-0.012em]' />
                                                             )}
                                                         </motion.span>
                                                     </AnimatePresence>
                                                 </motion.button>
                                             ) : (
                                                 <span className='absolute top-3 right-3 z-20 flex size-[30px] items-center justify-center rounded-full bg-it-white/40 border border-it-white/55'>
-                                                    <Play className='size-3 fill-it-ink-muted text-it-text-muted' />
+                                                    <Play className='size-3 fill-it-ink-muted text-it-text-muted tracking-[-0.012em]' />
                                                 </span>
                                             )}
 
@@ -563,10 +563,10 @@ export function TopExperiences({
                                                 the running video. */}
                                             <p
                                                 className={[
-                                                    'absolute bottom-[13px] inset-x-[15px] m-0 text-left font-medium text-[13.5px] leading-[1.2] tracking-[-0.012em]',
+                                                    'absolute bottom-[13px] inset-x-[15px] m-0 text-left font-medium text-[20px] leading-[1.6] tracking-[-0.012em]',
                                                     hasMedia
-                                                        ? 'text-it-white [text-shadow:0_1px_10px_rgba(0,0,0,0.6),0_1px_2px_rgba(0,0,0,0.45)]'
-                                                        : 'text-it-heading',
+                                                        ? 'text-it-white [text-shadow:0_1px_10px_rgba(0,0,0,0.6),0_1px_2px_rgba(0,0,0,0.45)] tracking-[-0.012em]'
+                                                        : '',
                                                 ].join(' ')}>
                                                 {title}
                                             </p>

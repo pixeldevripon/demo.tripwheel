@@ -42,7 +42,7 @@ export function PriceHeader() {
     // with.
     return (
         <div className='flex flex-col gap-0.5 px-5 pt-5'>
-            <div className='flex items-baseline gap-1 text-it-text-muted'>
+            <div className='flex items-baseline gap-1 text-it-text-muted tracking-[-0.012em]'>
                 <span>{dict.from}</span>
                 <b className='mr-1 text-[22px] font-medium leading-[1.2] tracking-[-0.012em] text-it-heading tabular-nums'>
                     {money(data.priceFrom)}
