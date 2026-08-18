@@ -81,7 +81,7 @@ export function TourDetailTabs({ tabs }: { tabs: TourTab[] }) {
         // here - backdrop-filter creates a containing block.)
         <div
             ref={barRef}
-            className='sticky top-16 md:top-20 z-30 bg-(--it-frow-bg) backdrop-blur-[8px]'>
+            className='sticky top-15 md:top-[72px] z-30 bg-(--it-frow-bg) backdrop-blur-[8px]'>
             {/* The fade goes on the SCROLLER itself, so it tracks the row's own
                 position rather than the bar's. The baseline hairline is the
                 bar's, not the row's, or the mask would fade the rule away with

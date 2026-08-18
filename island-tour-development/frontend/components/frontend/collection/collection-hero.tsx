@@ -113,17 +113,17 @@ export function CollectionHero({
                         <div className='flex flex-col'>
                             {eyebrow && (
                                 <p
-                                    className={`m-0 text-[11.5px] font-bold uppercase tracking-[0.14em] ${heroImage ? 'text-it-white/85 tracking-[-0.012em]' : 'text-it-primary-hover tracking-[-0.012em]'}`}>
+                                    className={`m-0 text-[11.5px] font-medium uppercase tracking-[0.14em] ${heroImage ? 'text-it-white/85' : 'text-it-primary-hover'}`}>
                                     {eyebrow}
                                 </p>
                             )}
                             <h1
-                                className={`m-0 mt-2 font-it-display text-[clamp(26px,3.6vw,38px)] font-bold leading-[1.1] tracking-[-0.015em] ${heroImage ? 'text-it-white font-medium tracking-[-0.012em] leading-[1.6] text-[20.5px]' : 'text-it-primary-fg font-medium tracking-[-0.012em] text-[27px] md:text-[38.5px] leading-[1.2]'}`}>
+                                className={`m-0 mt-2 font-it-body text-[31px] md:text-[37px] font-medium leading-[1.2] tracking-[-0.012em] text-balance ${heroImage ? 'text-it-white' : 'text-it-heading'}`}>
                                 {title}
                             </h1>
                             {subtitle && (
                                 <p
-                                    className={`m-0 mt-2.5 text-[14px] font-medium leading-[1.6] ${heroImage ? 'text-it-white/92 tracking-[-0.012em]' : 'text-it-text-muted tracking-[-0.012em]'}`}>
+                                    className={`m-0 mt-2.5 text-[14.5px] md:text-[16.5px] font-medium leading-[1.6] tracking-[-0.012em] ${heroImage ? 'text-it-white/92' : 'text-it-text-muted'}`}>
                                     {subtitle}
                                 </p>
                             )}
@@ -134,7 +134,7 @@ export function CollectionHero({
                     {tourCount > 0 && (
                         <MountReveal delay={0.2} yOffset={20}>
                             <div
-                                className={`mt-2 flex items-center gap-2 text-[12px] font-medium leading-[1.6] tabular-nums ${heroImage ? 'text-it-white/85 tracking-[-0.012em]' : 'text-it-text-muted tracking-[-0.012em]'}`}>
+                                className={`mt-2 flex items-center gap-2 text-[12.5px] font-medium leading-[1.6] tracking-[-0.012em] tabular-nums ${heroImage ? 'text-it-white/85' : 'text-it-text-muted tracking-[-0.012em]'}`}>
                                 <span>
                                     {tourCount} {dict.tours}
                                 </span>

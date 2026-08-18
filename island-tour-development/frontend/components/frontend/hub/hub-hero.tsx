@@ -138,11 +138,11 @@ export function HubHero({
                     {/* Title + tagline */}
                     <MountReveal className='flex flex-col items-start'>
                         <h1
-                            className={`m-0 font-it-display text-[clamp(29.5px,5.06vw,42.5px)] leading-[1.2] ${image ? 'text-it-white font-medium tracking-[-0.012em]' : 'text-it-heading font-medium tracking-[-0.012em]'}`}>
+                            className={`m-0 font-it-body text-[31px] md:text-[37px] font-medium leading-[1.2] tracking-[-0.012em] text-balance ${image ? 'text-it-white' : 'text-it-heading'}`}>
                             {title}
                         </h1>
                         <p
-                            className={`m-0 mt-2.5 text-[14.5px] font-medium leading-[1.6] ${image ? 'text-it-white/92 tracking-[-0.012em]' : 'text-it-text-muted tracking-[-0.012em]'}`}>
+                            className={`m-0 mt-2.5 text-[14.5px] md:text-[16.5px] font-medium leading-[1.6] tracking-[-0.012em] ${image ? 'text-it-white/92' : 'text-it-text-muted'}`}>
                             {tagline || dict.tagline}
                         </p>
                     </MountReveal>

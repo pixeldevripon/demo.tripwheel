@@ -269,7 +269,7 @@ export function NavSearch({
                                 alt=''
                                 width={16}
                                 height={16}
-                                className='size-4.5 shrink-0'
+                                className='size-4.5 shrink-0 md:size-5'
                             />
                         </motion.button>
                         <span className='relative flex-1 min-w-0'>

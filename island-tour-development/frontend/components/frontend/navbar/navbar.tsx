@@ -234,7 +234,7 @@ export function Navbar({
     }, [currentIsland?.slug, locale]);
 
     return (
-        <header className='fixed top-0 left-0 right-0 z-100 h-16 md:h-20 bg-(--it-navbar-bg) backdrop-blur-[12px] backdrop-saturate-[1.3] shadow-it-navbar'>
+        <header className='fixed top-0 left-0 right-0 z-100 h-15 md:h-[72px] bg-(--it-navbar-bg) backdrop-blur-[12px] backdrop-saturate-[1.3] shadow-it-navbar'>
             <div className='it-container h-full flex items-center gap-3.5'>
                 {/* ── Left: logo + island + categories ── */}
                 <div className='flex items-center gap-6 lg:gap-12 shrink-0'>
@@ -245,7 +245,7 @@ export function Navbar({
                             width={68}
                             height={50}
                             priority
-                            className='h-8 w-auto object-contain md:h-10'
+                            className='h-9 w-auto object-contain md:h-10'
                         />
                     </Link>
 

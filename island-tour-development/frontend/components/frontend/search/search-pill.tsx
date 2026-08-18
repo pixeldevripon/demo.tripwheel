@@ -167,7 +167,7 @@ export const SearchPill = forwardRef<HTMLInputElement, {
                 alt=''
                 width={24}
                 height={24}
-                className='size-4.5 shrink-0'
+                className='size-4.5 shrink-0 md:size-5'
             />
             <span className='whitespace-nowrap'>
                 {date ? format(date, 'd MMM') : datePlaceholder}
@@ -193,7 +193,7 @@ export const SearchPill = forwardRef<HTMLInputElement, {
                     alt=''
                     width={24}
                     height={24}
-                    className='size-6 shrink-0'
+                    className='size-4.5 shrink-0 md:size-5'
                 />
                 <span className='relative min-w-0 flex-1'>
                     <input
@@ -288,7 +288,7 @@ export const SearchPill = forwardRef<HTMLInputElement, {
                                     alt=''
                                     width={20}
                                     height={20}
-                                    className='size-5 shrink-0'
+                                    className='size-4.5 shrink-0 md:size-5'
                                 />
                             </motion.button>
                         )}
@@ -308,15 +308,15 @@ export const SearchPill = forwardRef<HTMLInputElement, {
                     variant === 'layer'
                         ? 'size-8'
                         : compact
-                          ? 'size-12'
-                          : 'size-[50px]'
+                          ? 'size-11 md:size-12'
+                          : 'size-11 md:size-[50px]'
                 }`}>
                 <Image
                     src='/icons/hero-search-white.svg'
                     alt=''
                     width={24}
                     height={24}
-                    className='size-5'
+                    className='size-4 md:size-5'
                 />
             </motion.button>
 

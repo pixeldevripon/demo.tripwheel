@@ -60,8 +60,8 @@ export function DestinationSelector({
                 transition={pressSpring}
                 className={
                     variant === 'desktop'
-                        ? 'flex items-center gap-2 bg-transparent border-none p-0 cursor-pointer text-it-heading transition-opacity duration-(--it-duration-xs) ease-(--it-ease) hover:opacity-80 tracking-[-0.012em]'
-                        : 'flex items-center gap-1.5 bg-transparent border border-it-border-subtle rounded-it-full px-2.5 py-[7px] cursor-pointer'
+                        ? 'flex items-center gap-2 rounded-it-full border border-it-border-subtle bg-it-white px-3.5 py-2 cursor-pointer text-it-heading transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:border-it-border hover:bg-it-bg tracking-[-0.012em]'
+                        : 'flex items-center gap-1.5 rounded-it-full border border-it-border-subtle bg-it-white px-2.5 py-[7px] cursor-pointer text-it-heading tracking-[-0.012em]'
                 }>
                 <Image
                     src='/icons/nav-location.svg'
