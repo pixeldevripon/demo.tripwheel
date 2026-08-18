@@ -64,7 +64,7 @@ export function ToursBreadcrumb({
             aria-hidden
             width={20}
             height={20}
-            className='mx-0.5 size-4.5 shrink-0'
+            className='mx-0.5 size-3.5 shrink-0'
         />
     );
 
