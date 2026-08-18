@@ -716,7 +716,7 @@ export async function TourDetailContent({
                                                         key={item.id}
                                                         width='auto'
                                                         listItem
-                                                        className='flex items-start gap-[9px]py-[5px] text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                                        className='flex items-start gap-[9px] py-[5px] text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                                                         <Image
                                                             src='/icons/trust-check-green.svg'
                                                             alt=''
@@ -732,7 +732,7 @@ export async function TourDetailContent({
                                                         key={item.id}
                                                         width='auto'
                                                         listItem
-                                                        className='flex items-start gap-[9px]py-[5px] text-[16px] leading-[1.6] tracking-[-0.012em] text-it-headingtext-it-heading tracking-[-0.012em]'>
+                                                        className='flex items-start gap-[9px] py-[5px] text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                                                         <Image
                                                             src='/icons/x-faint.svg'
                                                             alt=''

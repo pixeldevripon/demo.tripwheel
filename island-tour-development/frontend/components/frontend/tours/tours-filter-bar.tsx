@@ -280,7 +280,7 @@ function CategoryChipTrack({
                         }}
                         whileTap={{ scale: 0.99 }}
                         transition={springPop}
-                        className={`shrink-0 cursor-pointer whitespace-nowrap rounded-it-full border border-transparent px-[11px] py-[7px] text-[12.5px] font-medium leading-[1.6] transition-colors duration-(--it-duration-xs) ease-(--it-ease) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary md:px-[13px] md:py-[9px] md:text-[13px] ${
+                        className={`shrink-0 cursor-pointer whitespace-nowrap rounded-it-full border border-transparent px-[11px] py-[7px] text-[14px] font-medium leading-[1.6] transition-colors duration-(--it-duration-xs) ease-(--it-ease) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary md:px-[13px] md:py-[9px] md:text-[16px] ${
                             active
                                 ? 'bg-it-primary-subtle text-it-primary-hover tracking-[-0.012em]'
                                 : 'bg-transparent text-it-heading hover:bg-it-bg tracking-[-0.012em]'

@@ -118,7 +118,7 @@ export function CollectionHero({
                                 </p>
                             )}
                             <h1
-                                className={`m-0 mt-2 font-it-display text-[clamp(26px,3.6vw,38px)] font-bold leading-[1.1] tracking-[-0.015em] ${heroImage ? 'text-it-white font-medium tracking-[-0.012em] leading-[1.6] text-[20px]' : 'text-it-heading font-medium tracking-[-0.012em]'}`}>
+                                className={`m-0 mt-2 font-it-display text-[clamp(26px,3.6vw,38px)] font-bold leading-[1.1] tracking-[-0.015em] ${heroImage ? 'text-it-white font-medium tracking-[-0.012em] leading-[1.6] text-[20px]' : 'text-it-primary-fg font-medium tracking-[-0.012em] text-[32px] md:text-[48px] leading-[1.2]'}`}>
                                 {title}
                             </h1>
                             {subtitle && (

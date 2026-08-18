@@ -178,7 +178,7 @@ export function TravellerPaymentBox({
 function MoneyRow({ label, value }: { label: string; value: string }) {
     return (
         <div className='flex items-baseline justify-between gap-4'>
-            <span className='text-[14.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+            <span className='text-[14px] md:text-[16px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                 {label}
             </span>
             <span className='text-right text-[14.5px] leading-[1.6] font-medium text-it-heading tracking-[-0.012em]'>

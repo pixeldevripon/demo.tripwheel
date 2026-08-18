@@ -124,7 +124,7 @@ export type TourListing = {
  */
 function HubEyebrow({ name }: { name: string }) {
     return (
-        <span className='inline-flex w-max items-center gap-[5px] border border-it-peach-border bg-it-white py-[3px] pl-2 pr-2.5 text-[16px] font-medium leading-[1.6] text-it-white tracking-[-0.012em]'>
+        <span className='inline-flex w-max items-center gap-[5px] rounded-it-full border border-it-peach-border bg-it-white py-[3px] pl-2 pr-2.5 text-[10px] @[220px]:text-[12px] font-medium leading-[1.6] tracking-[-0.012em] text-it-primary-hover shadow-it-sm'>
             <MapPin
                 className='size-3 shrink-0 text-it-primary tracking-[-0.012em]'
                 strokeWidth={2}
@@ -385,9 +385,9 @@ function DefaultTourCard({
                     with a hub still renders this row with the chip alone -
                     the hub label never comes and goes with the rating. */}
                 {(isRated || tour.hub) && (
-                    <div className='mb-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10.5px] @[220px]:text-[12.5px] leading-[1.6] tracking-[-0.012em]'>
+                    <div className='mb-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] @[220px]:text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
                         {isRated && (
-                            <span className='inline-flex items-center gap-1.5 text-[9px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
+                            <span className='inline-flex items-center gap-1.5 text-[9px] @[220px]:text-[12px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
                                 <span className='font-medium text-it-star tracking-[-0.012em]'>
                                     ★ {tour.rating}
                                 </span>
@@ -402,13 +402,13 @@ function DefaultTourCard({
 
                 {/* Tour title - the stored title is hub-free (mck-18 §3); the
                     hub context around it is the eyebrow's job. */}
-                <h3 className='m-0 text-[12px] @[220px]:text-[15.5px] leading-[1.4] tracking-[-0.012em] text-it-heading line-clamp-2 @[220px]:min-h-[2.6em] font-medium'>
+                <h3 className='m-0 font-medium text-[12px] @[220px]:text-[16px] leading-[1.4] tracking-[-0.012em] text-it-heading line-clamp-2 @[220px]:min-h-[2.6em]'>
 {tour.title}
                 </h3>
 
                 {/* Meta column: duration, pickup (design v2 .tc .meta) */}
-                <div className='flex flex-col items-start gap-[3px] text-[11px] @[220px]:text-[12.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
-                    <span className='inline-flex items-center gap-1.5 text-[9px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
+                <div className='flex flex-col items-start gap-[3px] text-[9px] @[220px]:text-[12px] leading-[1.6] text-it-heading/70 tracking-[-0.012em]'>
+                    <span className='inline-flex items-center gap-1.5 text-[9px] @[220px]:text-[12px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
                         <Image
                             src='/icons/meta-clock.svg'
                             alt=''
@@ -421,7 +421,7 @@ function DefaultTourCard({
                     </span>
 
                     {tour.pickupAvailable && (
-                        <span className='inline-flex items-center gap-1.5 text-[9px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
+                        <span className='inline-flex items-center gap-1.5 text-[9px] @[220px]:text-[12px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
                             <Image
                                 src='/icons/meta-pickup.svg'
                                 alt=''
@@ -464,9 +464,9 @@ function DefaultTourCard({
 
                 {/* Foot: price + free cancellation (pinned to the bottom) */}
                 <div className='mt-auto flex flex-col gap-[3px] pt-2'>
-                    <div className='flex items-baseline flex-wrap gap-x-1 text-[11px] @[220px]:text-[12.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                    <div className='flex items-baseline flex-wrap gap-x-1 text-[10px] @[220px]:text-[12px] leading-[1.6] text-it-heading/50 tracking-[-0.012em]'>
                         <span>{dict.from}</span>
-                        <span className='font-medium text-[14px] @[220px]:text-[17px] leading-[1.3] tracking-[-0.012em] text-it-heading tabular-nums'>
+                        <span className='font-medium text-[12px] @[220px]:text-[16px] leading-[1.25] tracking-[-0.012em] text-it-ink tabular-nums'>
                             {tour.priceDisplay}
                         </span>
                         <span>{priceLabel}</span>
@@ -486,7 +486,7 @@ function DefaultTourCard({
                         saved, both directions, with no color and no animation.
                         Nothing at all when the price has not moved. */}
                     {priceNote && (
-                        <p className='m-0 text-[11px] @[220px]:text-[12.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                        <p className='m-0 text-[10px] @[220px]:text-[12px] leading-[1.6] text-it-heading/50 tracking-[-0.012em]'>
                             {priceNote}
                         </p>
                     )}
@@ -494,7 +494,7 @@ function DefaultTourCard({
                     {tour.freeCancellation && (
                         <p
                             className={cn(
-                                'm-0 inline-flex items-center gap-1.5 text-[9px] leading-[1.6] tracking-[-0.012em] text-it-heading/70 text-[11px] @[220px]:text-[12.5px] font-medium leading-[1.6] text-it-green-text tracking-[-0.012em]',
+                                'm-0 inline-flex items-center gap-1.5 text-[10px] @[220px]:text-[12px] leading-[1.6] tracking-[-0.012em] text-it-heading/70',
                                 // Mockup hides the note on the compact mobile
                                 // row card - the price line closes the card.
                                 mobileRow && 'max-sm:hidden'
@@ -642,7 +642,7 @@ function RankedTourCard({
                         <HubEyebrow name={tour.hub.name} />
                     </div>
                 )}
-                <h3 className='m-0 text-[14px] @[220px]:text-[15.5px] leading-[1.4] tracking-[-0.012em] text-it-heading line-clamp-2 font-medium'>
+                <h3 className='m-0 font-medium text-[12px] @[220px]:text-[16px] leading-[1.4] tracking-[-0.012em] text-it-heading line-clamp-2'>
 {tour.title}
                 </h3>
 

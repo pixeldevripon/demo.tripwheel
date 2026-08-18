@@ -96,7 +96,7 @@ export function CategoryYouMightLike({
                                             {item.name}
                                         </b>
                                         {item.tours != null && (
-                                            <span className='text-[14px] leading-[1.6] text-it-heading/70 tabular-nums tracking-[-0.012em]'>
+                                            <span className='text-[14px] leading-[1.6] text-it-white/70 tabular-nums tracking-[-0.012em]'>
                                                 {item.tours} {toursWord}
                                             </span>
                                         )}
@@ -117,7 +117,7 @@ export function CategoryYouMightLike({
         <section className='bg-it-white pt-16 pb-20'>
             <div className='it-container'>
                 <Reveal className='flex flex-col gap-4'>
-                    <h2 className='m-0 text-[20px] md:text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                    <h2 className='m-0 text-[24px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                         {title}
                     </h2>
 

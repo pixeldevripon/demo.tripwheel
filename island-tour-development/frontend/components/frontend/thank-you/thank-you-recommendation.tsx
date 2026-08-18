@@ -253,7 +253,7 @@ function AptCard({
                         {recommendation.descriptionLines.map(line => (
                             <p
                                 key={line}
-                                className='m-0 text-[16px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                                className='m-0 text-[16px] md:text-[18px] leading-[1.6] text-it-primary-subtle tracking-[-0.012em]'>
                                 {line}
                             </p>
                         ))}

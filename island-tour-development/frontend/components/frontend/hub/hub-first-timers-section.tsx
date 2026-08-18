@@ -37,7 +37,7 @@ export function HubFirstTimersSection({ dict }: { dict: HubFirstTimersDict }) {
                     {/* Heading + quick takeaways (grouped: 24px gap on mobile,
                         48px on desktop). */}
                     <div className='flex flex-col gap-[22px]'>
-                        <h2 className='m-0 text-[20px] md:text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                        <h2 className='m-0 text-[24px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                             {dict.title}
                         </h2>
 

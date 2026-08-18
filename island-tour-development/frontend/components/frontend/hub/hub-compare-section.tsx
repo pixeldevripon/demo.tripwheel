@@ -111,7 +111,7 @@ export function HubCompareSection({
         <Reveal className='flex flex-col gap-[22px]'>
             {/* Header */}
             <header className='flex flex-col gap-1'>
-                <h2 className='m-0 text-[20px] md:text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                <h2 className='m-0 text-[24px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                     {dict.title}
                 </h2>
                 <p className='m-0 max-w-[530px] text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
@@ -147,7 +147,7 @@ function CompareTableCard({
     // 12px - with two trips sharing the width (mck-16 §4.2), padding is where
     // the room comes from.
     const cell =
-        'flex items-center px-3 lg:px-4 py-[11px] text-[14px] md:text-[16px] leading-[1.6] border-it-divider tracking-[-0.012em]';
+        'flex items-center px-3 lg:px-4 py-[11px] text-[14px] md:text-[16px] leading-[1.6] border-it-divider tracking-[-0.012em] text-it-text-muted';
 
     return (
         <div className='@container overflow-hidden rounded-it-lg border border-it-divider bg-it-white shadow-it-sm'>

@@ -54,7 +54,7 @@ export function HubWhySection({
         <section className='bg-it-white pt-16 pb-2.5 max-md:pt-8'>
             <div className='it-container'>
                 <Reveal className='flex flex-col gap-3.5'>
-                    <h2 className='m-0 text-[20px] md:text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                    <h2 className='m-0 text-[24px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                         {title}
                     </h2>
 

@@ -152,7 +152,7 @@ export function ExploreTypesRail({
                                 <b className='mt-2.5 block text-[14.5px] font-medium tracking-[-0.012em] text-it-heading'>
                                     {cat.name}
                                 </b>
-                                <span className='text-[14px] leading-[1.6] text-it-heading/70 tabular-nums tracking-[-0.012em]'>
+                                <span className='text-[14px] leading-[1.6] text-it-white/70 tabular-nums tracking-[-0.012em]'>
                                     {cat.tours} {toursLabel}
                                 </span>
                             </MotionLink>

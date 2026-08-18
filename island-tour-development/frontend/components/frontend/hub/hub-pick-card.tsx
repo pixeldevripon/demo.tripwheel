@@ -135,11 +135,11 @@ export function HubPickCard({
                             </button>
 
                             <p className='m-0 flex items-center gap-4'>
-                                <span className='text-[14px] leading-[1.6] text-it-heading/70 tabular-nums tracking-[-0.012em]'>
+                                <span className='text-[14px] leading-[1.6] text-it-white/70 tabular-nums tracking-[-0.012em]'>
                                     {pick.duration}
                                 </span>
                                 <span className='size-[3px] shrink-0 rounded-full bg-it-ink-muted' />
-                                <span className='text-[14px] leading-[1.6] text-it-heading/70 tabular-nums tracking-[-0.012em]'>
+                                <span className='text-[14px] leading-[1.6] text-it-white/70 tabular-nums tracking-[-0.012em]'>
                                     {dict.from}{' '}
                                     <b className='text-[15px] font-medium tracking-[-0.012em] text-it-heading'>
                                         {pick.priceDisplay}

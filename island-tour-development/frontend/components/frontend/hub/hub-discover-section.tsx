@@ -75,7 +75,7 @@ export function HubDiscoverSection({
         <div className='flex flex-col gap-6'>
             <Reveal>
                 <div className='flex max-w-[640px] flex-col gap-2'>
-                    <h2 className='m-0 text-[20px] md:text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                    <h2 className='m-0 text-[24px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                         {dict.title}
                     </h2>
                     <p className='m-0 text-[14px] md:text-[16px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
