@@ -10,8 +10,8 @@ import type { SearchHit } from '@/types/search';
 import { priceUnitKey } from '@/lib/tours/pricing-label';
 
 /**
- * The sitewide tour-card grid: ONE card per row on mobile, 3 from `sm`, 4 from
- * `lg`.
+ * The sitewide tour-card grid: ONE card per row on mobile, 3 from `sm` - and 3
+ * all the way up, because `lg` no longer widens to a fourth column.
  *
  * Every full-page listing of tour cards uses this exact string - All Tours,
  * destination listings, global search, the wishlist, and the skeletons that
@@ -21,6 +21,18 @@ import { priceUnitKey } from '@/lib/tours/pricing-label';
  * single mobile column and the copies did not follow, so search and the
  * wishlist sat on two cramped columns while every other listing showed one.
  *
+ * ── Why three columns (Figma 47361:19647) ───────────────────────────────────
+ * The mockup lays the grid out as 3 x 384px cards with a 24px column gap and a
+ * 40px row gap. That is not an arbitrary trio: `it-container` is 1440px capped
+ * with 120px of desktop padding, so the content box is exactly 1200px and
+ * 3*384 + 2*24 = 1200. The old fourth column was ~282px per card, which is what
+ * squeezed the price row and the badge line on every listing at once.
+ *
+ * The `lg` breakpoint therefore only carries the WIDER gaps now (24/40 against
+ * the tablet 16/20); the column count is settled at `sm` and never changes
+ * again. Mobile (<640px) is untouched - one column, 12px gap - so nothing moves
+ * at 360/390/414px.
+ *
  * Add a listing, import this. Do NOT re-type the classes.
  *
  * Deliberately NOT covered: the mobile horizontal snap-carousels (destination
@@ -28,7 +40,7 @@ import { priceUnitKey } from '@/lib/tours/pricing-label';
  * different pattern on purpose and only their desktop grid is comparable.
  */
 export const TOUR_CARD_GRID =
-  'grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-x-4 sm:gap-y-5 lg:grid-cols-4';
+  'grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-x-4 sm:gap-y-5 lg:grid-cols-4 lg:gap-x-6 lg:gap-y-10';
 
 /** Duration label strings (from the `search` dictionary section). */
 export type DurationDict = {

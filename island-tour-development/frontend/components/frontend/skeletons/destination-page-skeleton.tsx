@@ -74,9 +74,10 @@ export function DestinationFavouritesSkeleton() {
                         ))}
                     </div>
 
-                    {/* See-all CTA block. */}
+                    {/* See-all CTA block - a `SeeAllLink` text row now, not
+                        the old filled button, so the bar is one line tall. */}
                     <div className='mt-2 flex justify-center'>
-                        <Bar className='h-13 w-72 rounded-it-sm max-sm:w-full' />
+                        <Bar className='h-5 w-56 max-w-full rounded-it-xs' />
                     </div>
                 </div>
             </div>

@@ -575,7 +575,7 @@ Pages/CMS module, observability (Sentry/backups/deep health), and founder-gated 
 - [x] `bg-it-border` image-fallback background convention on photo containers
 - [~] Single icon system (§3.3 / LD20): Figma SVGs in `public/icons/` + `lucide-react` for generic affordances — no audit that all meta-row icons share one library, stroke weight and 16–20px size (Fix 6)
 - [ ] WCAG AA contrast verification pass across tokens (§3.1 mandates it; no evidence of an audit)
-- [ ] Container width reconciliation: master locks **1200px** and a **3-column** desktop listing grid; the codebase ships a 1440 container and a 4-column grid standard `(docs claim: §3.2 1200px / 3-col)`
+- [x] Container width reconciliation: master locks **1200px** and a **3-column** desktop listing grid `(docs claim: §3.2 1200px / 3-col)`. Settled Aug 18 2026 against Figma 47361:19647 — `TOUR_CARD_GRID` (`lib/tours/listing.ts`) dropped `lg:grid-cols-4` and now carries the mockup's 24px column / 40px row gaps at `lg`. The 1440px `--it-container-max` stays: with 120px desktop padding the *content box* is exactly 1200px (3 × 384 + 2 × 24), which is the number the master actually locks. Mobile/tablet unchanged (1 col, then 3 from `sm`)
 - [ ] Typographic separator system enforced platform-wide (Tier 1 middot · Tier 2 comma · Tier 3 `›`; pipe retired) — no shared separator helper exists
 
 ## Layout / nav / footer

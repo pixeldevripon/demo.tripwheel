@@ -56,8 +56,10 @@ export function PaginationSkeleton() {
 /**
  * The destination page's mobile swipe-carousel (edge-bleeding via -mx-4/px-4)
  * / sm 3-col / lg 4-col grid, mirroring `destination-listings` (TOUR cards).
- * The per-card width wrapper (viewport fractions on mobile, auto once the grid
- * starts at sm) is `DESTINATION_CARD_CELL`.
+ * The column count tracks `TOUR_CARD_GRID` exactly - a skeleton one column out
+ * reflows the whole section the moment the real grid streams in. The per-card
+ * width wrapper (viewport fractions on mobile, auto once the grid starts at sm)
+ * is `DESTINATION_CARD_CELL`.
  */
 export const DESTINATION_RAIL =
     '-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:snap-none sm:grid-cols-3 sm:gap-x-6 sm:gap-y-10 sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden lg:grid-cols-4';

@@ -120,13 +120,15 @@ export type TourListing = {
  *
  * Spec straight from mck-10 `.tc .eyebrow`: white pill, peach hairline, pill
  * radius, 11.5px/700 in the deep CTA orange, with a 12px pin stroked in the CTA
- * orange.
+ * orange. The wide size is 12px since the Figma restyle (47361:19685), so the
+ * chip sits level with the card's new 14px rating line instead of reading as a
+ * footnote next to it.
  */
 function HubEyebrow({ name }: { name: string }) {
     return (
-        <span className='inline-flex w-max items-center gap-[5px] rounded-it-full border border-it-peach-border bg-it-white py-[3px] pl-2 pr-2.5 text-[10px] @[220px]:text-[11.5px] font-medium leading-[1.6] tracking-[-0.012em] text-it-primary-hover shadow-it-sm'>
+        <span className='inline-flex w-max items-center gap-[5px] rounded-it-full border border-it-peach-border bg-it-white py-[3px] pl-2 pr-2.5 text-[10px] @[220px]:text-[12px] font-medium leading-[1.6] tracking-[-0.012em] text-it-primary-hover shadow-it-sm'>
             <MapPin
-                className='size-3 shrink-0 text-it-primary tracking-[-0.012em]'
+                className='size-3 @[220px]:size-3.5 shrink-0 text-it-primary tracking-[-0.012em]'
                 strokeWidth={2}
                 aria-hidden='true'
             />
@@ -265,22 +267,35 @@ function DefaultTourCard({
         <article
             aria-label={tour.title}
             className={cn(
+                // Figma 47361:19685: the card is no longer a bordered box with a
+                // flush photo - it is a bare vertical stack, image then body,
+                // 16px apart. Nothing paints the card's own background, so the
+                // photo's 16px radius is the card's only silhouette.
+                //
                 // @container: the card adapts its own typography to its width -
                 // compact at ~172px (mobile carousel), full size in wide cells.
-                '@container group flex h-full flex-col overflow-hidden rounded-it-md border will-change-transform transition-all duration-(--it-duration-md) ease-(--it-ease) hover:-translate-y-0.5 hover:shadow-it-card-hover',
-                peach
-                    ? 'bg-it-peach border-it-peach-border'
-                    : 'bg-it-white border-transparent hover:border-it-card-hover-border',
+                '@container group flex h-full flex-col gap-3 @[220px]:gap-4 will-change-transform transition-all duration-(--it-duration-md) ease-(--it-ease) hover:-translate-y-0.5',
+                // Peach keeps its surface, and with no card padding left to sit
+                // in it now brings its own - otherwise the tint would hug the
+                // text and stop short of the photo's rounded corners.
+                peach &&
+                    'rounded-it-lg border border-it-peach-border bg-it-peach p-2 @[220px]:p-3 hover:shadow-it-card-hover',
                 // Uniform row height on mobile lists: shorter cards stretch
                 // (the foot stays pinned), so the stack reads as equal rows.
+                // The row card keeps a container of its own - a borderless
+                // horizontal card has nothing holding its two halves together.
                 mobileRow &&
-                    'max-sm:flex-row max-sm:border-it-divider max-sm:min-h-[170px]',
+                    'max-sm:flex-row max-sm:gap-3 max-sm:rounded-it-md max-sm:border max-sm:border-it-divider max-sm:p-2 max-sm:min-h-[170px]',
                 className
             )}>
             {/* ── Image area ──────────────────────────────────────────────── */}
             <div
                 className={cn(
                     // Mockup .tc .im: photo eases to 1.03 on card hover (260ms).
+                    // Figma 47361:19685: 384x270 (64/45) at a full 16px radius -
+                    // rounded on all four corners now that it is detached from
+                    // the body. The card-hover shadow rides HERE rather than on
+                    // the card, because the card itself paints nothing.
                     //
                     // Its own @container, so the badge and the heart size to
                     // the box they actually sit in. They were sizing off the
@@ -290,9 +305,13 @@ function DefaultTourCard({
                     // and the badge label got cut ("Likely to sell ou").
                     // Everywhere else the image IS the card's width, so this
                     // changes nothing.
-                    '@container relative aspect-3/2 w-full shrink-0 overflow-hidden rounded-t-[12px] bg-it-bg [&_img]:transition-transform [&_img]:duration-(--it-duration-md) [&_img]:ease-(--it-ease) group-hover:[&_img]:scale-[1.03]',
+                    '@container relative aspect-[64/45] w-full shrink-0 overflow-hidden rounded-it-lg bg-it-bg transition-shadow duration-(--it-duration-md) ease-(--it-ease) [&_img]:transition-transform [&_img]:duration-(--it-duration-md) [&_img]:ease-(--it-ease) group-hover:[&_img]:scale-[1.03]',
+                    // Only when the card paints nothing of its own - the peach
+                    // panel takes the hover shadow itself, and two nested
+                    // shadows read as a photo pasted onto the tint.
+                    !peach && 'group-hover:shadow-it-card-hover',
                     mobileRow &&
-                        'max-sm:w-2/5 max-sm:aspect-auto max-sm:rounded-l-[12px] max-sm:rounded-tr-none'
+                        'max-sm:w-2/5 max-sm:aspect-auto max-sm:rounded-it-md'
                 )}>
                 {/* The design-v2 bottom scrim rides inside the carousel, per
                     photo, so the description slide's paper surface stays clean. */}
@@ -314,85 +333,113 @@ function DefaultTourCard({
                             : undefined
                     }
                 />
-                {/* Badge (top-left).
-                    The inset tightens on a narrow image (the mobile row card):
-                    10px of inset either side is a big share of a ~144px photo,
-                    and it was the last few pixels that forced "Likely to sell
-                    out" onto a second line. The right padding reserves the
-                    heart's corner. */}
-                <div className='absolute inset-x-2 top-2 @[220px]:inset-x-2.5 @[220px]:top-2.5 z-10 flex items-start pr-7 @[220px]:pr-10'>
-                    <BadgeChip type={tour.badge} dict={dict} />
-                </div>
+                {/* Overlay row (Figma 47361:19685): ONE 352-wide row inset 16px
+                    from the photo, badge left / heart right, centres aligned.
+                    They used to be two independent absolutes with the badge
+                    reserving the heart's corner by hand; space-between does the
+                    same job and can never disagree about the reserve.
 
-                {/* Wishlist heart - top-right on EVERY card variant, including
-                    the horizontal mobile card (founder decision 2026-08-13,
-                    overriding master §3.5's "mobile: bottom-right overlay"). */}
-                <motion.button
-                    type='button'
-                    aria-label={(wishlisted ? dict.removeAria : dict.saveAria).replace(
-                        '{title}',
-                        tour.title
-                    )}
-                    aria-pressed={wishlisted}
-                    onClick={e => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        if (onWishlistToggle) onWishlistToggle(tour.id);
-                        else
-                            toggle(tour.id, {
-                                price: tour.price,
-                                currency: tour.currency,
-                            });
-                    }}
-                    whileTap={{ scale: 0.9 }}
-                    transition={springPop}
-                    /* Smaller on a narrow image so the badge gets the room
-                       instead - the founder chose a spread-out badge over a
-                       larger heart here (2026-08-05). It stays 34px in a
-                       normal card, where nothing is competing for width.
-                       24px on the mobile row card, where the photo is only
-                       ~145px wide and a 27px disc read as a paste-on.
-                       `before:` keeps a 40px invisible tap target centred on
-                       it, so the control shrinks visually without becoming
-                       harder to hit - the disc is decoration, the hit area
-                       is what a thumb aims at. */
-                    className='absolute right-2 top-2 @[220px]:right-2.5 @[220px]:top-2.5 z-10 flex size-6 @[220px]:size-[34px] shrink-0 items-center justify-center rounded-full bg-it-white/92 shadow-it-sm border-none cursor-pointer transition-transform duration-(--it-duration-xs) ease-(--it-ease) hover:scale-[1.08] before:absolute before:left-1/2 before:top-1/2 before:size-10 before:-translate-x-1/2 before:-translate-y-1/2 before:content-[""] @[220px]:before:hidden'>
-                    <Image
-                        src={
-                            wishlisted
-                                ? '/icons/heart-filled.svg'
-                                : '/icons/heart-outline.svg'
-                        }
-                        alt=''
-                        width={24}
-                        height={24}
-                        className='size-[13px] @[220px]:size-[17px]'
-                        aria-hidden='true'
+                    The inset tightens on a narrow image (the mobile row card):
+                    16px either side is a big share of a ~144px photo, and it
+                    was the last few pixels that forced "Likely to sell out"
+                    onto a second line. */}
+                <div className='absolute inset-x-2 top-2 @[220px]:inset-x-4 @[220px]:top-4 z-10 flex items-center justify-between gap-2'>
+                    {/* Figma pill: 32 tall, 30 radius, 14px/400/1.6. The chip is
+                        SHARED with the dashboard (./tour-badge), so its per-type
+                        colours stay untouched and only the geometry is overridden
+                        here - `!` because the chip concatenates class strings
+                        rather than merging them, so plain classes would win or
+                        lose on Tailwind's sort order rather than on intent. */}
+                    <BadgeChip
+                        type={tour.badge}
+                        dict={dict}
+                        className='@[220px]:min-h-8 @[220px]:px-3! @[220px]:py-0! @[220px]:text-[14px]! @[220px]:leading-[1.6]!'
                     />
-                </motion.button>
+
+                    {/* Wishlist heart - top-right on EVERY card variant, including
+                        the horizontal mobile card (founder decision 2026-08-13,
+                        overriding master §3.5's "mobile: bottom-right overlay").
+                        `ml-auto` keeps it pinned right on an unbadged card, where
+                        it is the row's only child. */}
+                    <motion.button
+                        type='button'
+                        aria-label={(wishlisted
+                            ? dict.removeAria
+                            : dict.saveAria
+                        ).replace('{title}', tour.title)}
+                        aria-pressed={wishlisted}
+                        onClick={e => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (onWishlistToggle) onWishlistToggle(tour.id);
+                            else
+                                toggle(tour.id, {
+                                    price: tour.price,
+                                    currency: tour.currency,
+                                });
+                        }}
+                        whileTap={{ scale: 0.9 }}
+                        transition={springPop}
+                        /* 40px disc with a 24px heart in a normal card (Figma).
+                           Smaller on a narrow image so the badge gets the room
+                           instead - the founder chose a spread-out badge over a
+                           larger heart here (2026-08-05): 24px on the mobile row
+                           card, where the photo is only ~145px wide and a 27px
+                           disc read as a paste-on. `before:` keeps a 40px
+                           invisible tap target centred on it, so the control
+                           shrinks visually without becoming harder to hit - the
+                           disc is decoration, the hit area is what a thumb aims
+                           at. `relative` anchors that pseudo-element to the
+                           button now that the button itself is in flow. */
+                        className='relative ml-auto flex size-6 @[220px]:size-10 shrink-0 items-center justify-center rounded-full bg-it-white shadow-it-sm border-none cursor-pointer transition-transform duration-(--it-duration-xs) ease-(--it-ease) hover:scale-[1.08] before:absolute before:left-1/2 before:top-1/2 before:size-10 before:-translate-x-1/2 before:-translate-y-1/2 before:content-[""] @[220px]:before:hidden'>
+                        <Image
+                            src={
+                                wishlisted
+                                    ? '/icons/heart-filled.svg'
+                                    : '/icons/card-heart.svg'
+                            }
+                            alt=''
+                            width={24}
+                            height={24}
+                            className='size-[13px] @[220px]:size-6'
+                            aria-hidden='true'
+                        />
+                    </motion.button>
+                </div>
             </div>
 
-            {/* ── Card info (design v2 .tc .body) ─────────────────────────── */}
+            {/* ── Card body (Figma 47361:19685: vertical, 12px gap) ───────── */}
             <div
                 className={cn(
-                    'flex flex-1 min-w-0 flex-col gap-1 px-3 pt-2.5 pb-3 @[220px]:px-3.5 @[220px]:pt-3 @[220px]:pb-3.5'
+                    'flex flex-1 min-w-0 flex-col gap-2 @[220px]:gap-3',
+                    // The row card's body sat inside the old card padding; with
+                    // the padding now on the card itself it only needs to stop
+                    // hugging the photo.
+                    mobileRow && 'max-sm:gap-1.5 max-sm:pr-1'
                 )}>
-                {/* Rating + hub row - amber star glyph + soft count, with the
-                    hub eyebrow INLINE after the rating (founder, Aug 10 2026;
-                    supersedes the own-row layout). The mck-18 §4 rule still
-                    holds in the way that matters: the eyebrow is a property of
-                    the SURFACE, not of the review count, so an unrated tour
-                    with a hub still renders this row with the chip alone -
-                    the hub label never comes and goes with the rating. */}
+                {/* Rating + hub row - Figma: 16px star icon, gap 8, then
+                    "4.8 (1,738)" at 14px in ink-70. The hub eyebrow stays
+                    INLINE after the rating (founder, Aug 10 2026; supersedes
+                    the own-row layout). The mck-18 §4 rule still holds in the
+                    way that matters: the eyebrow is a property of the SURFACE,
+                    not of the review count, so an unrated tour with a hub still
+                    renders this row with the chip alone - the hub label never
+                    comes and goes with the rating. */}
                 {(isRated || tour.hub) && (
-                    <div className='mb-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] @[220px]:text-[13px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
+                    <div className='flex flex-wrap items-center gap-x-2 gap-y-1'>
                         {isRated && (
-                            <span className='inline-flex items-center gap-1.5 text-[9px] @[220px]:text-[11.5px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
-                                <span className='font-medium text-it-star tracking-[-0.012em]'>
-                                    ★ {tour.rating}
-                                </span>
-                                <span className='text-it-heading/50 tabular-nums'>
-                                    ({tour.reviewCount?.toLocaleString()})
+                            <span className='inline-flex items-center gap-1.5 @[220px]:gap-2 text-[10px] @[220px]:text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
+                                <Image
+                                    src='/icons/card-star.svg'
+                                    alt=''
+                                    width={16}
+                                    height={16}
+                                    className='size-3 @[220px]:size-4 shrink-0'
+                                    aria-hidden='true'
+                                />
+                                <span className='tabular-nums'>
+                                    {tour.rating} (
+                                    {tour.reviewCount?.toLocaleString()})
                                 </span>
                             </span>
                         )}
@@ -400,116 +447,129 @@ function DefaultTourCard({
                     </div>
                 )}
 
-                {/* Tour title - the stored title is hub-free (mck-18 §3); the
-                    hub context around it is the eyebrow's job. */}
-                <h3 className='m-0 font-medium text-[11.5px] @[220px]:text-[14.5px] leading-[1.4] tracking-[-0.012em] text-it-heading line-clamp-2 @[220px]:min-h-[2.6em]'>
-{tour.title}
-                </h3>
+                {/* Content block (Figma: vertical, 6px gap) - title, meta,
+                    price, cancellation. */}
+                <div className='flex flex-1 min-w-0 flex-col gap-1 @[220px]:gap-1.5'>
+                    {/* Tour title - the stored title is hub-free (mck-18 §3);
+                        the hub context around it is the eyebrow's job. */}
+                    <h3 className='m-0 font-medium text-[12px] @[220px]:text-[16px] leading-[1.4] tracking-[-0.012em] text-it-heading line-clamp-2 @[220px]:min-h-[2.8em]'>
+                        {tour.title}
+                    </h3>
 
-                {/* Meta column: duration, pickup (design v2 .tc .meta) */}
-                <div className='flex flex-col items-start gap-[3px] text-[9px] @[220px]:text-[11.5px] leading-[1.6] text-it-heading/70 tracking-[-0.012em]'>
-                    <span className='inline-flex items-center gap-1.5 text-[9px] @[220px]:text-[11.5px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
-                        <Image
-                            src='/icons/meta-clock.svg'
-                            alt=''
-                            width={24}
-                            height={24}
-                            className='size-3.5 shrink-0'
-                            aria-hidden='true'
-                        />
-                        {tour.duration}
-                    </span>
-
-                    {tour.pickupAvailable && (
-                        <span className='inline-flex items-center gap-1.5 text-[9px] @[220px]:text-[11.5px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
+                    {/* Meta row (Figma: horizontal, gap 16, a 4px ink-20 dot
+                        between the two groups). It WRAPS rather than
+                        truncating - "Pickup available" is half again as long in
+                        German, and a narrow row card has ~145px to spend. */}
+                    <div className='flex flex-wrap items-center gap-x-3 @[220px]:gap-x-4 gap-y-1 text-[10px] @[220px]:text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
+                        <span className='inline-flex items-center gap-1'>
                             <Image
-                                src='/icons/meta-pickup.svg'
+                                src='/icons/card-clock.svg'
                                 alt=''
-                                width={24}
-                                height={24}
-                                className='size-3.5 shrink-0'
+                                width={16}
+                                height={16}
+                                className='size-3 @[220px]:size-4 shrink-0'
                                 aria-hidden='true'
                             />
-                            {dict.pickupAvailable}
+                            {tour.duration}
                         </span>
-                    )}
-                </div>
 
-                {/* Date-check answer (mck-17). Sits above the foot so it reads
-                    as an answer about the tour rather than about its price. A
-                    green tick when the day is bookable; muted and tickless when
-                    it is not - a red cross on a card the traveller chose to
-                    save would be scolding them for the operator's calendar. */}
-                {availability && (
-                    <p
-                        className={cn(
-                            'm-0 mt-2.5 inline-flex items-center gap-[7px] text-[11.5px] font-medium leading-[1.6] tracking-[-0.012em]',
-                            availability.available
-                                ? 'text-it-green-text tracking-[-0.012em]'
-                                : 'text-it-text-muted tracking-[-0.012em]'
-                        )}>
-                        {availability.available && (
-                            <Image
-                                src='/icons/check-green.svg'
-                                alt=''
-                                width={24}
-                                height={24}
-                                className='size-[15px] shrink-0'
-                                aria-hidden='true'
-                            />
-                        )}
-                        {availability.label}
-                    </p>
-                )}
-
-                {/* Foot: price + free cancellation (pinned to the bottom) */}
-                <div className='mt-auto flex flex-col gap-[3px] pt-2'>
-                    <div className='flex items-baseline flex-wrap gap-x-1 text-[10px] @[220px]:text-[11.5px] leading-[1.6] text-it-heading/50 tracking-[-0.012em]'>
-                        <span>{dict.from}</span>
-                        <span className='font-medium text-[11.5px] @[220px]:text-[14.5px] leading-[1.25] tracking-[-0.012em] text-it-ink tabular-nums'>
-                            {tour.priceDisplay}
-                        </span>
-                        <span>{priceLabel}</span>
-
-                        {tour.priceVaries && (
+                        {tour.pickupAvailable && (
                             <>
                                 <span
-                                    className='mx-1 size-1 rounded-full bg-it-ink-muted/60 self-center flex-none'
+                                    className='size-1 shrink-0 rounded-full bg-it-heading/20'
                                     aria-hidden='true'
                                 />
-                                <span>{dict.priceVaries}</span>
+                                <span className='inline-flex items-center gap-1'>
+                                    <Image
+                                        src='/icons/card-car.svg'
+                                        alt=''
+                                        width={16}
+                                        height={16}
+                                        className='size-3 @[220px]:size-4 shrink-0'
+                                        aria-hidden='true'
+                                    />
+                                    {dict.pickupAvailable}
+                                </span>
                             </>
                         )}
                     </div>
 
-                    {/* Price integrity (mck-17): what it cost when it was
-                        saved, both directions, with no color and no animation.
-                        Nothing at all when the price has not moved. */}
-                    {priceNote && (
-                        <p className='m-0 text-[10px] @[220px]:text-[11.5px] leading-[1.6] text-it-heading/50 tracking-[-0.012em]'>
-                            {priceNote}
+                    {/* Date-check answer (mck-17). Sits above the foot so it
+                        reads as an answer about the tour rather than about its
+                        price. A green tick when the day is bookable; muted and
+                        tickless when it is not - a red cross on a card the
+                        traveller chose to save would be scolding them for the
+                        operator's calendar. */}
+                    {availability && (
+                        <p
+                            className={cn(
+                                'm-0 mt-1 inline-flex items-center gap-[7px] text-[11px] @[220px]:text-[14px] font-medium leading-[1.6] tracking-[-0.012em]',
+                                availability.available
+                                    ? 'text-it-green-text tracking-[-0.012em]'
+                                    : 'text-it-text-muted tracking-[-0.012em]'
+                            )}>
+                            {availability.available && (
+                                <Image
+                                    src='/icons/check-green.svg'
+                                    alt=''
+                                    width={24}
+                                    height={24}
+                                    className='size-[15px] shrink-0'
+                                    aria-hidden='true'
+                                />
+                            )}
+                            {availability.label}
                         </p>
                     )}
 
-                    {tour.freeCancellation && (
-                        <p
-                            className={cn(
-                                'm-0 inline-flex items-center gap-1.5 text-[10px] @[220px]:text-[11.5px] leading-[1.6] tracking-[-0.012em] text-it-heading/70',
-                                // Mockup hides the note on the compact mobile
-                                // row card - the price line closes the card.
-                                mobileRow && 'max-sm:hidden'
-                            )}>
-                            <Image
-                                src='/icons/check-green.svg'
-                                alt=''
-                                width={24}
-                                height={24}
-                                className='size-3.5 shrink-0'
-                                aria-hidden='true'
-                            />
-                            {dict.freeCancellation}
-                        </p>
-                    )}
+                    {/* Foot: price + free cancellation. Still pinned to the
+                        bottom so a grid row's cards agree on where the price
+                        sits, and still on the content block's 6px rhythm. */}
+                    <div className='mt-auto flex flex-col gap-1 @[220px]:gap-1.5 pt-1'>
+                        {/* Figma price row: "from" and the unit label at 12px in
+                            ink-70, the amount itself at 16px/500 in full ink. */}
+                        <div className='flex items-baseline flex-wrap gap-x-1 text-[10px] @[220px]:text-[12px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
+                            <span>{dict.from}</span>
+                            <span className='font-medium text-[12px] @[220px]:text-[16px] leading-[1.4] tracking-[-0.012em] text-it-heading tabular-nums'>
+                                {tour.priceDisplay}
+                            </span>
+                            <span>{priceLabel}</span>
+
+                            {tour.priceVaries && (
+                                <>
+                                    <span
+                                        className='mx-1 size-1 rounded-full bg-it-heading/20 self-center flex-none'
+                                        aria-hidden='true'
+                                    />
+                                    <span>{dict.priceVaries}</span>
+                                </>
+                            )}
+                        </div>
+
+                        {/* Price integrity (mck-17): what it cost when it was
+                            saved, both directions, with no color and no
+                            animation. Nothing at all when the price has not
+                            moved. */}
+                        {priceNote && (
+                            <p className='m-0 text-[10px] @[220px]:text-[12px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
+                                {priceNote}
+                            </p>
+                        )}
+
+                        {/* Figma: plain 14px ink-70 text, no green tick - the
+                            card states the policy, it does not celebrate it. */}
+                        {tour.freeCancellation && (
+                            <p
+                                className={cn(
+                                    'm-0 text-[10px] @[220px]:text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/70',
+                                    // Mockup hides the note on the compact mobile
+                                    // row card - the price line closes the card.
+                                    mobileRow && 'max-sm:hidden'
+                                )}>
+                                {dict.freeCancellation}
+                            </p>
+                        )}
+                    </div>
                 </div>
             </div>
         </article>
@@ -523,7 +583,7 @@ function DefaultTourCard({
             <Link
                 href={tour.href}
                 aria-label={tour.title}
-                className='block h-full rounded-it-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary'>
+                className='block h-full rounded-it-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary'>
                 {card}
             </Link>
         );

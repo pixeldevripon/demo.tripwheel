@@ -1,8 +1,7 @@
-import Link from 'next/link';
-
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 import { Reveal } from '../reveal';
 import { SectionHead } from '../section-head';
+import { SeeAllLink } from '../see-all-link';
 import { ExploreTypesRail, type ExploreType } from './explore-types-rail';
 
 export type { ExploreType };
@@ -37,7 +36,7 @@ export function DestinationExploreTypes({
     const allToursHref = localizeHref(locale, `/${destinationSlug}/tours`);
 
     return (
-        <section className='bg-it-white pt-11 md:pt-14'>
+        <section className='bg-it-surface it-section'>
             <div className='it-container'>
                 {/* Static-shell section: PageTransition owns the page-enter, so no
                     section-level mount animation (it would flash on hydration).
@@ -46,15 +45,14 @@ export function DestinationExploreTypes({
                     <SectionHead
                         title={dict.title}
                         action={
-                            <Link
+                            <SeeAllLink
                                 href={allToursHref}
-                                className='whitespace-nowrap text-[13px] font-medium text-it-primary-hover underline underline-offset-[3px] max-sm:hidden tracking-[-0.012em]'>
-                                {dict.allTours.replace(
+                                label={dict.allTours.replace(
                                     '{destination}',
                                     destinationName
-                                )}{' '}
-                                →
-                            </Link>
+                                )}
+                                className='whitespace-nowrap max-sm:hidden'
+                            />
                         }
                     />
 
@@ -69,3 +67,4 @@ export function DestinationExploreTypes({
         </section>
     );
 }
+

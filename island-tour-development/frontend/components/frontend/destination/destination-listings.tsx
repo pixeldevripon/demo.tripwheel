@@ -30,10 +30,9 @@
 
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 import { TOUR_CARD_GRID } from '@/lib/tours/listing';
-import Image from 'next/image';
-import Link from 'next/link';
 import { Reveal } from '../reveal';
 import { SectionHead } from '../section-head';
+import { SeeAllLink } from '../see-all-link';
 import type { TourCardDict, TourListing } from '../tour-card';
 import { TourCard } from '../tour-card';
 
@@ -108,7 +107,8 @@ export function DestinationListings({
                     {/* ── Tours ────────────────────────────────────────────────
                         Mobile (<640): stacked horizontal row cards (mockup 3.5
                         locked mobile card, image 40 / content 60).
-                        sm: 3-col grid · lg: 4-col grid (DIT-13). */}
+                        sm and up: 3-col grid, widening its gaps at lg to the
+                        Figma 24/40 (DIT-13 - see TOUR_CARD_GRID). */}
                     <div className={TOUR_CARD_GRID}>
                         {tours.map((tour, i) => (
                             <Reveal key={tour.id} width='auto' listItem>
@@ -122,20 +122,17 @@ export function DestinationListings({
                         ))}
                     </div>
 
-                    {/* ── See-all CTA (design v2 .seeall, C21 count rule) ──── */}
+                    {/* ── See-all CTA (design v2 .seeall, C21 count rule) ────
+                        A LINK, not a filled button (Figma 48506:21404) - and
+                        the same `SeeAllLink` the "Explore by type" head above
+                        renders, one size up on desktop because this one stands
+                        alone under the grid instead of beside a title. */}
                     <div className='mt-2 flex justify-center'>
-                        <Link
+                        <SeeAllLink
                             href={browseHref}
-                            className='inline-flex items-center justify-center gap-2.5 bg-it-primary px-7 py-3.5 text-[13px] md:text-[14.5px] font-medium text-it-primary hover:text-it-primary-hover no-underline transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:bg-it-primary-hover max-sm:w-full leading-[1.6] tracking-[-0.012em]'>
-                            {browseLabel}
-                            <Image
-                                src='/icons/hero-arrow-right.svg'
-                                alt=''
-                                width={20}
-                                height={20}
-                                className='size-4.5 shrink-0'
-                            />
-                        </Link>
+                            label={browseLabel}
+                            className='md:text-[14.5px]'
+                        />
                     </div>
                 </Reveal>
             </div>

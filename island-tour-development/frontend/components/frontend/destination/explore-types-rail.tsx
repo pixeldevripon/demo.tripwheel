@@ -149,10 +149,10 @@ export function ExploreTypesRail({
                                         />
                                     )}
                                 </div>
-                                <b className='mt-2.5 block text-[13.5px] font-medium tracking-[-0.012em] text-it-heading'>
+                                <b className='mt-2.5 block text-[14.5px] font-medium tracking-[-0.012em] text-it-heading'>
                                     {cat.name}
                                 </b>
-                                <span className='text-[13px] leading-[1.6] text-it-white/70 tabular-nums tracking-[-0.012em]'>
+                                <span className='text-[13px] leading-[1.6] tracking-[-0.012em] text-it-text-muted tabular-nums'>
                                     {cat.tours} {toursLabel}
                                 </span>
                             </MotionLink>
@@ -171,7 +171,10 @@ export function ExploreTypesRail({
                 whileTap={canPrev ? { scale: 0.9 } : undefined}
                 transition={springPop}
                 className='hidden lg:flex absolute top-[calc(50%-34px)] -left-3.5 z-5 size-9 items-center justify-center rounded-full border border-it-divider bg-it-white shadow-it-md transition-opacity enabled:cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed'>
-                <ChevronLeft className='size-4 text-it-heading tracking-[-0.012em]' strokeWidth={1.5} />
+                <ChevronLeft
+                    className='size-4 text-it-heading'
+                    strokeWidth={1.5}
+                />
             </motion.button>
             <motion.button
                 type='button'
@@ -181,8 +184,12 @@ export function ExploreTypesRail({
                 whileTap={canNext ? { scale: 0.9 } : undefined}
                 transition={springPop}
                 className='hidden lg:flex absolute top-[calc(50%-34px)] -right-3.5 z-5 size-9 items-center justify-center rounded-full border border-it-divider bg-it-white shadow-it-md transition-opacity enabled:cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed'>
-                <ChevronRight className='size-4 text-it-heading tracking-[-0.012em]' strokeWidth={1.5} />
+                <ChevronRight
+                    className='size-4 text-it-heading'
+                    strokeWidth={1.5}
+                />
             </motion.button>
         </div>
     );
 }
+

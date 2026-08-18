@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import { twitterCard } from '@/lib/seo/twitter-card';
 import { LAUNCH_DESTINATION_SLUGS } from '@/lib/constants/locales';
 import {
@@ -12,6 +11,7 @@ import {
     DestinationLocalFavourites,
 } from '@/components/frontend/destination/destination-page-sections';
 import { FaqSection } from '@/components/frontend/faq-section';
+import { ToursBreadcrumb } from '@/components/frontend/tours/tours-breadcrumb';
 import { DestinationPageSkeleton } from '@/components/frontend/skeletons/destination-page-skeleton';
 import { LegalPageShell } from '@/components/frontend/legal/legal-page-shell';
 import { PageBody } from '@/components/frontend/legal/page-body';
@@ -272,28 +272,18 @@ async function DestinationContent({
             <JsonLd data={touristDestinationJsonLd} />
             {/* Breadcrumbs above the hero, desktop only (design v2 .crumbs;
                 LD8 divergence: hidden on mobile). */}
-            <nav
-                aria-label='Breadcrumb'
-                className='it-container hidden items-center gap-2 py-4 md:flex'>
-                <Link
-                    href={localizeHref(locale, '/')}
-                    className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading no-underline hover:underline'>
-                    {dict.destination.allTours.breadcrumb.home}
-                </Link>
-                <Image
-                    src='/icons/breadcrumb-arrow.svg'
-                    alt=''
-                    aria-hidden
-                    width={20}
-                    height={20}
-                    className='size-5 shrink-0'
-                />
-                <span
-                    aria-current='page'
-                    className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
-                    {destinationName}
-                </span>
-            </nav>
+            {/* One breadcrumb component sitewide - see tours-breadcrumb.tsx.
+                The destination IS this page, so it is the final crumb.
+                The inline copy this replaced was `hidden ... md:flex`, so the
+                mobile breadcrumb was simply absent; the shared row shows at
+                every width and scrolls horizontally when it runs long. */}
+            <ToursBreadcrumb
+                locale={locale as Locale}
+                destinationName={destinationName}
+                destinationSlug={destination}
+                destinationIsCurrent
+                dict={{ home: dict.destination.allTours.breadcrumb.home }}
+            />
             <DestinationHeroSection
                 destination={destination}
                 locale={locale as Locale}
