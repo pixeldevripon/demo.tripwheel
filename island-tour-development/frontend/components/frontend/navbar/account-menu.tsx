@@ -125,7 +125,7 @@ export function AccountMenu({
             alt=''
             width={24}
             height={24}
-            className='size-5'
+            className='size-5 shrink-0'
         />
     );
 

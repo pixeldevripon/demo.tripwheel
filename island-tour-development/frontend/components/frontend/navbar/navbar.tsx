@@ -307,7 +307,7 @@ export function Navbar({
                 </div>
 
                 {/* ── Mobile right: search + language + account + menu ── */}
-                <div className='flex md:hidden items-center gap-5 ml-auto'>
+                <div className='flex md:hidden shrink-0 items-center gap-5 ml-auto'>
                     {!isHome && (
                         <motion.button
                             type='button'

@@ -60,8 +60,8 @@ export function DestinationSelector({
                 transition={pressSpring}
                 className={
                     variant === 'desktop'
-                        ? 'flex items-center gap-2 rounded-it-full border border-it-border-subtle bg-it-white px-3.5 py-2 cursor-pointer text-it-heading transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:border-it-border hover:bg-it-bg tracking-[-0.012em]'
-                        : 'flex items-center gap-1.5 rounded-it-full border border-it-border-subtle bg-it-white px-2.5 py-[7px] cursor-pointer text-it-heading tracking-[-0.012em]'
+                        ? 'flex items-center gap-2 rounded-it-full border border-it-border-subtle bg-it-white px-3 py-1.5 cursor-pointer text-it-heading transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:border-it-border hover:bg-it-bg tracking-[-0.012em]'
+                        : 'flex min-w-0 max-w-[48vw] shrink items-center gap-1.5 rounded-it-full border border-it-border-subtle bg-it-white px-2.5 py-1 cursor-pointer text-it-heading tracking-[-0.012em]'
                 }>
                 <Image
                     src='/icons/nav-location.svg'
@@ -97,7 +97,7 @@ export function DestinationSelector({
                 ) : (
                     /* Mockup mobile .nss: the short island label, never the
                        bare pin. */
-                    <span className='text-[14.5px] font-medium text-it-heading whitespace-nowrap leading-[1.6] tracking-[-0.012em]'>
+                    <span className='truncate text-[14.5px] font-medium text-it-heading whitespace-nowrap leading-[1.6] tracking-[-0.012em]'>
                         {currentIsland ? currentIsland.name : dict.selectIsland}
                     </span>
                 )}
