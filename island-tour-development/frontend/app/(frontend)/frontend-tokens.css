@@ -4,26 +4,19 @@
  */
 
 /* ── Colors ─────────────────────────────────────────────────────────────── */
-/* Design v2 contract (technical-doc/homepage/homepage.html, phase-2 locked
-   tokens): warm paper/peach surfaces, grey-blue ink family, locked CTA
-   orange pair, one-job green status family, amber stars. */
 :root {
-    /* Primary — locked CTA orange (--cta / --cta-deep) */
+    /* Primary — coral orange */
     --it-primary:          #e8611a;
-    --it-primary-hover:    #c7500f;
-    --it-primary-active:   color-mix(in oklch, #c7500f, black 8%);
-    --it-primary-subtle:   #fdeee4;   /* --cta-tint */
+    --it-primary-hover:    color-mix(in oklch, #e8611a, black 12%);
+    --it-primary-active:   color-mix(in oklch, #e8611a, black 22%);
+    --it-primary-subtle:   color-mix(in oklch, #e8611a, white 88%);
     --it-primary-fg:       #ffffff;
 
-    /* Green — availability / success (status family) */
-    --it-green:            #16a34a;
-    --it-green-hover:      color-mix(in oklch, #16a34a, black 10%);
-    --it-green-subtle:     #effaf3;   /* --green-tint */
-    --it-green-text:       #15803d;   /* readable green for text on tint */
+    /* Green — availability / success */
+    --it-green:            #00c950;
+    --it-green-hover:      color-mix(in oklch, #00c950, black 10%);
+    --it-green-subtle:     color-mix(in oklch, #00c950, white 88%);
     --it-green-fg:         #ffffff;
-
-    /* WhatsApp brand green (the wa button is brand-locked, not status green) */
-    --it-whatsapp:         #25d366;
 
     /* Red / amber — the other two booking states (cancelled, pending).
        Green alone could only ever say "confirmed". */
@@ -32,48 +25,34 @@
     --it-warning:          #a35200;
     --it-warning-subtle:   color-mix(in oklch, #a35200, white 92%);
 
-    /* Ink — text & strokes (grey-blue family: ink / soft / faint) */
-    --it-ink:              #1f2937;
-    --it-ink-secondary:    #4b5563;
-    --it-ink-muted:        #9ca3af;   /* --faint */
-    --it-ink-placeholder:  #9ca3af;
-    --it-footer-muted:     #c9c3ba;   /* --soft-on-dark: footer link/copy */
+    /* Ink — text & strokes */
+    --it-ink:              #1a1a1a;
+    --it-ink-secondary:    #444444;
+    --it-ink-muted:        #a0a3a9;
+    --it-ink-placeholder:  #a6a6a6;
+    --it-footer-muted:     #a3a3a3;   /* footer link/copy + social-ring grey */
 
-    /* Content text on light surfaces */
-    --it-heading:          #1f2937;   /* --ink */
-    --it-text-muted:       #6b7280;   /* --soft */
-
-    /* Dark surface (footer / dark CTA) + its text pair */
-    --it-dark:             #23201b;
-    --it-ink-on-dark:      #f4f1ec;
-    --it-soft-on-dark:     #c9c3ba;
+    /* Content text on light surfaces (Figma section copy) */
+    --it-heading:          #2c2c2c;
+    --it-text-muted:       #767676;
 
     /* Surfaces */
     --it-white:            #ffffff;
-    --it-bg:               #f7f7f5;   /* --paper */
-    --it-surface:          #f7f7f5;   /* --paper */
-    --it-peach:            #fdf6f0;   /* warm editorial surface */
-    --it-peach-border:     #f2e2d6;
-    --it-border:           #e5e7eb;
-    --it-divider:          #f3f4f6;
-    --it-border-dark:      #1f2937;
+    --it-bg:               #f9fafb;
+    --it-surface:          #f8f8f8;
+    --it-border:           #ededed;
+    --it-border-dark:      #1a1a1a;
     --it-border-white:     #ffffff;
-    --it-border-subtle:    #1f29371a;   /* ink @ 10% — card / divider hairline */
-    --it-card-hover-border:#efe0d4;
+    --it-border-subtle:    #2c2c2c1a;   /* heading @ 10% — card / divider hairline */
 
     /* Overlays */
     --it-scrim-light:      rgba(166, 166, 166, 0.20);
     --it-scrim-dark:       rgba(0, 0, 0, 0.40);
-    /* Card-photo bottom scrim (caption legibility on reels/cards) */
-    --it-scrim-card:       linear-gradient(180deg, rgba(35, 32, 27, 0) 55%, rgba(35, 32, 27, 0.42) 100%);
-    /* Island-tile photo scrim - softer, lower start (design v2 .isl) */
-    --it-scrim-tile:       linear-gradient(180deg, rgba(35, 32, 27, 0) 72%, rgba(35, 32, 27, 0.28) 100%);
-    /* Hero photo scrim - dark at both edges, lighter mid (design v2 .hero) */
-    --it-scrim-hero:       linear-gradient(180deg, rgba(16, 24, 34, 0.44) 0%, rgba(16, 24, 34, 0.26) 46%, rgba(16, 24, 34, 0.5) 100%);
 
     /* Hero — light tropical gradient + dark text */
     --it-hero-bg:          #A6A6A6;
     --it-hero-heading:     #2c2c2c;
+    --it-hero-text:        #767676;
     --it-hero-gradient:
         radial-gradient(120% 120% at 78% 16%, rgba(232, 97, 26, 0.16) 0%, transparent 46%),
         radial-gradient(110% 110% at 14% 88%, rgba(0, 201, 80, 0.12) 0%, transparent 52%),
@@ -96,30 +75,21 @@
         radial-gradient(65% 55% at 6% 98%, rgba(0, 201, 80, 0.09) 0%, transparent 62%),
         linear-gradient(180deg, #ffffff 0%, #ffffff 62%, #f9fafb 100%);
 
-    /* Editorial banner — design v2 .edfig band: deep CTA orange washing to
-       white toward the right (desktop fan) or staying orange on mobile. */
+    /* Editorial banner — solid orange base; washes to white toward the right (desktop fan) or bottom (mobile fan) */
+    --it-editorial-orange: linear-gradient(135deg, #f67e01 0%, #f54900 100%);
     --it-editorial-gradient:
-        linear-gradient(90deg, var(--it-primary-hover) 0%, var(--it-primary) 28%, #f59957 50%, #fbe4d1 76%, #ffffff 96%);
+        linear-gradient(to right, rgba(255, 255, 255, 0) 0%, #ffffff 56%, #ffffff 100%),
+        var(--it-editorial-orange);
     --it-editorial-gradient-v:
-        linear-gradient(158deg, var(--it-primary-hover) 0%, var(--it-primary) 58%, #ee8236 100%);
-    /* Second headline line on the band (mockup h3 span) */
-    --it-editorial-accent: #ffe7d3;
+        linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0) 30%, #ffffff 56%),
+        linear-gradient(to bottom, #f97e0a 0%, #f56210 100%);
 
 
     /* ── Typography ─────────────────────────────────────────────────────── */
 
-    /* SF Pro system stacks - no webfont; the system UI family everywhere. */
-    /* Self-hosted webfonts declared in globals.css (@font-face), system
-       stack as fallback. The mockup's pairing: Bricolage Grotesque for
-       display, Source Sans 3 for body (founder 2026-08-04). See THE FONT
-       SWITCH at the top of globals.css - roll back by swapping the two
-       lines below for the commented pair. */
-    --it-font-display: 'Bricolage Grotesque', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
-    --it-font-body:    'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
-    /* ROLLBACK to SF Pro Display:
-    --it-font-display: 'SF Pro Display', 'SF Pro', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
-    --it-font-body:    'SF Pro Display', 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
-    */
+    /* SF Pro system font — resolves to SF Pro on Apple, Helvetica Neue elsewhere */
+    --it-font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
+    --it-font-body:    -apple-system, BlinkMacSystemFont, 'SF Pro Text',    'Helvetica Neue', Arial, sans-serif;
 
     /* Scale */
     --it-text-xs:      0.75rem;
@@ -134,25 +104,24 @@
     --it-text-display: 3.75rem;
 
     /* Weight */
-    --it-weight-regular:   400;
-    --it-weight-medium:    500;
-    --it-weight-semibold:  600;
-    --it-weight-bold:      700;
-    --it-weight-extrabold: 800;
+    --it-weight-regular:  400;
+    --it-weight-medium:   500;
+    --it-weight-semibold: 600;
+    --it-weight-bold:     700;
 
     /* Line height */
     --it-leading-none:   1;
-    --it-leading-tight:  1.1;
+    --it-leading-tight:  1.2;
     --it-leading-snug:   1.4;
     --it-leading-normal: 1.6;
 
-    /* Letter spacing — design v2 headline measurements */
-    --it-tracking-tightest: -0.02em;
-    --it-tracking-tighter:  -0.015em;
-    --it-tracking-tight:    -0.01em;
+    /* Letter spacing — negative values from Figma headline measurements */
+    --it-tracking-tightest: -0.03em;
+    --it-tracking-tighter:  -0.022em;
+    --it-tracking-tight:    -0.019em;
     --it-tracking-normal:    0em;
     --it-tracking-wide:      0.04em;
-    --it-tracking-widest:    0.13em;
+    --it-tracking-widest:    0.08em;
 
 
     /* ── Spacing ────────────────────────────────────────────────────────── */
@@ -171,32 +140,31 @@
 
 
     /* ── Border Radius ──────────────────────────────────────────────────── */
-    --it-radius-xs:   6px;
-    --it-radius-sm:   10px;
-    --it-radius-md:   12px;
-    --it-radius-lg:   16px;
-    --it-radius-xl:   22px;   /* reels / oversized cards */
-    --it-radius-2xl:  28px;
-    --it-radius-full: 999px;  /* pill */
+    --it-radius-xs:   0.125rem;
+    --it-radius-sm:   0.25rem;
+    --it-radius-md:   0.5rem;
+    --it-radius-lg:   1rem;
+    --it-radius-xl:   1.875rem;
+    --it-radius-2xl:  2.5rem;
+    --it-radius-full: 3.125rem;  /* pill */
 
 
-    /* ── Shadows (design v2 elevation ladder e1/e2/e3) ──────────────────── */
-    --it-shadow-sm:    0 1px 2px rgba(31, 41, 55, 0.05);
-    --it-shadow-md:    0 2px 6px rgba(31, 41, 55, 0.05), 0 12px 28px rgba(31, 41, 55, 0.07);
-    --it-shadow-lg:    0 4px 10px rgba(31, 41, 55, 0.06), 0 24px 56px rgba(31, 41, 55, 0.12);
-    --it-shadow-card-hover: 0 2px 8px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.04);
+    /* ── Shadows ────────────────────────────────────────────────────────── */
+    --it-shadow-sm:    0 2px 8px 0 rgba(0, 0, 0, 0.06);
+    --it-shadow-md:    0 11px 14px -9px rgba(0, 0, 0, 0.10);  /* tour cards */
+    --it-shadow-lg:    0 29px 36px -7px rgba(0, 0, 0, 0.10);  /* modals, drawers */
     --it-shadow-glass: 0 4px 24px 0 rgba(0, 0, 0, 0.08);
-    --it-shadow-navbar: 0 1px 0 0 var(--it-divider);
+    --it-shadow-navbar: 0 1px 0 0 var(--it-border);
 
 
     /* ── Layout ─────────────────────────────────────────────────────────── */
-    --it-container-max:   75rem;   /* 1200px */
-    --it-container-px:    1.5rem;  /* 24px desktop */
-    --it-container-px-md: 1.5rem;  /* 24px tablet */
-    --it-container-px-sm: 1rem;    /* 16px mobile */
-    --it-navbar-height:   4rem;    /* 64px */
-    --it-section-py:      4rem;    /* 64px — design v2 section rhythm */
-    --it-section-py-sm:   3rem;    /* 48px — mobile */
+    --it-container-max:   90rem;   /* 1440px */
+    --it-container-px:    7.5rem;  /* 120px desktop */
+    --it-container-px-md: 2rem;    /* 32px  tablet */
+    --it-container-px-sm: 1rem;    /* 16px  mobile */
+    --it-navbar-height:   4rem;
+    --it-section-py:      8.125rem;  /* 130px — Figma section vertical padding */
+    --it-section-py-sm:   4rem;      /* 64px  — mobile */
 
 
     /* ── Z-index ────────────────────────────────────────────────────────── */
@@ -210,36 +178,28 @@
     --it-z-toast:    300;
 
 
-    /* ── Transitions (design v2: fast / std / panel / reveal) ───────────── */
-    --it-ease:        cubic-bezier(0.2, 0.7, 0.3, 1);
+    /* ── Transitions ────────────────────────────────────────────────────── */
+    --it-ease:        cubic-bezier(0.4, 0, 0.2, 1);
     --it-ease-out:    cubic-bezier(0.0, 0, 0.2, 1);
     --it-ease-in:     cubic-bezier(0.4, 0, 1, 1);
     --it-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-    --it-duration-xs: 120ms;
-    --it-duration-sm: 180ms;
-    --it-duration-md: 260ms;
-    --it-duration-lg: 420ms;
+    --it-duration-xs: 100ms;
+    --it-duration-sm: 150ms;
+    --it-duration-md: 250ms;
+    --it-duration-lg: 400ms;
 
 
     /* ── Component Tokens ───────────────────────────────────────────────── */
 
-    /* Hub hero scrim (design v2 .hubhero) - side wash + bottom lift */
-    --it-scrim-hub: linear-gradient(90deg, rgba(17, 24, 39, 0.60), rgba(17, 24, 39, 0.30) 46%, rgba(17, 24, 39, 0.08)), linear-gradient(0deg, rgba(17, 24, 39, 0.34), rgba(17, 24, 39, 0) 42%);
-
-    /* Collection banner scrim (design v2 .colbanner) */
-    --it-scrim-banner: linear-gradient(76deg, rgba(35, 32, 27, 0.66) 0%, rgba(35, 32, 27, 0.34) 46%, rgba(35, 32, 27, 0.06) 72%);
-
-    /* Listing filter row (design v2 .frow - sticky under the navbar) */
-    --it-frow-bg:            rgba(255, 255, 255, 0.96);
-
     /* Navbar */
-    --it-navbar-bg:          rgba(255, 255, 255, 0.94);
+    --it-navbar-bg:          rgba(255, 255, 255, 0.92);
     --it-navbar-bg-scrolled: rgba(255, 255, 255, 1);
-    --it-navbar-border:      var(--it-divider);
+    --it-navbar-border:      var(--it-border);
     --it-navbar-text:        var(--it-ink);
 
     /* Search widget */
     --it-search-bg:     var(--it-white);
+    --it-search-border: rgba(44, 44, 44, 0.20);
     --it-search-radius: var(--it-radius-full);
     --it-search-shadow: var(--it-shadow-lg);
 
@@ -255,29 +215,28 @@
     --it-btn-secondary-text:   var(--it-ink);
     --it-btn-secondary-radius: var(--it-radius-full);
 
-    /* Tour card — bordered, flat at rest, lifts 2px on hover (design v2) */
+    /* Tour card */
     --it-card-bg:         var(--it-white);
     --it-card-radius:     var(--it-radius-lg);
-    --it-card-shadow:     none;
+    --it-card-shadow:     var(--it-shadow-md);
     --it-card-border:     var(--it-border);
     --it-card-img-radius: var(--it-radius-lg) var(--it-radius-lg) 0 0;
 
-    /* Availability badge — green STATUS family on its tint, never solid */
-    --it-badge-available-bg:     var(--it-green-subtle);
-    --it-badge-available-text:   var(--it-green-text);
-    --it-badge-available-border: rgba(22, 163, 74, 0.25);
+    /* Availability badge */
+    --it-badge-available-bg:     var(--it-green);
+    --it-badge-available-text:   var(--it-green-fg);
     --it-badge-available-radius: var(--it-radius-xs);
 
-    /* Category chip — white pill; active = solid ink (design v2 type tabs) */
-    --it-chip-bg:          var(--it-white);
-    --it-chip-bg-active:   var(--it-ink);
-    --it-chip-text:        var(--it-ink);
-    --it-chip-text-active: var(--it-white);
+    /* Category chip */
+    --it-chip-bg:          var(--it-surface);
+    --it-chip-bg-active:   var(--it-primary-subtle);
+    --it-chip-text:        var(--it-ink-secondary);
+    --it-chip-text-active: var(--it-primary);
     --it-chip-border:      var(--it-border);
     --it-chip-radius:      var(--it-radius-full);
 
-    /* Star rating — amber */
-    --it-star-filled: #e5a230;
+    /* Star rating */
+    --it-star-filled: #f5a623;
     --it-star-empty:  var(--it-border);
 
     /* Input */
@@ -292,6 +251,8 @@
     --it-section-bg-1: var(--it-white);
     --it-section-bg-2: var(--it-bg);
     --it-section-bg-3: var(--it-surface);
+
+    --it-divider: var(--it-border);
 }
 
 
@@ -316,19 +277,10 @@
     --color-it-ink-muted:       var(--it-ink-muted);
     --color-it-ink-placeholder: var(--it-ink-placeholder);
     --color-it-footer-muted:    var(--it-footer-muted);
-    --color-it-green-text:      var(--it-green-text);
-    --color-it-whatsapp:        var(--it-whatsapp);
-    --color-it-dark:            var(--it-dark);
-    --color-it-ink-on-dark:     var(--it-ink-on-dark);
-    --color-it-soft-on-dark:    var(--it-soft-on-dark);
     --color-it-white:           var(--it-white);
     --color-it-bg:              var(--it-bg);
     --color-it-surface:         var(--it-surface);
-    --color-it-peach:           var(--it-peach);
-    --color-it-peach-border:    var(--it-peach-border);
     --color-it-border:          var(--it-border);
-    --color-it-divider:         var(--it-divider);
-    --color-it-card-hover-border: var(--it-card-hover-border);
     --color-it-border-dark:     var(--it-border-dark);
     --color-it-border-white:    var(--it-border-white);
     --color-it-border-subtle:   var(--it-border-subtle);
@@ -338,7 +290,8 @@
     --color-it-hero-bg:         var(--it-hero-bg);
     --color-it-hub-hero-bg:     var(--it-hub-hero-bg);
     --color-it-hero-heading:    var(--it-hero-heading);
-    --color-it-editorial-accent: var(--it-editorial-accent);
+    --color-it-hero-text:       var(--it-hero-text);
+    --color-it-search-border:     var(--it-search-border);
 
     --radius-it-xs:   var(--it-radius-xs);
     --radius-it-sm:   var(--it-radius-sm);
@@ -348,12 +301,10 @@
     --radius-it-2xl:  var(--it-radius-2xl);
     --radius-it-full: var(--it-radius-full);
 
-    --shadow-it-sm:         var(--it-shadow-sm);
-    --shadow-it-md:         var(--it-shadow-md);
-    --shadow-it-lg:         var(--it-shadow-lg);
-    --shadow-it-card-hover: var(--it-shadow-card-hover);
-    --shadow-it-glass:      var(--it-shadow-glass);
-    --shadow-it-navbar:     var(--it-shadow-navbar);
+    --shadow-it-sm:    var(--it-shadow-sm);
+    --shadow-it-md:    var(--it-shadow-md);
+    --shadow-it-lg:    var(--it-shadow-lg);
+    --shadow-it-glass: var(--it-shadow-glass);
 
     --font-it-display: var(--it-font-display);
     --font-it-body:    var(--it-font-body);
@@ -373,28 +324,13 @@
 }
 
 
-/* Skeleton light-sweep (design v2). Lives at top level: @keyframes inside
-   @layer utilities are still valid, but keeping them global makes the single
-   shimmer definition obvious. */
-@keyframes it-shimmer {
-    from {
-        transform: translateX(-100%);
-    }
-    to {
-        transform: translateX(100%);
-    }
-}
-
-
 /* ── Base styles (applied when .frontend-root is present) ───────────────── */
 @layer base {
     .frontend-root {
         font-family: var(--it-font-body);
-        font-size: 15px;
-        line-height: var(--it-leading-normal);
         color: var(--it-ink);
-        background-color: var(--it-white);
-        letter-spacing: var(--it-tracking-normal);
+        background-color: var(--it-bg);
+        letter-spacing: var(--it-tracking-tight);
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
     }
@@ -406,9 +342,9 @@
     .frontend-root h5,
     .frontend-root h6 {
         font-family: var(--it-font-display);
-        font-weight: var(--it-weight-bold);
+        font-weight: var(--it-weight-semibold);
         line-height: var(--it-leading-tight);
-        letter-spacing: var(--it-tracking-tighter);
+        letter-spacing: var(--it-tracking-tightest);
         color: var(--it-ink);
     }
 
@@ -477,19 +413,6 @@
         .it-container { padding-inline: var(--it-container-px); }
     }
 
-    /* Narrow reading column (design v2 .wrap) - the thank-you page runs on an
-       880px measure instead of the 1200px container. */
-    .it-wrap {
-        width: 100%;
-        max-width: 55rem; /* 880px */
-        margin-inline: auto;
-        padding-inline: var(--it-container-px-sm);
-    }
-
-    @media (min-width: 768px) {
-        .it-wrap { padding-inline: var(--it-container-px); }
-    }
-
     .it-section {
         padding-block: var(--it-section-py-sm);
     }
@@ -500,16 +423,16 @@
 
     .it-heading {
         font-family: var(--it-font-display);
-        font-weight: var(--it-weight-bold);
+        font-weight: var(--it-weight-semibold);
         line-height: var(--it-leading-tight);
-        letter-spacing: var(--it-tracking-tighter);
+        letter-spacing: var(--it-tracking-tightest);
     }
 
     .it-body {
         font-family: var(--it-font-body);
         font-weight: var(--it-weight-regular);
         line-height: var(--it-leading-normal);
-        letter-spacing: var(--it-tracking-normal);
+        letter-spacing: var(--it-tracking-tight);
     }
 
     .it-glass {
@@ -548,38 +471,6 @@
         box-shadow: var(--it-card-shadow);
         border: 1px solid var(--it-card-border);
         overflow: hidden;
-    }
-
-    /* ── Skeleton shimmer (design v2 .skl) ──────────────────────────────────
-     * One shimmer definition for every loading placeholder: paper surface,
-     * 12px radius, a white light-sweep crossing every 1.2s. Compose via the
-     * shared <Bar> in components/frontend/skeletons/skeleton-bar.tsx. */
-    /* Surface is overridable per-spot via the --it-skeleton-bg custom
-     * property (e.g. `[--it-skeleton-bg:var(--it-white)]` for blocks sitting
-     * ON the paper band, where paper-on-paper would be invisible). */
-    .it-skeleton {
-        position: relative;
-        overflow: hidden;
-        background: var(--it-skeleton-bg, var(--it-bg));
-    }
-
-    .it-skeleton::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(
-            100deg,
-            transparent 30%,
-            rgba(255, 255, 255, 0.85) 50%,
-            transparent 70%
-        );
-        animation: it-shimmer 1.2s infinite;
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-        .it-skeleton::before {
-            animation: none;
-        }
     }
 
     /* Horizontal scroller with snap + hidden scrollbar (peek carousels) */
@@ -622,11 +513,9 @@
         padding: 0.125rem 0.5rem;
         background-color: var(--it-badge-available-bg);
         color: var(--it-badge-available-text);
-        border: 1px solid var(--it-badge-available-border);
         border-radius: var(--it-badge-available-radius);
         font-size: var(--it-text-xs);
-        font-weight: var(--it-weight-bold);
-        font-variant-numeric: tabular-nums;
+        font-weight: var(--it-weight-medium);
     }
 
     /* ── Slim hover-reveal scrollbar (modal panels) ─────────────────────────────
@@ -712,38 +601,36 @@
      * ----------------------------------------------------------------------- */
     .it-page-prose h1 {
         margin: 40px 0 16px;
-        font-family: var(--it-font-display);
-        font-weight: 700;
+        font-weight: 500;
         font-size: 26px;
         line-height: 1.2;
-        letter-spacing: -0.015em;
-        color: var(--it-ink);
+        letter-spacing: -0.012em;
+        color: var(--it-heading);
     }
 
     .it-page-prose h4 {
         margin: 24px 0 8px;
-        font-weight: 700;
+        font-weight: 600;
         font-size: 15px;
         line-height: 1.5;
-        color: var(--it-ink);
+        color: var(--it-heading);
     }
 
     .it-page-prose h2 {
         margin: 40px 0 12px;
-        font-family: var(--it-font-display);
-        font-weight: 700;
+        font-weight: 500;
         font-size: 20px;
         line-height: 1.3;
-        letter-spacing: -0.013em;
-        color: var(--it-ink);
+        letter-spacing: -0.012em;
+        color: var(--it-heading);
     }
 
     .it-page-prose h3 {
         margin: 28px 0 8px;
-        font-weight: 700;
+        font-weight: 500;
         font-size: 17px;
         line-height: 1.4;
-        color: var(--it-ink);
+        color: var(--it-heading);
     }
 
     .it-page-prose p {
@@ -772,19 +659,17 @@
     }
 
     .it-page-prose strong {
-        font-weight: 700;
-        color: var(--it-ink);
+        font-weight: 600;
+        color: var(--it-heading);
     }
 
     .it-page-prose a {
-        color: var(--it-primary-hover);
-        font-weight: 600;
-        text-decoration: underline;
-        text-underline-offset: 2px;
+        color: var(--it-primary);
+        text-decoration: none;
     }
 
     .it-page-prose a:hover {
-        color: var(--it-primary);
+        text-decoration: underline;
     }
 
     /* Tables: a rounded hairline card with a surface header row. The
@@ -818,9 +703,9 @@
     }
 
     .it-page-prose th {
-        background: var(--it-bg);
-        font-weight: 700;
-        color: var(--it-ink);
+        background: var(--it-surface);
+        font-weight: 600;
+        color: var(--it-heading);
     }
 
     .it-page-prose td {
@@ -943,5 +828,151 @@
         .it-page-prose li { font-size: 16px; }
         .it-page-prose th,
         .it-page-prose td { font-size: 14px; }
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * TRIPWHEEL BACKFILL — tokens and utilities that arrived with prod's features
+ * ═══════════════════════════════════════════════════════════════════════════
+ * This branch takes its STYLING from `preview` (everything above this line is
+ * preview's file verbatim). But prod shipped features after preview froze
+ * (2026-07-31) whose markup references tokens and utilities preview never
+ * defined. Without them those components render with undefined custom
+ * properties - invisible scrims, unstyled skeletons, transparent surfaces.
+ *
+ * So: preview's values win on everything the two branches share; this block
+ * only adds what would otherwise be MISSING. Nothing here overrides a preview
+ * value. Values are prod's, since these tokens have no preview counterpart to
+ * defer to.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+    /* Ink family on dark surfaces (hero scrims, dark bands) */
+    --it-dark:            #23201b;
+    --it-ink-on-dark:     #f4f1ec;
+    --it-soft-on-dark:    #c9c3ba;
+
+    /* Paper/peach editorial surfaces */
+    --it-peach:            #fdf6f0;
+    --it-peach-border:     #f2e2d6;
+    --it-editorial-accent: #ffe7d3;
+
+    /* Status + brand one-offs */
+    --it-green-text:             #15803d;
+    --it-badge-available-border: rgba(22, 163, 74, 0.25);
+    --it-whatsapp:               #25d366;
+
+    /* Card hover treatment */
+    --it-card-hover-border: #efe0d4;
+    --it-shadow-card-hover: 0 2px 8px rgba(0, 0, 0, 0.06),
+        0 8px 24px rgba(0, 0, 0, 0.04);
+
+    /* Floating row background (sticky bars) */
+    --it-frow-bg: rgba(255, 255, 255, 0.96);
+
+    /* Image scrims - each tuned to the crop it sits on */
+    --it-scrim-hero: linear-gradient(
+        180deg,
+        rgba(16, 24, 34, 0.44) 0%,
+        rgba(16, 24, 34, 0.26) 46%,
+        rgba(16, 24, 34, 0.5) 100%
+    );
+    --it-scrim-card: linear-gradient(
+        180deg,
+        rgba(35, 32, 27, 0) 55%,
+        rgba(35, 32, 27, 0.42) 100%
+    );
+    --it-scrim-tile: linear-gradient(
+        180deg,
+        rgba(35, 32, 27, 0) 72%,
+        rgba(35, 32, 27, 0.28) 100%
+    );
+    --it-scrim-banner: linear-gradient(
+        76deg,
+        rgba(35, 32, 27, 0.66) 0%,
+        rgba(35, 32, 27, 0.34) 46%,
+        rgba(35, 32, 27, 0.06) 72%
+    );
+    --it-scrim-hub: linear-gradient(
+            90deg,
+            rgba(17, 24, 39, 0.6),
+            rgba(17, 24, 39, 0.3) 46%,
+            rgba(17, 24, 39, 0.08)
+        ),
+        linear-gradient(0deg, rgba(17, 24, 39, 0.34), rgba(17, 24, 39, 0) 42%);
+
+    /* shadcn pairing prod added; harmless and required by its destructive
+     * button variant. NOT a typography token - no preview equivalent. */
+    --destructive-foreground: var(--it-primary-fg);
+}
+
+@theme inline {
+    --color-it-dark:              var(--it-dark);
+    --color-it-ink-on-dark:       var(--it-ink-on-dark);
+    --color-it-soft-on-dark:      var(--it-soft-on-dark);
+    --color-it-peach:             var(--it-peach);
+    --color-it-peach-border:      var(--it-peach-border);
+    --color-it-editorial-accent:  var(--it-editorial-accent);
+    --color-it-green-text:        var(--it-green-text);
+    --color-it-whatsapp:          var(--it-whatsapp);
+    --color-it-divider:           var(--it-divider);
+    --color-it-card-hover-border: var(--it-card-hover-border);
+
+    --shadow-it-card-hover: var(--it-shadow-card-hover);
+    --shadow-it-navbar:     var(--it-shadow-navbar);
+}
+
+@keyframes it-shimmer {
+    from {
+        transform: translateX(-100%);
+    }
+    to {
+        transform: translateX(100%);
+    }
+}
+
+@layer utilities {
+    /* Narrow reading column - the thank-you page runs on an 880px measure
+       instead of the full container. */
+    .it-wrap {
+        width: 100%;
+        max-width: 55rem; /* 880px */
+        margin-inline: auto;
+        padding-inline: var(--it-container-px-sm);
+    }
+
+    @media (min-width: 768px) {
+        .it-wrap {
+            padding-inline: var(--it-container-px);
+        }
+    }
+
+    /* Shimmer placeholder behind the shared <Bar> in
+       components/frontend/skeletons/skeleton-bar.tsx. Surface is overridable
+       per-spot via --it-skeleton-bg (e.g. blocks sitting ON the paper band,
+       where paper-on-paper would be invisible). */
+    .it-skeleton {
+        position: relative;
+        overflow: hidden;
+        background: var(--it-skeleton-bg, var(--it-bg));
+    }
+
+    .it-skeleton::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+            100deg,
+            transparent 30%,
+            rgba(255, 255, 255, 0.85) 50%,
+            transparent 70%
+        );
+        animation: it-shimmer 1.2s infinite;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .it-skeleton::before {
+            animation: none;
+        }
     }
 }
