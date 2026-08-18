@@ -162,7 +162,7 @@
     --it-container-px:    7.5rem;  /* 120px desktop */
     --it-container-px-md: 2rem;    /* 32px  tablet */
     --it-container-px-sm: 1rem;    /* 16px  mobile */
-    --it-navbar-height:   4rem;
+    --it-navbar-height:   4rem;      /* 64px mobile; 5rem/80px from md - see navbar.tsx */
     --it-section-py:      8.125rem;  /* 130px — Figma section vertical padding */
     --it-section-py-sm:   4rem;      /* 64px  — mobile */
 

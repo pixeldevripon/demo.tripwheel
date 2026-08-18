@@ -10,12 +10,21 @@ import { springPop, swapFade } from '@/lib/motion';
 import { bookingUnitLabel } from '@/lib/tours/booking';
 
 /**
- * The fixed navbar's height (`h-16`). The card is already hidden behind it
- * before its box leaves the viewport, so the observer's top edge starts below
- * it - otherwise the bar arrives a beat late, while a strip of the card the
- * traveller cannot see is still technically "in view".
+ * The fixed navbar's height (`h-16 md:h-20`). The card is already hidden behind
+ * it before its box leaves the viewport, so the observer's top edge starts
+ * below it - otherwise the bar arrives a beat late, while a strip of the card
+ * the traveller cannot see is still technically "in view".
+ *
+ * The bar only exists on mobile, but the breakpoint is read rather than
+ * assumed: the header steps to 80px at md (Figma 47042:2164), and a hard 64
+ * would leave the observer 16px short on any tablet wide enough to cross it.
  */
-const NAVBAR_HEIGHT = 64;
+const NAVBAR_HEIGHT_SM = 64;
+const NAVBAR_HEIGHT_MD = 80;
+const navbarHeight = () =>
+    typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches
+        ? NAVBAR_HEIGHT_MD
+        : NAVBAR_HEIGHT_SM;
 
 /**
  * The bar's entrance, shared with its spacer so the two move as one thing.
@@ -110,10 +119,10 @@ export function BookingStickyBar({
             ([entry]) => {
                 setScrolledPast(
                     !entry.isIntersecting &&
-                        entry.boundingClientRect.top < NAVBAR_HEIGHT
+                        entry.boundingClientRect.top < navbarHeight()
                 );
             },
-            { rootMargin: `-${NAVBAR_HEIGHT}px 0px 0px 0px` }
+            { rootMargin: `-${navbarHeight()}px 0px 0px 0px` }
         );
         observer.observe(card);
         return () => observer.disconnect();

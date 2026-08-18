@@ -615,7 +615,7 @@ export function ToursFilterBar({
                 shorter bars use: at 120-205px tall the 4% that shows through
                 turned every card title scrolling behind it into a ghost line in
                 the padding strip under the navbar, which reads as a gap. ── */}
-            <div className='sticky top-16 z-35 mt-3.5 border-b border-it-divider bg-it-white py-3'>
+            <div className='sticky top-16 md:top-20 z-35 mt-3.5 border-b border-it-divider bg-it-white py-3'>
                 {/* Filter row: one line on desktop; below md the controls keep
                     line 1 and the category track drops to line 2 (four controls
                     plus the chips cannot share 390px, and the chips are the

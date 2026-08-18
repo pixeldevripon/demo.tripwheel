@@ -28,18 +28,17 @@ export function WishlistLink({
         <Link
             href={localizeHref(locale, '/saved')}
             aria-label={dict.saved}
-            className='relative flex items-center gap-1.5 no-underline'>
-            {/* Mockup navpill: "Saved" label beside the heart. */}
-            <span className='text-[13px] font-medium text-it-heading tracking-[-0.012em]'>
-                {dict.saved}
-            </span>
+            className='relative flex items-center no-underline'>
+            {/* Figma 47042:2164 puts the heart in the header on its own - the
+                "Saved" label is gone. `aria-label` above still names the link,
+                so the affordance survives for screen readers. */}
             <motion.span className='inline-flex' {...iconPress}>
                 <Image
                     src='/icons/nav-heart.svg'
                     alt=''
                     width={24}
                     height={24}
-                    className='size-4.5'
+                    className='size-6'
                 />
             </motion.span>
             <AnimatePresence>

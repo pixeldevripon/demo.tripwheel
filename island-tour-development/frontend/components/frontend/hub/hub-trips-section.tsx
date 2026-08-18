@@ -145,7 +145,7 @@ export function HubTripsSection({
                 backdrop-filter creates a containing block.) */}
             <div
                 ref={tabBarRef}
-                className='sticky top-16 z-40 border-b border-it-divider bg-(--it-frow-bg) backdrop-blur-[8px]'>
+                className='sticky top-16 md:top-20 z-40 border-b border-it-divider bg-(--it-frow-bg) backdrop-blur-[8px]'>
                 <div className='it-container'>
                     <HubTripsTabs
                         tabs={dict.tabs}

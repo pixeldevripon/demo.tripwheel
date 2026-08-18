@@ -234,7 +234,7 @@ export function Navbar({
     }, [currentIsland?.slug, locale]);
 
     return (
-        <header className='fixed top-0 left-0 right-0 z-100 h-16 bg-(--it-navbar-bg) backdrop-blur-[12px] backdrop-saturate-[1.3] shadow-it-navbar'>
+        <header className='fixed top-0 left-0 right-0 z-100 h-16 md:h-20 bg-(--it-navbar-bg) backdrop-blur-[12px] backdrop-saturate-[1.3] shadow-it-navbar'>
             <div className='it-container h-full flex items-center gap-3.5'>
                 {/* ── Left: logo + island + categories ── */}
                 <div className='flex items-center gap-6 lg:gap-12 shrink-0'>
@@ -245,7 +245,7 @@ export function Navbar({
                             width={68}
                             height={50}
                             priority
-                            className='h-8 w-auto object-contain md:h-10'
+                            className='h-8 w-auto object-contain md:h-[50px]'
                         />
                     </Link>
 
@@ -298,11 +298,11 @@ export function Navbar({
                 />
 
                 {/* ── Desktop right: language + wishlist + account ── */}
-                <div className='hidden md:flex items-center gap-5 shrink-0 ml-auto'>
+                <div className='hidden md:flex items-center gap-6 shrink-0 ml-auto'>
                     <LocaleSelector variant='desktop' locale={locale} dict={dict} />
-                    <div className='w-px h-5 bg-it-border' />
+                    <div className='w-px h-5 bg-it-heading/10' />
                     <WishlistLink locale={locale} dict={dict} />
-                    <div className='w-px h-5 bg-it-border' />
+                    <div className='w-px h-5 bg-it-heading/10' />
                     <AccountMenu locale={locale} dict={dict} />
                 </div>
 

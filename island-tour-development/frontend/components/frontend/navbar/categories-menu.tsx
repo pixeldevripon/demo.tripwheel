@@ -92,7 +92,7 @@ export function CategoriesMenu({
                                     height={24}
                                     className='size-4 shrink-0'
                                 />
-                                <span className='text-base font-medium text-it-ink whitespace-nowrap'>
+                                <span className='text-[16px] font-medium leading-[1.6] tracking-[-0.012em] text-it-heading whitespace-nowrap'>
                                     {dict.categories}
                                 </span>
                             </motion.button>

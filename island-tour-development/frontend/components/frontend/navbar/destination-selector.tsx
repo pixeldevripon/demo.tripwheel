@@ -60,7 +60,7 @@ export function DestinationSelector({
                 transition={pressSpring}
                 className={
                     variant === 'desktop'
-                        ? 'flex items-center gap-2 bg-transparent border border-it-border-subtle rounded-it-full px-3.5 py-2 cursor-pointer text-it-heading transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:border-it-border tracking-[-0.012em]'
+                        ? 'flex items-center gap-2 bg-transparent border-none p-0 cursor-pointer text-it-heading transition-opacity duration-(--it-duration-xs) ease-(--it-ease) hover:opacity-80 tracking-[-0.012em]'
                         : 'flex items-center gap-1.5 bg-transparent border border-it-border-subtle rounded-it-full px-2.5 py-[7px] cursor-pointer '
                 }>
                 <Image
@@ -68,13 +68,13 @@ export function DestinationSelector({
                     alt=''
                     width={24}
                     height={24}
-                    className='size-4 shrink-0'
+                    className='size-6 shrink-0'
                 />
                 {variant === 'desktop' ? (
                     /* One-cell grid: the invisible spans reserve the width of the
                        longest possible label, so switching islands never shifts
                        the rest of the header. */
-                    <span className='inline-grid justify-items-start text-base font-medium text-it-heading whitespace-nowrap tracking-[-0.012em]'>
+                    <span className='inline-grid justify-items-start text-[16px] font-medium leading-[1.6] text-it-heading whitespace-nowrap tracking-[-0.012em]'>
                         <span className='col-start-1 row-start-1'>
                             {currentIsland
                                 ? currentIsland.name
@@ -97,7 +97,7 @@ export function DestinationSelector({
                 ) : (
                     /* Mockup mobile .nss: the short island label, never the
                        bare pin. */
-                    <span className='text-[16px] text-it-heading whitespace-nowrap leading-[1.6] tracking-[-0.012em]'>
+                    <span className='text-[16px] font-medium text-it-heading whitespace-nowrap leading-[1.6] tracking-[-0.012em]'>
                         {currentIsland ? currentIsland.name : dict.selectIsland}
                     </span>
                 )}

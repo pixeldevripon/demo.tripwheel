@@ -71,7 +71,7 @@ export default async function LocaleLayout({
                     as a dynamic hole so request-time routes don't block the shell.
                     PageTransition adds the sitewide enter animation on client
                     navigations only (first paint stays un-animated for LCP). */}
-                <main className='flex-1 pt-16'>
+                <main className='flex-1 pt-16 md:pt-20'>
                     <PageTransition>{children}</PageTransition>
                 </main>
                 <Footer locale={locale} dict={dict.footer} />

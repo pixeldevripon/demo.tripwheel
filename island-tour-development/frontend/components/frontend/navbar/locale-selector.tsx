@@ -64,19 +64,19 @@ export function LocaleSelector({
                 aria-busy={isPending}
                 whileTap={{ scale: 0.98 }}
                 transition={pressSpring}
-                className={`flex items-center gap-2 bg-transparent border-none cursor-pointer p-0 text-it-heading transition-opacity duration-300 ${isPending ? 'opacity-50' : 'opacity-100'}`}>
+                className={`flex items-center gap-1 bg-transparent border-none cursor-pointer p-0 text-it-heading transition-opacity duration-300 ${isPending ? 'opacity-50' : 'opacity-100'}`}>
                 <Image
                     src='/icons/nav-globe.svg'
                     alt=''
                     width={24}
                     height={24}
-                    className='size-4.5 shrink-0'
+                    className='size-6 shrink-0'
                 />
                 {variant === 'desktop' && (
                     /* One-cell grid: invisible spans reserve the width of the
                        widest locale code, so switching locales never shifts
                        the rest of the header. */
-                    <span className='inline-grid justify-items-start text-base font-medium text-it-heading uppercase tracking-[-0.012em]'>
+                    <span className='inline-grid justify-items-start text-[16px] font-medium leading-[1.6] text-it-heading uppercase tracking-[-0.012em]'>
                         <span className='col-start-1 row-start-1'>
                             {locale}
                         </span>

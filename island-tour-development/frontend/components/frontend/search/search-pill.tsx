@@ -193,7 +193,7 @@ export const SearchPill = forwardRef<HTMLInputElement, {
                     alt=''
                     width={24}
                     height={24}
-                    className='size-4.5 shrink-0'
+                    className='size-6 shrink-0'
                 />
                 <span className='relative min-w-0 flex-1'>
                     <input
