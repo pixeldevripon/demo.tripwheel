@@ -346,10 +346,7 @@ export function SearchRecovery({
                     another list of links. */}
                 {localsFavourites.length > 0 && (
                     <div className='mt-2 flex flex-col gap-5'>
-                        <SectionHead
-                            kicker={localsDict.kicker}
-                            title={localsDict.title}
-                        />
+                        <SectionHead title={localsDict.title} />
                         <div className={TOUR_CARD_GRID}>
                             {localsFavourites.map(tour => (
                                 <TourCard

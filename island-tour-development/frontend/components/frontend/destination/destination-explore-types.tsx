@@ -30,7 +30,7 @@ export function DestinationExploreTypes({
     };
     locale: Locale;
     destinationSlug: string;
-    /** Island display name - the section head's kicker + link label. */
+    /** Island display name - the 'All {name} tours' link label. */
     destinationName: string;
     categories: ExploreType[];
 }) {
@@ -44,7 +44,6 @@ export function DestinationExploreTypes({
                     The cards stagger on scroll instead. */}
                 <Reveal className='flex flex-col gap-5'>
                     <SectionHead
-                        kicker={destinationName}
                         title={dict.title}
                         action={
                             <Link

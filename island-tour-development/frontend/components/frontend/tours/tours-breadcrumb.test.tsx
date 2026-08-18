@@ -88,6 +88,12 @@ describe('ToursBreadcrumb', () => {
         const seps = nav.querySelectorAll('[aria-hidden="true"]');
         // One after Home, one before the current crumb.
         expect(seps.length).toBeGreaterThanOrEqual(2);
-        for (const s of seps) expect(s.textContent).toBe('›');
+        // The separator is an arrow-right glyph (Figma 47361:19581), not a "›"
+        // character, so what matters is that it contributes NOTHING to the
+        // accessible name - no text, and an empty alt on the image.
+        for (const s of seps) {
+            expect(s.textContent).toBe('');
+            expect(s).toHaveAttribute('alt', '');
+        }
     });
 });

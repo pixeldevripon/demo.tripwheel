@@ -84,7 +84,9 @@ export function DestinationListings({
     totalCount,
 }: DestinationListingsProps) {
     // Derive the subset of dict that TourCard needs.
-    const { title, kicker, seeAll, seeAllCount, ...cardDict } = dict;
+    // `kicker` is pulled out but unused: the eyebrow is gone, and leaving it in
+    // would spread it into cardDict and on to TourCard.
+    const { title, kicker: _kicker, seeAll, seeAllCount, ...cardDict } = dict;
 
     // Show the dynamic count only when it's compelling; otherwise drop the number.
     const browseLabel =
@@ -99,8 +101,9 @@ export function DestinationListings({
         <section className='bg-it-white pt-11 md:pt-14'>
             <div className='it-container'>
                 <Reveal className='flex flex-col gap-5'>
-                    {/* ── Section head: kicker + title (design v2 sechead) ─── */}
-                    <SectionHead kicker={kicker} title={title} />
+                    {/* ── Section head: title only - the kicker eyebrow was
+                        dropped on the founder's call ─────────────────────── */}
+                    <SectionHead title={title} />
 
                     {/* ── Tours ────────────────────────────────────────────────
                         Mobile (<640): stacked horizontal row cards (mockup 3.5

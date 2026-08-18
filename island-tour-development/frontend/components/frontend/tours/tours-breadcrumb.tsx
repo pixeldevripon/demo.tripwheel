@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 
@@ -39,19 +40,24 @@ export function ToursBreadcrumb({
     // shrink-0 + the nav's nowrap/overflow: crumbs must never wrap into
     // multi-line stacks on mobile - the row stays one line and scrolls.
     const linkClass =
-        'shrink-0 text-it-text-muted no-underline hover:underline text-[13px] leading-[1.6] tracking-[-0.012em]';
+        'shrink-0 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading no-underline hover:underline';
 
     const separator = (
-        <span aria-hidden='true' className='mx-[7px] shrink-0 text-it-text-muted tracking-[-0.012em]'>
-            ›
-        </span>
+        <Image
+            src='/icons/breadcrumb-arrow.svg'
+            alt=''
+            aria-hidden
+            width={20}
+            height={20}
+            className='mx-1 size-5 shrink-0'
+        />
     );
 
     return (
         <div className='it-container'>
             <nav
                 aria-label='Breadcrumb'
-                className='flex items-center overflow-x-auto whitespace-nowrap pt-[26px] pb-2.5 text-[11.5px] leading-[1.6] text-it-text-muted [scrollbar-width:none] md:overflow-visible md:whitespace-normal [&::-webkit-scrollbar]:hidden tracking-[-0.012em]'>
+                className='flex items-center overflow-x-auto whitespace-nowrap pt-[26px] pb-2.5 [scrollbar-width:none] md:overflow-visible md:whitespace-normal [&::-webkit-scrollbar]:hidden tracking-[-0.012em]'>
                 <Link href={localizeHref(locale, '/')} className={linkClass}>
                     {dict.home}
                 </Link>
@@ -76,7 +82,7 @@ export function ToursBreadcrumb({
                     below, so the crumb only needs to identify the page. */}
                 <span
                     aria-current='page'
-                    className='max-w-[55vw] truncate md:max-w-none text-[14.5px] leading-[1.6] tracking-[-0.012em]'>
+                    className='max-w-[55vw] truncate text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted md:max-w-none'>
                     {dict.current}
                 </span>
             </nav>

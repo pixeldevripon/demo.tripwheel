@@ -163,7 +163,7 @@ export const SearchPill = forwardRef<HTMLInputElement, {
                 compact ? 'text-[14px] tracking-[-0.012em]' : 'text-[14.5px] tracking-[-0.012em]'
             } ${date ? 'font-medium text-it-heading tracking-[-0.012em]' : 'font-medium text-it-text-muted tracking-[-0.012em]'}`}>
             <Image
-                src='/icons/filters/calendar.svg'
+                src='/icons/filters/calendar-muted.svg'
                 alt=''
                 width={24}
                 height={24}
