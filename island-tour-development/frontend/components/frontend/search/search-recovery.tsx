@@ -80,7 +80,7 @@ function ConstraintChip({
     return (
         <Link
             href={href}
-            className='inline-flex w-fit shrink-0 self-start items-center gap-2 rounded-it-full border border-it-primary bg-it-white py-2 pl-3.5 pr-3 text-[13.5px] font-medium leading-none text-it-primary-hover no-underline transition-colors hover:bg-it-primary-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary tracking-[-0.012em]'>
+            className='inline-flex w-fit shrink-0 self-start items-center gap-2 rounded-it-full border border-it-primary bg-it-white py-2 pl-3.5 pr-3 text-[12.5px] font-medium leading-none text-it-primary-hover no-underline transition-colors hover:bg-it-primary-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary tracking-[-0.012em]'>
             {icon}
             {label}
             <X className='size-3.5 shrink-0' strokeWidth={2.5} aria-hidden='true' />
@@ -229,7 +229,7 @@ export function SearchRecovery({
                         seeAllHref && seeAllLabel ? (
                             <Link
                                 href={seeAllHref}
-                                className='whitespace-nowrap text-sm font-medium text-it-primary-hover underline underline-offset-[3px] max-sm:hidden tracking-[-0.012em]'>
+                                className='whitespace-nowrap text-[13px] font-medium text-it-primary-hover underline underline-offset-[3px] max-sm:hidden tracking-[-0.012em]'>
                                 {seeAllLabel} →
                             </Link>
                         ) : undefined
@@ -255,7 +255,7 @@ export function SearchRecovery({
                                     }
                                 />
                                 {withoutDateCount > 0 && (
-                                    <p className='m-0 text-[14px] leading-[1.6] text-it-heading md:text-[15px] tracking-[-0.012em]'>
+                                    <p className='m-0 text-[13px] leading-[1.6] text-it-heading md:text-[14px] tracking-[-0.012em]'>
                                         {dict.dropDate
                                             .replace(
                                                 '{count}',
@@ -282,7 +282,7 @@ export function SearchRecovery({
                         {clearFiltersHref && !isThin && (
                             <Link
                                 href={clearFiltersHref}
-                                className='w-fit self-start text-[14px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-[3px] transition-colors hover:text-it-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary tracking-[-0.012em]'>
+                                className='w-fit self-start text-[13px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-[3px] transition-colors hover:text-it-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary tracking-[-0.012em]'>
                                 {dict.clearFilters}
                             </Link>
                         )}
@@ -293,7 +293,7 @@ export function SearchRecovery({
                     row. They are alternative TERMS, and reading them as a
                     sentence is faster than scanning a grid of pills. */}
                 {popular.length > 0 && destinationSlug && (
-                    <p className='m-0 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[14px] leading-[1.6] tracking-[-0.012em]'>
+                    <p className='m-0 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[13px] leading-[1.6] tracking-[-0.012em]'>
                         <span className='font-medium text-it-heading tracking-[-0.012em]'>
                             {dict.popularSearches}
                         </span>
@@ -368,7 +368,7 @@ export function SearchRecovery({
                 {seeAllHref && seeAllLabel && (
                     <Link
                         href={seeAllHref}
-                        className='w-fit text-[14px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-[3px] sm:hidden tracking-[-0.012em]'>
+                        className='w-fit text-[13px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-[3px] sm:hidden tracking-[-0.012em]'>
                         {seeAllLabel} →
                     </Link>
                 )}

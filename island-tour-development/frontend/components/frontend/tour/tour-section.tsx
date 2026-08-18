@@ -25,7 +25,7 @@ export function TourSection({
         <section
             id={id}
             className='flex scroll-mt-32 flex-col gap-3.5 max-md:not-first:mt-2'>
-            <h2 className='m-0 text-[24px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+            <h2 className='m-0 text-[21px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                 {title}
             </h2>
             <div className='flex flex-col gap-4'>{children}</div>

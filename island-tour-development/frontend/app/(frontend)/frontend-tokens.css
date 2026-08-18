@@ -92,16 +92,16 @@
     --it-font-body:    -apple-system, BlinkMacSystemFont, 'SF Pro Text',    'Helvetica Neue', Arial, sans-serif;
 
     /* Scale */
-    --it-text-xs:      0.75rem;
-    --it-text-sm:      0.875rem;
-    --it-text-base:    1rem;
-    --it-text-lg:      1.125rem;
-    --it-text-xl:      1.25rem;
-    --it-text-2xl:     1.5rem;
-    --it-text-3xl:     1.875rem;
-    --it-text-4xl:     2.5rem;
-    --it-text-5xl:     3rem;
-    --it-text-display: 3.75rem;
+    --it-text-xs:      0.71875rem;
+    --it-text-sm:      0.8125rem;
+    --it-text-base:    0.90625rem;
+    --it-text-lg:      1.03125rem;
+    --it-text-xl:      1.125rem;
+    --it-text-2xl:     1.3125rem;
+    --it-text-3xl:     1.59375rem;
+    --it-text-4xl:     2rem;
+    --it-text-5xl:     2.40625rem;
+    --it-text-display: 3rem;
 
     /* Weight */
     --it-weight-regular:  400;

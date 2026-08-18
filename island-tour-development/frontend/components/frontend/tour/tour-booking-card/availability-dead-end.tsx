@@ -68,10 +68,10 @@ export function AvailabilityDeadEnd() {
     return (
         <div className='flex flex-col gap-3 pb-4'>
             <div className='flex flex-col gap-1'>
-                <span className='font-medium text-[18px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                <span className='font-medium text-[16.5px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                     {dict.deadEndTitle}
                 </span>
-                <span className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                <span className='text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                     {dict.deadEndSubtitle}
                 </span>
             </div>
@@ -88,7 +88,7 @@ export function AvailabilityDeadEnd() {
                     ))}
                 </div>
             ) : alternatives.length === 0 ? (
-                <span className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                <span className='text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                     {dict.deadEndNoAlternatives}
                 </span>
             ) : (
@@ -171,13 +171,13 @@ function AlternativeRow({
                         )}
                     </span>
                     <span className='flex min-w-0 flex-1 flex-col gap-0.5'>
-                        <span className='truncate font-medium text-[15px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
+                        <span className='truncate font-medium text-[14px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
                             {alt.title}
                         </span>
                         {/* Meta line: rating first (it is what makes an
                             alternative worth switching to), then the date it is
                             next open (which is why it is offered at all). */}
-                        <span className='flex min-w-0 items-center gap-1.5 text-[13px] leading-[1.4] tracking-[-0.012em] text-it-text-muted'>
+                        <span className='flex min-w-0 items-center gap-1.5 text-[12px] leading-[1.4] tracking-[-0.012em] text-it-text-muted'>
                             {isRated && (
                                 <>
                                     <span className='flex shrink-0 items-center gap-1'>
@@ -219,7 +219,7 @@ function AlternativeRow({
                             )}
                         </span>
                     </span>
-                    <span className='shrink-0 font-medium text-[15px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
+                    <span className='shrink-0 font-medium text-[14px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
                         {priceDisplay}
                     </span>
                 </MotionLink>

@@ -36,7 +36,7 @@ interface CheckoutSummaryProps {
     currency: Currency;
 }
 
-const rowText = 'text-[13.5px] leading-[1.6] text-it-heading tracking-[-0.012em]';
+const rowText = 'text-[12.5px] leading-[1.6] text-it-heading tracking-[-0.012em]';
 
 /** A left-icon + label detail row inside the summary card (icon 24, gap 10). */
 function SummaryRow({
@@ -102,7 +102,7 @@ export function CheckoutSummary({
             {/* Header */}
             <div className='flex flex-col gap-4'>
                 <div className='flex items-start justify-between gap-4'>
-                    <span className='font-it-display text-[16px] font-medium leading-[1.4] tracking-[-0.012em] text-it-heading'>
+                    <span className='font-it-display text-[14.5px] font-medium leading-[1.4] tracking-[-0.012em] text-it-heading'>
                         {dict.bookingSummary}
                     </span>
                     <Link
@@ -171,7 +171,7 @@ export function CheckoutSummary({
 
                     <div className='h-px w-full bg-it-divider' />
 
-                    <div className='flex items-center gap-2 text-[13px] font-medium leading-[1.6] text-it-green-text tracking-[-0.012em]'>
+                    <div className='flex items-center gap-2 text-[12px] font-medium leading-[1.6] text-it-green-text tracking-[-0.012em]'>
                         <Image
                             src='/icons/booking-check.svg'
                             alt=''
@@ -206,7 +206,7 @@ export function CheckoutSummary({
                             currency={currency}
                             locale={locale}
                         />
-                        <span className='text-[12px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                        <span className='text-[11.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                             {dict.taxesIncluded}
                         </span>
                     </div>

@@ -54,13 +54,13 @@ export function HubWhySection({
         <section className='bg-it-white pt-16 pb-2.5 max-md:pt-8'>
             <div className='it-container'>
                 <Reveal className='flex flex-col gap-3.5'>
-                    <h2 className='m-0 text-[24px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                    <h2 className='m-0 text-[21px] md:text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                         {title}
                     </h2>
 
                     <div className='flex max-w-[720px] flex-col gap-3'>
                         {/* Lead-in: always in full, on every screen. */}
-                        <p className='m-0 font-it-display text-[17px] font-medium leading-[1.6] tracking-[-0.012em] text-it-heading md:text-[19px]'>
+                        <p className='m-0 font-it-display text-[15.5px] font-medium leading-[1.6] tracking-[-0.012em] text-it-heading md:text-[17px]'>
                             {leadIn}
                         </p>
 
@@ -68,7 +68,7 @@ export function HubWhySection({
                         {body.map((paragraph, i) => (
                             <p
                                 key={i}
-                                className='m-0 hidden text-[14px] md:text-[16px] leading-[1.6] text-it-text-muted md:block tracking-[-0.012em]'>
+                                className='m-0 hidden text-[13px] md:text-[14.5px] leading-[1.6] text-it-text-muted md:block tracking-[-0.012em]'>
                                 {paragraph}
                             </p>
                         ))}
@@ -82,8 +82,8 @@ export function HubWhySection({
                                 moreLabel={readMoreLabel}
                                 lessLabel={showLessLabel}
                                 limit={MOBILE_CLAMP_CHARS}
-                                className='m-0 whitespace-pre-line text-[14.5px] leading-[1.6] text-it-heading md:hidden tracking-[-0.012em]'
-                                buttonClassName='inline cursor-pointer whitespace-nowrap border-none bg-transparent p-0 text-[14px] font-medium leading-[1.6] tracking-[-0.012em] text-it-primary underline decoration-1 underline-offset-[3px]'
+                                className='m-0 whitespace-pre-line text-[13.5px] leading-[1.6] text-it-heading md:hidden tracking-[-0.012em]'
+                                buttonClassName='inline cursor-pointer whitespace-nowrap border-none bg-transparent p-0 text-[13px] font-medium leading-[1.6] tracking-[-0.012em] text-it-primary underline decoration-1 underline-offset-[3px]'
                             />
                         )}
                     </div>

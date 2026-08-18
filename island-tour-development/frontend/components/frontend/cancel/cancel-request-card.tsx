@@ -73,10 +73,10 @@ export function CancelRequestCard({
                         animate={{ opacity: 1, y: 0 }}
                         transition={crossFade}
                         className='flex flex-col gap-2.5'>
-                        <span className='font-medium text-[18px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
+                        <span className='font-medium text-[16.5px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
                             {dict.sentTitle}
                         </span>
-                        <span className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                        <span className='text-[13px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                             {dict.sentBody}
                         </span>
                         {/* After the request is in there is nothing left to
@@ -84,7 +84,7 @@ export function CancelRequestCard({
                             the thank-you page. */}
                         <Link
                             href={thankYouHref}
-                            className='mt-3 w-fit rounded-[10px] border-[1.5px] border-it-heading/20 px-4.5 py-2.75 text-[14px] font-medium leading-[1.2] text-it-heading no-underline transition-colors duration-300 hover:border-it-heading/40 tracking-[-0.012em]'>
+                            className='mt-3 w-fit rounded-[10px] border-[1.5px] border-it-heading/20 px-4.5 py-2.75 text-[13px] font-medium leading-[1.2] text-it-heading no-underline transition-colors duration-300 hover:border-it-heading/40 tracking-[-0.012em]'>
                             {dict.seeStatus}
                         </Link>
                     </motion.div>
@@ -95,21 +95,21 @@ export function CancelRequestCard({
                         animate={{ opacity: 1, y: 0 }}
                         transition={crossFade}
                         className='flex flex-col'>
-                        <span className='font-medium text-[18px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
+                        <span className='font-medium text-[16.5px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
                             {title}
                         </span>
                         {displayRef && (
-                            <span className='mt-2 text-[13px] leading-[1.6] tracking-[-0.012em] text-it-heading/50'>
+                            <span className='mt-2 text-[12px] leading-[1.6] tracking-[-0.012em] text-it-heading/50'>
                                 {dict.reference} {displayRef}
                             </span>
                         )}
 
                         {refundLabel && (
-                            <span className='mt-3 w-fit rounded-full bg-it-green/8 px-3 py-1 text-[14px] font-medium leading-[1.6] tracking-[-0.012em] text-it-green'>
+                            <span className='mt-3 w-fit rounded-full bg-it-green/8 px-3 py-1 text-[13px] font-medium leading-[1.6] tracking-[-0.012em] text-it-green'>
                                 {refundLabel}
                             </span>
                         )}
-                        <span className='mt-2.5 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                        <span className='mt-2.5 text-[13px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                             {dict.refundNote}
                             {refundLabel ? ` ${dict.refundMethod}` : ''}
                         </span>
@@ -120,7 +120,7 @@ export function CancelRequestCard({
                             onChange={e => setReason(e.target.value)}
                             maxLength={500}
                             placeholder={dict.reasonPlaceholder}
-                            className='mt-4 w-full resize-y rounded-[10px] border-[1.5px] border-it-heading/20 bg-it-white px-3 py-2.75 text-[16px] md:text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading outline-none transition-colors duration-300 placeholder:text-it-heading/40 focus:border-it-heading/50'
+                            className='mt-4 w-full resize-y rounded-[10px] border-[1.5px] border-it-heading/20 bg-it-white px-3 py-2.75 text-[14.5px] md:text-[13px] leading-[1.6] tracking-[-0.012em] text-it-heading outline-none transition-colors duration-300 placeholder:text-it-heading/40 focus:border-it-heading/50'
                         />
 
                         <AnimatePresence>
@@ -130,7 +130,7 @@ export function CancelRequestCard({
                                     animate={{ opacity: 1, height: 'auto' }}
                                     exit={{ opacity: 0, height: 0 }}
                                     transition={crossFade}
-                                    className='mt-2 text-[13px] leading-[1.6] text-it-primary tracking-[-0.012em]'>
+                                    className='mt-2 text-[12px] leading-[1.6] text-it-primary tracking-[-0.012em]'>
                                     {dict.error}
                                 </motion.span>
                             )}
@@ -142,14 +142,14 @@ export function CancelRequestCard({
                                 whileTap={{ scale: 0.97 }}
                                 onClick={() => setConfirmOpen(true)}
                                 disabled={state === 'sending'}
-                                className='cursor-pointer rounded-[10px] border-none bg-it-heading px-4.5 py-2.75 text-[14px] font-medium leading-[1.2] text-it-white transition-opacity duration-300 hover:opacity-90 disabled:cursor-default disabled:opacity-60 tracking-[-0.012em]'>
+                                className='cursor-pointer rounded-[10px] border-none bg-it-heading px-4.5 py-2.75 text-[13px] font-medium leading-[1.2] text-it-white transition-opacity duration-300 hover:opacity-90 disabled:cursor-default disabled:opacity-60 tracking-[-0.012em]'>
                                 {state === 'sending'
                                     ? dict.sending
                                     : dict.confirm}
                             </motion.button>
                             <Link
                                 href={thankYouHref}
-                                className='rounded-[10px] border-[1.5px] border-it-heading/20 px-4.5 py-2.75 text-[14px] font-medium leading-[1.2] text-it-heading no-underline transition-colors duration-300 hover:border-it-heading/40 tracking-[-0.012em]'>
+                                className='rounded-[10px] border-[1.5px] border-it-heading/20 px-4.5 py-2.75 text-[13px] font-medium leading-[1.2] text-it-heading no-underline transition-colors duration-300 hover:border-it-heading/40 tracking-[-0.012em]'>
                                 {dict.keep}
                             </Link>
                         </div>

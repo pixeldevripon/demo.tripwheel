@@ -168,7 +168,7 @@ export function ReviewPhotoUploader({
                             aria-label={dict.photoRemove}
                             whileTap={{ scale: 0.9 }}
                             transition={springPop}
-                            className='absolute right-1 top-1 flex size-6 items-center justify-center rounded-it-full bg-it-heading/70 text-[15px] leading-none text-it-white opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 tracking-[-0.012em]'>
+                            className='absolute right-1 top-1 flex size-6 items-center justify-center rounded-it-full bg-it-heading/70 text-[14px] leading-none text-it-white opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 tracking-[-0.012em]'>
                             &times;
                         </MotionButton>
                     </div>
@@ -224,7 +224,7 @@ export function ReviewPhotoUploader({
                             }}
                             className='sr-only'
                         />
-                        <span aria-hidden className='text-[18px] leading-none tracking-[-0.012em]'>
+                        <span aria-hidden className='text-[16.5px] leading-none tracking-[-0.012em]'>
                             +
                         </span>
                         {dict.photoAdd}
@@ -233,7 +233,7 @@ export function ReviewPhotoUploader({
             </div>
 
             <p
-                className='m-0 text-[13px] leading-[1.4] tracking-[-0.012em] text-it-text-muted'
+                className='m-0 text-[12px] leading-[1.4] tracking-[-0.012em] text-it-text-muted'
                 aria-live='polite'>
                 {error ??
                     dict.photoCounter

@@ -53,7 +53,7 @@ function isAccountGated(path: string): boolean {
 
 /** Active row: primary ink and medium weight, matching the locale menu. */
 const ROW =
-    'flex w-full items-center gap-2.5 px-5 py-3 text-sm no-underline transition-colors duration-200 hover:bg-it-surface tracking-[-0.012em]';
+    'flex w-full items-center gap-2.5 px-5 py-3 text-[13px] no-underline transition-colors duration-200 hover:bg-it-surface tracking-[-0.012em]';
 const ROW_ACTIVE = 'text-it-primary font-medium tracking-[-0.012em]';
 const ROW_IDLE = '';
 
@@ -125,7 +125,7 @@ export function AccountMenu({
             alt=''
             width={24}
             height={24}
-            className='size-6'
+            className='size-5'
         />
     );
 
@@ -168,14 +168,14 @@ export function AccountMenu({
                         <motion.div
                             {...dropdownItemMotion}
                             className='flex items-center gap-3 px-5 py-4'>
-                            <span className='flex size-9 shrink-0 items-center justify-center rounded-it-full bg-it-surface text-sm font-medium uppercase '>
+                            <span className='flex size-9 shrink-0 items-center justify-center rounded-it-full bg-it-surface text-[13px] font-medium uppercase'>
                                 {identityEmail.trim().charAt(0)}
                             </span>
                             <span className='min-w-0'>
-                                <span className='block text-sm leading-[1.4] font-medium text-it-heading truncate tracking-[-0.012em]'>
+                                <span className='block text-[13px] leading-[1.4] font-medium text-it-heading truncate tracking-[-0.012em]'>
                                     {identityEmail}
                                 </span>
-                                <span className='block text-xs leading-[1.6] text-it-text-muted truncate tracking-[-0.012em]'>
+                                <span className='block text-[11.5px] leading-[1.6] text-it-text-muted truncate tracking-[-0.012em]'>
                                     {dict.account}
                                 </span>
                             </span>

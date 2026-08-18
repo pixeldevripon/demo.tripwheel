@@ -320,7 +320,7 @@ export function TopExperiences({
         <section className='bg-it-white it-section'>
             <div className='it-container'>
                 <Reveal className='flex flex-col items-center gap-4! md:gap-1! '>
-                    <h2 className='m-0 text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading text-center font-medium'>
+                    <h2 className='m-0 text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading text-center font-medium'>
                         {dict.title}
                     </h2>
 
@@ -563,7 +563,7 @@ export function TopExperiences({
                                                 the running video. */}
                                             <p
                                                 className={[
-                                                    'absolute bottom-[13px] inset-x-[15px] m-0 text-left font-medium text-[20px] leading-[1.6] tracking-[-0.012em]',
+                                                    'absolute bottom-[13px] inset-x-[15px] m-0 text-left font-medium text-[18px] leading-[1.6] tracking-[-0.012em]',
                                                     hasMedia
                                                         ? 'text-it-white [text-shadow:0_1px_10px_rgba(0,0,0,0.6),0_1px_2px_rgba(0,0,0,0.45)] tracking-[-0.012em]'
                                                         : '',

@@ -99,7 +99,7 @@ export function TourDetailTabs({ tabs }: { tabs: TourTab[] }) {
                             onClick={() => goTo(t.id)}
                             data-tab-key={t.id}
                             aria-current={isActive ? 'true' : undefined}
-                            className={`relative -mb-px shrink-0 cursor-pointer whitespace-nowrap border-none bg-transparent px-[13px] py-3 text-[13px] leading-[1.6] transition-colors duration-(--it-duration-xs) ease-(--it-ease) ${
+                            className={`relative -mb-px shrink-0 cursor-pointer whitespace-nowrap border-none bg-transparent px-[13px] py-3 text-[12px] leading-[1.6] transition-colors duration-(--it-duration-xs) ease-(--it-ease) ${
                                 isActive
                                     ? 'font-medium text-it-primary-hover tracking-[-0.012em]'
                                     : 'font-medium text-it-text-muted hover:text-it-heading tracking-[-0.012em]'

@@ -273,16 +273,16 @@ async function DestinationContent({
                 LD8 divergence: hidden on mobile). */}
             <nav
                 aria-label='Breadcrumb'
-                className='it-container hidden py-4 text-[12.5px] leading-[1.6] text-it-text-muted md:block tracking-[-0.012em]'>
+                className='it-container hidden py-4 text-[11.5px] leading-[1.6] text-it-text-muted md:block tracking-[-0.012em]'>
                 <Link
                     href={localizeHref(locale, '/')}
-                    className='text-it-text-muted no-underline hover:underline text-[14px] leading-[1.6] tracking-[-0.012em]'>
+                    className='text-it-text-muted no-underline hover:underline text-[13px] leading-[1.6] tracking-[-0.012em]'>
                     {dict.destination.allTours.breadcrumb.home}
                 </Link>
                 <span className='mx-[7px] text-it-text-muted tracking-[-0.012em]'>›</span>
                 <span
                     aria-current='page'
-                    className='text-[16px] font-medium leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                    className='text-[14.5px] font-medium leading-[1.6] tracking-[-0.012em] text-it-heading'>
                     {destinationName}
                 </span>
             </nav>

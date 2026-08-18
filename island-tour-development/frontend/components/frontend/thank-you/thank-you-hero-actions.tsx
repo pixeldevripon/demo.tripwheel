@@ -49,7 +49,7 @@ export function BookingRefCopy({
             transition={springPop}
             aria-label={ariaLabel}
             aria-live='polite'
-            className='cursor-pointer border-none bg-transparent p-0 text-[12.5px] font-medium leading-[1.4] text-it-primary-hover underline underline-offset-2 tracking-[-0.012em]'>
+            className='cursor-pointer border-none bg-transparent p-0 text-[11.5px] font-medium leading-[1.4] text-it-primary-hover underline underline-offset-2 tracking-[-0.012em]'>
             {copied ? copiedLabel : copyLabel}
         </motion.button>
     );
@@ -104,7 +104,7 @@ export function AddToCalendar({
     }, [open]);
 
     const itemClass =
-        'flex w-full cursor-pointer items-center gap-2.5 rounded-it-sm px-3 py-2.5 text-left text-[13.5px] font-medium leading-[1.4] text-it-heading no-underline transition-colors duration-(--it-duration-xs) hover:bg-it-bg tracking-[-0.012em]';
+        'flex w-full cursor-pointer items-center gap-2.5 rounded-it-sm px-3 py-2.5 text-left text-[12.5px] font-medium leading-[1.4] text-it-heading no-underline transition-colors duration-(--it-duration-xs) hover:bg-it-bg tracking-[-0.012em]';
 
     const options = [
         {
@@ -150,7 +150,7 @@ export function AddToCalendar({
                 transition={springPop}
                 aria-expanded={open}
                 aria-haspopup='menu'
-                className='flex cursor-pointer items-center gap-[9px] rounded-it-sm border-none bg-it-primary px-[26px] py-[13px] text-[16px] font-medium leading-[1.5] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover tracking-[-0.012em]'>
+                className='flex cursor-pointer items-center gap-[9px] rounded-it-sm border-none bg-it-primary px-[26px] py-[13px] text-[14.5px] font-medium leading-[1.5] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover tracking-[-0.012em]'>
                 <Image
                     src='/icons/thank-you/calendar-white.svg'
                     alt=''

@@ -11,9 +11,9 @@ import { Fragment, type ReactNode } from 'react';
 
 type ThankYouDict = Dictionary['thankYou'];
 
-const factText = 'text-[13px] font-medium leading-[1.6] text-it-heading tracking-[-0.012em]';
+const factText = 'text-[12px] font-medium leading-[1.6] text-it-heading tracking-[-0.012em]';
 const factTextSm =
-    'text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/70';
+    'text-[13px] leading-[1.6] tracking-[-0.012em] text-it-heading/70';
 
 /**
  * The brand palm that opens the eyebrow line (design v2 .apteyebrow). Rendered
@@ -36,7 +36,7 @@ const dot = (
 );
 
 const ctaClassSm =
-    'flex h-10 w-full items-center justify-center rounded-full bg-it-primary px-4 font-medium text-[13.5px] leading-none tracking-[-0.012em] text-it-white transition-colors hover:bg-it-primary-hover';
+    'flex h-10 w-full items-center justify-center rounded-full bg-it-primary px-4 font-medium text-[12.5px] leading-none tracking-[-0.012em] text-it-white transition-colors hover:bg-it-primary-hover';
 
 /**
  * Post-booking recommendations section. Admin-managed (Dashboard > Recommendations),
@@ -245,7 +245,7 @@ function AptCard({
                         </span>
                     </div>
                 )}
-                <h3 className='m-0 mt-2 font-it-display text-[20px] leading-[1.3] tracking-[-0.012em] text-it-heading font-medium'>
+                <h3 className='m-0 mt-2 font-it-display text-[18px] leading-[1.3] tracking-[-0.012em] text-it-heading font-medium'>
                     {title}
                 </h3>
                 {recommendation.descriptionLines.length > 0 && (
@@ -253,7 +253,7 @@ function AptCard({
                         {recommendation.descriptionLines.map(line => (
                             <p
                                 key={line}
-                                className='m-0 text-[16px] md:text-[18px] leading-[1.6] text-it-primary-subtle tracking-[-0.012em]'>
+                                className='m-0 text-[14.5px] md:text-[16.5px] leading-[1.6] text-it-primary-subtle tracking-[-0.012em]'>
                                 {line}
                             </p>
                         ))}
@@ -272,7 +272,7 @@ function AptCard({
                 {ctaLabel && (
                     <Cta
                         r={recommendation}
-                        className='mt-3.5 inline-flex items-center gap-2 self-start rounded-it-sm border border-it-border bg-it-white px-[18px] py-2.5 text-[13.5px] font-medium leading-[1.4] text-it-heading no-underline transition-colors duration-(--it-duration-xs) hover:bg-it-bg tracking-[-0.012em]'>
+                        className='mt-3.5 inline-flex items-center gap-2 self-start rounded-it-sm border border-it-border bg-it-white px-[18px] py-2.5 text-[12.5px] font-medium leading-[1.4] text-it-heading no-underline transition-colors duration-(--it-duration-xs) hover:bg-it-bg tracking-[-0.012em]'>
                         {ctaLabel}
                         {recommendation.external && (
                             <Image
@@ -335,7 +335,7 @@ function GridCard({
                         {EyebrowMark} {eyebrow}
                     </span>
                 )}
-                <h3 className='m-0 font-medium text-[16px] leading-[1.4] tracking-[-0.012em] text-it-heading line-clamp-2'>
+                <h3 className='m-0 font-medium text-[14.5px] leading-[1.4] tracking-[-0.012em] text-it-heading line-clamp-2'>
                     {title}
                 </h3>
                 {facts.length > 0 && (

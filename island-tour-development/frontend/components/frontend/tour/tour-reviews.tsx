@@ -78,7 +78,7 @@ export function TourReviews({
                 line under the title (the client's ask), and `ml-auto` only
                 pushes it right once there is room for it beside the title. */}
             <div className='mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1.5'>
-                <h2 className='m-0 text-[24px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                <h2 className='m-0 text-[21px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                     {dict.title}
                 </h2>
                 {rating != null && reviewCount > 0 && (
@@ -100,7 +100,7 @@ export function TourReviews({
                 <SmoothScrollLink
                     targetId='tour-reviews'
                     offset={REVIEWS_SCROLL_OFFSET}
-                    className='w-full text-[13px] font-medium leading-[1.6] text-it-primary-hover no-underline transition-colors hover:text-it-primary sm:ml-auto sm:w-auto tracking-[-0.012em]'>
+                    className='w-full text-[12px] font-medium leading-[1.6] text-it-primary-hover no-underline transition-colors hover:text-it-primary sm:ml-auto sm:w-auto tracking-[-0.012em]'>
                     {dict.seeAll} →
                 </SmoothScrollLink>
             </div>
@@ -142,14 +142,14 @@ function ReviewCard({
                         .join(' · ')}
                 </span>
             </div>
-            <div className='mt-1.5 text-[13.5px] leading-[1.5] text-it-heading tracking-[-0.012em]'>
+            <div className='mt-1.5 text-[12.5px] leading-[1.5] text-it-heading tracking-[-0.012em]'>
                 <ExpandableText
                     text={review.text}
                     moreLabel={dict.readMore}
                     lessLabel={dict.readLess}
                     sentenceLimit={PREVIEW_SENTENCES}
                     className='m-0'
-                    buttonClassName='cursor-pointer whitespace-nowrap border-none bg-transparent p-0 text-[13.5px] leading-[1.5] text-it-primary-hover tracking-[-0.012em]'
+                    buttonClassName='cursor-pointer whitespace-nowrap border-none bg-transparent p-0 text-[12.5px] leading-[1.5] text-it-primary-hover tracking-[-0.012em]'
                 />
             </div>
         </article>

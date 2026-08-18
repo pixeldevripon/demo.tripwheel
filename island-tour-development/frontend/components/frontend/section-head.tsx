@@ -38,7 +38,7 @@ export function SectionHead({
                         {kicker}
                     </div>
                 )}
-                <h2 className='m-0 text-[32px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                <h2 className='m-0 text-[27px] md:text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                     {title}
                 </h2>
             </div>

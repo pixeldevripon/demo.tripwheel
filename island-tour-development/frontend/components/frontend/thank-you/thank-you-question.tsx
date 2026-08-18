@@ -7,7 +7,7 @@ type ThankYouDict = Dictionary['thankYou'];
 
 /** Deep-orange tappable contact value (mailto/tel). */
 const contactLink =
-    'text-it-primary-hover underline underline-offset-2 transition-opacity hover:opacity-80 text-[16px] leading-[1.6] tracking-[-0.012em]';
+    'text-it-primary-hover underline underline-offset-2 transition-opacity hover:opacity-80 text-[14.5px] leading-[1.6] tracking-[-0.012em]';
 
 /**
  * Support card (design v2 .supportcard): a single 560px centred white card -
@@ -42,14 +42,14 @@ export function ThankYouQuestion({
             <div className='it-wrap'>
                 <Reveal className='mx-auto w-full max-w-[560px]'>
                     <div className='rounded-it-lg border border-it-divider bg-it-white px-5 py-[22px] shadow-it-sm md:px-8 md:py-7'>
-                        <h3 className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading font-medium'>
+                        <h3 className='m-0 text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-heading font-medium'>
                             {dict.questionTitle}
                         </h3>
-                        <p className='m-0 mt-1.5 text-[14px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                        <p className='m-0 mt-1.5 text-[13px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                             {dict.talkLocals}
                         </p>
                         <div className='mt-4'>
-                            <b className='mb-1.5 block text-[15px] font-medium leading-[1.6] text-it-heading tracking-[-0.012em]'>
+                            <b className='mb-1.5 block text-[14px] font-medium leading-[1.6] text-it-heading tracking-[-0.012em]'>
                                 {booking.operatorName}
                             </b>
                             {/* Operator contact is withheld on the unverified
@@ -58,7 +58,7 @@ export function ThankYouQuestion({
                             {booking.operatorEmail && (
                                 <a
                                     href={`mailto:${booking.operatorEmail}`}
-                                    className='flex w-fit items-center gap-[9px] py-1 text-[14px] leading-[1.6] tracking-[-0.012em]'>
+                                    className='flex w-fit items-center gap-[9px] py-1 text-[13px] leading-[1.6] tracking-[-0.012em]'>
                                     <Image
                                         src='/icons/thank-you/detail-sms.svg'
                                         alt=''
@@ -74,7 +74,7 @@ export function ThankYouQuestion({
                             {booking.operatorPhone && (
                                 <a
                                     href={`tel:${booking.operatorPhone.replace(/\s/g, '')}`}
-                                    className='flex w-fit items-center gap-[9px] py-1 text-[14px] leading-[1.6] tracking-[-0.012em]'>
+                                    className='flex w-fit items-center gap-[9px] py-1 text-[13px] leading-[1.6] tracking-[-0.012em]'>
                                     <Image
                                         src='/icons/thank-you/detail-call.svg'
                                         alt=''
@@ -89,10 +89,10 @@ export function ThankYouQuestion({
                             )}
                         </div>
                         <div className='my-[18px] border-t border-it-divider' />
-                        <b className='block text-[14px] font-medium leading-[1.6] text-it-heading tracking-[-0.012em]'>
+                        <b className='block text-[13px] font-medium leading-[1.6] text-it-heading tracking-[-0.012em]'>
                             {dict.issueTitle}
                         </b>
-                        <p className='m-0 mt-1 text-[13.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                        <p className='m-0 mt-1 text-[12.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                             {issueBefore}
                             <a
                                 href={`mailto:${booking.supportEmail}`}
@@ -101,13 +101,13 @@ export function ThankYouQuestion({
                             </a>
                             {tailBefore}
                             {showRef && (
-                                <code className='font-mono text-[12.5px] font-medium text-it-heading tracking-[-0.012em]'>
+                                <code className='font-mono text-[11.5px] font-medium text-it-heading tracking-[-0.012em]'>
                                     {booking.displayRef}
                                 </code>
                             )}
                             {tailAfter}
                         </p>
-                        <p className='m-0 mt-1 text-[13.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                        <p className='m-0 mt-1 text-[12.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                             {dict.replyTime}
                         </p>
                     </div>

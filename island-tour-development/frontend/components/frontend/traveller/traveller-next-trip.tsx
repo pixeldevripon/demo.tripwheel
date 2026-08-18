@@ -130,18 +130,18 @@ export function TravellerNextTrip({
                     </div>
                 )}
                 <div className='min-w-0 flex-1 p-5 sm:p-7'>
-                    <p className='m-0 text-[12.5px] font-medium tracking-[0.08em] text-it-primary uppercase'>
+                    <p className='m-0 text-[11.5px] font-medium tracking-[0.08em] text-it-primary uppercase'>
                         {dict.nextTripKicker} · {when}
                     </p>
-                    <h2 className='mt-2 mb-0 font-medium text-[22px] md:text-[24px] leading-[1.3] tracking-[-0.012em] text-it-heading'>
+                    <h2 className='mt-2 mb-0 font-medium text-[19.5px] md:text-[21px] leading-[1.3] tracking-[-0.012em] text-it-heading'>
                         {booking.tourName}
                     </h2>
-                    <p className='mt-1 mb-0 text-[15px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                    <p className='mt-1 mb-0 text-[14px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                         {metaLine}
                     </p>
 
                     {(booking.meetingPoint || hasPickup) && (
-                        <p className='mt-2.5 mb-0 flex flex-wrap items-center gap-x-1.5 text-[14.5px] leading-[1.6] text-it-heading tracking-[-0.012em]'>
+                        <p className='mt-2.5 mb-0 flex flex-wrap items-center gap-x-1.5 text-[13.5px] leading-[1.6] text-it-heading tracking-[-0.012em]'>
                             <Image
                                 src='/icons/thank-you/detail-location.svg'
                                 alt=''
@@ -187,12 +187,12 @@ export function TravellerNextTrip({
                     </div>
 
                     {payLine && (
-                        <p className='mt-3 mb-0 text-[14.5px] leading-[1.6] text-it-heading tracking-[-0.012em]'>
+                        <p className='mt-3 mb-0 text-[13.5px] leading-[1.6] text-it-heading tracking-[-0.012em]'>
                             {payLine}
                         </p>
                     )}
                     {cancelLine && (
-                        <p className='mt-1 mb-0 text-[13.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                        <p className='mt-1 mb-0 text-[12.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                             {cancelLine}
                         </p>
                     )}
@@ -204,12 +204,12 @@ export function TravellerNextTrip({
                             onClick={() => setOpen(v => !v)}
                             aria-expanded={open}
                             aria-controls='traveller-next-panel'
-                            className='rounded-full bg-it-primary px-5 py-2.5 text-[14px] font-medium text-it-primary-fg transition-[filter] hover:brightness-95 tracking-[-0.012em]'>
+                            className='rounded-full bg-it-primary px-5 py-2.5 text-[13px] font-medium text-it-primary-fg transition-[filter] hover:brightness-95 tracking-[-0.012em]'>
                             {open ? dict.hideDetails : dict.viewDetails}
                         </motion.button>
                         <a
                             href={bookingIcsUrl(booking.publicRef)}
-                            className='rounded-full border-[1.5px] border-it-heading/20 px-5 py-2.5 text-[14px] font-medium text-it-heading no-underline transition-colors hover:border-it-heading/40 tracking-[-0.012em]'>
+                            className='rounded-full border-[1.5px] border-it-heading/20 px-5 py-2.5 text-[13px] font-medium text-it-heading no-underline transition-colors hover:border-it-heading/40 tracking-[-0.012em]'>
                             {dict.addToCalendar}
                         </a>
                     </div>

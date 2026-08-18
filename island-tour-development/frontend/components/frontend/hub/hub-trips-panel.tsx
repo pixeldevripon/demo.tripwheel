@@ -146,10 +146,10 @@ export function HubTripsPanel({
             {/* Heading + date chip */}
             <Reveal className='flex flex-col gap-4 md:gap-6'>
                 <div className='flex flex-col gap-1'>
-                    <h2 className='m-0 text-[24px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                    <h2 className='m-0 text-[21px] md:text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                         {panel.title}
                     </h2>
-                    <p className='m-0 text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                    <p className='m-0 text-[13px] md:text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                         {panel.subtitle}
                     </p>
                 </div>
@@ -168,7 +168,7 @@ export function HubTripsPanel({
                                     height={24}
                                     className='size-5 shrink-0 md:size-6'
                                 />
-                                <span className='whitespace-nowrap text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                <span className='whitespace-nowrap text-[13px] md:text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                                     {date
                                         ? format(date, 'd MMM yyyy')
                                         : selectDate}
@@ -212,7 +212,7 @@ export function HubTripsPanel({
                 </Popover>
 
                 {checking && (
-                    <p className='m-0 flex items-center gap-2 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                    <p className='m-0 flex items-center gap-2 text-[13px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                         <span
                             className='size-4 shrink-0 animate-spin rounded-full border-2 border-it-heading/20 border-t-it-heading'
                             aria-hidden='true'
@@ -232,7 +232,7 @@ export function HubTripsPanel({
                     animate={{ opacity: 1, y: 0 }}
                     transition={crossFade}
                     className='flex flex-col items-start gap-4 py-6 md:py-10'>
-                    <p className='m-0 text-[16px] md:text-[18px] leading-[1.6] tracking-[-0.012em] text-it-primary-subtle'>
+                    <p className='m-0 text-[14.5px] md:text-[16.5px] leading-[1.6] tracking-[-0.012em] text-it-primary-subtle'>
                         {filter.noneOnDate}
                     </p>
                     <motion.button
@@ -240,7 +240,7 @@ export function HubTripsPanel({
                         onClick={() => setDate(undefined)}
                         whileTap={{ scale: 0.99 }}
                         transition={springPop}
-                        className='cursor-pointer rounded-it-full border border-it-heading bg-transparent px-5 py-2 text-[14px] font-medium leading-[1.6] tracking-[-0.012em] text-it-heading transition-colors duration-300 hover:bg-it-heading/5'>
+                        className='cursor-pointer rounded-it-full border border-it-heading bg-transparent px-5 py-2 text-[13px] font-medium leading-[1.6] tracking-[-0.012em] text-it-heading transition-colors duration-300 hover:bg-it-heading/5'>
                         {filter.showAllDates}
                     </motion.button>
                 </motion.div>
@@ -254,7 +254,7 @@ export function HubTripsPanel({
                                   className='flex flex-col gap-6'>
                                   {group.title && (
                                       <Reveal>
-                                          <h3 className='m-0 text-[13px] uppercase tracking-[0.06em] text-it-heading font-medium'>
+                                          <h3 className='m-0 text-[12px] uppercase tracking-[0.06em] text-it-heading font-medium'>
                                               {group.title}
                                           </h3>
                                       </Reveal>

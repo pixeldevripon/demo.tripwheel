@@ -764,7 +764,7 @@ export function CheckoutForm({
                 before they re-enter anything. */}
             {paymentFailed && (
                 <div className='px-[22px] pt-[18px]'>
-                    <div className='rounded-it-sm border border-it-primary/30 bg-it-primary-subtle px-3.5 py-3 text-[13.5px] leading-[1.6] text-it-primary-hover tracking-[-0.012em]'>
+                    <div className='rounded-it-sm border border-it-primary/30 bg-it-primary-subtle px-3.5 py-3 text-[12.5px] leading-[1.6] text-it-primary-hover tracking-[-0.012em]'>
                         {dict.paymentError}
                     </div>
                 </div>
@@ -787,7 +787,7 @@ export function CheckoutForm({
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             transition={{ duration: 0.2 }}
-                            className='min-w-0 truncate text-[13px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                            className='min-w-0 truncate text-[12px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                             · {contact.firstName} {contact.lastName} ·{' '}
                             {contact.email.trim()}
                         </motion.span>
@@ -812,7 +812,7 @@ export function CheckoutForm({
                             exit={{ opacity: 0 }}
                             whileTap={{ scale: 0.97 }}
                             transition={{ duration: 0.2 }}
-                            className='ml-auto shrink-0 cursor-pointer border-none bg-transparent p-0 text-[13px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-2 tracking-[-0.012em]'>
+                            className='ml-auto shrink-0 cursor-pointer border-none bg-transparent p-0 text-[12px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-2 tracking-[-0.012em]'>
                             {dict.edit}
                         </motion.button>
                     )}
@@ -946,7 +946,7 @@ export function CheckoutForm({
                                 maxLength={500}
                                 onChange={e => set('special', e.target.value)}
                                 placeholder={dict.specialRequestsPlaceholder}
-                                className='h-[70px] w-full resize-none rounded-it-sm border border-it-border bg-it-white px-[13px] py-[11px] text-[16px] md:text-[14px] leading-[1.5] text-it-heading placeholder:text-it-text-muted outline-none transition-colors focus:border-it-primary tracking-[-0.012em]'
+                                className='h-[70px] w-full resize-none rounded-it-sm border border-it-border bg-it-white px-[13px] py-[11px] text-[14.5px] md:text-[13px] leading-[1.5] text-it-heading placeholder:text-it-text-muted outline-none transition-colors focus:border-it-primary tracking-[-0.012em]'
                             />
                             <span className={helperClass}>{dict.maxChars}</span>
                         </div>
@@ -1037,7 +1037,7 @@ export function CheckoutForm({
                                     animate={{ opacity: 1 }}
                                     exit={{ opacity: 0 }}
                                     transition={{ duration: 0.2 }}
-                                    className='ml-auto text-right text-[12.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                                    className='ml-auto text-right text-[11.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                                     {dict.completeContactFirst}
                                 </motion.span>
                             )}

@@ -81,7 +81,7 @@ export function MobileMenu({
                                         <Link
                                             href={categoryHref(hub.slug)}
                                             onClick={onClose}
-                                            className='block text-it-heading text-base no-underline py-2 tracking-[-0.012em]'>
+                                            className='block text-it-heading text-[14.5px] no-underline py-2 tracking-[-0.012em]'>
                                             {hub.name}
                                         </Link>
                                     </motion.div>
@@ -92,7 +92,7 @@ export function MobileMenu({
                                         className='my-2 h-px bg-it-divider'
                                     />
                                 )}
-                                <span className='px-1 pb-1 text-xs font-medium text-it-text-muted tracking-[-0.012em]'>
+                                <span className='px-1 pb-1 text-[11.5px] font-medium text-it-text-muted tracking-[-0.012em]'>
                                     {dict.categories}
                                 </span>
                                 {categories.map((cat, i) => (
@@ -109,7 +109,7 @@ export function MobileMenu({
                                         <Link
                                             href={categoryHref(cat.slug)}
                                             onClick={onClose}
-                                            className='block text-it-heading text-base no-underline py-2 tracking-[-0.012em]'>
+                                            className='block text-it-heading text-[14.5px] no-underline py-2 tracking-[-0.012em]'>
                                             {cat.name}
                                         </Link>
                                     </motion.div>
@@ -132,9 +132,9 @@ export function MobileMenu({
                                 alt=''
                                 width={24}
                                 height={24}
-                                className='size-6'
+                                className='size-5'
                             />
-                            <span className='text-base tracking-[-0.012em]'>
+                            <span className='text-[14.5px] tracking-[-0.012em]'>
                                 {dict.saved}
                                 {count > 0 ? ` (${count})` : ''}
                             </span>

@@ -111,10 +111,10 @@ export function HubCompareSection({
         <Reveal className='flex flex-col gap-[22px]'>
             {/* Header */}
             <header className='flex flex-col gap-1'>
-                <h2 className='m-0 text-[24px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                <h2 className='m-0 text-[21px] md:text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                     {dict.title}
                 </h2>
-                <p className='m-0 max-w-[530px] text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                <p className='m-0 max-w-[530px] text-[13px] md:text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                     {dict.subtitle}
                 </p>
             </header>
@@ -147,13 +147,13 @@ function CompareTableCard({
     // 12px - with two trips sharing the width (mck-16 §4.2), padding is where
     // the room comes from.
     const cell =
-        'flex items-center px-3 lg:px-4 py-[11px] text-[14px] md:text-[16px] leading-[1.6] border-it-divider tracking-[-0.012em] text-it-text-muted';
+        'flex items-center px-3 lg:px-4 py-[11px] text-[13px] md:text-[14.5px] leading-[1.6] border-it-divider tracking-[-0.012em] text-it-text-muted';
 
     return (
         <div className='@container overflow-hidden rounded-it-lg border border-it-divider bg-it-white shadow-it-sm'>
             {/* Category bar */}
             <div className='border-b border-it-peach-border bg-it-primary-subtle px-4 py-2.5 lg:px-4'>
-                <span className='text-[16px] md:text-[18px] font-bold uppercase tracking-[-0.012em] text-it-primary leading-[1.6]'>
+                <span className='text-[14.5px] md:text-[16.5px] font-bold uppercase tracking-[-0.012em] text-it-primary leading-[1.6]'>
                     {title}
                 </span>
             </div>
@@ -193,7 +193,7 @@ function CompareTableCard({
                                     height={24}
                                     className='hidden size-6 shrink-0 lg:block'
                                 />
-                                <span className='text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em]'>
+                                <span className='text-[13px] md:text-[14.5px] leading-[1.6] tracking-[-0.012em]'>
                                     {boat.name}
                                 </span>
                             </div>
@@ -259,7 +259,7 @@ function CompareValue({ value }: { value: CompareCell }) {
     if (parts.length === 0 && !value.check) return null;
 
     return (
-        <span className='flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+        <span className='flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px] md:text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
             {value.check && (
                 <Image
                     src={CHECK_ICON}
@@ -284,7 +284,7 @@ function CompareValue({ value }: { value: CompareCell }) {
 /** "from $150" - "from" muted, price bold. */
 function PriceLabel({ boat, from }: { boat: CompareBoat; from: string }) {
     return (
-        <span className='flex items-center gap-2 text-[14px] md:text-[16px] leading-[1.6] tabular-nums tracking-[-0.012em]'>
+        <span className='flex items-center gap-2 text-[13px] md:text-[14.5px] leading-[1.6] tabular-nums tracking-[-0.012em]'>
             {boat.priceCheck && (
                 <Image
                     src={CHECK_ICON}
@@ -296,7 +296,7 @@ function PriceLabel({ boat, from }: { boat: CompareBoat; from: string }) {
             )}
             <span className='text-it-text-muted tracking-[-0.012em]'>
                 {from}{' '}
-                <span className='text-[15px] font-medium tracking-[-0.012em] text-it-heading'>
+                <span className='text-[14px] font-medium tracking-[-0.012em] text-it-heading'>
                     {boat.priceDisplay}
                 </span>
                 {boat.priceUnit ? ` ${boat.priceUnit}` : ''}
@@ -312,7 +312,7 @@ function PriceLabel({ boat, from }: { boat: CompareBoat; from: string }) {
  */
 function BookButton({ label, href }: { label: string; href?: string }) {
     const className =
-        'inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-it-full bg-it-primary text-[14px] md:text-[16px] font-medium leading-[1.6] text-it-white no-underline transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover h-[33px] px-2 lg:px-[18px] tracking-[-0.012em]';
+        'inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-it-full bg-it-primary text-[13px] md:text-[14.5px] font-medium leading-[1.6] text-it-white no-underline transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover h-[33px] px-2 lg:px-[18px] tracking-[-0.012em]';
     if (href) {
         return (
             <MotionLink

@@ -29,7 +29,7 @@ export function CollectionToursSection({
         <section className='bg-it-white pb-4'>
             <div className='it-container'>
                 <Reveal className='flex flex-col'>
-                    <p className='m-0 max-w-[660px] pt-[34px] pb-3.5 text-[16px] leading-[1.6] text-it-heading text-pretty tracking-[-0.012em]'>
+                    <p className='m-0 max-w-[660px] pt-[34px] pb-3.5 text-[14.5px] leading-[1.6] text-it-heading text-pretty tracking-[-0.012em]'>
                         {intro}
                     </p>
 

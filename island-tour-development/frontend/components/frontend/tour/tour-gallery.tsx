@@ -181,7 +181,7 @@ export function TourGallery({
                                 ))}
                             </div>
                         ) : (
-                            <span className='absolute bottom-3 left-3 z-10 rounded-it-full bg-it-ink/60 px-2.5 py-1 text-[12px] leading-[1.4] tracking-[-0.012em] text-it-white tabular-nums'>
+                            <span className='absolute bottom-3 left-3 z-10 rounded-it-full bg-it-ink/60 px-2.5 py-1 text-[11.5px] leading-[1.4] tracking-[-0.012em] text-it-white tabular-nums'>
                                 {slide + 1} / {images.length}
                             </span>
                         )}
@@ -196,7 +196,7 @@ export function TourGallery({
                     onClick={() => openAt(slide)}
                     whileTap={{ scale: 0.97 }}
                     transition={springPop}
-                    className='absolute right-3 bottom-3 z-10 inline-flex cursor-pointer items-center gap-1.5 rounded-it-sm border-none bg-it-white/94 px-2.5 py-1.5 text-[12.5px] font-medium leading-[1.4] text-it-heading shadow-it-sm tracking-[-0.012em]'>
+                    className='absolute right-3 bottom-3 z-10 inline-flex cursor-pointer items-center gap-1.5 rounded-it-sm border-none bg-it-white/94 px-2.5 py-1.5 text-[11.5px] font-medium leading-[1.4] text-it-heading shadow-it-sm tracking-[-0.012em]'>
                     <Image
                         src='/icons/gallery-photos.svg'
                         alt=''
@@ -259,7 +259,7 @@ export function TourGallery({
                     onClick={() => openAt(0)}
                     whileTap={{ scale: 0.97 }}
                     transition={springPop}
-                    className='absolute right-3 bottom-3 z-10 inline-flex cursor-pointer items-center gap-2 rounded-it-sm border-none bg-it-white/94 px-3.5 py-[9px] text-[13px] font-medium leading-[1.4] text-it-heading shadow-it-sm transition-transform duration-(--it-duration-xs) ease-(--it-ease) hover:-translate-y-px tracking-[-0.012em]'>
+                    className='absolute right-3 bottom-3 z-10 inline-flex cursor-pointer items-center gap-2 rounded-it-sm border-none bg-it-white/94 px-3.5 py-[9px] text-[12px] font-medium leading-[1.4] text-it-heading shadow-it-sm transition-transform duration-(--it-duration-xs) ease-(--it-ease) hover:-translate-y-px tracking-[-0.012em]'>
                     <Image
                         src='/icons/gallery-photos.svg'
                         alt=''
@@ -288,7 +288,7 @@ export function TourGallery({
                         <div
                             className='flex items-center justify-between px-4 py-4 text-it-white md:px-6 tracking-[-0.012em]'
                             onClick={e => e.stopPropagation()}>
-                            <span className='text-[14px] leading-[1.6] tracking-[-0.012em] tabular-nums text-it-heading/70'>
+                            <span className='text-[13px] leading-[1.6] tracking-[-0.012em] tabular-nums text-it-heading/70'>
                                 {index + 1} / {images.length}
                             </span>
                             <motion.button

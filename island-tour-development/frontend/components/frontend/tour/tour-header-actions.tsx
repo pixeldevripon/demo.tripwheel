@@ -75,7 +75,7 @@ export function TourHeaderActions({
     // enough.
     const actionClass = overlay
         ? 'relative grid size-[34px] cursor-pointer place-items-center rounded-it-full border-none bg-it-white/94 shadow-it-sm backdrop-blur-[2px] before:absolute before:-inset-[5px] before:content-[""]'
-        : 'inline-flex cursor-pointer items-center gap-[7px] rounded-it-full border border-it-border bg-it-white px-3.5 py-2 text-[13px] font-medium leading-[1.2] text-it-heading transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:bg-it-bg tracking-[-0.012em]';
+        : 'inline-flex cursor-pointer items-center gap-[7px] rounded-it-full border border-it-border bg-it-white px-3.5 py-2 text-[12px] font-medium leading-[1.2] text-it-heading transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:bg-it-bg tracking-[-0.012em]';
     const iconClass = overlay ? 'size-[15px] shrink-0' : 'size-4 shrink-0';
 
     return (

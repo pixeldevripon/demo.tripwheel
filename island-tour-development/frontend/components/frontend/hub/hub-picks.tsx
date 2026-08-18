@@ -23,10 +23,10 @@ export function HubPicks({ data }: { data: HubPicksData }) {
     return (
         <Reveal className='flex flex-col gap-10 md:gap-12'>
             <div className='flex flex-col gap-1'>
-                <h3 className='m-0 text-[24px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                <h3 className='m-0 text-[21px] md:text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                     {data.title}
                 </h3>
-                <p className='m-0 text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                <p className='m-0 text-[13px] md:text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                     {data.subtitle}
                 </p>
             </div>
@@ -43,7 +43,7 @@ export function HubPicks({ data }: { data: HubPicksData }) {
                 ))}
             </div>
 
-            <p className='m-0 text-left text-[14px] md:text-center md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+            <p className='m-0 text-left text-[13px] md:text-center md:text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                 {data.footerNote}
             </p>
         </Reveal>

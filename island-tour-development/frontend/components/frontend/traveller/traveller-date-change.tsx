@@ -85,14 +85,14 @@ export function TravellerDateChange({
                         exit={{ opacity: 0, y: -8 }}
                         transition={crossFade}
                         className='rounded-[12px] bg-it-surface p-4'>
-                        <p className='m-0 text-[14px] leading-[1.6] font-medium text-it-heading tracking-[-0.012em]'>
+                        <p className='m-0 text-[13px] leading-[1.6] font-medium text-it-heading tracking-[-0.012em]'>
                             {dict.dateChangeTitle}
                         </p>
-                        <p className='mt-1 mb-0 text-[13px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                        <p className='mt-1 mb-0 text-[12px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                             {dict.dateChangeNote}
                         </p>
                         {loading ? (
-                            <p className='mt-3 mb-0 flex items-center gap-2 text-[13.5px] text-it-text-muted tracking-[-0.012em]'>
+                            <p className='mt-3 mb-0 flex items-center gap-2 text-[12.5px] text-it-text-muted tracking-[-0.012em]'>
                                 <Loader2
                                     className='size-4 animate-spin'
                                     strokeWidth={2}
@@ -100,7 +100,7 @@ export function TravellerDateChange({
                                 {dict.dateChangeLoading}
                             </p>
                         ) : options && options.length === 0 ? (
-                            <p className='mt-3 mb-0 text-[13.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                            <p className='mt-3 mb-0 text-[12.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                                 {dict.dateChangeNoOptions}
                             </p>
                         ) : options ? (
@@ -109,7 +109,7 @@ export function TravellerDateChange({
                                     value={selected}
                                     onChange={e => setSelected(e.target.value)}
                                     aria-label={dict.dateChangeTitle}
-                                    className='mt-3 w-full cursor-pointer rounded-[10px] border border-it-border bg-it-white px-3.5 py-2.5 text-[16px] md:text-[14px] text-it-heading focus:border-transparent focus:outline-2 focus:outline-it-primary tracking-[-0.012em]'>
+                                    className='mt-3 w-full cursor-pointer rounded-[10px] border border-it-border bg-it-white px-3.5 py-2.5 text-[14.5px] md:text-[13px] text-it-heading focus:border-transparent focus:outline-2 focus:outline-it-primary tracking-[-0.012em]'>
                                     {options.map(o => (
                                         <option
                                             key={o.departureId}
@@ -121,7 +121,7 @@ export function TravellerDateChange({
                                 {failed && (
                                     <p
                                         role='alert'
-                                        className='mt-2 mb-0 text-[13px] text-it-error tracking-[-0.012em]'>
+                                        className='mt-2 mb-0 text-[12px] text-it-error tracking-[-0.012em]'>
                                         {dict.dateChangeFailed}
                                     </p>
                                 )}
@@ -134,7 +134,7 @@ export function TravellerDateChange({
                                     disabled={moving}
                                     whileTap={{ scale: 0.98 }}
                                     onClick={() => void submit()}
-                                    className='rounded-full bg-it-primary px-4.5 py-2.25 text-[14px] font-medium text-it-primary-fg transition-[filter] hover:brightness-95 disabled:opacity-60 tracking-[-0.012em]'>
+                                    className='rounded-full bg-it-primary px-4.5 py-2.25 text-[13px] font-medium text-it-primary-fg transition-[filter] hover:brightness-95 disabled:opacity-60 tracking-[-0.012em]'>
                                     {moving
                                         ? dict.dateChangeMoving
                                         : dict.dateChangeConfirm}
@@ -145,7 +145,7 @@ export function TravellerDateChange({
                                 disabled={moving}
                                 whileTap={{ scale: 0.98 }}
                                 onClick={() => setOpen(false)}
-                                className='rounded-full px-4.5 py-2.25 text-[14px] font-medium text-it-text-muted transition-colors hover:text-it-heading disabled:opacity-60 tracking-[-0.012em]'>
+                                className='rounded-full px-4.5 py-2.25 text-[13px] font-medium text-it-text-muted transition-colors hover:text-it-heading disabled:opacity-60 tracking-[-0.012em]'>
                                 {dict.dateChangeKeep}
                             </motion.button>
                         </div>
@@ -160,7 +160,7 @@ export function TravellerDateChange({
                         transition={crossFade}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => void openPicker()}
-                        className='rounded-full border-[1.5px] border-it-heading/20 px-4.5 py-2.25 text-[14px] font-medium text-it-heading transition-colors hover:border-it-heading/40 tracking-[-0.012em]'>
+                        className='rounded-full border-[1.5px] border-it-heading/20 px-4.5 py-2.25 text-[13px] font-medium text-it-heading transition-colors hover:border-it-heading/40 tracking-[-0.012em]'>
                         {dict.dateChangeCta}
                     </motion.button>
                 )}

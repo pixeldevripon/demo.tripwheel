@@ -70,13 +70,13 @@ export function LocaleSelector({
                     alt=''
                     width={24}
                     height={24}
-                    className='size-6 shrink-0'
+                    className='size-5 shrink-0'
                 />
                 {variant === 'desktop' && (
                     /* One-cell grid: invisible spans reserve the width of the
                        widest locale code, so switching locales never shifts
                        the rest of the header. */
-                    <span className='inline-grid justify-items-start text-[16px] font-medium leading-[1.6] text-it-heading uppercase tracking-[-0.012em]'>
+                    <span className='inline-grid justify-items-start text-[14.5px] font-medium leading-[1.6] text-it-heading uppercase tracking-[-0.012em]'>
                         <span className='col-start-1 row-start-1'>
                             {locale}
                         </span>
@@ -104,7 +104,7 @@ export function LocaleSelector({
                                     aria-current={code === locale}
                                     className={`flex w-full items-center justify-between gap-3 px-5 py-3 text-left text-sm bg-transparent border-none cursor-pointer transition-colors hover:bg-it-surface ${code === locale ? 'text-it-primary font-medium tracking-[-0.012em]' : ''}`}>
                                     <span>{LOCALE_NATIVE_LABELS[code]}</span>
-                                    <span className='uppercase text-xs text-it-text-muted tracking-[-0.012em]'>
+                                    <span className='uppercase text-[11.5px] text-it-text-muted tracking-[-0.012em]'>
                                         {code}
                                     </span>
                                 </button>

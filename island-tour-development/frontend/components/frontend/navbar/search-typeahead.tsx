@@ -89,13 +89,13 @@ function EntityRow({
                     <span
                         className={`block truncate text-it-heading ${
                             compact
-                                ? 'text-[14px] font-medium leading-[1.4] tracking-[-0.012em]'
-                                : 'text-sm font-medium tracking-[-0.012em]'
+                                ? 'text-[13px] font-medium leading-[1.4] tracking-[-0.012em]'
+                                : 'text-[13px] font-medium tracking-[-0.012em]'
                         }`}>
                         {label}
                     </span>
                     {subtitle && (
-                        <span className='mt-0.5 block truncate text-xs text-it-text-muted tracking-[-0.012em]'>
+                        <span className='mt-0.5 block truncate text-[11.5px] text-it-text-muted tracking-[-0.012em]'>
                             {subtitle}
                         </span>
                     )}
@@ -124,7 +124,7 @@ const CompactRows = createContext(false);
 /** Section header ("Tours in Aruba" / "Beyond Aruba"). */
 function SectionHeader({ children }: { children: React.ReactNode }) {
     return (
-        <p className='m-0 border-t border-it-border px-4 pt-3.5 pb-1.5 text-sm font-medium text-it-heading tracking-[-0.012em]'>
+        <p className='m-0 border-t border-it-border px-4 pt-3.5 pb-1.5 text-[13px] font-medium text-it-heading tracking-[-0.012em]'>
             {children}
         </p>
     );
@@ -307,7 +307,7 @@ function TourRow({
                 </span>
                 <span className='min-w-0 flex-1'>
                     {contextLabel && (
-                        <span className='flex items-center gap-1 text-xs text-it-text-muted tracking-[-0.012em]'>
+                        <span className='flex items-center gap-1 text-[11.5px] text-it-text-muted tracking-[-0.012em]'>
                             {contextKind === 'category' ? (
                                 <Folder
                                     size={11}
@@ -324,11 +324,11 @@ function TourRow({
                             <span className='truncate'>{contextLabel}</span>
                         </span>
                     )}
-                    <span className='block truncate text-sm font-medium text-it-heading tracking-[-0.012em]'>
+                    <span className='block truncate text-[13px] font-medium text-it-heading tracking-[-0.012em]'>
                         {hit.title}
                     </span>
                     {meta.length > 0 && (
-                        <span className='mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-it-text-muted tracking-[-0.012em]'>
+                        <span className='mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[11.5px] text-it-text-muted tracking-[-0.012em]'>
                             {meta.map((node, i) => (
                                 <span
                                     key={i}
@@ -343,7 +343,7 @@ function TourRow({
                             ))}
                         </span>
                     )}
-                    <span className='mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs tracking-[-0.012em]'>
+                    <span className='mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[11.5px] tracking-[-0.012em]'>
                         <span className='font-medium text-it-heading tracking-[-0.012em]'>
                             {dict.from}{' '}
                             {formatPriceFrom(
@@ -523,7 +523,7 @@ export function SearchTypeahead({
                     {groups.map(({ heading, entries }, groupIndex) => (
                         <div key={heading}>
                             {groupIndex === 0 ? (
-                                <p className='m-0 px-4 pt-3.5 pb-1.5 text-sm font-medium text-it-heading tracking-[-0.012em]'>
+                                <p className='m-0 px-4 pt-3.5 pb-1.5 text-[13px] font-medium text-it-heading tracking-[-0.012em]'>
                                     {heading}
                                 </p>
                             ) : (
@@ -556,7 +556,7 @@ export function SearchTypeahead({
                     {zeroState!.topTours.length > 0 && (
                         <>
                             {groups.length === 0 ? (
-                                <p className='m-0 px-4 pt-3.5 pb-1.5 text-sm font-medium text-it-heading tracking-[-0.012em]'>
+                                <p className='m-0 px-4 pt-3.5 pb-1.5 text-[13px] font-medium text-it-heading tracking-[-0.012em]'>
                                     {dict.topTours}
                                 </p>
                             ) : (
@@ -583,7 +583,7 @@ export function SearchTypeahead({
                         <Link
                             href={zeroState!.allTours.href}
                             onClick={onSelect}
-                            className='block border-t border-it-border px-5 py-3 text-center text-sm font-medium text-it-primary no-underline transition-colors hover:bg-it-surface tracking-[-0.012em]'>
+                            className='block border-t border-it-border px-5 py-3 text-center text-[13px] font-medium text-it-primary no-underline transition-colors hover:bg-it-surface tracking-[-0.012em]'>
                             {zeroState!.allTours.label}
                         </Link>
                     )}
@@ -595,11 +595,11 @@ export function SearchTypeahead({
     return (
         <Panel inline={inline}>
             {loading && !hasAnything ? (
-                <p className='m-0 px-5 py-4 text-sm text-it-text-muted tracking-[-0.012em]'>
+                <p className='m-0 px-5 py-4 text-[13px] text-it-text-muted tracking-[-0.012em]'>
                     {dict.searching}
                 </p>
             ) : !hasAnything ? (
-                <p className='m-0 px-5 py-4 text-sm text-it-text-muted tracking-[-0.012em]'>
+                <p className='m-0 px-5 py-4 text-[13px] text-it-text-muted tracking-[-0.012em]'>
                     {dict.noResults.replace('{query}', query)}
                 </p>
             ) : (
@@ -738,7 +738,7 @@ export function SearchTypeahead({
                         <Link
                             href={searchHref(query)}
                             onClick={onSelect}
-                            className='block border-t border-it-border px-5 py-3 text-center text-sm font-medium text-it-primary no-underline transition-colors hover:bg-it-surface tracking-[-0.012em]'>
+                            className='block border-t border-it-border px-5 py-3 text-center text-[13px] font-medium text-it-primary no-underline transition-colors hover:bg-it-surface tracking-[-0.012em]'>
                             {dict.seeAll.replace(
                                 '{count}',
                                 String(suggest.total)

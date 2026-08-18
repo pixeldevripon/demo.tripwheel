@@ -79,7 +79,7 @@ export function HubPickCard({
                             height={24}
                             className='size-6 shrink-0'
                         />
-                        <span className='text-[16px] text-[#858585] uppercase tracking-[-0.012em] leading-[1.6]'>
+                        <span className='text-[14.5px] text-[#858585] uppercase tracking-[-0.012em] leading-[1.6]'>
                             {pick.labelText}
                         </span>
                     </div>
@@ -87,7 +87,7 @@ export function HubPickCard({
                     <div className='flex flex-col gap-3 md:gap-5'>
                         {/* Title + rating */}
                         <div className='flex flex-col gap-0.5'>
-                            <h3 className='m-0 text-[28px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                            <h3 className='m-0 text-[24px] md:text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                                 {pick.title}
                             </h3>
                             <div className='flex items-center gap-4'>
@@ -101,7 +101,7 @@ export function HubPickCard({
                                                 height={16}
                                                 className='size-4 shrink-0'
                                             />
-                                            <span className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
+                                            <span className='text-[13px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
                                                 {pick.rating}
                                                 {pick.reviewCount !==
                                                     undefined &&
@@ -111,7 +111,7 @@ export function HubPickCard({
                                         <span className='size-1 shrink-0 rounded-full bg-it-heading/30' />
                                     </>
                                 )}
-                                <span className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
+                                <span className='text-[13px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
                                     {pick.type}
                                 </span>
                             </div>
@@ -120,28 +120,28 @@ export function HubPickCard({
                         {/* Description + price */}
                         <div className='flex flex-col gap-3'>
                             <p
-                                className={`m-0 max-w-[560px] text-[14px] leading-[1.65] text-it-text-muted ${
+                                className={`m-0 max-w-[560px] text-[13px] leading-[1.65] text-it-text-muted ${
                                     expanded
                                         ? ''
-                                        : 'line-clamp-3 md:line-clamp-none tracking-[-0.012em] leading-[1.6] text-[14px] md:text-[16px]'
+                                        : 'line-clamp-3 md:line-clamp-none tracking-[-0.012em] leading-[1.6] text-[13px] md:text-[14.5px]'
                                 }`}>
                                 {pick.description}
                             </p>
                             <button
                                 type='button'
                                 onClick={() => setExpanded(v => !v)}
-                                className='-mt-1 self-start cursor-pointer border-none bg-transparent p-0 font-medium text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading underline decoration-1 underline-offset-4 transition-colors hover:text-it-primary md:hidden'>
+                                className='-mt-1 self-start cursor-pointer border-none bg-transparent p-0 font-medium text-[13px] leading-[1.6] tracking-[-0.012em] text-it-heading underline decoration-1 underline-offset-4 transition-colors hover:text-it-primary md:hidden'>
                                 {expanded ? dict.readLess : dict.learnMore}
                             </button>
 
                             <p className='m-0 flex items-center gap-4'>
-                                <span className='text-[14px] leading-[1.6] text-it-white/70 tabular-nums tracking-[-0.012em]'>
+                                <span className='text-[13px] leading-[1.6] text-it-white/70 tabular-nums tracking-[-0.012em]'>
                                     {pick.duration}
                                 </span>
                                 <span className='size-[3px] shrink-0 rounded-full bg-it-ink-muted' />
-                                <span className='text-[14px] leading-[1.6] text-it-white/70 tabular-nums tracking-[-0.012em]'>
+                                <span className='text-[13px] leading-[1.6] text-it-white/70 tabular-nums tracking-[-0.012em]'>
                                     {dict.from}{' '}
-                                    <b className='text-[15px] font-medium tracking-[-0.012em] text-it-heading'>
+                                    <b className='text-[14px] font-medium tracking-[-0.012em] text-it-heading'>
                                         {pick.priceDisplay}
                                     </b>
                                     {pick.priceUnit ? ` ${pick.priceUnit}` : ''}
@@ -156,7 +156,7 @@ export function HubPickCard({
                     href={pick.href}
                     whileTap={{ scale: 0.98 }}
                     transition={springPop}
-                    className='inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-it-full border-[1.5px] border-it-primary bg-transparent px-5 py-2.5 text-[13.5px] font-medium leading-[1.6] text-it-primary-hover no-underline transition-colors duration-(--it-duration-xs) hover:bg-it-primary-subtle md:w-auto md:self-start tracking-[-0.012em]'>
+                    className='inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-it-full border-[1.5px] border-it-primary bg-transparent px-5 py-2.5 text-[12.5px] font-medium leading-[1.6] text-it-primary-hover no-underline transition-colors duration-(--it-duration-xs) hover:bg-it-primary-subtle md:w-auto md:self-start tracking-[-0.012em]'>
                     {dict.bookTrip}
                 </MotionLink>
             </div>

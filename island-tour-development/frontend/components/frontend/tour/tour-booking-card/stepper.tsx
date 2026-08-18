@@ -73,7 +73,7 @@ export function Stepper({
                 disabled={value <= min}
                 onClick={() => onChange(value - 1)}
             />
-            <span className='min-w-4 text-center text-[14px] font-medium leading-[1.6] tabular-nums text-it-heading tracking-[-0.012em]'>
+            <span className='min-w-4 text-center text-[13px] font-medium leading-[1.6] tabular-nums text-it-heading tracking-[-0.012em]'>
                 {value}
             </span>
             <StepperButton

@@ -39,7 +39,7 @@ export function ToursBreadcrumb({
     // shrink-0 + the nav's nowrap/overflow: crumbs must never wrap into
     // multi-line stacks on mobile - the row stays one line and scrolls.
     const linkClass =
-        'shrink-0 text-it-text-muted no-underline hover:underline text-[14px] leading-[1.6] tracking-[-0.012em]';
+        'shrink-0 text-it-text-muted no-underline hover:underline text-[13px] leading-[1.6] tracking-[-0.012em]';
 
     const separator = (
         <span aria-hidden='true' className='mx-[7px] shrink-0 text-it-text-muted tracking-[-0.012em]'>
@@ -51,7 +51,7 @@ export function ToursBreadcrumb({
         <div className='it-container'>
             <nav
                 aria-label='Breadcrumb'
-                className='flex items-center overflow-x-auto whitespace-nowrap pt-[26px] pb-2.5 text-[12.5px] leading-[1.6] text-it-text-muted [scrollbar-width:none] md:overflow-visible md:whitespace-normal [&::-webkit-scrollbar]:hidden tracking-[-0.012em]'>
+                className='flex items-center overflow-x-auto whitespace-nowrap pt-[26px] pb-2.5 text-[11.5px] leading-[1.6] text-it-text-muted [scrollbar-width:none] md:overflow-visible md:whitespace-normal [&::-webkit-scrollbar]:hidden tracking-[-0.012em]'>
                 <Link href={localizeHref(locale, '/')} className={linkClass}>
                     {dict.home}
                 </Link>
@@ -76,7 +76,7 @@ export function ToursBreadcrumb({
                     below, so the crumb only needs to identify the page. */}
                 <span
                     aria-current='page'
-                    className='max-w-[55vw] truncate md:max-w-none text-[16px] leading-[1.6] tracking-[-0.012em]'>
+                    className='max-w-[55vw] truncate md:max-w-none text-[14.5px] leading-[1.6] tracking-[-0.012em]'>
                     {dict.current}
                 </span>
             </nav>

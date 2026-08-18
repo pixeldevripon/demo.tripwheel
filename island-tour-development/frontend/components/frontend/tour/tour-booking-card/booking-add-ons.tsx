@@ -45,7 +45,7 @@ export function BookingAddOns() {
                 whileTap={{ scale: 0.99 }}
                 transition={springPop}
                 className='flex w-full cursor-pointer items-center justify-between gap-2.5 border-none bg-transparent text-left'>
-                <span className='text-[14px] md:text-[16px] font-medium leading-[1.6] text-it-heading tracking-[-0.012em]'>
+                <span className='text-[13px] md:text-[14.5px] font-medium leading-[1.6] text-it-heading tracking-[-0.012em]'>
                     {dict.addOnsTitle}
                 </span>
                 <Image
@@ -75,15 +75,15 @@ export function BookingAddOns() {
                                 key={addOn.id}
                                 className='flex items-start gap-3 border-b border-it-divider py-2.5 last:border-b-0'>
                                 <div className='flex min-w-0 flex-col'>
-                                    <span className='text-[13.5px] font-medium leading-[1.6] text-it-heading tracking-[-0.012em]'>
+                                    <span className='text-[12.5px] font-medium leading-[1.6] text-it-heading tracking-[-0.012em]'>
                                         {addOn.name}
                                     </span>
                                     {addOn.description && (
-                                        <span className='text-[14px] leading-[1.5] text-it-text-muted tracking-[-0.012em]'>
+                                        <span className='text-[13px] leading-[1.5] text-it-text-muted tracking-[-0.012em]'>
                                             {addOn.description}
                                         </span>
                                     )}
-                                    <span className='text-[14px] leading-[1.5] text-it-text-muted tracking-[-0.012em]'>
+                                    <span className='text-[13px] leading-[1.5] text-it-text-muted tracking-[-0.012em]'>
                                         {`${money(addOn.price)} ${priceSuffix}`}
                                     </span>
                                 </div>

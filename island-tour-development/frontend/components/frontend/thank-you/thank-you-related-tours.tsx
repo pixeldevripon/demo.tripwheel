@@ -35,10 +35,10 @@ export function ThankYouRelatedTours({
         <section className='bg-it-white pt-14 pb-0'>
             <div className='it-wrap flex flex-col'>
                 <Reveal>
-                    <h2 className='m-0 font-it-display text-[clamp(20px,2.4vw,26px)] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                    <h2 className='m-0 font-it-display text-[clamp(18px,2.4vw,22.5px)] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                         {dict.relatedTitle}
                     </h2>
-                    <p className='m-0 mt-1.5 text-[16px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                    <p className='m-0 mt-1.5 text-[14.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                         {dict.relatedSubtitle}
                     </p>
                 </Reveal>
@@ -61,7 +61,7 @@ export function ThankYouRelatedTours({
                         href={toursHref}
                         whileTap={{ scale: 0.97 }}
                         transition={springPop}
-                        className='inline-block text-[14.5px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-[3px] transition-colors duration-300 hover:text-it-primary tracking-[-0.012em]'>
+                        className='inline-block text-[13.5px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-[3px] transition-colors duration-300 hover:text-it-primary tracking-[-0.012em]'>
                         {dict.browsePicks} →
                     </MotionLink>
                 </Reveal>

@@ -77,7 +77,7 @@ export function SavedDateCheck({
                         whileTap={{ scale: 0.97 }}
                         transition={springPop}
                         className={cn(
-                            'inline-flex cursor-pointer items-center gap-[9px] rounded-it-full border px-[18px] py-[11px] text-[13.5px] font-medium leading-[1.6] transition-colors duration-(--it-duration-xs) ease-(--it-ease) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary tracking-[-0.012em]',
+                            'inline-flex cursor-pointer items-center gap-[9px] rounded-it-full border px-[18px] py-[11px] text-[12.5px] font-medium leading-[1.6] transition-colors duration-(--it-duration-xs) ease-(--it-ease) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary tracking-[-0.012em]',
                             selected
                                 ? 'border-it-primary bg-it-primary-subtle text-it-primary-hover tracking-[-0.012em]'
                                 : 'border-it-border bg-it-white text-it-heading hover:border-it-ink tracking-[-0.012em]'
@@ -119,7 +119,7 @@ export function SavedDateCheck({
                 play - before that there is nothing for them to qualify. */}
             {selected && (
                 <>
-                    <div className='inline-flex items-center gap-3 rounded-it-full border border-it-primary bg-it-primary-subtle py-[7px] pl-4 pr-[7px] text-[13.5px] font-medium leading-[1.6] text-it-primary-hover tracking-[-0.012em]'>
+                    <div className='inline-flex items-center gap-3 rounded-it-full border border-it-primary bg-it-primary-subtle py-[7px] pl-4 pr-[7px] text-[12.5px] font-medium leading-[1.6] text-it-primary-hover tracking-[-0.012em]'>
                         <span className='tabular-nums'>
                             {formatPlural(dict.travelers, guests, locale)}
                         </span>
@@ -146,7 +146,7 @@ export function SavedDateCheck({
                     <button
                         type='button'
                         onClick={() => onChange({ date: null, guests })}
-                        className='cursor-pointer border-none bg-transparent text-[13px] font-medium leading-[1.6] text-it-text-muted underline underline-offset-[3px] hover:text-it-heading tracking-[-0.012em]'>
+                        className='cursor-pointer border-none bg-transparent text-[12px] font-medium leading-[1.6] text-it-text-muted underline underline-offset-[3px] hover:text-it-heading tracking-[-0.012em]'>
                         {dict.clearDate}
                     </button>
                 </>
@@ -174,7 +174,7 @@ function StepperButton({
             onClick={onClick}
             whileTap={disabled ? undefined : { scale: 0.9 }}
             transition={springPop}
-            className='grid size-7 cursor-pointer place-items-center rounded-it-full border border-it-primary/40 bg-it-white text-[15px] font-medium leading-none text-it-primary-hover disabled:cursor-default disabled:opacity-40 tracking-[-0.012em]'>
+            className='grid size-7 cursor-pointer place-items-center rounded-it-full border border-it-primary/40 bg-it-white text-[14px] font-medium leading-none text-it-primary-hover disabled:cursor-default disabled:opacity-40 tracking-[-0.012em]'>
             {children}
         </motion.button>
     );

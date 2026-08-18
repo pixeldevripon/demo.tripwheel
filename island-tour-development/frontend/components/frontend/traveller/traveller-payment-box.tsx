@@ -90,10 +90,10 @@ export function TravellerPaymentBox({
         }
         return (
             <div className='flex items-baseline justify-between gap-4 rounded-[10px] bg-it-green-subtle px-3.5 py-2.5'>
-                <span className='text-[14.5px] leading-[1.6] text-it-green tracking-[-0.012em]'>
+                <span className='text-[13.5px] leading-[1.6] text-it-green tracking-[-0.012em]'>
                     {dict.payPaidInFull}
                 </span>
-                <span className='text-right text-[14.5px] leading-[1.6] font-medium text-it-green tracking-[-0.012em]'>
+                <span className='text-right text-[13.5px] leading-[1.6] font-medium text-it-green tracking-[-0.012em]'>
                     {total}
                 </span>
             </div>
@@ -178,10 +178,10 @@ export function TravellerPaymentBox({
 function MoneyRow({ label, value }: { label: string; value: string }) {
     return (
         <div className='flex items-baseline justify-between gap-4'>
-            <span className='text-[14px] md:text-[16px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+            <span className='text-[13px] md:text-[14.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                 {label}
             </span>
-            <span className='text-right text-[14.5px] leading-[1.6] font-medium text-it-heading tracking-[-0.012em]'>
+            <span className='text-right text-[13.5px] leading-[1.6] font-medium text-it-heading tracking-[-0.012em]'>
                 {value}
             </span>
         </div>
@@ -190,7 +190,7 @@ function MoneyRow({ label, value }: { label: string; value: string }) {
 
 function Note({ children }: { children: string }) {
     return (
-        <p className='mt-1 mb-0 text-[13.5px] leading-[1.6] text-it-heading/80 tracking-[-0.012em]'>
+        <p className='mt-1 mb-0 text-[12.5px] leading-[1.6] text-it-heading/80 tracking-[-0.012em]'>
             {children}
         </p>
     );
@@ -198,7 +198,7 @@ function Note({ children }: { children: string }) {
 
 function Micro({ children }: { children: string }) {
     return (
-        <p className='mt-1 mb-0 text-[12.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+        <p className='mt-1 mb-0 text-[11.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
             {children}
         </p>
     );

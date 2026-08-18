@@ -401,21 +401,21 @@ export function SavedToursView({
                             is only on a phone, where the header goes full
                             width, that anything of ours runs under it - and
                             only for the heading's one line. */}
-                        <h1 className='m-0 font-it-display text-[clamp(24px,3vw,32px)] leading-[1.15] tracking-[-0.012em] text-it-heading max-sm:pr-28 font-medium'>
+                        <h1 className='m-0 font-it-display text-[clamp(24px,3.45vw,31px)] leading-[1.15] tracking-[-0.012em] text-it-heading max-sm:pr-28 font-medium'>
                             {dict.title}
                         </h1>
 
                         {isShared ? (
-                            <p className='m-0 mt-1.5 text-[16px] font-medium leading-[1.4] text-it-heading max-sm:text-[13px] tracking-[-0.012em]'>
+                            <p className='m-0 mt-1.5 text-[14.5px] font-medium leading-[1.4] text-it-heading max-sm:text-[12px] tracking-[-0.012em]'>
                                 {dict.sharedNote}
                             </p>
                         ) : (
-                            <p className='m-0 mt-1.5 text-[16px] font-medium leading-[1.4] text-it-heading max-sm:text-[14.5px] tracking-[-0.012em]'>
+                            <p className='m-0 mt-1.5 text-[14.5px] font-medium leading-[1.4] text-it-heading max-sm:text-[13.5px] tracking-[-0.012em]'>
                                 {dict.subtitle}
                             </p>
                         )}
 
-                        <p className='m-0 mt-3.5 text-[13.5px] font-medium leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                        <p className='m-0 mt-3.5 text-[12.5px] font-medium leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                             {formatPlural(
                                 dict.tourCount,
                                 visible.length,
@@ -429,7 +429,7 @@ export function SavedToursView({
                             shown on a shared list: it is not that reader's
                             device the list is sitting on. */}
                         {!isShared && (
-                            <p className='m-0 mt-1.5 max-w-[430px] text-[13px] leading-[1.6] text-it-text-muted/80 tracking-[-0.012em]'>
+                            <p className='m-0 mt-1.5 max-w-[430px] text-[12px] leading-[1.6] text-it-text-muted/80 tracking-[-0.012em]'>
                                 {dict.deviceLine}
                             </p>
                         )}

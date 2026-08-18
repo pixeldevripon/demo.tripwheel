@@ -39,19 +39,19 @@ export function SpectatorsPanel() {
             }>
             <div className='flex flex-col gap-6 rounded-[8px] bg-it-white px-4 py-6.5'>
                 {spectatorsOn ? (
-                    <span className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                    <span className='text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                         {dict.bringingSpectators}
                     </span>
                 ) : (
                     <div className='flex flex-col gap-3.5'>
-                        <span className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                        <span className='text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                             {dict.bringingSpectators}
                         </span>
                         <div className='flex items-center justify-between gap-2'>
                             {spectatorBands.map((band, i) => (
                                 <span
                                     key={band.id}
-                                    className='flex items-center gap-2 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                    className='flex items-center gap-2 text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                                     {i > 0 && (
                                         <span className='size-1 shrink-0 rounded-full bg-[#d9d9d9]' />
                                     )}
@@ -88,7 +88,7 @@ export function SpectatorsPanel() {
                                     clearSpectatorCounts();
                                     setSpectatorsApplied(true);
                                 }}
-                                className={`cursor-pointer rounded-[8px] bg-it-surface px-4 py-2 text-center font-normal text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading transition-colors ${
+                                className={`cursor-pointer rounded-[8px] bg-it-surface px-4 py-2 text-center font-normal text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-heading transition-colors ${
                                     active
                                         ? 'border border-it-primary'
                                         : 'border border-transparent'
@@ -105,7 +105,7 @@ export function SpectatorsPanel() {
                         {spectatorBands.map(band => (
                             <BandStepperRow key={band.id} band={band} min={0} />
                         ))}
-                        <span className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                        <span className='text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                             {dict.spectatorNote}
                         </span>
                     </div>
@@ -118,7 +118,7 @@ export function SpectatorsPanel() {
                         onClick={() => setSpectatorsApplied(true)}
                         whileTap={{ scale: 0.97 }}
                         transition={springPop}
-                        className='flex cursor-pointer items-center gap-2.5 self-center border-none bg-transparent font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary transition-colors duration-300 hover:text-it-primary-hover'>
+                        className='flex cursor-pointer items-center gap-2.5 self-center border-none bg-transparent font-medium text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-primary transition-colors duration-300 hover:text-it-primary-hover'>
                         {dict.apply}
                         <Image
                             src='/icons/cta-arrow-right.svg'

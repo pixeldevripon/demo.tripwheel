@@ -38,7 +38,7 @@ export function WishlistLink({
                     alt=''
                     width={24}
                     height={24}
-                    className='size-6'
+                    className='size-5'
                 />
             </motion.span>
             <AnimatePresence>

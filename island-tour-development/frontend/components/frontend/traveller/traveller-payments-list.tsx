@@ -70,7 +70,7 @@ export function TravellerPaymentsList({
 
     return (
         <div className='flex flex-col gap-3'>
-            <div className='flex items-start gap-2.5 rounded-[12px] border border-it-heading/10 bg-it-white px-4 py-3 text-[13px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+            <div className='flex items-start gap-2.5 rounded-[12px] border border-it-heading/10 bg-it-white px-4 py-3 text-[12px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                 <Info
                     aria-hidden
                     className='mt-0.5 size-4 shrink-0'
@@ -131,7 +131,7 @@ export function TravellerPaymentsList({
                             className='rounded-[16px] border border-it-heading/10 bg-it-white p-5 sm:p-6'>
                             <div className='flex flex-wrap items-start justify-between gap-x-4 gap-y-3'>
                                 <div className='min-w-0 flex-1'>
-                                    <strong className='block text-[16px] leading-[1.5] tracking-[-0.012em] font-medium text-it-heading'>
+                                    <strong className='block text-[14.5px] leading-[1.5] tracking-[-0.012em] font-medium text-it-heading'>
                                         {kindLabel}
                                         {payment.tourName && (
                                             <span className='font-normal text-it-text-muted tracking-[-0.012em]'>
@@ -140,10 +140,10 @@ export function TravellerPaymentsList({
                                             </span>
                                         )}
                                     </strong>
-                                    <span className='mt-1 block text-[14px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                                    <span className='mt-1 block text-[13px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                                         {dateLine}
                                     </span>
-                                    <span className='mt-1 flex flex-wrap items-center gap-x-3 font-mono text-[13px] text-it-text-muted tracking-[-0.012em]'>
+                                    <span className='mt-1 flex flex-wrap items-center gap-x-3 font-mono text-[12px] text-it-text-muted tracking-[-0.012em]'>
                                         {manageHref ? (
                                             <Link
                                                 href={manageHref}
@@ -167,7 +167,7 @@ export function TravellerPaymentsList({
                                 </div>
                                 <div className='flex shrink-0 flex-col items-end gap-1.5'>
                                     <strong
-                                        className={`block font-bold text-[19px] leading-[1.3] tracking-[-0.012em] ${
+                                        className={`block font-bold text-[17px] leading-[1.3] tracking-[-0.012em] ${
                                             isRefund
                                                 ? 'text-it-green tracking-[-0.012em]'
                                                 : ''
@@ -183,7 +183,7 @@ export function TravellerPaymentsList({
                                         }
                                     />
                                     {!isRefund && method && (
-                                        <span className='block text-[13px] text-it-text-muted tracking-[-0.012em]'>
+                                        <span className='block text-[12px] text-it-text-muted tracking-[-0.012em]'>
                                             {method}
                                         </span>
                                     )}
@@ -199,7 +199,7 @@ export function TravellerPaymentsList({
 
 function TotalChip({ children }: { children: string }) {
     return (
-        <span className='inline-flex items-center rounded-full border border-it-heading/15 bg-it-white px-3.5 py-1.5 text-[13px] font-medium '>
+        <span className='inline-flex items-center rounded-full border border-it-heading/15 bg-it-white px-3.5 py-1.5 text-[12px] font-medium'>
             {children}
         </span>
     );

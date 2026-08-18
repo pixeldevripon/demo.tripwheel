@@ -60,7 +60,7 @@ function SelectorPill({
                 className={`flex h-11 w-full cursor-pointer items-center justify-between gap-2 rounded-it-full border-none bg-it-white px-4 transition-opacity duration-300 ${busy ? 'opacity-50' : 'opacity-100'}`}>
                 <span className='flex items-center gap-2.5'>
                     {icon}
-                    <span className='text-sm lg:text-base leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                    <span className='text-[13px] lg:text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                         {label}
                     </span>
                 </span>
@@ -191,7 +191,7 @@ export function CurrencySelector({
                             aria-current={code === currency}
                             className={`flex w-full cursor-pointer items-center justify-between gap-3 border-none bg-transparent px-4 py-2.5 text-left text-sm transition-colors hover:bg-it-surface ${code === currency ? 'font-medium text-it-primary tracking-[-0.012em]' : ''}`}>
                             <span>{CURRENCY_NAMES[code]}</span>
-                            <span className='text-xs uppercase text-it-text-muted tracking-[-0.012em]'>
+                            <span className='text-[11.5px] uppercase text-it-text-muted tracking-[-0.012em]'>
                                 {code}
                             </span>
                         </button>
@@ -262,7 +262,7 @@ export function LanguageSelector({
                             aria-current={code === locale}
                             className={`flex w-full cursor-pointer items-center justify-between gap-3 border-none bg-transparent px-4 py-2.5 text-left text-sm transition-colors hover:bg-it-surface ${code === locale ? 'font-medium text-it-primary tracking-[-0.012em]' : ''}`}>
                             <span>{LOCALE_NATIVE_LABELS[code]}</span>
-                            <span className='text-xs uppercase text-it-text-muted tracking-[-0.012em]'>
+                            <span className='text-[11.5px] uppercase text-it-text-muted tracking-[-0.012em]'>
                                 {code}
                             </span>
                         </button>

@@ -123,7 +123,7 @@ export function DestinationListings({
                     <div className='mt-2 flex justify-center'>
                         <Link
                             href={browseHref}
-                            className='inline-flex items-center justify-center gap-2.5 bg-it-primary px-7 py-3.5 text-[14px] md:text-[16px] font-medium text-it-primary hover:text-it-primary-hover no-underline transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:bg-it-primary-hover max-sm:w-full leading-[1.6] tracking-[-0.012em]'>
+                            className='inline-flex items-center justify-center gap-2.5 bg-it-primary px-7 py-3.5 text-[13px] md:text-[14.5px] font-medium text-it-primary hover:text-it-primary-hover no-underline transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:bg-it-primary-hover max-sm:w-full leading-[1.6] tracking-[-0.012em]'>
                             {browseLabel}
                             <Image
                                 src='/icons/hero-arrow-right.svg'

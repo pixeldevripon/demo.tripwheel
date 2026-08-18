@@ -38,7 +38,7 @@ export function BookingCta() {
     // shows a disabled notice in place of the CTA and trust lines.
     if (bookingBlocked) {
         return (
-            <div className='flex w-full items-center justify-center rounded-it-full bg-it-border px-10 py-[19px] text-center font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-ink-muted'>
+            <div className='flex w-full items-center justify-center rounded-it-full bg-it-border px-10 py-[19px] text-center font-medium text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-ink-muted'>
                 {dict.bookingUnavailable}
             </div>
         );
@@ -55,7 +55,7 @@ export function BookingCta() {
             {/* While choosing the party, if the plus button is capped, say why
                 (master §3.3.1): genuine slot scarcity vs the per-booking max. */}
             {editingParty && atCapacity && (
-                <span className='text-center text-[14px] leading-[1.5] tracking-[-0.012em] text-it-primary'>
+                <span className='text-center text-[13px] leading-[1.5] tracking-[-0.012em] text-it-primary'>
                     {(capacityReason === 'slot'
                         ? dict.capacityNote
                         : dict.maxPerBooking
@@ -70,7 +70,7 @@ export function BookingCta() {
                 <Collapse open={ctaError != null}>
                     <p
                         role='alert'
-                        className='m-0 pb-3 text-center text-[14px] leading-[1.5] tracking-[-0.012em] text-it-primary'>
+                        className='m-0 pb-3 text-center text-[13px] leading-[1.5] tracking-[-0.012em] text-it-primary'>
                         {ctaError === 'date'
                             ? dict.errorSelectDate
                             : dict.errorSelectSlot}
@@ -85,7 +85,7 @@ export function BookingCta() {
                     transition={springPop}
                     // `.wcta` (mck-15): full width, 10px radius, 14px of
                     // padding, 16.5px bold.
-                    className={`flex w-full items-center justify-center rounded-it-sm border-none bg-it-primary px-8 py-3.5 text-[16.5px] font-bold leading-[1.6] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover ${
+                    className={`flex w-full items-center justify-center rounded-it-sm border-none bg-it-primary px-8 py-3.5 text-[15px] font-bold leading-[1.6] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover ${
                         navigating
                             ? 'cursor-default opacity-80'
                             : 'cursor-pointer'
@@ -159,7 +159,7 @@ export function BookingCta() {
  */
 function TrustRow({ children }: { children: React.ReactNode }) {
     return (
-        <span className='flex items-center gap-2 text-[16px] leading-[1.6] text-it-heading tracking-[-0.012em]'>
+        <span className='flex items-center gap-2 text-[14.5px] leading-[1.6] text-it-heading tracking-[-0.012em]'>
             <Image
                 src='/icons/trust-check-green.svg'
                 alt=''
@@ -204,7 +204,7 @@ function TrustLink({
             aria-label={`${children}, ${hint}`}
             whileTap={{ scale: 0.98 }}
             transition={springPop}
-            className='cursor-pointer border-none bg-transparent p-0 text-left text-[16px] leading-[1.6] text-it-heading underline decoration-it-ink-muted underline-offset-[3px] transition-colors duration-300 hover:text-it-primary hover:decoration-it-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary tracking-[-0.012em]'>
+            className='cursor-pointer border-none bg-transparent p-0 text-left text-[14.5px] leading-[1.6] text-it-heading underline decoration-it-ink-muted underline-offset-[3px] transition-colors duration-300 hover:text-it-primary hover:decoration-it-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary tracking-[-0.012em]'>
             {children}
         </motion.button>
     );

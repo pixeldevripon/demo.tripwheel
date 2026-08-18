@@ -31,12 +31,12 @@ export function LegalPageShell({
         <div className='it-container pt-10 pb-20 md:pt-14 md:pb-28'>
             {/* Design v2: the same 880px reading measure as the thank-you page. */}
             <article className='mx-auto max-w-[880px]'>
-                <h1 className='m-0 text-[28px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                <h1 className='m-0 text-[27.5px] md:text-[37px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                     {title}
                 </h1>
 
                 {(showEnglishNotice ?? locale !== 'en') && (
-                    <p className='mt-6 mb-0 rounded-lg border border-it-border bg-it-bg px-4 py-3 text-[14px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                    <p className='mt-6 mb-0 rounded-lg border border-it-border bg-it-bg px-4 py-3 text-[13px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                         This page is currently available in English only. A
                         translated version will follow.
                     </p>

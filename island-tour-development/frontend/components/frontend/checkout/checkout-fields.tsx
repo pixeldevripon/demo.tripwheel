@@ -16,14 +16,14 @@ import { useId, type ReactNode } from 'react';
  * borders on inputs in any state (focus swaps to the orange primary).
  */
 
-export const labelClass = 'text-[13px] font-medium leading-[1.5] text-it-heading tracking-[-0.012em]';
-export const helperClass = 'text-[12px] leading-[1.6] text-it-text-muted tracking-[-0.012em]';
+export const labelClass = 'text-[12px] font-medium leading-[1.5] text-it-heading tracking-[-0.012em]';
+export const helperClass = 'text-[11.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]';
 // 16px below `md` - iOS Safari force-zooms the viewport on a focused input
 // under 16px. Zooming mid-checkout is the worst place on the site for it.
 export const inputBase =
-    'w-full rounded-it-sm border bg-it-white px-[13px] text-[16px] md:text-[14px] leading-[1.6] text-it-heading placeholder:text-it-text-muted outline-none transition-colors focus:border-it-primary tracking-[-0.012em]';
+    'w-full rounded-it-sm border bg-it-white px-[13px] text-[14.5px] md:text-[13px] leading-[1.6] text-it-heading placeholder:text-it-text-muted outline-none transition-colors focus:border-it-primary tracking-[-0.012em]';
 export const titleClass =
-    'font-it-display text-[17px] font-medium leading-[1.3] tracking-[-0.012em] text-it-heading';
+    'font-it-display text-[15.5px] font-medium leading-[1.3] tracking-[-0.012em] text-it-heading';
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -33,7 +33,7 @@ export function FreeCancelNote({ label }: { label: string }) {
         // items-start + the icon's optical offset: when the line WRAPS on a
         // narrow viewport the check stays with the first line instead of
         // floating centred between both.
-        <div className='mt-3 flex items-start justify-center gap-[7px] text-center text-[13px] font-medium leading-[1.5] text-it-green-text tracking-[-0.012em]'>
+        <div className='mt-3 flex items-start justify-center gap-[7px] text-center text-[12px] font-medium leading-[1.5] text-it-green-text tracking-[-0.012em]'>
             <Image
                 src='/icons/booking-check.svg'
                 alt=''
@@ -69,7 +69,7 @@ export function ConsentLine({
     const linkClass =
         'font-medium text-it-text-muted underline underline-offset-2 tracking-[-0.012em]';
     return (
-        <p className='mt-2.5 text-center text-[12px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+        <p className='mt-2.5 text-center text-[11.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
             {securePayment && (
                 <>
                     {securePayment}.
@@ -200,7 +200,7 @@ export function FieldError({ error }: { error?: string }) {
             {error && (
                 <motion.span
                     {...ERROR_REVEAL}
-                    className='text-[14px] leading-[1.5] text-it-primary tracking-[-0.012em]'>
+                    className='text-[13px] leading-[1.5] text-it-primary tracking-[-0.012em]'>
                     {error}
                 </motion.span>
             )}
@@ -224,7 +224,7 @@ export function FormError({
             {error && (
                 <motion.div
                     {...ERROR_REVEAL}
-                    className={`${className} text-[13.5px] leading-[1.6] text-it-primary`}>
+                    className={`${className} text-[12.5px] leading-[1.6] text-it-primary`}>
                     {error}
                 </motion.div>
             )}
@@ -391,7 +391,7 @@ export function CtaButton({
             aria-busy={disabled || undefined}
             whileTap={disabled ? undefined : { scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-            className={`flex w-full items-center justify-center gap-[9px] rounded-it-sm border-none bg-it-primary p-[15px] text-[16px] font-bold leading-[1.5] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover ${
+            className={`flex w-full items-center justify-center gap-[9px] rounded-it-sm border-none bg-it-primary p-[15px] text-[14.5px] font-bold leading-[1.5] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover ${
                 disabled ? 'cursor-default opacity-90' : 'cursor-pointer'
             }`}>
             {children}
@@ -414,7 +414,7 @@ export function SecureCheckoutRow({
     dict: { secureCheckout: string; poweredBy: string };
 }) {
     return (
-        <div className='mb-3.5 flex items-center gap-2.5 rounded-it-md border border-it-border bg-it-bg px-3.5 py-[11px] text-[13px] font-medium leading-[1.5] text-it-heading tracking-[-0.012em]'>
+        <div className='mb-3.5 flex items-center gap-2.5 rounded-it-md border border-it-border bg-it-bg px-3.5 py-[11px] text-[12px] font-medium leading-[1.5] text-it-heading tracking-[-0.012em]'>
             <Image
                 src='/icons/checkout/lock-ink.svg'
                 alt=''
@@ -570,7 +570,7 @@ export function SectionBadge({
                         animate={{ scale: 1 }}
                         exit={{ scale: 0 }}
                         transition={springPop}
-                        className={`text-[12.5px] font-bold leading-none tabular-nums ${
+                        className={`text-[11.5px] font-bold leading-none tabular-nums ${
                             state === 'active'
                                 ? 'text-it-white tracking-[-0.012em]'
                                 : 'text-it-text-muted tracking-[-0.012em]'

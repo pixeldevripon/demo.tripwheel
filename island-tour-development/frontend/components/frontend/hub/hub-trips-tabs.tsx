@@ -61,10 +61,10 @@ export function HubTripsTabs({
                             aria-current={isActive ? 'true' : undefined}
                             whileTap={{ scale: 0.98 }}
                             transition={springPop}
-                            className={`relative -mb-px shrink-0 cursor-pointer whitespace-nowrap border-none bg-transparent px-0.5 py-3.5 text-[14px] font-bold leading-[1.6] transition-colors duration-(--it-duration-xs) ${
+                            className={`relative -mb-px shrink-0 cursor-pointer whitespace-nowrap border-none bg-transparent px-0.5 py-3.5 text-[13px] font-bold leading-[1.6] transition-colors duration-(--it-duration-xs) ${
                                 isActive
                                     ? ''
-                                    : 'text-it-text-muted hover: tracking-[-0.012em] font-normal text-[16px] md:text-[20px]'
+                                    : 'text-it-text-muted hover: tracking-[-0.012em] font-normal text-[14.5px] md:text-[18px]'
                             }`}>
                             {tab.label}
                             {/* Underline slides between tabs (shared layoutId). */}

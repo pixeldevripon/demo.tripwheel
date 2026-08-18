@@ -37,7 +37,7 @@ export function HubFirstTimersSection({ dict }: { dict: HubFirstTimersDict }) {
                     {/* Heading + quick takeaways (grouped: 24px gap on mobile,
                         48px on desktop). */}
                     <div className='flex flex-col gap-[22px]'>
-                        <h2 className='m-0 text-[24px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                        <h2 className='m-0 text-[21px] md:text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                             {dict.title}
                         </h2>
 
@@ -58,7 +58,7 @@ export function HubFirstTimersSection({ dict }: { dict: HubFirstTimersDict }) {
                                                 height={24}
                                                 className='size-4 shrink-0'
                                             />
-                                            <span className='text-[14px] md:text-[16px] font-medium leading-[1.6] text-it-heading tracking-[-0.012em]'>
+                                            <span className='text-[13px] md:text-[14.5px] font-medium leading-[1.6] text-it-heading tracking-[-0.012em]'>
                                                 {highlight}
                                             </span>
                                         </li>
@@ -77,11 +77,11 @@ export function HubFirstTimersSection({ dict }: { dict: HubFirstTimersDict }) {
                                 delay={0.02}
                                 listItem
                                 className='flex flex-col gap-1'>
-                                <h3 className='m-0 text-[16px] md:text-[20px] leading-[1.6] text-it-heading font-medium tracking-[-0.012em]'>
+                                <h3 className='m-0 text-[14.5px] md:text-[18px] leading-[1.6] text-it-heading font-medium tracking-[-0.012em]'>
                                     {tip.title}
                                 </h3>
                                 <div className='border-l-[3px] border-it-peach-border py-0.5 pl-4'>
-                                    <p className='m-0 text-[14px] md:text-[16px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                                    <p className='m-0 text-[13px] md:text-[14.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                                         {tip.body}
                                     </p>
                                 </div>

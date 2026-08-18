@@ -399,7 +399,7 @@ function PaymentInner({
                 the free-cancellation line at the commit button below. */}
             <span
                 id={methodsLabelId}
-                className='mt-0.5 mb-2.5 text-[13.5px] font-medium leading-[1.5] text-it-heading tracking-[-0.012em]'>
+                className='mt-0.5 mb-2.5 text-[12.5px] font-medium leading-[1.5] text-it-heading tracking-[-0.012em]'>
                 {dict.selectPaymentMethod}
             </span>
             <SecureCheckoutRow psp='Stripe' dict={dict} />
@@ -542,7 +542,7 @@ function PaymentInner({
                             className='h-6 w-auto'
                         />
                     }>
-                    <p className='px-4 pb-[18px] pt-0.5 text-[12.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                    <p className='px-4 pb-[18px] pt-0.5 text-[11.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                         {dict.redirectNote}
                     </p>
                 </MethodRow>
@@ -560,7 +560,7 @@ function PaymentInner({
                             className='h-6 w-auto'
                         />
                     }>
-                    <p className='px-4 pb-[18px] pt-0.5 text-[12.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                    <p className='px-4 pb-[18px] pt-0.5 text-[11.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                         {dict.redirectNote}
                     </p>
                 </MethodRow>
@@ -581,7 +581,7 @@ function PaymentInner({
                             className='h-6 w-auto'
                         />
                     }>
-                    <p className='px-4 pb-[18px] pt-0.5 text-[12.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                    <p className='px-4 pb-[18px] pt-0.5 text-[11.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                         {dict.redirectNote}
                     </p>
                 </MethodRow>
@@ -786,7 +786,7 @@ function MethodRow({
                           : 'cursor-pointer bg-it-white'
                 }`}>
                 <Radio selected={open} />
-                <span className='text-[14px] font-medium leading-[1.5] text-it-heading tracking-[-0.012em]'>
+                <span className='text-[13px] font-medium leading-[1.5] text-it-heading tracking-[-0.012em]'>
                     {label}
                 </span>
                 {logos && (
@@ -796,7 +796,7 @@ function MethodRow({
                 )}
             </motion.button>
             {!eligible && (
-                <p className='px-4 pb-2.5 text-[12.5px] leading-[1.4] text-it-text-muted tracking-[-0.012em]'>
+                <p className='px-4 pb-2.5 text-[11.5px] leading-[1.4] text-it-text-muted tracking-[-0.012em]'>
                     {hint}
                 </p>
             )}

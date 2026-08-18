@@ -160,7 +160,7 @@ export const SearchPill = forwardRef<HTMLInputElement, {
                       : undefined
             }
             className={`flex min-w-0 flex-1 cursor-pointer items-center gap-2 whitespace-nowrap rounded-it-full border-none bg-transparent py-2.5 pl-2.5 pr-1 text-left leading-[1.6] transition-colors hover:bg-it-bg ${
-                compact ? 'text-[15px] tracking-[-0.012em]' : 'text-[15.5px] tracking-[-0.012em]'
+                compact ? 'text-[14px] tracking-[-0.012em]' : 'text-[14.5px] tracking-[-0.012em]'
             } ${date ? 'font-medium text-it-heading tracking-[-0.012em]' : 'font-medium text-it-text-muted tracking-[-0.012em]'}`}>
             <Image
                 src='/icons/calendar-soft.svg'
@@ -211,7 +211,7 @@ export const SearchPill = forwardRef<HTMLInputElement, {
                         // The aria-label stays the FULL question at every width -
                         // "What?" is a visual abbreviation, not a name.
                         aria-label={dict.ariaLabel ?? dict.searchPlaceholder}
-                        className='min-w-0 w-full border-none bg-transparent text-[16px] font-medium leading-[1.6] text-it-heading outline-none placeholder:font-medium placeholder:text-it-text-muted md:text-[15.5px] [&::-webkit-search-cancel-button]:appearance-none tracking-[-0.012em]'
+                        className='min-w-0 w-full border-none bg-transparent text-[14.5px] font-medium leading-[1.6] text-it-heading outline-none placeholder:font-medium placeholder:text-it-text-muted md:text-[14.5px] [&::-webkit-search-cancel-button]:appearance-none tracking-[-0.012em]'
                     />
                     {children}
                 </span>

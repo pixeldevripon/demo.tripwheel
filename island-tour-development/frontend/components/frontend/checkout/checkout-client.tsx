@@ -62,7 +62,7 @@ interface CheckoutClientProps {
 }
 
 const backBarLabel =
-    'flex w-fit cursor-pointer items-center gap-1.5 border-none bg-transparent p-0 text-[13.5px] font-medium leading-[1.6] text-it-heading no-underline hover:underline tracking-[-0.012em]';
+    'flex w-fit cursor-pointer items-center gap-1.5 border-none bg-transparent p-0 text-[12.5px] font-medium leading-[1.6] text-it-heading no-underline hover:underline tracking-[-0.012em]';
 
 const backCaret = (
     <Image

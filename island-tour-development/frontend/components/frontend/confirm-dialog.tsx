@@ -70,11 +70,11 @@ export function ConfirmDialog({
                         exit={{ opacity: 0, scale: 0.96, y: 8 }}
                         transition={crossFade}
                         className='w-full max-w-100 rounded-[16px] bg-it-white p-6 shadow-[0_26px_70px_-20px_rgba(0,0,0,0.35)]'>
-                        <p className='m-0 text-[17px] font-medium leading-[1.4] tracking-[-0.012em] text-it-heading'>
+                        <p className='m-0 text-[15.5px] font-medium leading-[1.4] tracking-[-0.012em] text-it-heading'>
                             {title}
                         </p>
                         {body && (
-                            <p className='mt-2.5 mb-0 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                            <p className='mt-2.5 mb-0 text-[13px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                                 {body}
                             </p>
                         )}
@@ -84,7 +84,7 @@ export function ConfirmDialog({
                                 disabled={busy}
                                 whileTap={{ scale: 0.97 }}
                                 onClick={onConfirm}
-                                className={`cursor-pointer rounded-full px-4.5 py-2.25 text-[14px] font-medium transition-colors disabled:cursor-default disabled:opacity-60 ${
+                                className={`cursor-pointer rounded-full px-4.5 py-2.25 text-[13px] font-medium transition-colors disabled:cursor-default disabled:opacity-60 ${
                                     destructive
                                         ? 'border-[1.5px] border-it-error bg-transparent text-it-error hover:bg-it-error-subtle tracking-[-0.012em]'
                                         : 'border-none bg-it-heading text-it-white hover:opacity-90 tracking-[-0.012em]'
@@ -96,7 +96,7 @@ export function ConfirmDialog({
                                 disabled={busy}
                                 whileTap={{ scale: 0.97 }}
                                 onClick={onClose}
-                                className='cursor-pointer rounded-full border-none bg-transparent px-4.5 py-2.25 text-[14px] font-medium text-it-text-muted transition-colors hover:text-it-heading disabled:cursor-default disabled:opacity-60 tracking-[-0.012em]'>
+                                className='cursor-pointer rounded-full border-none bg-transparent px-4.5 py-2.25 text-[13px] font-medium text-it-text-muted transition-colors hover:text-it-heading disabled:cursor-default disabled:opacity-60 tracking-[-0.012em]'>
                                 {cancelLabel}
                             </motion.button>
                         </div>

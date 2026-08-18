@@ -30,11 +30,11 @@ export function ExploreIslands({
             <div className='it-container'>
                 <Reveal className='flex flex-col gap-[18px]'>
                     <div className='flex flex-col gap-1.5'>
-                        <h2 className='m-0 text-[32px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                        <h2 className='m-0 text-[27px] md:text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                             {dict.title}
                         </h2>
                         {dict.subtitle && (
-                            <p className='m-0 max-w-[560px] text-[14px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                            <p className='m-0 max-w-[560px] text-[13px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                                 {dict.subtitle}
                             </p>
                         )}
@@ -71,10 +71,10 @@ export function ExploreIslands({
                                     </div>
 
                                     <div className='flex flex-col px-4 pt-3.5 pb-4'>
-                                        <span className='font-medium text-[18px] md:text-[24px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
+                                        <span className='font-medium text-[16.5px] md:text-[21px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
                                             {island.name}
                                         </span>
-                                        <span className='text-[12px] md:text-[14px] leading-[1.6] text-it-white/70 tabular-nums tracking-[-0.012em]'>
+                                        <span className='text-[11.5px] md:text-[13px] leading-[1.6] text-it-white/70 tabular-nums tracking-[-0.012em]'>
                                             {island.tours} {dict.tours}
                                         </span>
                                     </div>

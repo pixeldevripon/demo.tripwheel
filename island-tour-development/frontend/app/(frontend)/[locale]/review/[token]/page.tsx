@@ -60,10 +60,10 @@ async function ReviewBody({
                         height={56}
                         className='mx-auto size-14 opacity-25'
                     />
-                    <h1 className='mx-auto mt-6 mb-0 max-w-md font-medium text-[24px] sm:text-[28px] leading-[1.25] tracking-[-0.012em] text-it-heading'>
+                    <h1 className='mx-auto mt-6 mb-0 max-w-md font-medium text-[21px] sm:text-[24px] leading-[1.25] tracking-[-0.012em] text-it-heading'>
                         {rd.invalidTitle}
                     </h1>
-                    <p className='mx-auto mt-3 mb-0 max-w-md text-[15px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                    <p className='mx-auto mt-3 mb-0 max-w-md text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                         {rd.invalidBody}
                     </p>
                     {/* A dead end is where people leave. Give them somewhere to
@@ -74,14 +74,14 @@ async function ReviewBody({
                             href={localizeHref(locale, '/bookings')}
                             whileTap={{ scale: 0.98 }}
                             transition={springPop}
-                            className='flex w-full items-center justify-center rounded-it-full bg-it-primary px-8 py-[13px] font-medium text-[15px] leading-[1.6] tracking-[-0.012em] text-it-white no-underline transition-colors hover:bg-it-primary-hover sm:w-auto'>
+                            className='flex w-full items-center justify-center rounded-it-full bg-it-primary px-8 py-[13px] font-medium text-[14px] leading-[1.6] tracking-[-0.012em] text-it-white no-underline transition-colors hover:bg-it-primary-hover sm:w-auto'>
                             {rd.invalidFindBooking}
                         </MotionLink>
                         <MotionLink
                             href={localizeHref(locale, '/')}
                             whileTap={{ scale: 0.98 }}
                             transition={springPop}
-                            className='flex w-full items-center justify-center rounded-it-full border border-it-border bg-it-white px-8 py-[13px] font-medium text-[15px] leading-[1.6] tracking-[-0.012em] text-it-heading no-underline transition-colors hover:border-it-heading sm:w-auto'>
+                            className='flex w-full items-center justify-center rounded-it-full border border-it-border bg-it-white px-8 py-[13px] font-medium text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading no-underline transition-colors hover:border-it-heading sm:w-auto'>
                             {rd.invalidBrowse}
                         </MotionLink>
                     </div>

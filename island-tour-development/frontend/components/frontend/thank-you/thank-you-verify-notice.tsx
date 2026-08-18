@@ -31,10 +31,10 @@ export function ThankYouVerifyNotice({
                                 <Lock className='size-5 text-it-primary tracking-[-0.012em]' />
                             </span>
                             <div className='flex flex-col gap-1'>
-                                <p className='m-0 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                <p className='m-0 font-medium text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                                     {dict.verifyTitle}
                                 </p>
-                                <p className='m-0 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                                <p className='m-0 text-[13px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                                     {dict.verifyBody}
                                 </p>
                             </div>
@@ -43,7 +43,7 @@ export function ThankYouVerifyNotice({
                             href={localizeHref(locale, '/bookings')}
                             whileTap={{ scale: 0.98 }}
                             transition={springPop}
-                            className='shrink-0 rounded-full bg-it-primary px-7 py-3 font-medium text-[15px] leading-[1.6] tracking-[-0.012em] text-it-white transition-colors hover:bg-it-primary-hover'>
+                            className='shrink-0 rounded-full bg-it-primary px-7 py-3 font-medium text-[14px] leading-[1.6] tracking-[-0.012em] text-it-white transition-colors hover:bg-it-primary-hover'>
                             {dict.verifyCta}
                         </MotionA>
                     </div>

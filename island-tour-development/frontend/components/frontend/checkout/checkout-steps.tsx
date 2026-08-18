@@ -57,13 +57,13 @@ function Step({
                         />
                     </motion.span>
                 ) : (
-                    <span className='text-[13px] font-medium leading-none tabular-nums tracking-[-0.012em]'>
+                    <span className='text-[12px] font-medium leading-none tabular-nums tracking-[-0.012em]'>
                         {number}
                     </span>
                 )}
             </span>
             <span
-                className={`text-[13.5px] font-medium leading-[1.6] ${
+                className={`text-[12.5px] font-medium leading-[1.6] ${
                     state === 'upcoming' ? 'text-it-text-muted tracking-[-0.012em]' : ''
                 }`}>
                 {label}

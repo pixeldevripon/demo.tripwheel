@@ -90,7 +90,7 @@ export function MultiSelect({
                         size='sm'
                         disabled={disabled}
                         className='h-9 w-full justify-between font-normal'>
-                        <span className='truncate text-xs text-muted-foreground'>
+                        <span className='truncate text-[11.5px] text-muted-foreground'>
                             {value.length > 0
                                 ? `${value.length} selected`
                                 : placeholder}
@@ -124,13 +124,13 @@ export function MultiSelect({
                                             />
                                             <span className='flex min-w-0 flex-1 flex-col gap-0.5'>
                                                 <span className='flex items-center gap-2'>
-                                                    <span className='truncate text-sm'>
+                                                    <span className='truncate text-[13px]'>
                                                         {opt.label}
                                                     </span>
                                                     {opt.badge}
                                                 </span>
                                                 {opt.description && (
-                                                    <span className='truncate text-xs text-muted-foreground'>
+                                                    <span className='truncate text-[11.5px] text-muted-foreground'>
                                                         {opt.description}
                                                     </span>
                                                 )}
@@ -173,7 +173,7 @@ export function MultiSelect({
                                         />
                                     </button>
                                 )}
-                                <span className='truncate text-xs font-medium'>
+                                <span className='truncate text-[11.5px] font-medium'>
                                     {opt.label}
                                 </span>
                                 {!disabled && (

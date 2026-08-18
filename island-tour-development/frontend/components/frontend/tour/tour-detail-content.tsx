@@ -557,10 +557,10 @@ export async function TourDetailContent({
                                                 />
                                             </span>
                                             <span className='flex flex-col'>
-                                                <b className='text-[13.5px] font-medium leading-[1.5] tracking-[-0.012em] text-it-heading'>
+                                                <b className='text-[12.5px] font-medium leading-[1.5] tracking-[-0.012em] text-it-heading'>
                                                     {qi.title}
                                                 </b>
-                                                <span className='text-[12px] leading-[1.5] text-it-text-muted tracking-[-0.012em]'>
+                                                <span className='text-[11.5px] leading-[1.5] text-it-text-muted tracking-[-0.012em]'>
                                                     {qi.sub}
                                                 </span>
                                             </span>
@@ -648,7 +648,7 @@ export async function TourDetailContent({
                                     id='tour-overview'
                                     title={tourDict.sections.overview}>
                                     {overviewParagraphs.length > 0 && (
-                                        <div className='flex flex-col gap-4 text-[16px] leading-[1.6] '>
+                                        <div className='flex flex-col gap-4 text-[14.5px] leading-[1.6]'>
                                             {overviewParagraphs.map((p, i) => (
                                                 <p key={i} className='m-0'>
                                                     {p}
@@ -680,7 +680,7 @@ export async function TourDetailContent({
                                     over a muted description. Renders when either
                                     line is present; each line only if it exists. */}
                                     {(localTipTitle || localTipBody) && (
-                                        <div className='mt-1 flex items-start gap-[11px] rounded-it-md border border-it-peach-border bg-it-peach px-4 py-3.5 text-[13.5px] leading-[1.6] tracking-[-0.012em]'>
+                                        <div className='mt-1 flex items-start gap-[11px] rounded-it-md border border-it-peach-border bg-it-peach px-4 py-3.5 text-[12.5px] leading-[1.6] tracking-[-0.012em]'>
                                             <Image
                                                 src='/icons/tip-sun.svg'
                                                 alt=''
@@ -690,7 +690,7 @@ export async function TourDetailContent({
                                             />
                                             <div>
                                                 {localTipTitle && (
-                                                    <b className='mb-[3px] block text-[12px] font-medium uppercase tracking-[0.08em] text-it-primary-hover'>
+                                                    <b className='mb-[3px] block text-[11.5px] font-medium uppercase tracking-[0.08em] text-it-primary-hover'>
                                                         {localTipTitle}
                                                     </b>
                                                 )}
@@ -716,7 +716,7 @@ export async function TourDetailContent({
                                                         key={item.id}
                                                         width='auto'
                                                         listItem
-                                                        className='flex items-start gap-[9px] py-[5px] text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                                        className='flex items-start gap-[9px] py-[5px] text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                                                         <Image
                                                             src='/icons/trust-check-green.svg'
                                                             alt=''
@@ -732,7 +732,7 @@ export async function TourDetailContent({
                                                         key={item.id}
                                                         width='auto'
                                                         listItem
-                                                        className='flex items-start gap-[9px] py-[5px] text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                                        className='flex items-start gap-[9px] py-[5px] text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                                                         <Image
                                                             src='/icons/x-faint.svg'
                                                             alt=''
@@ -754,7 +754,7 @@ export async function TourDetailContent({
                                             id='tour-expect'
                                             title={tourDict.sections.expect}>
                                             {expectIntro && (
-                                                <p className='m-0 max-w-172 text-[16px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                                                <p className='m-0 max-w-172 text-[14.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                                                     {expectIntro}
                                                 </p>
                                             )}
@@ -794,13 +794,13 @@ export async function TourDetailContent({
                                                                         className='relative z-10'
                                                                     />
                                                                     <div className='flex flex-col gap-0.5'>
-                                                                        <span className='text-[16px] font-medium leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                                                        <span className='text-[14.5px] font-medium leading-[1.6] tracking-[-0.012em] text-it-heading'>
                                                                             {
                                                                                 step.title
                                                                             }
                                                                         </span>
                                                                         {step.detail && (
-                                                                            <span className='text-[16px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                                                                            <span className='text-[14.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                                                                                 {
                                                                                     step.detail
                                                                                 }
@@ -843,7 +843,7 @@ export async function TourDetailContent({
                                                         key={group.title}
                                                         listItem
                                                         className='flex flex-col gap-1.5'>
-                                                        <h3 className='m-0 text-[16px] leading-[1.6] text-it-heading font-medium tracking-[-0.012em]'>
+                                                        <h3 className='m-0 text-[14.5px] leading-[1.6] text-it-heading font-medium tracking-[-0.012em]'>
                                                             {group.title}
                                                         </h3>
                                                         <ul className='m-0 mt-1 list-none p-0'>
@@ -876,7 +876,7 @@ export async function TourDetailContent({
                                             (para, i) => (
                                                 <p
                                                     key={i}
-                                                    className='m-0 text-[14.5px] leading-[1.7] '>
+                                                    className='m-0 text-[13.5px] leading-[1.7]'>
                                                     {para}
                                                 </p>
                                             )
@@ -942,7 +942,7 @@ export async function TourDetailContent({
                                     conditions URL; in-app it opens as the
                                     intercepted overlay. */}
                                 {detail.operatorName && (
-                                    <p className='m-0 text-[12.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                                    <p className='m-0 text-[11.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                                         {cancelDict.suppliedBy}{' '}
                                         {detail.operatorName}
                                         {detail.operatorTerms?.kind ===

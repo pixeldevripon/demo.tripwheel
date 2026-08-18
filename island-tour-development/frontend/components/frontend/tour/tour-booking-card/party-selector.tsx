@@ -50,7 +50,7 @@ export function PartySelector() {
 
     // `.wfield` content: 17px icon, then the count at 14px semibold.
     const headerLabel = (
-        <span className='flex items-center gap-2.5 text-[16px] leading-[1.6] text-it-heading tracking-[-0.012em]'>
+        <span className='flex items-center gap-2.5 text-[14.5px] leading-[1.6] text-it-heading tracking-[-0.012em]'>
             <Image
                 src='/icons/booking-travelers.svg'
                 alt=''
@@ -126,7 +126,7 @@ export function PartySelector() {
                         under their own heading. */}
                     {spectatorsApplied && spectatorsOn && (
                         <>
-                            <div className='border-t border-it-divider pt-2.5 text-[12px] font-medium leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                            <div className='border-t border-it-divider pt-2.5 text-[11.5px] font-medium leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                                 {dict.spectators}
                             </div>
                             {spectatorBands.map(band => (

@@ -133,16 +133,16 @@ export function ReviewSubmitFlow({
     if (done) {
         return (
             <Card>
-                <h1 className='m-0 font-medium text-[24px] leading-[1.3] tracking-[-0.012em] text-it-heading'>
+                <h1 className='m-0 font-medium text-[21px] leading-[1.3] tracking-[-0.012em] text-it-heading'>
                     {dict.thanksTitle}
                 </h1>
-                <p className='mt-2.5 mb-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                <p className='mt-2.5 mb-0 text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                     {dict.thanksBody}
                 </p>
                 {tourHref && (
                     <Link
                         href={tourHref}
-                        className='mt-5 inline-block w-fit rounded-[10px] bg-it-primary px-4.5 py-2.75 font-medium text-[14px] leading-[1.2] text-it-white no-underline transition-colors duration-300 hover:bg-it-primary-hover tracking-[-0.012em]'>
+                        className='mt-5 inline-block w-fit rounded-[10px] bg-it-primary px-4.5 py-2.75 font-medium text-[13px] leading-[1.2] text-it-white no-underline transition-colors duration-300 hover:bg-it-primary-hover tracking-[-0.012em]'>
                         {dict.thanksCta}
                     </Link>
                 )}
@@ -167,11 +167,11 @@ export function ReviewSubmitFlow({
             {/* The ask is centred: this is one question, and a left-aligned
                 heading over a wide card reads as the first field of a long form. */}
             <div className='text-center'>
-                <h1 className='m-0 font-medium text-[26px] sm:text-[30px] leading-[1.25] tracking-[-0.012em] text-it-heading'>
+                <h1 className='m-0 font-medium text-[22.5px] sm:text-[25.5px] leading-[1.25] tracking-[-0.012em] text-it-heading'>
                     {guestFirstName ? `${guestFirstName}, ` : ''}
                     {dict.step1Header}
                 </h1>
-                <p className='mt-2 mb-0 text-[15px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                <p className='mt-2 mb-0 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                     {tourName}
                 </p>
             </div>
@@ -210,12 +210,12 @@ export function ReviewSubmitFlow({
                 })}
             </div>
             {!committed && (
-                <p className='mt-3 mb-0 text-center text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                <p className='mt-3 mb-0 text-center text-[13px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                     {dict.step1Hint}
                 </p>
             )}
             {committed && (
-                <p className='mt-3 mb-0 flex items-center justify-center gap-2 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-primary'>
+                <p className='mt-3 mb-0 flex items-center justify-center gap-2 text-[13px] leading-[1.6] tracking-[-0.012em] text-it-primary'>
                     <Image
                         src='/icons/review-verified.svg'
                         alt=''
@@ -228,7 +228,7 @@ export function ReviewSubmitFlow({
             )}
 
             {error && (
-                <p className='mt-3 mb-0 text-[14px] leading-[1.6] text-[#c0392b] tracking-[-0.012em]'>
+                <p className='mt-3 mb-0 text-[13px] leading-[1.6] text-[#c0392b] tracking-[-0.012em]'>
                     {error}
                 </p>
             )}
@@ -246,7 +246,7 @@ export function ReviewSubmitFlow({
                             }
                             rows={5}
                             placeholder={dict.step2Placeholder}
-                            className='w-full resize-y rounded-[10px] border border-it-border bg-it-white p-3 text-[16px] md:text-[15px] leading-[1.6] tracking-[-0.012em] text-it-heading outline-none focus:border-it-primary'
+                            className='w-full resize-y rounded-[10px] border border-it-border bg-it-white p-3 text-[14.5px] md:text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading outline-none focus:border-it-primary'
                         />
                     </Step>
 
@@ -271,7 +271,7 @@ export function ReviewSubmitFlow({
                                         setGuestType(g.value);
                                         void save({ reviewerType: g.value });
                                     }}
-                                    className={`cursor-pointer rounded-it-full border px-5 py-2.5 text-[15px] leading-[1.2] transition-colors ${
+                                    className={`cursor-pointer rounded-it-full border px-5 py-2.5 text-[14px] leading-[1.2] transition-colors ${
                                         guestType === g.value
                                             ? 'border-it-primary bg-it-primary text-it-white tracking-[-0.012em]'
                                             : 'border-it-border bg-it-white text-it-heading hover:border-it-primary tracking-[-0.012em]'
@@ -286,10 +286,10 @@ export function ReviewSubmitFlow({
                         separate from the tour question above. Shown to everyone. */}
                     {trustpilotUrl && (
                         <div className='mt-7 rounded-[12px] border border-it-border bg-it-surface p-5'>
-                            <h2 className='m-0 text-[17px] leading-[1.4] tracking-[-0.012em] text-it-heading font-medium'>
+                            <h2 className='m-0 text-[15.5px] leading-[1.4] tracking-[-0.012em] text-it-heading font-medium'>
                                 {dict.step4Header}
                             </h2>
-                            <p className='mt-1.5 mb-0 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                            <p className='mt-1.5 mb-0 text-[13px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                                 {dict.step4Body}
                             </p>
                             <div className='mt-4 flex flex-wrap items-center gap-3'>
@@ -297,13 +297,13 @@ export function ReviewSubmitFlow({
                                     href={trustpilotUrl}
                                     target='_blank'
                                     rel='noopener noreferrer'
-                                    className='rounded-[10px] bg-it-heading px-4.5 py-2.75 font-medium text-[14px] leading-[1.2] text-it-white no-underline transition-opacity duration-300 hover:opacity-90 tracking-[-0.012em]'>
+                                    className='rounded-[10px] bg-it-heading px-4.5 py-2.75 font-medium text-[13px] leading-[1.2] text-it-white no-underline transition-opacity duration-300 hover:opacity-90 tracking-[-0.012em]'>
                                     {dict.step4Cta}
                                 </a>
                                 <button
                                     type='button'
                                     onClick={() => setDone(true)}
-                                    className='cursor-pointer border-0 bg-transparent p-0 text-[14px] leading-[1.2] text-it-text-muted underline tracking-[-0.012em]'>
+                                    className='cursor-pointer border-0 bg-transparent p-0 text-[13px] leading-[1.2] text-it-text-muted underline tracking-[-0.012em]'>
                                     {dict.step4Skip}
                                 </button>
                             </div>
@@ -315,10 +315,10 @@ export function ReviewSubmitFlow({
                         is review gating and is not lawful. */}
                     {isLow && !feedbackSent && (
                         <div className='mt-4 rounded-[12px] border border-it-border bg-it-white p-5'>
-                            <h2 className='m-0 text-[17px] leading-[1.4] tracking-[-0.012em] text-it-heading font-medium'>
+                            <h2 className='m-0 text-[15.5px] leading-[1.4] tracking-[-0.012em] text-it-heading font-medium'>
                                 {dict.recoveryHeader}
                             </h2>
-                            <p className='mt-1.5 mb-0 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                            <p className='mt-1.5 mb-0 text-[13px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                                 {dict.recoveryBody}
                             </p>
                             <textarea
@@ -326,7 +326,7 @@ export function ReviewSubmitFlow({
                                 onChange={e => setFeedback(e.target.value)}
                                 rows={3}
                                 placeholder={dict.recoveryPlaceholder}
-                                className='mt-3 w-full resize-y rounded-[10px] border border-it-border bg-it-white p-3 text-[16px] md:text-[15px] leading-[1.6] tracking-[-0.012em] text-it-heading outline-none focus:border-it-primary'
+                                className='mt-3 w-full resize-y rounded-[10px] border border-it-border bg-it-white p-3 text-[14.5px] md:text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading outline-none focus:border-it-primary'
                             />
                             <MotionButton
                                 type='button'
@@ -334,13 +334,13 @@ export function ReviewSubmitFlow({
                                 whileTap={{ scale: 0.97 }}
                                 transition={springPop}
                                 onClick={() => void sendFeedback()}
-                                className='mt-3 cursor-pointer rounded-[10px] border-[1.5px] border-it-heading/20 bg-transparent px-4.5 py-2.75 font-medium text-[14px] leading-[1.2] text-it-heading transition-colors duration-300 hover:border-it-heading/40 disabled:opacity-50 tracking-[-0.012em]'>
+                                className='mt-3 cursor-pointer rounded-[10px] border-[1.5px] border-it-heading/20 bg-transparent px-4.5 py-2.75 font-medium text-[13px] leading-[1.2] text-it-heading transition-colors duration-300 hover:border-it-heading/40 disabled:opacity-50 tracking-[-0.012em]'>
                                 {busy ? dict.saving : dict.recoverySend}
                             </MotionButton>
                         </div>
                     )}
                     {feedbackSent && (
-                        <p className='mt-4 mb-0 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-primary'>
+                        <p className='mt-4 mb-0 text-[13px] leading-[1.6] tracking-[-0.012em] text-it-primary'>
                             {dict.recoverySent}
                         </p>
                     )}
@@ -350,11 +350,11 @@ export function ReviewSubmitFlow({
                         whileTap={{ scale: 0.97 }}
                         transition={springPop}
                         onClick={() => setDone(true)}
-                        className='mt-7 w-full cursor-pointer rounded-[10px] bg-it-primary px-4.5 py-3 font-medium text-[15px] leading-[1.2] text-it-white transition-colors duration-300 hover:bg-it-primary-hover tracking-[-0.012em]'>
+                        className='mt-7 w-full cursor-pointer rounded-[10px] bg-it-primary px-4.5 py-3 font-medium text-[14px] leading-[1.2] text-it-white transition-colors duration-300 hover:bg-it-primary-hover tracking-[-0.012em]'>
                         {dict.save}
                     </MotionButton>
 
-                    <p className='mt-4 mb-0 text-[13px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                    <p className='mt-4 mb-0 text-[12px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                         {dict.verifiedNote}
                     </p>
                 </>
@@ -382,11 +382,11 @@ function Step({
 }) {
     return (
         <div className='mt-7 border-t border-it-border/70 pt-7'>
-            <h2 className='m-0 text-[17px] leading-[1.4] tracking-[-0.012em] text-it-heading font-medium'>
+            <h2 className='m-0 text-[15.5px] leading-[1.4] tracking-[-0.012em] text-it-heading font-medium'>
                 {header}
             </h2>
             {helper && (
-                <p className='mt-1.5 mb-2.5 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                <p className='mt-1.5 mb-2.5 text-[13px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                     {helper}
                 </p>
             )}

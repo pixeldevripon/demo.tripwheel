@@ -90,18 +90,18 @@ export function ErrorDebugPanel({
     return (
         <div className='w-full max-w-3xl text-left'>
             <div className='mb-3 flex items-center justify-between gap-4'>
-                <span className='text-[13px] font-medium leading-none tracking-[-0.012em] text-it-error'>
+                <span className='text-[12px] font-medium leading-none tracking-[-0.012em] text-it-error'>
                     Debug details (temporary - NEXT_PUBLIC_ERROR_DEBUG)
                 </span>
                 <button
                     type='button'
                     onClick={() => navigator.clipboard?.writeText(report)}
-                    className='shrink-0 cursor-pointer rounded-it-full border border-it-border-subtle bg-transparent px-4 py-2 text-[13px] leading-none tracking-[-0.012em] text-it-ink-secondary transition-colors duration-300 hover:bg-it-surface'>
+                    className='shrink-0 cursor-pointer rounded-it-full border border-it-border-subtle bg-transparent px-4 py-2 text-[12px] leading-none tracking-[-0.012em] text-it-ink-secondary transition-colors duration-300 hover:bg-it-surface'>
                     Copy report
                 </button>
             </div>
 
-            <dl className='m-0 grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-[13px] leading-[1.6] tracking-[-0.012em]'>
+            <dl className='m-0 grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-[12px] leading-[1.6] tracking-[-0.012em]'>
                 <Row label='Digest' value={digest ?? '(none)'} />
                 <Row label='Client' value={`${error.name}: ${error.message}`} />
                 {server?.[0] && (
@@ -125,7 +125,7 @@ export function ErrorDebugPanel({
                 widen the page (the sitewide rule: wide content scrolls inside
                 its own container, the body never scrolls sideways). */}
             {(server?.[0]?.stack || error.stack) && (
-                <pre className='mt-4 max-h-80 overflow-auto rounded-[12px] bg-it-surface p-4 text-[12px] leading-normal whitespace-pre text-it-ink-secondary tracking-[-0.012em]'>
+                <pre className='mt-4 max-h-80 overflow-auto rounded-[12px] bg-it-surface p-4 text-[11.5px] leading-normal whitespace-pre text-it-ink-secondary tracking-[-0.012em]'>
                     {server?.[0]?.stack ?? error.stack}
                 </pre>
             )}

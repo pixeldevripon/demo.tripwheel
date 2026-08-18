@@ -210,9 +210,9 @@ export function BookingStickyBar({
                             viewport. */}
                         <div className='flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2'>
                             <div className='flex min-w-44 grow basis-44 flex-col gap-0.5'>
-                                <span className='flex items-baseline gap-1 text-[12px] leading-[1.4] text-it-text-muted tracking-[-0.012em]'>
+                                <span className='flex items-baseline gap-1 text-[11.5px] leading-[1.4] text-it-text-muted tracking-[-0.012em]'>
                                     <span>{dict.from}</span>
-                                    <b className='text-[17px] font-medium leading-[1.2] tracking-[-0.012em] text-it-heading tabular-nums'>
+                                    <b className='text-[15.5px] font-medium leading-[1.2] tracking-[-0.012em] text-it-heading tabular-nums'>
                                         {money(data.priceFrom)}
                                     </b>
                                     <span className='truncate'>
@@ -239,7 +239,7 @@ export function BookingStickyBar({
                                     navigating ? undefined : { scale: 0.98 }
                                 }
                                 transition={springPop}
-                                className={`flex shrink-0 grow items-center justify-center whitespace-nowrap rounded-it-sm border-none bg-it-primary px-4 py-3 text-[14px] font-bold leading-[1.4] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover ${
+                                className={`flex shrink-0 grow items-center justify-center whitespace-nowrap rounded-it-sm border-none bg-it-primary px-4 py-3 text-[13px] font-bold leading-[1.4] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover ${
                                     navigating
                                         ? 'cursor-default opacity-80'
                                         : 'cursor-pointer'

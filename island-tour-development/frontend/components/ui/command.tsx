@@ -72,7 +72,7 @@ function CommandInput({
         <CommandPrimitive.Input
           data-slot="command-input"
           className={cn(
-            "w-full px-2 text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
+            "w-full px-2 text-[13px] outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
             className
           )}
           {...props}
@@ -108,7 +108,7 @@ function CommandEmpty({
   return (
     <CommandPrimitive.Empty
       data-slot="command-empty"
-      className={cn("py-6 text-center text-sm", className)}
+      className={cn("py-6 text-center text-[13px]", className)}
       {...props}
     />
   )
@@ -171,7 +171,7 @@ function CommandShortcut({
     <span
       data-slot="command-shortcut"
       className={cn(
-        "ml-auto text-xs tracking-widest text-muted-foreground group-data-selected/command-item:text-foreground",
+        "ml-auto text-[11.5px] tracking-widest text-muted-foreground group-data-selected/command-item:text-foreground",
         className
       )}
       {...props}

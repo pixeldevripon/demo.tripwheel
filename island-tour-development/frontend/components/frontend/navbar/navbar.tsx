@@ -245,7 +245,7 @@ export function Navbar({
                             width={68}
                             height={50}
                             priority
-                            className='h-8 w-auto object-contain md:h-[50px]'
+                            className='h-8 w-auto object-contain md:h-10'
                         />
                     </Link>
 

@@ -42,10 +42,10 @@ export function OperatorConditionsOverlay({
             <div className='flex shrink-0 flex-col gap-4'>
                 <div className='flex items-start justify-between gap-4'>
                     <div className='flex flex-col gap-1'>
-                        <h2 className='m-0 font-it-display text-[21px] leading-[1.2] tracking-[-0.012em] text-it-heading sm:text-[22px] font-medium'>
+                        <h2 className='m-0 font-it-display text-[19px] leading-[1.2] tracking-[-0.012em] text-it-heading sm:text-[19.5px] font-medium'>
                             {title}
                         </h2>
-                        <span className='text-[13px] leading-[1.5] text-it-text-muted tracking-[-0.012em]'>
+                        <span className='text-[12px] leading-[1.5] text-it-text-muted tracking-[-0.012em]'>
                             {versionLine}
                         </span>
                     </div>

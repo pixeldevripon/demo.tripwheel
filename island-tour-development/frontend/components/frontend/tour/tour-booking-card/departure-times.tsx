@@ -105,13 +105,13 @@ export function DepartureTimes() {
                     animate={{ opacity: 1 }}
                     transition={swapFade}
                     className=''>
-                    <p className='m-0 text-[14px] font-medium leading-[1.5] '>
+                    <p className='m-0 text-[13px] font-medium leading-[1.5]'>
                         {dict.noDeparturesOnDateTitle.replace(
                             '{date}',
                             formatSelectedDate(selectedDate!, locale)
                         )}
                     </p>
-                    <p className='m-0 mt-0.5 text-[13px] leading-[1.5] text-it-text-muted tracking-[-0.012em]'>
+                    <p className='m-0 mt-0.5 text-[12px] leading-[1.5] text-it-text-muted tracking-[-0.012em]'>
                         {dict.noDeparturesOnDateHint}
                     </p>
                 </motion.div>
@@ -149,7 +149,7 @@ export function DepartureTimes() {
                     // that made every panel shake as it opened.
                     className='pb-0.5'>
                     {/* `.slotlabel` (mck-15): 12px bold in the muted grey. */}
-                    <span className='mb-2 block text-[12px] font-medium leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                    <span className='mb-2 block text-[11.5px] font-medium leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                         {dict.departureTime}
                     </span>
                     {/* `.slotrow`: chips WRAP, they do not share a fixed grid.
@@ -209,7 +209,7 @@ export function DepartureTimes() {
                                         : 'cursor-pointer'
                                 }`}>
                                 <span
-                                    className={`block whitespace-nowrap text-[13.5px] font-bold leading-[1.25] tabular-nums ${
+                                    className={`block whitespace-nowrap text-[12.5px] font-bold leading-[1.25] tabular-nums ${
                                         isSelected
                                             ? 'text-it-primary-hover tracking-[-0.012em]'
                                             : ''

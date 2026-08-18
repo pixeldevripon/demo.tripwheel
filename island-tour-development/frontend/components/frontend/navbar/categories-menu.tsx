@@ -90,9 +90,9 @@ export function CategoriesMenu({
                                     alt=''
                                     width={24}
                                     height={24}
-                                    className='size-4 shrink-0'
+                                    className='size-5 shrink-0'
                                 />
-                                <span className='text-[16px] font-medium leading-[1.6] tracking-[-0.012em] text-it-heading whitespace-nowrap'>
+                                <span className='text-[14.5px] font-medium leading-[1.6] tracking-[-0.012em] text-it-heading whitespace-nowrap'>
                                     {dict.categories}
                                 </span>
                             </motion.button>
@@ -125,12 +125,12 @@ export function CategoriesMenu({
                                                         <span className='size-11 shrink-0 rounded-it-md bg-it-bg' />
                                                     )}
                                                     <span className='min-w-0'>
-                                                        <b className='block truncate text-sm font-medium text-it-heading tracking-[-0.012em]'>
+                                                        <b className='block truncate text-[13px] font-medium text-it-heading tracking-[-0.012em]'>
                                                             {hub.name}
                                                         </b>
                                                         {hub.tours !==
                                                             undefined && (
-                                                            <span className='text-xs text-it-text-muted tabular-nums tracking-[-0.012em]'>
+                                                            <span className='text-[11.5px] text-it-text-muted tabular-nums tracking-[-0.012em]'>
                                                                 {hub.tours}{' '}
                                                                 {dict.tours}
                                                             </span>
@@ -171,12 +171,12 @@ export function CategoriesMenu({
                                                         <span className='size-11 shrink-0 rounded-it-md bg-it-bg' />
                                                     )}
                                                     <span className='min-w-0'>
-                                                        <b className='block truncate text-sm font-medium text-it-heading tracking-[-0.012em]'>
+                                                        <b className='block truncate text-[13px] font-medium text-it-heading tracking-[-0.012em]'>
                                                             {cat.name}
                                                         </b>
                                                         {cat.tours !==
                                                             undefined && (
-                                                            <span className='text-xs text-it-text-muted tabular-nums tracking-[-0.012em]'>
+                                                            <span className='text-[11.5px] text-it-text-muted tabular-nums tracking-[-0.012em]'>
                                                                 {cat.tours}{' '}
                                                                 {dict.tours}
                                                             </span>
@@ -195,7 +195,7 @@ export function CategoriesMenu({
                                                     onClick={() =>
                                                         setOpen(false)
                                                     }
-                                                    className='block rounded-it-md px-2.5 py-2 text-[13.5px] font-medium text-it-primary-hover no-underline transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:bg-it-bg tracking-[-0.012em]'>
+                                                    className='block rounded-it-md px-2.5 py-2 text-[12.5px] font-medium text-it-primary-hover no-underline transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:bg-it-bg tracking-[-0.012em]'>
                                                     {dict.allIslandTours.replace(
                                                         '{destination}',
                                                         currentIsland.name

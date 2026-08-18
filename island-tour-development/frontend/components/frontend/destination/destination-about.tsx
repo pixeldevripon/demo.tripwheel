@@ -70,8 +70,8 @@ export function DestinationAbout({
                             description={description}
                             moreLabel={dict.learnMore}
                             lessLabel={dict.readLess}
-                            className='m-0 text-base md:text-lg leading-[1.6] text-it-text-muted tracking-[-0.012em]'
-                            buttonClassName='ml-1.5 inline cursor-pointer border-none bg-transparent p-0 font-medium text-[16px] leading-[1.6] text-it-heading underline decoration-1 underline-offset-4 transition-colors duration-300 hover:text-it-primary tracking-[-0.012em]'
+                            className='m-0 text-[14.5px] md:text-[16.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'
+                            buttonClassName='ml-1.5 inline cursor-pointer border-none bg-transparent p-0 font-medium text-[14.5px] leading-[1.6] text-it-heading underline decoration-1 underline-offset-4 transition-colors duration-300 hover:text-it-primary tracking-[-0.012em]'
                         />
                     </div>
 
@@ -82,11 +82,11 @@ export function DestinationAbout({
                             <div
                                 key={section.heading}
                                 className='flex flex-col gap-2.5 border-t-2 border-it-peach-border pt-[18px]'>
-                                <h3 className='m-0 text-[20px] leading-[1.3] tracking-[-0.012em] text-it-heading font-semibold'>
+                                <h3 className='m-0 text-[18px] leading-[1.3] tracking-[-0.012em] text-it-heading font-semibold'>
                                     {section.heading}
                                 </h3>
                                 {section.body && (
-                                    <p className='m-0 text-[15px] leading-[1.7] text-it-text-muted tracking-[-0.006em]'>
+                                    <p className='m-0 text-[14px] leading-[1.7] text-it-text-muted tracking-[-0.006em]'>
                                         {section.body}
                                     </p>
                                 )}

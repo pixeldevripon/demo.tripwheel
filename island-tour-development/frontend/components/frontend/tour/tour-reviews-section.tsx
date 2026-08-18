@@ -421,10 +421,10 @@ export function TourReviewsSection({
             {/* Header + rating summary */}
             <div className='flex flex-col gap-4'>
                 <div className='flex flex-col gap-2'>
-                    <h2 className='m-0 text-[24px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                    <h2 className='m-0 text-[21px] md:text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                         {dict.title}
                     </h2>
-                    <p className='m-0 flex flex-wrap items-center gap-[7px] text-[16px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                    <p className='m-0 flex flex-wrap items-center gap-[7px] text-[14.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                         <Image
                             src='/icons/trust-check-green.svg'
                             alt=''
@@ -449,7 +449,7 @@ export function TourReviewsSection({
                         with no explanation is the whole reason LD11 needed a
                         display rule and not just a fallback value. */}
                     {ratingSource === 'operator' ? (
-                        <p className='m-0 max-w-160 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                        <p className='m-0 max-w-160 text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                             {dict.operatorFallback
                                 .replace('{operator}', operatorName)
                                 .replace('{rating}', rating.toFixed(1))
@@ -461,7 +461,7 @@ export function TourReviewsSection({
                         // one anyway - even the honest average of two reviews -
                         // is the exact thing the 3-review threshold exists to
                         // prevent. The reviews themselves are still listed below.
-                        <p className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                        <p className='m-0 text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                             {dict.earlyReviews.replace(
                                 '{count}',
                                 String(ownReviewCount)
@@ -471,13 +471,13 @@ export function TourReviewsSection({
                         // Only reachable with `source === 'tour'`, which LD11
                         // guarantees means >= 3 reviews and a real rating.
                         <div className='flex flex-col'>
-                            <div className='m-0 font-it-display text-[44px] font-medium leading-none tracking-[-0.012em] text-it-heading'>
-                                <span className='align-[6px] text-[26px] text-it-star tracking-[-0.012em]'>
+                            <div className='m-0 font-it-display text-[35px] font-medium leading-none tracking-[-0.012em] text-it-heading'>
+                                <span className='align-[6px] text-[22.5px] text-it-star tracking-[-0.012em]'>
                                     ★
                                 </span>{' '}
                                 {rating.toFixed(1)}
                             </div>
-                            <div className='mt-1 text-[12.5px] leading-[1.6] text-it-text-muted tabular-nums tracking-[-0.012em]'>
+                            <div className='mt-1 text-[11.5px] leading-[1.6] text-it-text-muted tabular-nums tracking-[-0.012em]'>
                                 {dict.reviewsCount.replace(
                                     '{count}',
                                     String(reviewCount)
@@ -510,7 +510,7 @@ export function TourReviewsSection({
                                         className={`flex cursor-pointer items-center gap-3 rounded-it-full px-2 py-0.5 text-left transition-colors hover:bg-it-surface disabled:cursor-default disabled:opacity-60 disabled:hover:bg-transparent ${
                                             active ? 'bg-it-surface' : ''
                                         }`}>
-                                        <span className='w-[46px] shrink-0 text-left text-[12px] leading-[1.6] text-it-text-muted tabular-nums tracking-[-0.012em]'>
+                                        <span className='w-[46px] shrink-0 text-left text-[11.5px] leading-[1.6] text-it-text-muted tabular-nums tracking-[-0.012em]'>
                                             {starLabel(row.stars)}
                                         </span>
                                         <span className='relative h-[7px] flex-1 overflow-hidden rounded-it-full bg-it-divider'>
@@ -525,7 +525,7 @@ export function TourReviewsSection({
                                                 }}
                                             />
                                         </span>
-                                        <span className='w-[26px] shrink-0 text-right text-[12px] leading-[1.6] text-it-text-muted tabular-nums tracking-[-0.012em]'>
+                                        <span className='w-[26px] shrink-0 text-right text-[11.5px] leading-[1.6] text-it-text-muted tabular-nums tracking-[-0.012em]'>
                                             {row.count}
                                         </span>
                                     </MotionButton>
@@ -550,7 +550,7 @@ export function TourReviewsSection({
                                 aria-pressed={active}
                                 whileTap={{ scale: 0.95 }}
                                 transition={springPop}
-                                className={`cursor-pointer rounded-it-full border px-4 py-2 text-[14px] leading-[1.6] tracking-[-0.012em] transition-colors disabled:cursor-default disabled:opacity-60 ${
+                                className={`cursor-pointer rounded-it-full border px-4 py-2 text-[13px] leading-[1.6] tracking-[-0.012em] transition-colors disabled:cursor-default disabled:opacity-60 ${
                                     active
                                         ? 'border-it-heading bg-it-heading text-it-white tracking-[-0.012em]'
                                         : 'border-it-border bg-it-white text-it-heading hover:border-it-heading tracking-[-0.012em]'
@@ -571,7 +571,7 @@ export function TourReviewsSection({
             {(showGuestFilter || showLanguageFilter || showPhotoFilter) && (
                 <div className='flex flex-wrap items-center gap-3'>
                     {showGuestFilter && (
-                        <label className='flex items-center gap-2 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                        <label className='flex items-center gap-2 text-[13px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                             {dict.filterGuest}
                             <select
                                 value={guestFilter ?? ''}
@@ -581,7 +581,7 @@ export function TourReviewsSection({
                                         guest: e.target.value || null,
                                     })
                                 }
-                                className='cursor-pointer rounded-it-full border border-it-border bg-it-white px-4 py-1.5 text-[16px] md:text-[14px] text-it-heading disabled:cursor-default disabled:opacity-60 tracking-[-0.012em]'>
+                                className='cursor-pointer rounded-it-full border border-it-border bg-it-white px-4 py-1.5 text-[14.5px] md:text-[13px] text-it-heading disabled:cursor-default disabled:opacity-60 tracking-[-0.012em]'>
                                 <option value=''>{dict.filterAny}</option>
                                 {guestTypes.map(g => (
                                     <option key={g.value} value={g.value}>
@@ -597,7 +597,7 @@ export function TourReviewsSection({
                     )}
 
                     {showLanguageFilter && (
-                        <label className='flex items-center gap-2 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                        <label className='flex items-center gap-2 text-[13px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                             {dict.filterLanguage}
                             <select
                                 value={languageFilter ?? ''}
@@ -607,7 +607,7 @@ export function TourReviewsSection({
                                         language: e.target.value || null,
                                     })
                                 }
-                                className='cursor-pointer rounded-it-full border border-it-border bg-it-white px-4 py-1.5 text-[16px] md:text-[14px] text-it-heading disabled:cursor-default disabled:opacity-60 tracking-[-0.012em]'>
+                                className='cursor-pointer rounded-it-full border border-it-border bg-it-white px-4 py-1.5 text-[14.5px] md:text-[13px] text-it-heading disabled:cursor-default disabled:opacity-60 tracking-[-0.012em]'>
                                 <option value=''>{dict.filterAny}</option>
                                 {languages.map(l => (
                                     <option key={l.value} value={l.value}>
@@ -629,7 +629,7 @@ export function TourReviewsSection({
                             aria-pressed={photoFilter}
                             whileTap={{ scale: 0.95 }}
                             transition={springPop}
-                            className={`cursor-pointer rounded-it-full border px-4 py-2 text-[14px] leading-[1.6] tracking-[-0.012em] transition-colors disabled:cursor-default disabled:opacity-60 ${
+                            className={`cursor-pointer rounded-it-full border px-4 py-2 text-[13px] leading-[1.6] tracking-[-0.012em] transition-colors disabled:cursor-default disabled:opacity-60 ${
                                 photoFilter
                                     ? 'border-it-heading bg-it-heading text-it-white tracking-[-0.012em]'
                                     : 'border-it-border bg-it-white text-it-heading hover:border-it-heading tracking-[-0.012em]'
@@ -650,12 +650,12 @@ export function TourReviewsSection({
                     {isFiltered ? (
                         <div className='flex flex-wrap items-center gap-3'>
                             {starFilter !== null && (
-                                <span className='flex items-center gap-2 rounded-it-full bg-it-surface px-4 py-2 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                <span className='flex items-center gap-2 rounded-it-full bg-it-surface px-4 py-2 text-[13px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                                     {starLabel(starFilter)}
                                 </span>
                             )}
                             {themeFilter !== null && (
-                                <span className='flex items-center gap-2 rounded-it-full bg-it-surface px-4 py-2 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                <span className='flex items-center gap-2 rounded-it-full bg-it-surface px-4 py-2 text-[13px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                                     {themeFilter}
                                 </span>
                             )}
@@ -665,7 +665,7 @@ export function TourReviewsSection({
                                 disabled={loading}
                                 whileTap={{ scale: 0.95 }}
                                 transition={springPop}
-                                className='cursor-pointer text-[14px] leading-[1.6] tracking-[-0.012em] text-it-primary underline underline-offset-2 disabled:cursor-default disabled:opacity-60'>
+                                className='cursor-pointer text-[13px] leading-[1.6] tracking-[-0.012em] text-it-primary underline underline-offset-2 disabled:cursor-default disabled:opacity-60'>
                                 {dict.clearFilter}
                             </MotionButton>
                         </div>
@@ -678,7 +678,7 @@ export function TourReviewsSection({
                         to mean anything. */}
                     {showSort && (
                         <div className='flex items-center gap-8'>
-                            <span className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                            <span className='text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                                 {dict.sortBy}
                             </span>
                             <div className='relative'>
@@ -691,7 +691,7 @@ export function TourReviewsSection({
                                     }
                                     disabled={loading}
                                     aria-label={dict.sortBy}
-                                    className='cursor-pointer appearance-none rounded-it-full border border-it-border bg-it-white py-2 pr-12 pl-6 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading disabled:cursor-default disabled:opacity-60'>
+                                    className='cursor-pointer appearance-none rounded-it-full border border-it-border bg-it-white py-2 pr-12 pl-6 text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-heading disabled:cursor-default disabled:opacity-60'>
                                     {SORT_OPTIONS.map(opt => (
                                         <option
                                             key={opt.value}
@@ -719,7 +719,7 @@ export function TourReviewsSection({
                 this filter" under a heading that says otherwise. */}
             {photoStrip.length > 0 && !isFiltered && (
                 <div className='flex flex-col gap-3'>
-                    <h3 className='m-0 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                    <h3 className='m-0 font-medium text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                         {dict.photosTitle}
                     </h3>
                     {/* Circle tiles (founder call 2026-08-02): the strip is a
@@ -790,7 +790,7 @@ export function TourReviewsSection({
                 "clear" on the former would be nonsense. */}
             {reviews.length === 0 ? (
                 <div className='flex flex-col items-start gap-3'>
-                    <p className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                    <p className='m-0 text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                         {isFiltered ? dict.noMatch : dict.empty}
                     </p>
                     {isFiltered && (
@@ -800,7 +800,7 @@ export function TourReviewsSection({
                             disabled={loading}
                             whileTap={{ scale: 0.95 }}
                             transition={springPop}
-                            className='cursor-pointer text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary underline underline-offset-2 disabled:cursor-default disabled:opacity-60'>
+                            className='cursor-pointer text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-primary underline underline-offset-2 disabled:cursor-default disabled:opacity-60'>
                             {dict.clearFilter}
                         </MotionButton>
                     )}
@@ -825,7 +825,7 @@ export function TourReviewsSection({
                     disabled={loading}
                     whileTap={{ scale: 0.98 }}
                     transition={springPop}
-                    className='flex w-fit cursor-pointer items-center justify-center self-center rounded-it-full border border-it-primary bg-transparent px-10 py-[10px] font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary transition-colors hover:bg-it-primary/5 disabled:cursor-default disabled:opacity-60'>
+                    className='flex w-fit cursor-pointer items-center justify-center self-center rounded-it-full border border-it-primary bg-transparent px-10 py-[10px] font-medium text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-primary transition-colors hover:bg-it-primary/5 disabled:cursor-default disabled:opacity-60'>
                     {loading ? dict.loading : dict.showMore}
                 </MotionButton>
             )}
@@ -882,7 +882,7 @@ function ReviewCard({
                 <div className='flex items-center gap-2.5'>
                     <span
                         aria-hidden='true'
-                        className='grid size-[34px] shrink-0 place-items-center rounded-it-full bg-it-bg text-[12px] font-medium text-it-primary-hover tracking-[-0.012em]'>
+                        className='grid size-[34px] shrink-0 place-items-center rounded-it-full bg-it-bg text-[11.5px] font-medium text-it-primary-hover tracking-[-0.012em]'>
                         {review.name
                             .split(/\s+/)
                             .map(part => part[0])
@@ -892,7 +892,7 @@ function ReviewCard({
                     </span>
                     <div className='flex flex-col text-it-text-muted tracking-[-0.012em]'>
                         <span className='flex flex-wrap items-center gap-x-2'>
-                            <b className='text-[13.5px] font-medium text-it-heading tracking-[-0.012em]'>
+                            <b className='text-[12.5px] font-medium text-it-heading tracking-[-0.012em]'>
                                 {review.name}
                             </b>
                             {lead.slice(1).join(' · ')}
@@ -911,7 +911,7 @@ function ReviewCard({
                         <span className='flex flex-wrap items-center gap-x-2'>
                             <span
                                 aria-label={`${review.rating} / 5`}
-                                className='text-[12.5px] tracking-[1px] text-it-star'>
+                                className='text-[11.5px] tracking-[1px] text-it-star'>
                                 {'★'.repeat(review.rating)}
                             </span>
                             {/* Guest type only - the travel month is in the
@@ -950,7 +950,7 @@ function ReviewCard({
                     </div>
                 )}
 
-                <p className='m-0 mt-1 text-[16px] leading-[1.6] text-it-heading tracking-[-0.012em]'>
+                <p className='m-0 mt-1 text-[14.5px] leading-[1.6] text-it-heading tracking-[-0.012em]'>
                     {body}
                 </p>
 
@@ -960,14 +960,14 @@ function ReviewCard({
                     are already in the payload, so this never refetches and there
                     is no per-review translation URL to index (FE-6b). */}
                 {canToggle && (
-                    <div className='flex flex-wrap items-center gap-2 text-[13px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                    <div className='flex flex-wrap items-center gap-2 text-[12px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                         {!showingOriginal && <span>{dict.translatedBy}</span>}
                         <MotionButton
                             type='button'
                             onClick={() => setShowingOriginal(v => !v)}
                             whileTap={{ scale: 0.95 }}
                             transition={springPop}
-                            className='cursor-pointer border-0 bg-transparent p-0 text-[13px] leading-[1.6] tracking-[-0.012em] text-it-primary underline underline-offset-2'>
+                            className='cursor-pointer border-0 bg-transparent p-0 text-[12px] leading-[1.6] tracking-[-0.012em] text-it-primary underline underline-offset-2'>
                             {showingOriginal
                                 ? dict.showTranslation
                                 : dict.showOriginal.replace(
@@ -982,14 +982,14 @@ function ReviewCard({
             {review.response && (
                 <div className='flex flex-col gap-4'>
                     <div className='flex flex-col gap-3 rounded-it-md bg-it-bg px-4 py-3.5'>
-                        <p className='m-0 text-[16px] leading-[1.6] text-it-heading tracking-[-0.012em]'>
+                        <p className='m-0 text-[14.5px] leading-[1.6] text-it-heading tracking-[-0.012em]'>
                             {review.response.text}
                         </p>
                         <div className='flex flex-col'>
-                            <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                            <span className='font-medium text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                                 {review.response.name}
                             </span>
-                            <span className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                            <span className='text-[13px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                                 {review.response.date}
                             </span>
                         </div>
@@ -1085,7 +1085,7 @@ function PhotoLightbox({
                         className='absolute right-4 top-1/2 grid size-11 -translate-y-1/2 cursor-pointer place-items-center rounded-it-full border-0 bg-it-white/90 text-it-heading tracking-[-0.012em]'>
                         <ChevronRight size={20} strokeWidth={1.5} />
                     </button>
-                    <span className='absolute bottom-5 left-1/2 -translate-x-1/2 text-[13px] leading-[1.6] text-white/90 tabular-nums tracking-[-0.012em]'>
+                    <span className='absolute bottom-5 left-1/2 -translate-x-1/2 text-[12px] leading-[1.6] text-white/90 tabular-nums tracking-[-0.012em]'>
                         {index + 1} / {photos.length}
                     </span>
                 </>
@@ -1094,7 +1094,7 @@ function PhotoLightbox({
                 type='button'
                 aria-label={dict.photoClose}
                 onClick={onClose}
-                className='absolute top-5 right-5 cursor-pointer rounded-it-full border-0 bg-it-white/90 px-4 py-2 text-[14px] font-medium text-it-heading tracking-[-0.012em]'>
+                className='absolute top-5 right-5 cursor-pointer rounded-it-full border-0 bg-it-white/90 px-4 py-2 text-[13px] font-medium text-it-heading tracking-[-0.012em]'>
                 {dict.photoClose}
             </button>
         </div>

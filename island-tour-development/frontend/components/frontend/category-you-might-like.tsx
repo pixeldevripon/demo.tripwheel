@@ -66,7 +66,7 @@ export function CategoryYouMightLike({
             <section className='bg-it-white'>
                 <div className='it-container'>
                     <Reveal className='flex flex-col gap-4'>
-                        <h2 className='m-0 mt-11 text-[24px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                        <h2 className='m-0 mt-11 text-[21px] md:text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                             {title}
                         </h2>
 
@@ -92,11 +92,11 @@ export function CategoryYouMightLike({
                                                 />
                                             )}
                                         </div>
-                                        <b className='mt-2.5 block text-[15px] font-medium leading-[1.6] text-it-heading tracking-[-0.012em]'>
+                                        <b className='mt-2.5 block text-[14px] font-medium leading-[1.6] text-it-heading tracking-[-0.012em]'>
                                             {item.name}
                                         </b>
                                         {item.tours != null && (
-                                            <span className='text-[14px] leading-[1.6] text-it-white/70 tabular-nums tracking-[-0.012em]'>
+                                            <span className='text-[13px] leading-[1.6] text-it-white/70 tabular-nums tracking-[-0.012em]'>
                                                 {item.tours} {toursWord}
                                             </span>
                                         )}
@@ -117,7 +117,7 @@ export function CategoryYouMightLike({
         <section className='bg-it-white pt-16 pb-20'>
             <div className='it-container'>
                 <Reveal className='flex flex-col gap-4'>
-                    <h2 className='m-0 text-[24px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                    <h2 className='m-0 text-[21px] md:text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                         {title}
                     </h2>
 
@@ -143,7 +143,7 @@ export function CategoryYouMightLike({
                                             />
                                         )}
                                     </div>
-                                    <b className='mt-2.5 block text-[15px] font-medium leading-[1.6] text-it-heading tracking-[-0.012em]'>
+                                    <b className='mt-2.5 block text-[14px] font-medium leading-[1.6] text-it-heading tracking-[-0.012em]'>
                                         {item.name}
                                     </b>
                                 </MotionLink>
@@ -155,12 +155,12 @@ export function CategoryYouMightLike({
                         page (5.6: never a button). */}
                     {footer && (
                         <div className='mt-3.5'>
-                            <span className='text-[16px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
+                            <span className='text-[14.5px] leading-[1.6] text-it-text-muted tracking-[-0.012em]'>
                                 {footer.prompt}
                             </span>{' '}
                             <Link
                                 href={localizeHref(locale, footer.href)}
-                                className='text-[14.5px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-[3px] transition-colors duration-300 hover:text-it-primary tracking-[-0.012em]'>
+                                className='text-[13.5px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-[3px] transition-colors duration-300 hover:text-it-primary tracking-[-0.012em]'>
                                 {footer.cta} →
                             </Link>
                         </div>

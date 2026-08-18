@@ -97,15 +97,15 @@ export function BookingManageHeader({
                             className={`size-1.5 shrink-0 rounded-full ${statusChip.dot}`}
                         />
                         <span
-                            className={`text-[13px] font-normal leading-[1.2] tracking-[-0.012em] ${statusChip.text}`}>
+                            className={`text-[12px] font-normal leading-[1.2] tracking-[-0.012em] ${statusChip.text}`}>
                             {statusChip.label}
                         </span>
                     </span>
                     <div className='flex flex-col gap-1'>
-                        <h1 className='m-0 font-medium text-[32px] md:text-[44px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
+                        <h1 className='m-0 font-medium text-[31px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
                             {dict.manageTitle}
                         </h1>
-                        <p className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading/60'>
+                        <p className='m-0 text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-heading/60'>
                             {dict.manageSubtitle
                                 .replace('{tour}', booking.tourTitle)
                                 .replace('{date}', booking.dateLabel)
@@ -126,7 +126,7 @@ export function BookingManageHeader({
                         pending is not left guessing whether it registered -
                         the reason the cancel form kept getting re-submitted. */}
                     {stateNote && (
-                        <p className='m-0 max-w-160 text-[15px] leading-[1.6] tracking-[-0.012em] text-it-heading/60'>
+                        <p className='m-0 max-w-160 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/60'>
                             {stateNote}
                         </p>
                     )}
@@ -141,10 +141,10 @@ export function BookingManageHeader({
                     <MountReveal delay={0.05}>
                         <div className='flex flex-col gap-3 rounded-[16px] border border-it-border bg-it-surface p-5 sm:flex-row sm:items-center sm:justify-between'>
                             <div className='flex flex-col gap-1'>
-                                <span className='font-medium text-[16px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
+                                <span className='font-medium text-[14.5px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
                                     {dict.reviewPrompt}
                                 </span>
-                                <span className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/60'>
+                                <span className='text-[13px] leading-[1.6] tracking-[-0.012em] text-it-heading/60'>
                                     {dict.reviewPromptBody}
                                 </span>
                             </div>
@@ -152,7 +152,7 @@ export function BookingManageHeader({
                                 href={reviewHref}
                                 whileTap={{ scale: 0.98 }}
                                 transition={springPop}
-                                className='flex shrink-0 items-center justify-center rounded-full bg-it-primary px-7 py-[11px] font-medium text-[15px] leading-[1.6] tracking-[-0.012em] text-it-white no-underline transition-colors hover:bg-it-primary-hover'>
+                                className='flex shrink-0 items-center justify-center rounded-full bg-it-primary px-7 py-[11px] font-medium text-[14px] leading-[1.6] tracking-[-0.012em] text-it-white no-underline transition-colors hover:bg-it-primary-hover'>
                                 {dict.reviewCta}
                             </MotionA>
                         </div>
@@ -173,7 +173,7 @@ export function BookingManageHeader({
                                 whileTap={{ scale: 0.98 }}
                                 transition={springPop}
                                 className='flex items-center justify-center gap-2.5 rounded-full bg-it-primary px-8 py-[13px] transition-colors hover:bg-it-primary-hover'>
-                                <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white'>
+                                <span className='font-medium text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-white'>
                                     {dict.addToCalendar}
                                 </span>
                                 <Image
@@ -191,7 +191,7 @@ export function BookingManageHeader({
                                 whileTap={{ scale: 0.98 }}
                                 transition={springPop}
                                 className='flex items-center justify-center gap-2.5 rounded-full border-[1.5px] border-it-heading/15 px-8 py-[11.5px] transition-colors hover:border-it-heading/35'>
-                                <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                <span className='font-medium text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                                     {dict.cancelBooking}
                                 </span>
                             </MotionA>
@@ -205,7 +205,7 @@ export function BookingManageHeader({
                 {!cancelled && !cancellationPending && (
                     <MountReveal
                         delay={0.15}
-                        className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading/60'>
+                        className='text-[14.5px] leading-[1.6] tracking-[-0.012em] text-it-heading/60'>
                         <ResendEmailLine
                             publicRef={booking.publicRef}
                             helpPrefix={dict.emailHelpPrefix}

@@ -269,7 +269,7 @@ export function NavSearch({
                                 alt=''
                                 width={16}
                                 height={16}
-                                className='size-4 shrink-0'
+                                className='size-4.5 shrink-0'
                             />
                         </motion.button>
                         <span className='relative flex-1 min-w-0'>
@@ -280,7 +280,7 @@ export function NavSearch({
                                 onFocus={() => setFocused(true)}
                                 placeholder={rotating ? '' : nav.search}
                                 aria-label={nav.search}
-                                className='w-full bg-transparent border-none outline-none text-[16px] md:text-[13.5px] font-medium leading-[1.6] text-it-heading placeholder:font-medium placeholder:text-it-text-muted [&::-webkit-search-cancel-button]:appearance-none tracking-[-0.012em]'
+                                className='w-full bg-transparent border-none outline-none text-[14.5px] md:text-[12.5px] font-medium leading-[1.6] text-it-heading placeholder:font-medium placeholder:text-it-text-muted [&::-webkit-search-cancel-button]:appearance-none tracking-[-0.012em]'
                             />
                             {rotating && query === '' && (
                                 <RotatingSearchPlaceholder

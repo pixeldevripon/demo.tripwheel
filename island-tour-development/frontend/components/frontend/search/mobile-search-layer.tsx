@@ -141,12 +141,12 @@ export function MobileSearchLayer({
                             onSelect={onDateSelect}
                             disabled={{ before: new Date() }}
                             autoFocus
-                            className='w-full bg-it-white p-0 text-[15px] [--cell-radius:8px] [--cell-size:--spacing(11)] tracking-[-0.012em]'
+                            className='w-full bg-it-white p-0 text-[14px] [--cell-radius:8px] [--cell-size:--spacing(11)] tracking-[-0.012em]'
                             classNames={{
                                 weekday:
-                                    'flex-1 text-[13px] font-medium text-it-text-muted select-none tracking-[-0.012em]',
+                                    'flex-1 text-[12px] font-medium text-it-text-muted select-none tracking-[-0.012em]',
                                 caption_label:
-                                    'text-[15.5px] font-medium text-it-heading tracking-[-0.012em]',
+                                    'text-[14.5px] font-medium text-it-heading tracking-[-0.012em]',
                             }}
                         />
                     </div>

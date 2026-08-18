@@ -12,13 +12,13 @@ type ThankYouDict = Dictionary['thankYou'];
 /* Design v2 .brow2: hairline-divided rows, muted icon label left, bold value
    right. The LAST row drops its divider via `last:`. */
 const rowClass =
-    'flex items-start justify-between gap-[18px] border-b border-it-divider py-[11px] text-[14px] leading-[1.6] last:border-b-0 tracking-[-0.012em]';
+    'flex items-start justify-between gap-[18px] border-b border-it-divider py-[11px] text-[13px] leading-[1.6] last:border-b-0 tracking-[-0.012em]';
 const labelClass =
     'flex flex-none items-center gap-[9px] font-medium text-it-text-muted tracking-[-0.012em]';
 const valueClass = 'min-w-0 text-right font-medium text-it-heading tracking-[-0.012em]';
 /** Faint sub-line under a value (time range, card used). */
 const subClass =
-    'mt-[3px] block text-[12px] font-medium leading-[1.5] text-it-text-muted tracking-[-0.012em]';
+    'mt-[3px] block text-[11.5px] font-medium leading-[1.5] text-it-text-muted tracking-[-0.012em]';
 /** Tappable contact value (mailto/tel/map) - deep-orange underlined. */
 const rowLink =
     'break-words font-medium text-it-primary-hover underline underline-offset-2 transition-opacity hover:opacity-80 tracking-[-0.012em]';
@@ -99,7 +99,7 @@ export function ThankYouSummary({
         <section className='bg-it-bg py-[52px]'>
             <div className='it-wrap flex flex-col'>
                 <Reveal>
-                    <h2 className='m-0 mb-[22px] font-it-display text-[clamp(21px,2.5vw,28px)] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
+                    <h2 className='m-0 mb-[22px] font-it-display text-[clamp(19px,2.5vw,24px)] leading-[1.2] tracking-[-0.012em] text-it-heading font-medium'>
                         {dict.summaryTitle}
                     </h2>
                 </Reveal>
@@ -281,19 +281,19 @@ export function ThankYouSummary({
                                     </>
                                 )}
                                 {/* Total: heavier top rule, larger value (.brow2.tot). */}
-                                <div className='mt-1 flex items-start justify-between gap-[18px] border-t border-it-border py-[11px] pt-[13px] text-[14px] leading-[1.6] tracking-[-0.012em]'>
+                                <div className='mt-1 flex items-start justify-between gap-[18px] border-t border-it-border py-[11px] pt-[13px] text-[13px] leading-[1.6] tracking-[-0.012em]'>
                                     <span className='font-medium text-it-heading tracking-[-0.012em]'>
                                         {dict.total}
                                     </span>
-                                    <span className='text-right text-[16px] font-medium text-it-heading tabular-nums tracking-[-0.012em]'>
+                                    <span className='text-right text-[14.5px] font-medium text-it-heading tabular-nums tracking-[-0.012em]'>
                                         {money(payment.total)}
                                     </span>
                                 </div>
-                                <div className='flex items-start justify-between gap-[18px] py-[11px] text-[14px] leading-[1.6] tracking-[-0.012em]'>
+                                <div className='flex items-start justify-between gap-[18px] py-[11px] text-[13px] leading-[1.6] tracking-[-0.012em]'>
                                     <span className={labelClass}>
                                         {dict.ref}
                                     </span>
-                                    <code className='text-right font-mono text-[13.5px] font-medium tracking-[0.02em] text-it-heading'>
+                                    <code className='text-right font-mono text-[12.5px] font-medium tracking-[0.02em] text-it-heading'>
                                         {booking.displayRef}
                                     </code>
                                 </div>
@@ -301,7 +301,7 @@ export function ThankYouSummary({
                                     operator's own rails, so every surface stays NEUTRAL
                                     about how they collect - no "card only" claims. */}
                                 {payment.balance > 0 ? (
-                                    <p className='m-0 mt-3.5 text-[12.5px] leading-[1.5] text-it-text-muted tracking-[-0.012em]'>
+                                    <p className='m-0 mt-3.5 text-[11.5px] leading-[1.5] text-it-text-muted tracking-[-0.012em]'>
                                         {renderTemplate(
                                             dict.operatorLinkNote,
                                             {
@@ -317,7 +317,7 @@ export function ThankYouSummary({
                                     </p>
                                 ) : (
                                     paidInFull && (
-                                        <p className='m-0 mt-3.5 text-[12.5px] leading-[1.5] text-it-text-muted tracking-[-0.012em]'>
+                                        <p className='m-0 mt-3.5 text-[11.5px] leading-[1.5] text-it-text-muted tracking-[-0.012em]'>
                                             {dict.paidFullNote}
                                         </p>
                                     )

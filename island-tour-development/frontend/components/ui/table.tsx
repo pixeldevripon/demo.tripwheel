@@ -11,7 +11,7 @@ function Table({ className, ...props }: React.ComponentProps<'table'>) {
             className='relative w-full overflow-x-auto'>
             <table
                 data-slot='table'
-                className={cn('w-full caption-bottom text-sm', className)}
+                className={cn('w-full caption-bottom text-[13px]', className)}
                 {...props}
             />
         </div>
@@ -69,7 +69,7 @@ function TableHead({ className, ...props }: React.ComponentProps<'th'>) {
         <th
             data-slot='table-head'
             className={cn(
-                'h-12 px-3 text-left align-middle text-xs font-medium tracking-wider whitespace-nowrap text-muted-foreground uppercase [&:has([role=checkbox])]:pr-0',
+                'h-12 px-3 text-left align-middle text-[11.5px] font-medium tracking-wider whitespace-nowrap text-muted-foreground uppercase [&:has([role=checkbox])]:pr-0',
                 className
             )}
             {...props}
@@ -97,7 +97,7 @@ function TableCaption({
     return (
         <caption
             data-slot='table-caption'
-            className={cn('mt-4 text-sm text-muted-foreground', className)}
+            className={cn('mt-4 text-[13px] text-muted-foreground', className)}
             {...props}
         />
     );
