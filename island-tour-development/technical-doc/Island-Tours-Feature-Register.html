@@ -1,0 +1,276 @@
+<title>Island Tours Feature Register</title>
+<style>
+:root {
+  --paper: #FBFAF7; --ink: #1C2B33; --muted: #5A6B71; --teal: #0E7C7B;
+  --band: #EAF2F1; --line: #E2E0D8; --chipbg: #F7E8DF; --chip: #B34F2A;
+  --subtle: #F3F1EA; --statbg: #FFFFFF;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0E1A1F; --ink: #E6ECE9; --muted: #93A6A3; --teal: #4CB8B2;
+    --band: #142529; --line: #223438; --chipbg: #33231B; --chip: #E08A5F;
+    --subtle: #122024; --statbg: #13232A;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0E1A1F; --ink: #E6ECE9; --muted: #93A6A3; --teal: #4CB8B2;
+  --band: #142529; --line: #223438; --chipbg: #33231B; --chip: #E08A5F;
+  --subtle: #122024; --statbg: #13232A;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--paper); color: var(--ink);
+  font: 15px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif;
+  margin: 0; padding: 40px 20px 80px;
+}
+.wrap { max-width: 1060px; margin: 0 auto; }
+header { border-bottom: 3px solid var(--teal); padding-bottom: 20px; margin-bottom: 24px; }
+.eyebrow { text-transform: uppercase; letter-spacing: .14em; font-size: 11px; color: var(--teal); font-weight: 600; }
+h1 {
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: 34px; line-height: 1.15; margin: 6px 0 8px; text-wrap: balance; font-weight: 600;
+}
+.sub { color: var(--muted); max-width: 68ch; margin: 0; }
+.stats { display: flex; flex-wrap: wrap; gap: 12px; margin: 24px 0 28px; }
+.stat {
+  background: var(--statbg); border: 1px solid var(--line); border-radius: 6px;
+  padding: 12px 18px; min-width: 150px; flex: 1;
+}
+.stat b { display: block; font-size: 24px; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+.legend { font-size: 13px; color: var(--muted); margin: 0 0 16px; }
+.legend .chip { vertical-align: baseline; }
+.tablebox { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; min-width: 720px; }
+th {
+  text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--muted); padding: 10px 14px; border-bottom: 2px solid var(--line);
+  position: sticky; top: 0; background: var(--paper); z-index: 1;
+}
+td { padding: 8px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+th.num { text-align: right; }
+.sn { color: var(--muted); }
+tr.sec td {
+  background: var(--band); font-weight: 700; font-size: 14px;
+  border-top: 2px solid var(--line); padding: 10px 14px;
+}
+tr:nth-child(even):not(.sec) td { background: var(--subtle); }
+.chip {
+  display: inline-block; background: var(--chipbg); color: var(--chip);
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+  border-radius: 999px; padding: 1px 8px; margin-left: 6px; white-space: nowrap;
+}
+tfoot td {
+  font-weight: 700; font-size: 16px; background: var(--band);
+  border-top: 3px solid var(--teal); padding: 12px 14px;
+}
+.note { color: var(--muted); font-size: 13px; margin-top: 20px; max-width: 78ch; }
+@media (max-width: 640px) { body { padding: 24px 12px 60px; } h1 { font-size: 26px; } }
+</style>
+<div class="wrap">
+<header>
+  <div class="eyebrow">Island Tours &middot; Caribbean Tour Marketplace</div>
+  <h1>Island Tours Feature Register</h1>
+  <p class="sub">Every implemented feature across the operator dashboard, admin dashboard, staff system,
+  traveller account, public website, backend platform, email programme and infrastructure -
+  compiled from the full technical documentation, with the minimum implementation time for each.</p>
+</header>
+<div class="stats">
+  <div class="stat"><b>168</b><span>Features</span></div>
+  <div class="stat"><b>5,432</b><span>Minimum hours</span></div>
+  <div class="stat"><b>271,600</b><span>Total at 50/hr</span></div>
+  <div class="stat"><b>60</b><span>Rows added to your list</span></div>
+</div>
+<p class="legend"><span class="chip">added</span> marks features found in the technical docs that were not yet
+in your original 114-row sheet. Unmarked rows come from your sheet (wording cleaned up).</p>
+<div class="tablebox">
+<table>
+<thead><tr><th>#</th><th>Feature</th><th class="num">Time (hrs)</th><th class="num">Cost (per hr)</th><th class="num">Total</th></tr></thead>
+<tbody>
+<tr class="sec"><td colspan="2">Tour Operator Features (Operator Dashboard)</td><td class="num">1,112</td><td class="num"></td><td class="num">55,600</td></tr>
+<tr><td class="num sn">1</td><td>Tour operator segmentation and account data model</td><td class="num">16</td><td class="num">50</td><td class="num">800</td></tr>
+<tr><td class="num sn">2</td><td>Tour operator authentication and onboarding workflow with email verification and guided setup</td><td class="num">24</td><td class="num">50</td><td class="num">1,200</td></tr>
+<tr><td class="num sn">3</td><td>Tour operator dashboard: application shell, role-aware navigation and KPI overview</td><td class="num">40</td><td class="num">50</td><td class="num">2,000</td></tr>
+<tr><td class="num sn">4</td><td>Tour creation workflow: multi-step wizard integrated with the admin review pipeline</td><td class="num">40</td><td class="num">50</td><td class="num">2,000</td></tr>
+<tr><td class="num sn">5</td><td>Operator verification and approval workflow with a pending / verified / rejected status lifecycle</td><td class="num">24</td><td class="num">50</td><td class="num">1,200</td></tr>
+<tr><td class="num sn">6</td><td>Tour listing management: media, localized descriptions, pricing, inclusions and exclusions, meeting points and add-ons</td><td class="num">80</td><td class="num">50</td><td class="num">4,000</td></tr>
+<tr><td class="num sn">7</td><td>Per-tour availability configuration: recurring schedules and date-level exceptions</td><td class="num">40</td><td class="num">50</td><td class="num">2,000</td></tr>
+<tr><td class="num sn">8</td><td>Commission tier selection per tour with eligibility gating, plus Destination Spotlight request submission</td><td class="num">24</td><td class="num">50</td><td class="num">1,200</td></tr>
+<tr><td class="num sn">9</td><td>Booking management for owned tours: balance payment links and traveller non-payment reporting</td><td class="num">40</td><td class="num">50</td><td class="num">2,000</td></tr>
+<tr><td class="num sn">10</td><td>Earnings, settlement and payout history reporting</td><td class="num">24</td><td class="num">50</td><td class="num">1,200</td></tr>
+<tr><td class="num sn">11</td><td>Operator team management: staff seats with scoped, limited permissions</td><td class="num">24</td><td class="num">50</td><td class="num">1,200</td></tr>
+<tr><td class="num sn">12</td><td>iCal calendar synchronization: tokenized, rotatable and revocable bookings and departures feeds (.ics)</td><td class="num">24</td><td class="num">50</td><td class="num">1,200</td></tr>
+<tr><td class="num sn">13</td><td>Calendar management: month view with per-departure occupancy, close/reopen controls for days and slots, and manual departure creation</td><td class="num">40</td><td class="num">50</td><td class="num">2,000</td></tr>
+<tr><td class="num sn">14</td><td>Availability management: departure inventory, capacity adjustments, sold-out marking and reopen controls</td><td class="num">40</td><td class="num">50</td><td class="num">2,000</td></tr>
+<tr><td class="num sn">15</td><td>Operator-scoped booking listings with filtering and detail views</td><td class="num">16</td><td class="num">50</td><td class="num">800</td></tr>
+<tr><td class="num sn">16</td><td>Cancellation request queue within the operator dashboard</td><td class="num">16</td><td class="num">50</td><td class="num">800</td></tr>
+<tr><td class="num sn">17</td><td>Operator-scoped customer directory with per-customer booking statistics</td><td class="num">24</td><td class="num">50</td><td class="num">1,200</td></tr>
+<tr><td class="num sn">18</td><td>Operator payment and settlement history views with ledger-derived statuses</td><td class="num">16</td><td class="num">50</td><td class="num">800</td></tr>
+<tr><td class="num sn">19</td><td>Tour submission tracking: review status, moderator notes and change history</td><td class="num">24</td><td class="num">50</td><td class="num">1,200</td></tr>
+<tr><td class="num sn">20</td><td>Operator notification inbox and transactional email pipeline</td><td class="num">24</td><td class="num">50</td><td class="num">1,200</td></tr>
+<tr><td class="num sn">21</td><td>Operator media gallery: upload, organization and asset reuse</td><td class="num">32</td><td class="num">50</td><td class="num">1,600</td></tr>
+<tr><td class="num sn">22</td><td>In-dashboard translation management for operator-authored content</td><td class="num">32</td><td class="num">50</td><td class="num">1,600</td></tr>
+<tr><td class="num sn">23</td><td>Commercial tier administration: 30-day tier lock and derived deposit percentage</td><td class="num">24</td><td class="num">50</td><td class="num">1,200</td></tr>
+<tr><td class="num sn">24</td><td>Tier-based ranking engine with a nightly demand-signal job assigning the &quot;Likely to sell out&quot; badge</td><td class="num">40</td><td class="num">50</td><td class="num">2,000</td></tr>
+<tr><td class="num sn">25</td><td>Weekly recurring schedule configuration with per-schedule start times</td><td class="num">24</td><td class="num">50</td><td class="num">1,200</td></tr>
+<tr><td class="num sn">26</td><td>Daily capacity limits and per-booking traveller limit enforcement</td><td class="num">16</td><td class="num">50</td><td class="num">800</td></tr>
+<tr><td class="num sn">27</td><td>Bulk blackout-date management and a one-tap &quot;close today&quot; control</td><td class="num">16</td><td class="num">50</td><td class="num">800</td></tr>
+<tr><td class="num sn">28</td><td>Publish-readiness validation panel: requirement checklist gating publication</td><td class="num">24</td><td class="num">50</td><td class="num">1,200</td></tr>
+<tr><td class="num sn">29</td><td>Per-tour payment model selection (operator link / on arrival / paid in full)</td><td class="num">16</td><td class="num">50</td><td class="num">800</td></tr>
+<tr><td class="num sn">30</td><td>Automated operator email notifications on booking confirmation</td><td class="num">16</td><td class="num">50</td><td class="num">800</td></tr>
+<tr><td class="num sn">31</td><td>Manual translation overrides across the six non-English locales</td><td class="num">24</td><td class="num">50</td><td class="num">1,200</td></tr>
+<tr><td class="num sn">32</td><td>Advanced pricing engine: per-person age-band pricing versus whole-unit / private charter pricing, with extra-guest surcharge and day/overnight charter handling <span class="chip">added</span></td><td class="num">56</td><td class="num">50</td><td class="num">2,800</td></tr>
+<tr><td class="num sn">33</td><td>Live-edit gate for published tours: staged revisions, field-level diffs, review round-trip and post-rejection revival <span class="chip">added</span></td><td class="num">64</td><td class="num">50</td><td class="num">3,200</td></tr>
+<tr><td class="num sn">34</td><td>Operator conditions module: per-tour terms document authoring enforced through a checkout acknowledgment gate <span class="chip">added</span></td><td class="num">32</td><td class="num">50</td><td class="num">1,600</td></tr>
+<tr><td class="num sn">35</td><td>Global availability calendar with a cross-tour daily agenda: month/week/day views, close-all-today and data-freshness confirmation <span class="chip">added</span></td><td class="num">48</td><td class="num">50</td><td class="num">2,400</td></tr>
+<tr><td class="num sn">36</td><td>Operator business settings: company profile, social links, payout provider selection and payment configuration <span class="chip">added</span></td><td class="num">16</td><td class="num">50</td><td class="num">800</td></tr>
+<tr><td class="num sn">37</td><td>Operator profile and account security management (avatar, password) <span class="chip">added</span></td><td class="num">16</td><td class="num">50</td><td class="num">800</td></tr>
+<tr><td class="num sn">38</td><td>Dashboard command palette (Cmd+K) with role-scoped entity search and quick actions <span class="chip">added</span></td><td class="num">16</td><td class="num">50</td><td class="num">800</td></tr>
+<tr class="sec"><td colspan="2">Admin (Island Tours) Features (Admin Dashboard)</td><td class="num">1,496</td><td class="num"></td><td class="num">74,800</td></tr>
+<tr><td class="num sn">39</td><td>Destination management with seeded-row deletion protection and region grouping</td><td class="num">40</td><td class="num">50</td><td class="num">2,000</td></tr>
+<tr><td class="num sn">40</td><td>Global 19-category taxonomy management</td><td class="num">32</td><td class="num">50</td><td class="num">1,600</td></tr>
+<tr><td class="num sn">41</td><td>Activity hub management with editorial content blocks and comparison tables</td><td class="num">48</td><td class="num">50</td><td class="num">2,400</td></tr>
+<tr><td class="num sn">42</td><td>Curated collection management with manual ordering and dynamic query modes</td><td class="num">40</td><td class="num">50</td><td class="num">2,000</td></tr>
+<tr><td class="num sn">43</td><td>Editorial content and FAQ block management across all public page types</td><td class="num">32</td><td class="num">50</td><td class="num">1,600</td></tr>
+<tr><td class="num sn">44</td><td>Destination Spotlight request adjudication: approve or reject, capped at three per destination</td><td class="num">16</td><td class="num">50</td><td class="num">800</td></tr>
+<tr><td class="num sn">45</td><td>Editorial flag curation, including &quot;Locals&#x27; Favourite&quot;, with coverage tracking</td><td class="num">16</td><td class="num">50</td><td class="num">800</td></tr>
+<tr><td class="num sn">46</td><td>Homepage hero and destination feature curation</td><td class="num">24</td><td class="num">50</td><td class="num">1,200</td></tr>
+<tr><td class="num sn">47</td><td>Review moderation: approve, hold or reject, bulk actions and operator response management</td><td class="num">24</td><td class="num">50</td><td class="num">1,200</td></tr>
+<tr><td class="num sn">48</td><td>Cancellation handling and refund processing queue with refund-entitlement computation</td><td class="num">32</td><td class="num">50</td><td class="num">1,600</td></tr>
+<tr><td class="num sn">49</td><td>Operator non-payment confirmation workflow: deposit forfeiture and capacity release</td><td class="num">16</td><td class="num">50</td><td class="num">800</td></tr>
+<tr><td class="num sn">50</td><td>Force-majeure exemption management for island-wide date ranges</td><td class="num">16</td><td class="num">50</td><td class="num">800</td></tr>
+<tr><td class="num sn">51</td><td>Operator onboarding administration and tour submission status review</td><td class="num">32</td><td class="num">50</td><td class="num">1,600</td></tr>
+<tr><td class="num sn">52</td><td>Platform staff account administration</td><td class="num">24</td><td class="num">50</td><td class="num">1,200</td></tr>
+<tr><td class="num sn">53</td><td>Global platform settings configuration</td><td class="num">24</td><td class="num">50</td><td class="num">1,200</td></tr>
+<tr><td class="num sn">54</td><td>Payment gateway configuration and credential management (Stripe and Mollie, admin-switchable)</td><td class="num">24</td><td class="num">50</td><td class="num">1,200</td></tr>
+<tr><td class="num sn">55</td><td>Provider-backed live currency conversion at checkout</td><td class="num">24</td><td class="num">50</td><td class="num">1,200</td></tr>
+<tr><td class="num sn">56</td><td>Category administration: per-category page content and SEO metadata management</td><td class="num">24</td><td class="num">50</td><td class="num">1,200</td></tr>
+<tr><td class="num sn">57</td><td>Dashboard analytics: sales, revenue and refund metrics, trend graphs and an activity feed</td><td class="num">48</td><td class="num">50</td><td class="num">2,400</td></tr>
+<tr><td class="num sn">58</td><td>Locals&#x27; favourites curation and post-booking recommendation engine administration (thank-you page and email placements)</td><td class="num">40</td><td class="num">50</td><td class="num">2,000</td></tr>
+<tr><td class="num sn">59</td><td>Tour attribute dictionary: definition management and per-tour value assignment</td><td class="num">24</td><td class="num">50</td><td class="num">1,200</td></tr>
+<tr><td class="num sn">60</td><td>Email activity tracking and administration of the transactional and operator email engine</td><td class="num">48</td><td class="num">50</td><td class="num">2,400</td></tr>
+<tr><td class="num sn">61</td><td>Pages CMS: permalink-based page creation with rich text and server-side HTML sanitization</td><td class="num">40</td><td class="num">50</td><td class="num">2,000</td></tr>
+<tr><td class="num sn">62</td><td>Global site settings and configuration management</td><td class="num">16</td><td class="num">50</td><td class="num">800</td></tr>
+<tr><td class="num sn">63</td><td>Site-wide SEO administration and server-side tracking configuration</td><td class="num">24</td><td class="num">50</td><td class="num">1,200</td></tr>
+<tr><td class="num sn">64</td><td>AI translation administration with provider-agnostic model routing across eight switchable providers</td><td class="num">48</td><td class="num">50</td><td class="num">2,400</td></tr>
+<tr><td class="num sn">65</td><td>Cookie consent integration and management (Consent Mode v2)</td><td class="num">16</td><td class="num">50</td><td class="num">800</td></tr>
+<tr><td class="num sn">66</td><td>Instagram feed integration administration: connection, sync scheduling, curation and layout control</td><td class="num">40</td><td class="num">50</td><td class="num">2,000</td></tr>
+<tr><td class="num sn">67</td><td>Platform review aggregation with a switchable provider (Trustpilot / Google)</td><td class="num">24</td><td class="num">50</td><td class="num">1,200</td></tr>
+<tr><td class="num sn">68</td><td>Transactional and scheduled marketing email administration</td><td class="num">32</td><td class="num">50</td><td class="num">1,600</td></tr>
+<tr><td class="num sn">69</td><td>Custom script injection engine: admin-managed vendor snippets rendered on public pages</td><td class="num">24</td><td class="num">50</td><td class="num">1,200</td></tr>
+<tr><td class="num sn">70</td><td>Global operations calendar spanning all operators&#x27; departures, bookings, schedules and exceptions</td><td class="num">40</td><td class="num">50</td><td class="num">2,000</td></tr>
+<tr><td class="num sn">71</td><td>Customer administration with bulk email and one-click review request dispatch</td><td class="num">24</td><td class="num">50</td><td class="num">1,200</td></tr>
+<tr><td class="num sn">72</td><td>Operator payout and settlement administration: mark-as-paid with confirmation and undo</td><td class="num">32</td><td class="num">50</td><td class="num">1,600</td></tr>
+<tr><td class="num sn">73</td><td>Full tour lifecycle administration, including availability and exceptions, within the tour wizard</td><td class="num">48</td><td class="num">50</td><td class="num">2,400</td></tr>
+<tr><td class="num sn">74</td><td>Submission moderation queue: change requests and publication of newly submitted tours (FIFO lane)</td><td class="num">32</td><td class="num">50</td><td class="num">1,600</td></tr>
+<tr><td class="num sn">75</td><td>Content-change moderation queue for live tours with field-level diff review</td><td class="num">40</td><td class="num">50</td><td class="num">2,000</td></tr>
+<tr><td class="num sn">76</td><td>Multi-model payment orchestration: deposit via operator link, on arrival, paid in full and operator-collected</td><td class="num">40</td><td class="num">50</td><td class="num">2,000</td></tr>
+<tr><td class="num sn">77</td><td>Tour badge administration (Sponsored, Most Popular, Likely to Sell Out, New) with precedence rules</td><td class="num">16</td><td class="num">50</td><td class="num">800</td></tr>
+<tr><td class="num sn">78</td><td>Unified administration of page content, FAQs, translations and localization</td><td class="num">40</td><td class="num">50</td><td class="num">2,000</td></tr>
+<tr><td class="num sn">79</td><td>Search dropdown and popular-link curation administration</td><td class="num">16</td><td class="num">50</td><td class="num">800</td></tr>
+<tr><td class="num sn">80</td><td>Role and permission administration: RBAC and PBAC with ~140 deny-by-default permissions</td><td class="num">56</td><td class="num">50</td><td class="num">2,800</td></tr>
+<tr><td class="num sn">81</td><td>Tour search and filter engine: relevance ranking, tier-aware ordering and typeahead suggestions</td><td class="num">48</td><td class="num">50</td><td class="num">2,400</td></tr>
+<tr><td class="num sn">82</td><td>Platform-wide financial reporting: gross booking value, commission and refunds</td><td class="num">32</td><td class="num">50</td><td class="num">1,600</td></tr>
+<tr><td class="num sn">83</td><td>Booking outcome analytics: commit rates, funnel and payment-mix breakdowns</td><td class="num">24</td><td class="num">50</td><td class="num">1,200</td></tr>
+<tr><td class="num sn">84</td><td>Centralized media library: signed uploads, bulk operations and shared pickers for images and video</td><td class="num">40</td><td class="num">50</td><td class="num">2,000</td></tr>
+<tr><td class="num sn">85</td><td>Site-wide translation workspace: seven-locale coverage matrix with per-field AI translation</td><td class="num">48</td><td class="num">50</td><td class="num">2,400</td></tr>
+<tr><td class="num sn">86</td><td>WhatsApp support integration with a dashboard-managed number and deep links across site and email surfaces <span class="chip">added</span></td><td class="num">8</td><td class="num">50</td><td class="num">400</td></tr>
+<tr class="sec"><td colspan="2">Staff &amp; Teams Features</td><td class="num">184</td><td class="num"></td><td class="num">9,200</td></tr>
+<tr><td class="num sn">87</td><td>Role-based dashboard access with predefined permission sets</td><td class="num">16</td><td class="num">50</td><td class="num">800</td></tr>
+<tr><td class="num sn">88</td><td>Catalog curation and editorial operations under assigned rights</td><td class="num">16</td><td class="num">50</td><td class="num">800</td></tr>
+<tr><td class="num sn">89</td><td>Review moderation and customer support operations</td><td class="num">16</td><td class="num">50</td><td class="num">800</td></tr>
+<tr><td class="num sn">90</td><td>Read access to operator tour listings and operational readiness statuses</td><td class="num">8</td><td class="num">50</td><td class="num">400</td></tr>
+<tr><td class="num sn">91</td><td>Cancellation request processing within permitted scope</td><td class="num">8</td><td class="num">50</td><td class="num">400</td></tr>
+<tr><td class="num sn">92</td><td>Designation-scoped visibility into operator and platform metrics</td><td class="num">8</td><td class="num">50</td><td class="num">400</td></tr>
+<tr><td class="num sn">93</td><td>Unified Staff &amp; Teams engine: a single seat model for platform staff and operator teams, reusable designation templates, and effective-permission computation with grant ceilings and permission floors <span class="chip">added</span></td><td class="num">64</td><td class="num">50</td><td class="num">3,200</td></tr>
+<tr><td class="num sn">94</td><td>Seat lifecycle management: email invitations, acceptance, activation and suspension with immediate session revocation <span class="chip">added</span></td><td class="num">32</td><td class="num">50</td><td class="num">1,600</td></tr>
+<tr><td class="num sn">95</td><td>Dedicated staff login surface with enumeration-proof sign-in, forgot-password and reset flows <span class="chip">added</span></td><td class="num">16</td><td class="num">50</td><td class="num">800</td></tr>
+<tr class="sec"><td colspan="2">Traveller / Customer Account Features</td><td class="num">256</td><td class="num"></td><td class="num">12,800</td></tr>
+<tr><td class="num sn">96</td><td>Traveller account area: booking and payment listings with summary statistics</td><td class="num">32</td><td class="num">50</td><td class="num">1,600</td></tr>
+<tr><td class="num sn">97</td><td>Booking tracking page: design and dynamic implementation</td><td class="num">24</td><td class="num">50</td><td class="num">1,200</td></tr>
+<tr><td class="num sn">98</td><td>Self-service cancellation flow with refund-outcome state handling</td><td class="num">24</td><td class="num">50</td><td class="num">1,200</td></tr>
+<tr><td class="num sn">99</td><td>Tokenized marketing email unsubscribe page</td><td class="num">8</td><td class="num">50</td><td class="num">400</td></tr>
+<tr><td class="num sn">100</td><td>Review submission page accessed through signed, secured links</td><td class="num">16</td><td class="num">50</td><td class="num">800</td></tr>
+<tr><td class="num sn">101</td><td>Traveller login page: design and dynamic implementation</td><td class="num">16</td><td class="num">50</td><td class="num">800</td></tr>
+<tr><td class="num sn">102</td><td>Automatic traveller account provisioning on first booking, with welcome / set-password email <span class="chip">added</span></td><td class="num">24</td><td class="num">50</td><td class="num">1,200</td></tr>
+<tr><td class="num sn">103</td><td>Booking-reference lookup authentication (email + reference) with lost-reference recovery and rate limiting <span class="chip">added</span></td><td class="num">24</td><td class="num">50</td><td class="num">1,200</td></tr>
+<tr><td class="num sn">104</td><td>Booking session security: signed session tokens, masked thank-you rendering and enumeration-proof lookups <span class="chip">added</span></td><td class="num">32</td><td class="num">50</td><td class="num">1,600</td></tr>
+<tr><td class="num sn">105</td><td>Traveller profile management and printable payment receipts <span class="chip">added</span></td><td class="num">16</td><td class="num">50</td><td class="num">800</td></tr>
+<tr><td class="num sn">106</td><td>Self-service date-change engine: atomic seat swap within the free-cancellation window <span class="chip">added</span></td><td class="num">32</td><td class="num">50</td><td class="num">1,600</td></tr>
+<tr><td class="num sn">107</td><td>Add-to-calendar (ICS) export and confirmation resend from booking pages <span class="chip">added</span></td><td class="num">8</td><td class="num">50</td><td class="num">400</td></tr>
+<tr class="sec"><td colspan="2">Public Website (Frontend) Features</td><td class="num">1,088</td><td class="num"></td><td class="num">54,400</td></tr>
+<tr><td class="num sn">108</td><td>Slug registry integration for frontend routing and rendering: automatic 301 redirects and a 90-day slug reuse cooldown</td><td class="num">40</td><td class="num">50</td><td class="num">2,000</td></tr>
+<tr><td class="num sn">109</td><td>Public wishlist functionality: optimistic heart toggles backed by a list API</td><td class="num">16</td><td class="num">50</td><td class="num">800</td></tr>
+<tr><td class="num sn">110</td><td>Public site design system and page foundation: design tokens, typography scale, responsive layouts and motion standards</td><td class="num">64</td><td class="num">50</td><td class="num">3,200</td></tr>
+<tr><td class="num sn">111</td><td>Homepage: design and dynamic implementation (hero island search, trust strip, top experiences, testimonials, editorial banner, FAQs)</td><td class="num">40</td><td class="num">50</td><td class="num">2,000</td></tr>
+<tr><td class="num sn">112</td><td>Destination page: design and dynamic implementation (locals&#x27; favourites, collections, category quick links, editorial copy, FAQs, Instagram strip)</td><td class="num">40</td><td class="num">50</td><td class="num">2,000</td></tr>
+<tr><td class="num sn">113</td><td>All-tours listing page: design and dynamic implementation (filterable, sortable, paginated per-destination catalog)</td><td class="num">40</td><td class="num">50</td><td class="num">2,000</td></tr>
+<tr><td class="num sn">114</td><td>Category page: design and dynamic implementation (ranked grid, editorial content, three-tour visibility gating)</td><td class="num">32</td><td class="num">50</td><td class="num">1,600</td></tr>
+<tr><td class="num sn">115</td><td>Activity hub page: design and dynamic implementation (fast facts, curated picks, comparison table, local tips, related hubs)</td><td class="num">56</td><td class="num">50</td><td class="num">2,800</td></tr>
+<tr><td class="num sn">116</td><td>Collection page: design and dynamic implementation (curated grids, rationale copy, numbered and persona list styles)</td><td class="num">32</td><td class="num">50</td><td class="num">1,600</td></tr>
+<tr><td class="num sn">117</td><td>Tour detail page: design and dynamic implementation (gallery, content sections, meeting and pickup logic, reviews, related tours, structured data)</td><td class="num">72</td><td class="num">50</td><td class="num">3,600</td></tr>
+<tr><td class="num sn">118</td><td>Checkout page: design and dynamic implementation (contact, pickup, special requests, persistent summary, inline validation)</td><td class="num">64</td><td class="num">50</td><td class="num">3,200</td></tr>
+<tr><td class="num sn">119</td><td>Thank-you page: design and dynamic implementation (payment-model-aware confirmation, next steps, cross-sell, conversion event)</td><td class="num">32</td><td class="num">50</td><td class="num">1,600</td></tr>
+<tr><td class="num sn">120</td><td>Search results page: design and dynamic implementation</td><td class="num">24</td><td class="num">50</td><td class="num">1,200</td></tr>
+<tr><td class="num sn">121</td><td>Wishlist page: design and dynamic implementation</td><td class="num">16</td><td class="num">50</td><td class="num">800</td></tr>
+<tr><td class="num sn">122</td><td>Error and 404 pages: design and implementation</td><td class="num">8</td><td class="num">50</td><td class="num">400</td></tr>
+<tr><td class="num sn">123</td><td>Server-side tracking, SEO metadata, structured JSON-LD and sitemap generation</td><td class="num">48</td><td class="num">50</td><td class="num">2,400</td></tr>
+<tr><td class="num sn">124</td><td>Parallel and intercepting routes for operator condition documents: in-flow modal plus a persistent canonical URL</td><td class="num">16</td><td class="num">50</td><td class="num">800</td></tr>
+<tr><td class="num sn">125</td><td>Legal page suite: six CMS-backed pages plus cookie preference management</td><td class="num">16</td><td class="num">50</td><td class="num">800</td></tr>
+<tr><td class="num sn">126</td><td>Dynamic booking widget: live availability calendar, time slots, party and age-band selection, add-ons and server-authoritative quotes across seven locales <span class="chip">added</span></td><td class="num">96</td><td class="num">50</td><td class="num">4,800</td></tr>
+<tr><td class="num sn">127</td><td>Payment method interface: inline card element plus PayPal and iDEAL redirects, a collapsed method list and a processing page with settle-on-return <span class="chip">added</span></td><td class="num">40</td><td class="num">50</td><td class="num">2,000</td></tr>
+<tr><td class="num sn">128</td><td>Global navigation and footer system: island selector, category dropdown, search entry, language and currency switchers, mobile menu <span class="chip">added</span></td><td class="num">32</td><td class="num">50</td><td class="num">1,600</td></tr>
+<tr><td class="num sn">129</td><td>Site-wide search typeahead with grouped suggestions and a curated zero-state panel <span class="chip">added</span></td><td class="num">24</td><td class="num">50</td><td class="num">1,200</td></tr>
+<tr><td class="num sn">130</td><td>Standard tour card component: photo carousel, badge system and wishlist heart, shared across all listing surfaces <span class="chip">added</span></td><td class="num">32</td><td class="num">50</td><td class="num">1,600</td></tr>
+<tr><td class="num sn">131</td><td>Faceted filtering and sorting system: filter modal, URL-persisted state, applied chips, pagination and dual result counts <span class="chip">added</span></td><td class="num">40</td><td class="num">50</td><td class="num">2,000</td></tr>
+<tr><td class="num sn">132</td><td>Tour page review presentation: rating summary, star distribution, filtering and machine-translated reviews with a show-original toggle <span class="chip">added</span></td><td class="num">32</td><td class="num">50</td><td class="num">1,600</td></tr>
+<tr><td class="num sn">133</td><td>Seven-locale public site delivery with per-field English fallback and locale-prefixed routing <span class="chip">added</span></td><td class="num">56</td><td class="num">50</td><td class="num">2,800</td></tr>
+<tr><td class="num sn">134</td><td>Multi-currency display layer: geolocation-detected defaults, footer switcher and live re-pricing of mounted pages <span class="chip">added</span></td><td class="num">32</td><td class="num">50</td><td class="num">1,600</td></tr>
+<tr><td class="num sn">135</td><td>Rendering architecture: partial prerendering, cached data loaders with tag-based invalidation, streaming skeletons and a cross-application cache revalidation bridge <span class="chip">added</span></td><td class="num">48</td><td class="num">50</td><td class="num">2,400</td></tr>
+<tr class="sec"><td colspan="2">Backend Platform &amp; Core Engines</td><td class="num">776</td><td class="num"></td><td class="num">38,800</td></tr>
+<tr><td class="num sn">136</td><td>Booking engine: server-side quotes, reserve/confirm/cancel lifecycle, hold expiry, overbooking-proof atomic seat claims, immutable snapshots and instant confirmation <span class="chip">added</span></td><td class="num">96</td><td class="num">50</td><td class="num">4,800</td></tr>
+<tr><td class="num sn">137</td><td>Availability engine: weekly schedules and exceptions materialized into a rolling 12-month departure inventory, with nightly refresh and bookability recomputation <span class="chip">added</span></td><td class="num">80</td><td class="num">50</td><td class="num">4,000</td></tr>
+<tr><td class="num sn">138</td><td>Server-authoritative pricing and quote engine: tamper-proof totals, deposit and balance splits, add-ons and pickup zones <span class="chip">added</span></td><td class="num">48</td><td class="num">50</td><td class="num">2,400</td></tr>
+<tr><td class="num sn">139</td><td>Commission tier engine: five tiers, a 30-day change lock, commission snapshotting and deposit-percentage derivation <span class="chip">added</span></td><td class="num">32</td><td class="num">50</td><td class="num">1,600</td></tr>
+<tr><td class="num sn">140</td><td>Eligibility engine: 90-day provisional window, nightly evaluation, notification, grace period and automatic demotion <span class="chip">added</span></td><td class="num">40</td><td class="num">50</td><td class="num">2,000</td></tr>
+<tr><td class="num sn">141</td><td>Nightly quality-score computation and a canonical ranking query with a diversity pass <span class="chip">added</span></td><td class="num">32</td><td class="num">50</td><td class="num">1,600</td></tr>
+<tr><td class="num sn">142</td><td>Destination Spotlight lifecycle: request, approval, active window and expiry, with a 35% commission overlay and max-3 enforcement <span class="chip">added</span></td><td class="num">24</td><td class="num">50</td><td class="num">1,200</td></tr>
+<tr><td class="num sn">143</td><td>Settlement ledger engine: per-booking money position, post-cancellation-window payout eligibility and reversal self-healing <span class="chip">added</span></td><td class="num">40</td><td class="num">50</td><td class="num">2,000</td></tr>
+<tr><td class="num sn">144</td><td>FX and multi-currency engine: immutable rate history, ECB rate provider, booking-time snapshots and PSP charge-rate reconciliation <span class="chip">added</span></td><td class="num">40</td><td class="num">50</td><td class="num">2,000</td></tr>
+<tr><td class="num sn">145</td><td>Stripe payment processing: payment intents, signature-verified idempotent webhooks and refund execution with retry <span class="chip">added</span></td><td class="num">48</td><td class="num">50</td><td class="num">2,400</td></tr>
+<tr><td class="num sn">146</td><td>Mollie payment provider: switchable PSP with hosted checkout, webhook reconciliation and provider-routed refunds <span class="chip">added</span></td><td class="num">32</td><td class="num">50</td><td class="num">1,600</td></tr>
+<tr><td class="num sn">147</td><td>Cancellation engine: unified free-cancellation window, refund verdict computation, seat release and forfeiture workflow <span class="chip">added</span></td><td class="num">32</td><td class="num">50</td><td class="num">1,600</td></tr>
+<tr><td class="num sn">148</td><td>Authentication platform: session engine, ordered guard chain, brute-force limits and four isolated login surfaces <span class="chip">added</span></td><td class="num">56</td><td class="num">50</td><td class="num">2,800</td></tr>
+<tr><td class="num sn">149</td><td>Background job platform: queue infrastructure, scheduled jobs, a transactional outbox and the nightly commercial pipeline <span class="chip">added</span></td><td class="num">40</td><td class="num">50</td><td class="num">2,000</td></tr>
+<tr><td class="num sn">150</td><td>OCTO-standard distribution API: supplier, tour and availability endpoints with capability negotiation and HMAC-signed webhooks <span class="chip">added</span></td><td class="num">56</td><td class="num">50</td><td class="num">2,800</td></tr>
+<tr><td class="num sn">151</td><td>Review platform backend: booking-gated submission, moderation lifecycle, rating aggregates and the invitation loop <span class="chip">added</span></td><td class="num">48</td><td class="num">50</td><td class="num">2,400</td></tr>
+<tr><td class="num sn">152</td><td>Media pipeline: Cloudinary signed uploads, asynchronous processing, metadata extraction and transformation policy <span class="chip">added</span></td><td class="num">32</td><td class="num">50</td><td class="num">1,600</td></tr>
+<tr class="sec"><td colspan="2">Emails &amp; Notifications</td><td class="num">240</td><td class="num"></td><td class="num">12,000</td></tr>
+<tr><td class="num sn">153</td><td>Booking confirmation email: wireframe-exact templating across seven locales and four payment models, with calendar attachment <span class="chip">added</span></td><td class="num">40</td><td class="num">50</td><td class="num">2,000</td></tr>
+<tr><td class="num sn">154</td><td>Cancellation email suite: traveller acknowledgment, operator notice, admin work item and refund-verdict-aware confirmations <span class="chip">added</span></td><td class="num">24</td><td class="num">50</td><td class="num">1,200</td></tr>
+<tr><td class="num sn">155</td><td>Pre-tour reminder email dispatched 24 hours before departure in island-local time, with logistics and cross-sell content <span class="chip">added</span></td><td class="num">16</td><td class="num">50</td><td class="num">800</td></tr>
+<tr><td class="num sn">156</td><td>Review invitation and reminder emails with administrator-configured scheduling and a suppression matrix <span class="chip">added</span></td><td class="num">16</td><td class="num">50</td><td class="num">800</td></tr>
+<tr><td class="num sn">157</td><td>Post-trip marketing email with consent capture and one-click unsubscribe <span class="chip">added</span></td><td class="num">16</td><td class="num">50</td><td class="num">800</td></tr>
+<tr><td class="num sn">158</td><td>Operator onboarding email sequence: a nine-email drip with send windows and suppression rules <span class="chip">added</span></td><td class="num">40</td><td class="num">50</td><td class="num">2,000</td></tr>
+<tr><td class="num sn">159</td><td>Account and authentication email set: welcome, invitations, password reset, verification and email change (dark-mode-safe templates) <span class="chip">added</span></td><td class="num">16</td><td class="num">50</td><td class="num">800</td></tr>
+<tr><td class="num sn">160</td><td>Email delivery spine: exactly-once send log, suppression records, per-entity timelines and administrative resend <span class="chip">added</span></td><td class="num">32</td><td class="num">50</td><td class="num">1,600</td></tr>
+<tr><td class="num sn">161</td><td>In-application notification inbox: bell feed, sidebar badges, login digest and permission-gated audience fan-out <span class="chip">added</span></td><td class="num">40</td><td class="num">50</td><td class="num">2,000</td></tr>
+<tr class="sec"><td colspan="2">Infrastructure, Deployment &amp; Quality</td><td class="num">280</td><td class="num"></td><td class="num">14,000</td></tr>
+<tr><td class="num sn">162</td><td>Production VPS deployment: containerized stack, reverse proxy with TLS, PostgreSQL/Redis and a migrate-on-boot entrypoint <span class="chip">added</span></td><td class="num">32</td><td class="num">50</td><td class="num">1,600</td></tr>
+<tr><td class="num sn">163</td><td>CI/CD pipelines: automated build, test and deployment for the backend, with auto-deploy for both frontends <span class="chip">added</span></td><td class="num">24</td><td class="num">50</td><td class="num">1,200</td></tr>
+<tr><td class="num sn">164</td><td>Environment validation and a layered secrets model with rotation procedures <span class="chip">added</span></td><td class="num">8</td><td class="num">50</td><td class="num">400</td></tr>
+<tr><td class="num sn">165</td><td>Automated test coverage: 1,600+ backend assertions, including concurrency and overbooking scenarios, plus end-to-end suites <span class="chip">added</span></td><td class="num">80</td><td class="num">50</td><td class="num">4,000</td></tr>
+<tr><td class="num sn">166</td><td>Seed tooling: first-boot production bootstrap seed and a re-runnable demo dataset <span class="chip">added</span></td><td class="num">24</td><td class="num">50</td><td class="num">1,200</td></tr>
+<tr><td class="num sn">167</td><td>Dashboard extraction into an independently deployable application with parity verification <span class="chip">added</span></td><td class="num">64</td><td class="num">50</td><td class="num">3,200</td></tr>
+<tr><td class="num sn">168</td><td>Dashboard design system: token architecture, dark mode, unified data tables, status badges and lint-enforced rules <span class="chip">added</span></td><td class="num">48</td><td class="num">50</td><td class="num">2,400</td></tr>
+</tbody>
+<tfoot><tr><td></td><td>Grand total</td><td class="num">5,432</td><td class="num"></td><td class="num">271,600</td></tr></tfoot>
+</table>
+</div>
+<p class="note">Four duplicate rows from the original sheet (old serials 50, 51, 52 and 68) were merged into
+their earlier counterparts so the client-facing list contains no repeats. Times are minimum implementation
+estimates per feature; several features (booking widget, live-edit gate, tour editor) shipped across multiple
+revision rounds, so actual effort exceeds these minimums.</p>
+</div>
