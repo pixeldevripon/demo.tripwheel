@@ -1,0 +1,2020 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Island Tours VPS Runbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+
+<style>
+  :root {
+    --ground:      #F6F8F7;
+    --surface:     #FFFFFF;
+    --surface-2:   #ECF1EF;
+    --ink:         #12201D;
+    --ink-2:       #4B5C57;
+    --ink-3:       #7B8B85;
+    --rule:        #DCE4E1;
+    --rule-strong: #C3D0CC;
+    --accent:      #0B6E5F;
+    --accent-ink:  #06483E;
+    --accent-soft: #E3F0EC;
+    --warn:        #8E4E10;
+    --warn-soft:   #FAF0E1;
+    --warn-rule:   #E6C89A;
+    --danger:      #8E2420;
+    --danger-soft: #FAEAE8;
+    --danger-rule: #E5B3AE;
+    --code-bg:     #0E1C1A;
+    --code-ink:    #D6E4DF;
+    --code-dim:    #7E9A93;
+    --code-key:    #7FD4B8;
+    --code-str:    #E3C88A;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #0A1413;
+      --surface:     #10201D;
+      --surface-2:   #162924;
+      --ink:         #E6EFEB;
+      --ink-2:       #A6B8B2;
+      --ink-3:       #7B8F89;
+      --rule:        #21352F;
+      --rule-strong: #2E4841;
+      --accent:      #4FCFAF;
+      --accent-ink:  #8FE5CD;
+      --accent-soft: #11332B;
+      --warn:        #E0A45F;
+      --warn-soft:   #2C2010;
+      --warn-rule:   #57411E;
+      --danger:      #F0857C;
+      --danger-soft: #331513;
+      --danger-rule: #5C2A26;
+      --code-bg:     #061110;
+      --code-ink:    #CFE0DA;
+      --code-dim:    #6C8781;
+      --code-key:    #7FD4B8;
+      --code-str:    #E3C88A;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:      #0A1413;
+    --surface:     #10201D;
+    --surface-2:   #162924;
+    --ink:         #E6EFEB;
+    --ink-2:       #A6B8B2;
+    --ink-3:       #7B8F89;
+    --rule:        #21352F;
+    --rule-strong: #2E4841;
+    --accent:      #4FCFAF;
+    --accent-ink:  #8FE5CD;
+    --accent-soft: #11332B;
+    --warn:        #E0A45F;
+    --warn-soft:   #2C2010;
+    --warn-rule:   #57411E;
+    --danger:      #F0857C;
+    --danger-soft: #331513;
+    --danger-rule: #5C2A26;
+    --code-bg:     #061110;
+    --code-ink:    #CFE0DA;
+    --code-dim:    #6C8781;
+    --code-key:    #7FD4B8;
+    --code-str:    #E3C88A;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 0 24px 120px;
+  }
+
+  .prose { max-width: 70ch; }
+
+  /* ── Masthead ─────────────────────────────────────────────── */
+
+  header.masthead {
+    padding: 72px 0 40px;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 48px;
+  }
+
+  .eyebrow {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 18px;
+  }
+
+  h1 {
+    font-family: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+    font-weight: 700;
+    font-size: clamp(38px, 6vw, 62px);
+    line-height: 1.02;
+    letter-spacing: -0.025em;
+    margin: 0 0 20px;
+    text-wrap: balance;
+  }
+
+  .standfirst {
+    font-size: 20px;
+    line-height: 1.5;
+    color: var(--ink-2);
+    max-width: 62ch;
+    margin: 0 0 34px;
+  }
+
+  /* ── Table of contents ────────────────────────────────────── */
+
+  nav.toc {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-top: 8px;
+  }
+
+  nav.toc a {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-decoration: none;
+    color: var(--ink-2);
+    border: 1px solid var(--rule-strong);
+    border-radius: 2px;
+    padding: 5px 10px;
+    background: var(--surface);
+    transition: color .12s, border-color .12s, background .12s;
+  }
+
+  nav.toc a:hover,
+  nav.toc a:focus-visible {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  /* ── Steps ────────────────────────────────────────────────── */
+
+  section.step {
+    display: grid;
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 0 24px;
+    padding: 44px 0;
+    border-bottom: 1px solid var(--rule);
+    scroll-margin-top: 24px;
+  }
+
+  .step-num {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    padding-top: 12px;
+    border-top: 2px solid var(--accent);
+    align-self: start;
+  }
+
+  .step-body { min-width: 0; }
+
+  h2 {
+    font-family: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+    font-weight: 600;
+    font-size: clamp(26px, 3.4vw, 34px);
+    line-height: 1.12;
+    letter-spacing: -0.018em;
+    margin: 0 0 8px;
+    text-wrap: balance;
+  }
+
+  .step-why {
+    font-size: 17px;
+    color: var(--ink-2);
+    margin: 0 0 26px;
+    max-width: 66ch;
+  }
+
+  h3 {
+    font-family: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+    font-weight: 600;
+    font-size: 19px;
+    letter-spacing: -0.008em;
+    margin: 34px 0 10px;
+  }
+
+  h4 {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 28px 0 8px;
+  }
+
+  p { margin: 0 0 16px; max-width: 70ch; }
+
+  ul, ol { margin: 0 0 18px; padding-left: 22px; max-width: 70ch; }
+  li { margin-bottom: 7px; }
+
+  a { color: var(--accent); text-underline-offset: 3px; }
+
+  strong { font-weight: 700; color: var(--ink); }
+
+  code {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 0.87em;
+    background: var(--surface-2);
+    border-radius: 3px;
+    padding: 1.5px 5px;
+    color: var(--accent-ink);
+    word-break: break-word;
+  }
+
+  /* ── Code blocks ──────────────────────────────────────────── */
+
+  .code {
+    background: var(--code-bg);
+    border-radius: 4px;
+    margin: 0 0 20px;
+    overflow: hidden;
+    border: 1px solid transparent;
+  }
+
+  .code-label {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--code-dim);
+    padding: 10px 16px 0;
+  }
+
+  pre {
+    margin: 0;
+    padding: 14px 16px 16px;
+    overflow-x: auto;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 13.5px;
+    line-height: 1.62;
+    color: var(--code-ink);
+    tab-size: 2;
+  }
+
+  pre code {
+    background: none;
+    padding: 0;
+    color: inherit;
+    font-size: inherit;
+    word-break: normal;
+  }
+
+  pre .c { color: var(--code-dim); }
+  pre .k { color: var(--code-key); }
+  pre .s { color: var(--code-str); }
+
+  /* ── Tables ───────────────────────────────────────────────── */
+
+  .table-scroll {
+    overflow-x: auto;
+    margin: 0 0 22px;
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    background: var(--surface);
+  }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 15px;
+  }
+
+  th {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    text-align: left;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--rule-strong);
+    background: var(--surface-2);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+    font-variant-numeric: tabular-nums;
+  }
+
+  tr:last-child td { border-bottom: none; }
+
+  td code { font-size: 12.5px; white-space: nowrap; }
+  td.wrap-ok code { white-space: normal; }
+
+  .yes { color: var(--accent); font-weight: 700; }
+  .no  { color: var(--ink-3); }
+
+  /* ── Callouts ─────────────────────────────────────────────── */
+
+  .note {
+    border-left: 3px solid var(--rule-strong);
+    background: var(--surface);
+    padding: 14px 18px;
+    margin: 0 0 22px;
+    border-radius: 0 4px 4px 0;
+    max-width: 74ch;
+  }
+
+  .note p:last-child { margin-bottom: 0; }
+
+  .note .tag {
+    display: block;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+    color: var(--ink-3);
+  }
+
+  .note.trap { border-left-color: var(--danger); background: var(--danger-soft); }
+  .note.trap .tag { color: var(--danger); }
+
+  .note.warn { border-left-color: var(--warn); background: var(--warn-soft); }
+  .note.warn .tag { color: var(--warn); }
+
+  .note.tip { border-left-color: var(--accent); background: var(--accent-soft); }
+  .note.tip .tag { color: var(--accent); }
+
+  /* ── Checklist ────────────────────────────────────────────── */
+
+  ul.check {
+    list-style: none;
+    padding: 0;
+    max-width: 74ch;
+  }
+
+  ul.check li {
+    position: relative;
+    padding-left: 30px;
+    margin-bottom: 12px;
+  }
+
+  ul.check li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 6px;
+    width: 15px;
+    height: 15px;
+    border: 1.5px solid var(--rule-strong);
+    border-radius: 3px;
+    background: var(--surface);
+  }
+
+  /* ── Footer ───────────────────────────────────────────────── */
+
+  footer {
+    padding: 44px 0 0;
+    color: var(--ink-3);
+    font-size: 14px;
+  }
+
+  footer p { max-width: 74ch; }
+
+  @media (max-width: 680px) {
+    body { font-size: 16px; }
+    .wrap { padding: 0 18px 80px; }
+    section.step { grid-template-columns: 1fr; gap: 0; }
+    .step-num {
+      border-top: none;
+      border-left: 2px solid var(--accent);
+      padding: 0 0 0 10px;
+      margin-bottom: 14px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<header class="masthead">
+  <p class="eyebrow">Hostinger VPS · Caddy · Docker · PM2</p>
+  <h1>Island Tours VPS Runbook</h1>
+  <p class="standfirst">
+    Deploy the whole platform onto one Hostinger VPS: the NestJS API in Docker, the three
+    Next.js apps behind PM2, and Caddy in front handling every domain and certificate
+    automatically. Follow the steps in order — the order matters more than anything else here.
+  </p>
+
+  <nav class="toc">
+    <a href="#s0">0 · What you're deploying</a>
+    <a href="#s1">1 · Domains</a>
+    <a href="#s2">2 · DNS</a>
+    <a href="#s3">3 · Prepare the VPS</a>
+    <a href="#s4">4 · Get the code</a>
+    <a href="#s5">5 · Secrets</a>
+    <a href="#s6">6 · Backend</a>
+    <a href="#s7">7 · Caddy + SSL</a>
+    <a href="#s8">8 · Next.js apps</a>
+    <a href="#s9">9 · Smoke test</a>
+    <a href="#s10">10 · Redeploys</a>
+    <a href="#s11">11 · Database GUI</a>
+    <a href="#rec">Recommendations</a>
+    <a href="#ref">Env reference</a>
+    <a href="#trouble">Troubleshooting</a>
+  </nav>
+</header>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<section class="step" id="s0">
+  <div class="step-num">00</div>
+  <div class="step-body">
+    <h2>What you're deploying</h2>
+    <p class="step-why">
+      Four applications, one server. Everything talks to the backend over HTTPS; only the
+      backend touches the database.
+    </p>
+
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>App</th><th>Folder</th><th>How it runs</th><th>Local port</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Backend API</strong><br><span style="color:var(--ink-3)">NestJS 11 + Prisma 7</span></td>
+            <td><code>island-tour-development/backend</code></td>
+            <td>Docker Compose<br>(+ Postgres + Redis)</td>
+            <td><code>5050</code></td>
+          </tr>
+          <tr>
+            <td><strong>Public site</strong><br><span style="color:var(--ink-3)">travellers browse &amp; book</span></td>
+            <td><code>island-tour-development/frontend</code></td>
+            <td>PM2 → <code>next start</code></td>
+            <td><code>3000</code></td>
+          </tr>
+          <tr>
+            <td><strong>Dashboard</strong><br><span style="color:var(--ink-3)">operator + admin CRM</span></td>
+            <td><code>tripwheel-x-islandtours-dashboard</code></td>
+            <td>PM2 → <code>next start</code></td>
+            <td><code>3001</code></td>
+          </tr>
+          <tr>
+            <td><strong>Tripwheel app</strong><br><span style="color:var(--ink-3)">marketing + admin login door</span></td>
+            <td><code>tripwheel-app</code></td>
+            <td>PM2 → <code>next start</code></td>
+            <td><code>3002</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>The order you must deploy in</h3>
+    <p>
+      Not a preference — a dependency chain. The Next.js builds call the backend while they
+      prerender pages, so a build against a dead API produces a broken site.
+    </p>
+    <ol>
+      <li><strong>DNS first.</strong> Caddy cannot issue a certificate for a name that doesn't resolve to your server.</li>
+      <li><strong>Backend second.</strong> It must be live at <code>https://api.…</code> and answering.</li>
+      <li><strong>Caddy third</strong>, so the API is reachable over HTTPS.</li>
+      <li><strong>Next.js apps last</strong>, because <code>next build</code> fetches from that HTTPS API.</li>
+    </ol>
+
+    <div class="note trap">
+      <span class="tag">Sizing</span>
+      <p>
+        Three Next.js production builds are memory-hungry. Give the VPS <strong>at least 4 GB RAM</strong>
+        and add swap (step 3). On a 2 GB plan the builds get OOM-killed halfway through with no
+        useful error.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<section class="step" id="s1">
+  <div class="step-num">01</div>
+  <div class="step-body">
+    <h2>Pick your domains — once, carefully</h2>
+    <p class="step-why">
+      This is the decision everything else copies. Get it wrong and you get a login loop that
+      looks like a bug in the code.
+    </p>
+
+    <p>
+      <strong>All four apps must live under one apex domain.</strong> The backend issues the
+      login session cookie scoped to a shared parent domain, so a dashboard on a different apex
+      would sign in successfully and then behave as though nobody is logged in.
+    </p>
+
+    <p>This runbook uses <code>tripwheel.app</code> throughout. Substitute yours everywhere.</p>
+
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>Domain</th><th>Serves</th><th>Proxies to</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>api.tripwheel.app</code></td><td>Backend API</td><td><code>127.0.0.1:5050</code></td></tr>
+          <tr><td><code>islandtours.tripwheel.app</code></td><td>Public site</td><td><code>127.0.0.1:3000</code></td></tr>
+          <tr><td><code>dashboard.tripwheel.app</code></td><td>Dashboard (operators at <code>/portal</code>)</td><td><code>127.0.0.1:3001</code></td></tr>
+          <tr><td><code>tripwheel.app</code></td><td>Tripwheel app / admin door</td><td><code>127.0.0.1:3002</code></td></tr>
+          <tr><td><code>www.tripwheel.app</code></td><td>redirect → apex</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>Given that map, your shared cookie domain is:</p>
+
+    <div class="code">
+      <pre><code>COOKIE_DOMAIN=.tripwheel.app   <span class="c"># leading dot is required</span></code></pre>
+    </div>
+
+    <div class="note trap">
+      <span class="tag">Inconsistency in your own example files</span>
+      <p>
+        <code>frontend/.env.production.example</code> sets the public site to
+        <code>www.tripwheel.app</code> while <code>backend/.env.production.example</code> sets
+        <code>ISLAND_TOURS_URL=https://islandtours.tripwheel.app</code>. Those cannot both be the
+        public site. Pick one host for it and use that single value everywhere — this doc assumes
+        <code>islandtours.tripwheel.app</code>. If you'd rather the public site own
+        <code>www</code>, swap it consistently in <em>all</em> the places listed in the
+        <a href="#ref">env reference</a>.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<section class="step" id="s2">
+  <div class="step-num">02</div>
+  <div class="step-body">
+    <h2>Point DNS at the server</h2>
+    <p class="step-why">
+      Do this before touching Caddy. DNS changes need time to propagate, and Caddy's certificate
+      request fails if the name doesn't already resolve to your VPS.
+    </p>
+
+    <h3>Find your VPS IP</h3>
+    <p>Hostinger shows it in <em>VPS → Overview</em>. It looks like <code>203.0.113.45</code>.</p>
+
+    <h3>Add these records</h3>
+    <p>
+      In your DNS panel (Hostinger <em>Domains → DNS Zone</em>, or wherever the domain's
+      nameservers point):
+    </p>
+
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>Type</th><th>Name / Host</th><th>Value</th><th>TTL</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>A</code></td><td><code>@</code></td><td>your VPS IP</td><td>300</td></tr>
+          <tr><td><code>A</code></td><td><code>www</code></td><td>your VPS IP</td><td>300</td></tr>
+          <tr><td><code>A</code></td><td><code>api</code></td><td>your VPS IP</td><td>300</td></tr>
+          <tr><td><code>A</code></td><td><code>dashboard</code></td><td>your VPS IP</td><td>300</td></tr>
+          <tr><td><code>A</code></td><td><code>islandtours</code></td><td>your VPS IP</td><td>300</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      Use a short TTL (300 seconds) while you're setting up, then raise it to 3600 once
+      everything works. If your VPS also has an IPv6 address, add the matching
+      <code>AAAA</code> records with the same names.
+    </p>
+
+    <h3>Verify before continuing</h3>
+    <div class="code">
+      <div class="code-label">on your laptop</div>
+      <pre><code>dig +short api.tripwheel.app
+dig +short dashboard.tripwheel.app
+dig +short islandtours.tripwheel.app
+dig +short tripwheel.app</code></pre>
+    </div>
+    <p>Every one of them must print your VPS IP. If not, wait and retry — do not proceed.</p>
+
+    <div class="note warn">
+      <span class="tag">Cloudflare users</span>
+      <p>
+        If your domain sits behind Cloudflare, keep the proxy <strong>off</strong> (grey cloud)
+        for now. The orange cloud adds a second proxy hop; the backend is configured to trust
+        exactly one, so rate limiting would start counting Cloudflare's IP as every visitor.
+        Let Caddy own TLS. Turn the proxy on later only if you also adjust the trusted-hop count
+        in <code>backend/src/main.ts</code>.
+      </p>
+    </div>
+
+    <h3>Email DNS (needed for booking emails to arrive)</h3>
+    <p>
+      Transactional email goes through Resend. Add your domain in the Resend dashboard and paste
+      the <strong>DKIM</strong>, <strong>SPF</strong> and <strong>DMARC</strong> records it gives
+      you into the same DNS zone. Until that domain shows "verified", every booking confirmation,
+      password reset and operator invite silently fails to send.
+    </p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<section class="step" id="s3">
+  <div class="step-num">03</div>
+  <div class="step-body">
+    <h2>Prepare the VPS</h2>
+    <p class="step-why">
+      Ubuntu 24.04 LTS. Everything below is run once, on a fresh server.
+    </p>
+
+    <h3>a. Log in and create a deploy user</h3>
+    <p>Never run the apps as root.</p>
+
+    <div class="code">
+      <div class="code-label">ssh root@YOUR_VPS_IP</div>
+      <pre><code>apt update &amp;&amp; apt upgrade -y
+
+adduser deploy                    <span class="c"># set a password when asked</span>
+usermod -aG sudo deploy
+
+<span class="c"># copy your SSH key over so you can log in as deploy</span>
+rsync --archive --chown=deploy:deploy ~/.ssh /home/deploy/</code></pre>
+    </div>
+
+    <p>Open a <strong>second terminal</strong> and confirm <code>ssh deploy@YOUR_VPS_IP</code> works
+      <em>before</em> locking root out:</p>
+
+    <div class="code">
+      <div class="code-label">as root</div>
+      <pre><code>sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
+sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
+systemctl restart ssh</code></pre>
+    </div>
+
+    <h3>b. Firewall — only three ports</h3>
+    <div class="code">
+      <pre><code>ufw allow OpenSSH
+ufw allow 80/tcp        <span class="c"># Caddy: certificate challenge + http→https redirect</span>
+ufw allow 443/tcp       <span class="c"># Caddy: everything else</span>
+ufw --force enable
+ufw status</code></pre>
+    </div>
+    <p>
+      Postgres, Redis and the Node processes are never exposed. They only listen on
+      <code>127.0.0.1</code> or inside Docker's private network, and Caddy is the single front door.
+    </p>
+
+    <h3>c. Swap — stops builds getting killed</h3>
+    <div class="code">
+      <pre><code>fallocate -l 4G /swapfile
+chmod 600 /swapfile
+mkswap /swapfile
+swapon /swapfile
+echo '/swapfile none swap sw 0 0' &gt;&gt; /etc/fstab
+free -h</code></pre>
+    </div>
+
+    <h3>d. Docker</h3>
+    <div class="code">
+      <pre><code>curl -fsSL https://get.docker.com | sh
+usermod -aG docker deploy</code></pre>
+    </div>
+    <p>Log out and back in as <code>deploy</code> so the group membership takes effect, then check
+      <code>docker ps</code> runs without <code>sudo</code>.</p>
+
+    <h3>e. Node 22 + pnpm 10 + PM2</h3>
+    <p>These are for the Next.js apps — the backend never needs Node on the host, it ships inside its image.</p>
+
+    <div class="code">
+      <div class="code-label">as deploy</div>
+      <pre><code>curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install -y nodejs
+
+sudo corepack enable
+corepack prepare pnpm@10 --activate
+
+sudo npm install -g pm2
+
+node -v    <span class="c"># v22.x</span>
+pnpm -v    <span class="c"># 10.x</span></code></pre>
+    </div>
+
+    <h3>f. Caddy</h3>
+    <div class="code">
+      <pre><code>sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
+
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' \
+  | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' \
+  | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+
+sudo apt update &amp;&amp; sudo apt install -y caddy
+
+caddy version</code></pre>
+    </div>
+    <p>
+      Caddy installs as a systemd service, already running and serving a placeholder page on
+      port 80. You'll replace its config in step 7.
+    </p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<section class="step" id="s4">
+  <div class="step-num">04</div>
+  <div class="step-body">
+    <h2>Get the code onto the server</h2>
+    <p class="step-why">
+      Three separate repositories, cloned side by side, mirroring your local layout.
+    </p>
+
+    <h3>a. A deploy key for GitHub</h3>
+    <p>
+      The repos are private, so the server needs read access. Generate a key on the VPS and add
+      it to your GitHub account (<em>Settings → SSH and GPG keys</em>) — one account-level key
+      covers all three repos.
+    </p>
+
+    <div class="code">
+      <div class="code-label">as deploy, on the VPS</div>
+      <pre><code>ssh-keygen -t ed25519 -C "tripwheel-vps" -f ~/.ssh/id_ed25519 -N ""
+cat ~/.ssh/id_ed25519.pub          <span class="c"># paste this into GitHub</span>
+
+ssh -T git@github.com              <span class="c"># should greet you by username</span></code></pre>
+    </div>
+
+    <h3>b. Clone</h3>
+    <div class="code">
+      <pre><code>sudo mkdir -p /srv/tripwheel
+sudo chown deploy:deploy /srv/tripwheel
+cd /srv/tripwheel
+
+git clone -b prod git@github.com:pixeldevripon/island-tours.git island-tour-development
+git clone -b main git@github.com:pixeldevripon/dashbaord-tripwheel-x-islandtours.git tripwheel-x-islandtours-dashboard
+git clone -b main git@github.com:pixeldevripon/tripwheel.app.git tripwheel-app
+
+ls</code></pre>
+    </div>
+
+    <div class="note">
+      <span class="tag">Note</span>
+      <p>
+        The typo in <code>dashbaord-tripwheel-x-islandtours</code> is real — that is the actual
+        repository name. Also note the branches differ: <code>prod</code> for
+        <code>island-tour-development</code>, <code>main</code> for the other two.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<section class="step" id="s5">
+  <div class="step-num">05</div>
+  <div class="step-body">
+    <h2>Generate every secret once</h2>
+    <p class="step-why">
+      Several secrets must be <em>identical</em> across apps. Generate them all in one go, paste
+      them into a scratch note, and copy from there — that's how you avoid a mismatch that
+      produces no error, just silently broken behaviour.
+    </p>
+
+    <div class="code">
+      <div class="code-label">run once, keep the output</div>
+      <pre><code>echo "POSTGRES_PASSWORD=$(openssl rand -base64 24 | tr -d '/+=')"
+echo "REDIS_PASSWORD=$(openssl rand -base64 24 | tr -d '/+=')"
+echo "BETTER_AUTH_SECRET=$(openssl rand -base64 32)"
+echo "TRAVELER_SESSION_SECRET=$(openssl rand -base64 32)"
+echo "INTERNAL_API_SECRET=$(openssl rand -base64 32)"
+echo "REVALIDATE_SECRET=$(openssl rand -base64 32)"
+echo "ENCRYPTION_KEY=$(openssl rand -hex 32)"
+echo "ADMIN_PASSWORD=$(openssl rand -base64 18)"
+echo "SYSTEM_ADMIN_PASSWORD=$(openssl rand -base64 18)"</code></pre>
+    </div>
+
+    <p>What the shared ones do, in plain terms:</p>
+
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>Secret</th><th>Job</th><th>If it doesn't match</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>INTERNAL_API_SECRET</code></td>
+            <td>Lets the Next.js servers skip the API's per-IP rate limit while rendering pages</td>
+            <td>Builds hit <code>429</code> mid-render; logged-in users get bounced</td>
+          </tr>
+          <tr>
+            <td><code>REVALIDATE_SECRET</code></td>
+            <td>Lets the backend and dashboard clear the public site's page cache after a write</td>
+            <td>Public site keeps showing yesterday's prices; no error anywhere</td>
+          </tr>
+          <tr>
+            <td><code>ENCRYPTION_KEY</code></td>
+            <td>Encrypts Stripe keys and operator tokens stored in the database</td>
+            <td>Changing it later makes every stored credential unreadable — set it once and never rotate casually</td>
+          </tr>
+          <tr>
+            <td><code>BETTER_AUTH_SECRET</code></td>
+            <td>Signs staff/operator/admin login sessions</td>
+            <td>Changing it logs everyone out</td>
+          </tr>
+          <tr>
+            <td><code>TRAVELER_SESSION_SECRET</code></td>
+            <td>Signs traveller "look up my booking" tokens (deliberately separate)</td>
+            <td>Booking-reference login links stop working</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note warn">
+      <span class="tag">The backend refuses to boot without these</span>
+      <p>
+        The API validates its environment at startup and throws a readable error listing exactly
+        what's wrong. In production it <em>hard-fails</em> if <code>INTERNAL_API_SECRET</code> is
+        missing. Secrets under 32 characters are rejected, and any value containing
+        <code>change-me</code> is rejected as a leftover placeholder.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<section class="step" id="s6">
+  <div class="step-num">06</div>
+  <div class="step-body">
+    <h2>Deploy the backend</h2>
+    <p class="step-why">
+      One <code>docker compose up</code> brings up Postgres, Redis and the API together. Migrations
+      run automatically on every boot; seeding only when you ask for it.
+    </p>
+
+    <h3>a. The compose-level env file</h3>
+    <div class="code">
+      <div class="code-label">/srv/tripwheel/island-tour-development/.env</div>
+      <pre><code>cd /srv/tripwheel/island-tour-development
+cp .env.example .env
+nano .env</code></pre>
+    </div>
+
+    <div class="code">
+      <div class="code-label">fill it in like this</div>
+      <pre><code><span class="k">POSTGRES_USER</span>=island
+<span class="k">POSTGRES_PASSWORD</span>=<span class="s">&lt;from step 5&gt;</span>
+<span class="k">POSTGRES_DB</span>=island_tours
+
+<span class="k">REDIS_PASSWORD</span>=<span class="s">&lt;from step 5&gt;</span>
+
+<span class="c"># Bind the API to loopback ONLY — Caddy is the front door.</span>
+<span class="c"># Without the 127.0.0.1 prefix, port 5050 is open to the whole internet.</span>
+<span class="k">BACKEND_PORT</span>=127.0.0.1:5050
+<span class="k">BACKEND_IMAGE_TAG</span>=latest
+
+<span class="c"># true for the FIRST boot only (creates the admin user), then set back to false</span>
+<span class="k">RUN_SEED</span>=true
+
+<span class="c"># Empty on purpose: switches off the temporary --trace-deprecation debug flag</span>
+<span class="k">NODE_OPTIONS</span>=</code></pre>
+    </div>
+
+    <div class="note trap">
+      <span class="tag">Do not skip the 127.0.0.1</span>
+      <p>
+        <code>docker-compose.yml</code> publishes <code>${BACKEND_PORT:-5050}:5050</code>. Set
+        <code>BACKEND_PORT=5050</code> and Docker binds <code>0.0.0.0</code> — and Docker writes
+        its own iptables rules, so <strong>UFW will not protect you</strong>. Your API ends up
+        publicly reachable on port 5050 with no TLS. <code>BACKEND_PORT=127.0.0.1:5050</code>
+        expands to <code>127.0.0.1:5050:5050</code> and closes that hole.
+      </p>
+    </div>
+
+    <h3>b. The application env file</h3>
+    <div class="code">
+      <pre><code>cp backend/.env.production.example backend/.env.production
+nano backend/.env.production</code></pre>
+    </div>
+
+    <div class="note trap">
+      <span class="tag">First fix a typo in the example file</span>
+      <p>
+        <code>backend/.env.production.example</code> begins with the stray word <code>the</code>
+        before the first comment: <code>the # ────…</code>. Docker Compose parses that as a
+        malformed environment line and refuses to start the container. Delete those four
+        characters from the top of your copy.
+      </p>
+    </div>
+
+    <div class="code">
+      <div class="code-label">/srv/tripwheel/island-tour-development/backend/.env.production</div>
+      <pre><code><span class="c"># ── Public URLs ───────────────────────────────────────────────</span>
+<span class="k">BETTER_AUTH_URL</span>=https://api.tripwheel.app
+<span class="k">ISLAND_TOURS_URL</span>=https://islandtours.tripwheel.app
+<span class="k">PORTAL_URL</span>=https://dashboard.tripwheel.app/portal
+<span class="k">FRONTEND_URL</span>=https://islandtours.tripwheel.app
+
+<span class="c"># Every browser origin allowed to call the API. Comma-separated, NO SPACES.</span>
+<span class="c"># Miss one and that app's every request fails CORS — including its login.</span>
+<span class="k">CORS_ORIGINS</span>=https://islandtours.tripwheel.app,https://dashboard.tripwheel.app,https://tripwheel.app,https://www.tripwheel.app
+
+<span class="c"># Session cookie shared across the subdomains. Leading dot required.</span>
+<span class="k">COOKIE_DOMAIN</span>=.tripwheel.app
+
+<span class="c"># ── Secrets (step 5) ──────────────────────────────────────────</span>
+<span class="k">BETTER_AUTH_SECRET</span>=<span class="s">&lt;paste&gt;</span>
+<span class="k">TRAVELER_SESSION_SECRET</span>=<span class="s">&lt;paste&gt;</span>
+<span class="k">INTERNAL_API_SECRET</span>=<span class="s">&lt;paste&gt;</span>
+<span class="k">REVALIDATE_SECRET</span>=<span class="s">&lt;paste&gt;</span>
+<span class="k">ENCRYPTION_KEY</span>=<span class="s">&lt;paste — the hex one&gt;</span>
+
+<span class="c"># ── Admin accounts (created by the seed) ──────────────────────</span>
+<span class="k">ADMIN_EMAIL</span>=admin@tripwheel.app
+<span class="k">ADMIN_PASSWORD</span>=<span class="s">&lt;paste, min 12 chars&gt;</span>
+<span class="k">SYSTEM_ADMIN_EMAIL</span>=internal-admin@tripwheel.app
+<span class="k">SYSTEM_ADMIN_PASSWORD</span>=<span class="s">&lt;paste, min 12 chars&gt;</span>
+
+<span class="c"># ── Email (Resend) ────────────────────────────────────────────</span>
+<span class="c"># The MAIL_FROM domain must be verified in Resend (step 2).</span>
+<span class="c"># QUOTE the whole value — an unquoted space or &lt; breaks compose parsing.</span>
+<span class="k">RESEND_API_KEY</span>=re_xxxxxxxxxxxxxxxxxxxx
+<span class="k">MAIL_FROM</span>=<span class="s">"Island Tours &lt;noreply@tripwheel.app&gt;"</span>
+<span class="k">MAIL_REPLY_TO</span>=<span class="s">"Island Tours &lt;support@tripwheel.app&gt;"</span>
+
+<span class="c"># ── Cloudinary (image storage) ────────────────────────────────</span>
+<span class="k">CLOUDINARY_CLOUD_NAME</span>=<span class="s">&lt;your cloud&gt;</span>
+<span class="k">CLOUDINARY_API_KEY</span>=<span class="s">&lt;key&gt;</span>
+<span class="k">CLOUDINARY_API_SECRET</span>=<span class="s">&lt;secret&gt;</span>
+
+<span class="c"># ── Currency ──────────────────────────────────────────────────</span>
+<span class="k">FX_PROVIDER</span>=ecb
+<span class="k">FX_USD_TO_EUR</span>=0.92
+
+<span class="c"># ── Optional: Google sign-in, AI translation, Meta/Google Ads ──</span>
+<span class="c"># Leave blank to keep them off; the app boots fine without them.</span>
+<span class="k">GOOGLE_CLIENT_ID</span>=
+<span class="k">GOOGLE_CLIENT_SECRET</span>=
+<span class="k">TRANSLATION_PROVIDER_NAME</span>=
+<span class="k">TRANSLATION_API_KEY</span>=
+<span class="k">TRANSLATION_MODEL</span>=</code></pre>
+    </div>
+
+    <div class="note">
+      <span class="tag">Deliberately absent</span>
+      <p>
+        <code>DATABASE_URL</code>, <code>REDIS_HOST</code>, <code>REDIS_PORT</code>,
+        <code>NODE_ENV</code> and <code>PORT</code> must <strong>not</strong> be in this file —
+        <code>docker-compose.yml</code> builds them from the compose <code>.env</code> and
+        overrides anything you put here. Stripe keys aren't here either: they're stored encrypted
+        in the database and set from <em>Admin → Settings</em> after launch.
+      </p>
+    </div>
+
+    <h3>c. Build and start</h3>
+    <div class="code">
+      <pre><code>cd /srv/tripwheel/island-tour-development
+docker compose up -d --build
+
+<span class="c"># watch it come up — first build takes 10–20 minutes</span>
+docker compose logs -f backend</code></pre>
+    </div>
+
+    <p>A healthy first boot prints, in order:</p>
+    <div class="code">
+      <pre><code><span class="c">[entrypoint] Applying database migrations (prisma migrate deploy)...</span>
+<span class="c">[entrypoint] RUN_SEED=true -&gt; seeding database (prisma db seed)...</span>
+<span class="c">[entrypoint] Starting server -&gt; node dist/src/main.js</span></code></pre>
+    </div>
+
+    <h3>d. Turn the seed back off</h3>
+    <p>Once the first boot succeeded, edit <code>.env</code> and set <code>RUN_SEED=false</code>.
+      Leave it on and every redeploy re-runs the seed.</p>
+
+    <div class="code">
+      <pre><code>sed -i 's/^RUN_SEED=true/RUN_SEED=false/' .env
+docker compose up -d
+
+<span class="c"># local check — should return JSON</span>
+curl http://127.0.0.1:5050/api/v1/health</code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<section class="step" id="s7">
+  <div class="step-num">07</div>
+  <div class="step-body">
+    <h2>Caddy: every domain, HTTPS automatically</h2>
+    <p class="step-why">
+      This is the easy part. You write hostnames; Caddy obtains and renews the Let's Encrypt
+      certificates itself, redirects HTTP to HTTPS, and keeps them valid forever. There is no
+      certbot step and nothing to schedule.
+    </p>
+
+    <h3>Write the Caddyfile</h3>
+    <div class="code">
+      <pre><code>sudo nano /etc/caddy/Caddyfile</code></pre>
+    </div>
+
+    <div class="code">
+      <div class="code-label">/etc/caddy/Caddyfile</div>
+      <pre><code><span class="c"># Global options — the email Let's Encrypt uses for expiry warnings.</span>
+{
+	email admin@tripwheel.app
+}
+
+<span class="c"># ── Backend API ───────────────────────────────────────────────</span>
+api.tripwheel.app {
+	encode zstd gzip
+
+	<span class="c"># Optional: keep the API docs off the public internet.</span>
+	<span class="c"># Swagger is served in production too. Delete these 3 lines to leave it open.</span>
+	@docs path /api/docs*
+	respond @docs 404
+
+	reverse_proxy 127.0.0.1:5050
+	log {
+		output file /var/log/caddy/api.log
+	}
+}
+
+<span class="c"># ── Public traveller site ─────────────────────────────────────</span>
+islandtours.tripwheel.app {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:3000
+	log {
+		output file /var/log/caddy/islandtours.log
+	}
+}
+
+<span class="c"># ── Operator + admin dashboard ────────────────────────────────</span>
+dashboard.tripwheel.app {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:3001
+	log {
+		output file /var/log/caddy/dashboard.log
+	}
+}
+
+<span class="c"># ── Tripwheel marketing + admin login door ────────────────────</span>
+tripwheel.app {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:3002
+	log {
+		output file /var/log/caddy/tripwheel.log
+	}
+}
+
+<span class="c"># www → apex, permanently</span>
+www.tripwheel.app {
+	redir https://tripwheel.app{uri} permanent
+}</code></pre>
+    </div>
+
+    <h3>Apply it</h3>
+    <div class="code">
+      <pre><code>sudo caddy fmt --overwrite /etc/caddy/Caddyfile
+sudo caddy validate --config /etc/caddy/Caddyfile
+sudo systemctl reload caddy
+
+<span class="c"># watch certificates being issued</span>
+sudo journalctl -u caddy -f</code></pre>
+    </div>
+
+    <p>
+      Look for <code>certificate obtained successfully</code> once per domain. Then:
+    </p>
+
+    <div class="code">
+      <pre><code>curl -i https://api.tripwheel.app/api/v1/health</code></pre>
+    </div>
+
+    <p>A <code>200</code> over HTTPS means the API, TLS and DNS are all correct.</p>
+
+    <div class="note tip">
+      <span class="tag">Why Caddy needs no special tuning here</span>
+      <p>
+        Three things nginx would have needed explicit configuration for, Caddy already does:
+        it forwards <code>X-Forwarded-For</code> and <code>X-Forwarded-Proto</code> by default
+        (so rate limiting sees real visitor IPs), it <strong>streams</strong> request bodies
+        rather than buffering them (so Stripe webhook signature verification gets the raw bytes
+        intact), and it imposes <strong>no request body size limit</strong> (so media uploads
+        pass through). You don't need <code>proxy_set_header</code>,
+        <code>proxy_request_buffering off</code> or <code>client_max_body_size</code>.
+      </p>
+    </div>
+
+    <div class="note">
+      <span class="tag">Ignore this file</span>
+      <p>
+        <code>deploy/nginx/island-api.conf</code> exists in the repo from an earlier plan. You're
+        on Caddy — leave it alone. Do not install nginx alongside; both want port 80 and the
+        second one to start will fail.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<section class="step" id="s8">
+  <div class="step-num">08</div>
+  <div class="step-body">
+    <h2>Build and run the three Next.js apps</h2>
+    <p class="step-why">
+      Same recipe three times: write <code>.env.production</code>, install, build, then let PM2
+      keep it alive.
+    </p>
+
+    <div class="note trap">
+      <span class="tag">The single biggest Next.js gotcha</span>
+      <p>
+        Every <code>NEXT_PUBLIC_*</code> value is <strong>baked into the JavaScript at build
+        time</strong>, not read when the server starts. The <code>.env.production</code> file must
+        exist and be correct <em>before</em> you run <code>pnpm build</code>, and changing one of
+        those values later means a full rebuild — restarting PM2 does nothing.
+      </p>
+      <p>
+        Also: delete any <code>.env.local</code> on the server. Next loads it in production too
+        and it <em>overrides</em> <code>.env.production</code>, so a leftover dev file will
+        quietly point production at <code>localhost:5050</code>.
+      </p>
+    </div>
+
+    <h3>a. Public site — port 3000</h3>
+    <div class="code">
+      <div class="code-label">/srv/tripwheel/island-tour-development/frontend/.env.production</div>
+      <pre><code><span class="k">NEXT_PUBLIC_BACKEND_URL</span>=https://api.tripwheel.app
+<span class="k">NEXT_PUBLIC_SITE_URL</span>=https://islandtours.tripwheel.app
+
+<span class="c"># Server-only. Must equal the backend's INTERNAL_API_SECRET.</span>
+<span class="k">INTERNAL_API_SECRET</span>=<span class="s">&lt;same value as the backend&gt;</span>
+
+<span class="c"># Server-only. Accepts a comma-separated LIST so you can rotate in two deploys.</span>
+<span class="c"># Must contain the value the backend and dashboard send.</span>
+<span class="k">REVALIDATE_SECRET</span>=<span class="s">&lt;same value as the backend&gt;</span>
+
+<span class="c"># 'true' ONLY on the real production site — this fires live conversions.</span>
+<span class="k">NEXT_PUBLIC_ENABLE_TRACKING</span>=true
+
+<span class="c"># Optional</span>
+<span class="k">NEXT_PUBLIC_COOKIEBOT_CBID</span>=
+<span class="k">NEXT_PUBLIC_TRUSTPILOT_REVIEW_URL</span>=
+
+<span class="c"># Leave EMPTY. '1' exposes internal error detail to visitors.</span>
+<span class="k">NEXT_PUBLIC_ERROR_DEBUG</span>=</code></pre>
+    </div>
+
+    <div class="code">
+      <pre><code>cd /srv/tripwheel/island-tour-development/frontend
+rm -f .env.local
+nano .env.production          <span class="c"># paste the above</span>
+
+pnpm install --frozen-lockfile
+pnpm build</code></pre>
+    </div>
+
+    <h3>b. Dashboard — port 3001</h3>
+    <div class="code">
+      <div class="code-label">/srv/tripwheel/tripwheel-x-islandtours-dashboard/.env.production</div>
+      <pre><code><span class="k">NEXT_PUBLIC_BACKEND_URL</span>=https://api.tripwheel.app
+
+<span class="c"># Server-only. Must equal the backend's INTERNAL_API_SECRET.</span>
+<span class="k">INTERNAL_API_SECRET</span>=<span class="s">&lt;same value as the backend&gt;</span>
+
+<span class="c"># MUST be byte-identical to the backend's COOKIE_DOMAIN.</span>
+<span class="c"># A mismatch here is an infinite login redirect loop.</span>
+<span class="k">COOKIE_DOMAIN</span>=.tripwheel.app
+
+<span class="c"># Where the dashboard sends "clear the cache" pings after an operator saves.</span>
+<span class="k">REVALIDATE_TARGET_URL</span>=https://islandtours.tripwheel.app/api/revalidate
+<span class="k">REVALIDATE_SECRET</span>=<span class="s">&lt;same value as the public site&gt;</span>
+
+<span class="k">NEXT_PUBLIC_FACING_APP_URL</span>=https://islandtours.tripwheel.app
+<span class="k">NEXT_PUBLIC_ADMIN_LOGIN_URL</span>=https://tripwheel.app</code></pre>
+    </div>
+
+    <div class="code">
+      <pre><code>cd /srv/tripwheel/tripwheel-x-islandtours-dashboard
+rm -f .env.local
+nano .env.production
+
+pnpm install --frozen-lockfile
+pnpm build</code></pre>
+    </div>
+
+    <h3>c. Tripwheel app — port 3002</h3>
+    <div class="code">
+      <div class="code-label">/srv/tripwheel/tripwheel-app/.env.production</div>
+      <pre><code><span class="k">NEXT_PUBLIC_SITE_URL</span>=https://tripwheel.app
+<span class="k">NEXT_PUBLIC_API_URL</span>=https://api.tripwheel.app
+<span class="k">NEXT_PUBLIC_DASHBOARD_URL</span>=https://dashboard.tripwheel.app
+
+<span class="c"># 'landing' = marketing homepage · 'login' = the site is just the login door.</span>
+<span class="c"># Build-time flag — changing it needs a rebuild, not a restart.</span>
+<span class="k">NEXT_PUBLIC_HOMEPAGE</span>=landing</code></pre>
+    </div>
+
+    <div class="code">
+      <pre><code>cd /srv/tripwheel/tripwheel-app
+rm -f .env.local
+nano .env.production
+
+pnpm install --frozen-lockfile
+pnpm build</code></pre>
+    </div>
+
+    <div class="note warn">
+      <span class="tag">If a build gets killed</span>
+      <p>
+        A build that dies with <code>Killed</code> and no stack ran out of memory. Confirm swap is
+        on (<code>free -h</code>), build the apps one at a time, and if it still fails cap the
+        heap: <code>NODE_OPTIONS=--max-old-space-size=2048 pnpm build</code>.
+      </p>
+    </div>
+
+    <h3>d. Run all three under PM2</h3>
+    <div class="code">
+      <div class="code-label">/srv/tripwheel/ecosystem.config.js</div>
+      <pre><code>module.exports = {
+  apps: [
+    {
+      name: 'island-public',
+      cwd: '/srv/tripwheel/island-tour-development/frontend',
+      script: './node_modules/next/dist/bin/next',
+      args: 'start -p 3000',
+      env: { NODE_ENV: 'production' },
+      max_memory_restart: '900M',
+    },
+    {
+      name: 'island-dashboard',
+      cwd: '/srv/tripwheel/tripwheel-x-islandtours-dashboard',
+      script: './node_modules/next/dist/bin/next',
+      args: 'start -p 3001',
+      env: { NODE_ENV: 'production' },
+      max_memory_restart: '900M',
+    },
+    {
+      name: 'tripwheel-app',
+      cwd: '/srv/tripwheel/tripwheel-app',
+      script: './node_modules/next/dist/bin/next',
+      args: 'start -p 3002',
+      env: { NODE_ENV: 'production' },
+      max_memory_restart: '600M',
+    },
+  ],
+};</code></pre>
+    </div>
+
+    <div class="code">
+      <pre><code>cd /srv/tripwheel
+nano ecosystem.config.js       <span class="c"># paste the above</span>
+
+pm2 start ecosystem.config.js
+pm2 status
+pm2 logs --lines 50
+
+<span class="c"># survive a reboot</span>
+pm2 save
+pm2 startup systemd -u deploy --hp /home/deploy
+<span class="c"># ^ prints one sudo command — run it, then `pm2 save` once more</span></code></pre>
+    </div>
+
+    <p>
+      All three now listen on <code>127.0.0.1</code> only, and Caddy (already configured in
+      step 7) is serving them over HTTPS.
+    </p>
+
+    <div class="note">
+      <span class="tag">Image optimization moved onto your CPU</span>
+      <p>
+        No action needed at deploy time — <code>sharp</code> is an optional dependency of Next 16
+        and <code>pnpm install</code> already pulled it in. But be aware of what changed: on
+        Vercel, resizing every tour photo was the platform's job. Here it is your VPS's, and the
+        public site renders a lot of Cloudinary imagery. If CPU sits high under real traffic,
+        see the recommendations section — the fix is to let Cloudinary do the resizing rather
+        than to buy a bigger server.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<section class="step" id="s9">
+  <div class="step-num">09</div>
+  <div class="step-body">
+    <h2>Smoke test before you tell anyone</h2>
+    <p class="step-why">
+      Most cross-app misconfiguration is silent. These checks make it loud.
+    </p>
+
+    <ul class="check">
+      <li><code>https://api.tripwheel.app/api/v1/health</code> returns <code>200</code>.</li>
+      <li><code>https://islandtours.tripwheel.app</code> loads and shows real tours (not an empty state).</li>
+      <li><code>https://dashboard.tripwheel.app/portal</code> shows the operator login screen.</li>
+      <li><code>https://tripwheel.app</code> loads; <code>https://www.tripwheel.app</code> redirects to it.</li>
+      <li>Log into the dashboard with <code>ADMIN_EMAIL</code> / <code>ADMIN_PASSWORD</code> — <strong>then reload the page</strong>. Staying logged in after a reload is what proves <code>COOKIE_DOMAIN</code> is right.</li>
+      <li>Open the browser console on the dashboard. Zero CORS errors means <code>CORS_ORIGINS</code> is right.</li>
+      <li>Edit a tour's price in the dashboard, save, then reload the public tour page. The new price appearing within seconds proves <code>REVALIDATE_SECRET</code> and <code>REVALIDATE_TARGET_URL</code> are right.</li>
+      <li>Trigger a password reset. The email arriving proves Resend + your DNS records are right.</li>
+      <li>Confirm port 5050 is <em>not</em> reachable from outside: from your laptop, <code>curl --max-time 5 http://YOUR_VPS_IP:5050/api/v1/health</code> must time out or refuse.</li>
+    </ul>
+
+    <div class="note tip">
+      <span class="tag">Two files that must stay in sync across repos</span>
+      <p>
+        Neither of these fails to compile, so they only show up in production:
+        <code>lib/cache-tags.ts</code> must be <strong>byte-identical</strong> in the dashboard and
+        the public site (a drifted tag is rejected as <code>unknown_tag</code> at runtime), and the
+        dashboard's <code>lib/config/rbac.ts</code> must mirror the backend's
+        <code>src/config/roles.config.ts</code> or the dashboard mis-gates its own UI. Diff them
+        after any deploy that touched either repo.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<section class="step" id="s10">
+  <div class="step-num">10</div>
+  <div class="step-body">
+    <h2>Redeploying, later</h2>
+    <p class="step-why">
+      Day-to-day commands, once the server is set up.
+    </p>
+
+    <h4>Backend</h4>
+    <div class="code">
+      <pre><code>cd /srv/tripwheel/island-tour-development
+git pull
+docker compose up -d --build        <span class="c"># migrations run automatically on boot</span>
+docker compose logs -f backend</code></pre>
+    </div>
+
+    <h4>Any Next.js app</h4>
+    <div class="code">
+      <pre><code>cd /srv/tripwheel/island-tour-development/frontend   <span class="c"># or the other two</span>
+git pull
+pnpm install --frozen-lockfile
+pnpm build
+pm2 restart island-public</code></pre>
+    </div>
+
+    <h4>Caddy config change</h4>
+    <div class="code">
+      <pre><code>sudo nano /etc/caddy/Caddyfile
+sudo caddy validate --config /etc/caddy/Caddyfile
+sudo systemctl reload caddy         <span class="c"># reload, not restart — zero downtime</span></code></pre>
+    </div>
+
+    <h4>Database backup — set this up on day one</h4>
+    <div class="code">
+      <pre><code><span class="c"># one-off dump</span>
+cd /srv/tripwheel/island-tour-development
+docker compose exec -T postgres pg_dump -U island island_tours \
+  | gzip &gt; ~/backups/island_tours_$(date +%F).sql.gz
+
+<span class="c"># nightly at 03:00 — run `crontab -e` and add:</span>
+0 3 * * * cd /srv/tripwheel/island-tour-development &amp;&amp; docker compose exec -T postgres pg_dump -U island island_tours | gzip &gt; /home/deploy/backups/island_tours_$(date +\%F).sql.gz</code></pre>
+    </div>
+    <p>
+      Create the folder first (<code>mkdir -p ~/backups</code>) and copy the dumps off the server
+      — a backup that lives only on the machine it's backing up is not a backup.
+    </p>
+
+    <h4>Useful one-liners</h4>
+    <div class="code">
+      <pre><code>docker compose ps                          <span class="c"># backend stack status</span>
+docker compose logs --tail=100 backend     <span class="c"># recent API logs</span>
+pm2 status                                 <span class="c"># the three Next.js apps</span>
+pm2 logs island-dashboard --lines 100
+sudo journalctl -u caddy -n 100            <span class="c"># TLS / proxy issues</span>
+df -h &amp;&amp; free -h                            <span class="c"># disk and memory</span></code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<section class="step" id="s11">
+  <div class="step-num">11</div>
+  <div class="step-body">
+    <h2>Working with the database directly</h2>
+    <p class="step-why">
+      Postgres runs inside Docker with <strong>no published port</strong> — nothing on the
+      internet can reach it. That's correct, and you don't have to give it up to get a GUI.
+      Below: how to get a proper table browser without ever exposing the database.
+    </p>
+
+    <h3>a. Open a loopback port on the VPS (do this once)</h3>
+    <p>
+      Add a port mapping bound to <code>127.0.0.1</code>. This makes Postgres reachable
+      <em>from the VPS itself only</em> — still invisible to the internet, and still behind
+      your firewall. It's what makes an SSH tunnel possible.
+    </p>
+
+    <div class="code">
+      <div class="code-label">island-tour-development/docker-compose.yml → postgres service</div>
+      <pre><code>  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    <span class="k">ports:</span>
+      <span class="c"># Loopback ONLY. Never write '5432:5432' — that publishes it to the world,</span>
+      <span class="c"># and Docker's own iptables rules bypass UFW.</span>
+      - <span class="s">'127.0.0.1:5432:5432'</span>
+    environment:
+      ...</code></pre>
+    </div>
+
+    <div class="code">
+      <pre><code>docker compose up -d postgres
+
+<span class="c"># confirm it is loopback-bound: the line must start with 127.0.0.1</span>
+docker compose ps postgres
+sudo ss -tlnp | grep 5432</code></pre>
+    </div>
+
+    <div class="note trap">
+      <span class="tag">Never run docker-compose.dev.yml on the VPS</span>
+      <p>
+        The dev stack in the same repo publishes Postgres as <code>'5432:5432'</code> — bound to
+        <strong>all interfaces</strong>, with the default credentials
+        <code>island</code>/<code>island</code>. It's written that way on purpose for laptop
+        development. On a public server it is an open database. Always pass no <code>-f</code>
+        flag on the VPS, so compose uses <code>docker-compose.yml</code>.
+      </p>
+    </div>
+
+    <h3>b. Tunnel it to your laptop</h3>
+    <p>
+      Run this on your Mac and leave the terminal open. It makes the VPS database appear at
+      <code>localhost:5433</code> on your machine — encrypted through SSH, with no open port
+      anywhere.
+    </p>
+
+    <div class="code">
+      <div class="code-label">on your laptop</div>
+      <pre><code>ssh -N -L 5433:127.0.0.1:5432 deploy@YOUR_VPS_IP</code></pre>
+    </div>
+
+    <p>
+      Port <code>5433</code> on purpose — your Mac already runs Postgres 17.4 on
+      <code>5432</code> for local development, and reusing it would silently connect your GUI to
+      the wrong database.
+    </p>
+
+    <h3>c. Point a GUI at it</h3>
+    <p>While the tunnel is open, connect with these settings:</p>
+
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Field</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>Host</td><td><code>127.0.0.1</code></td></tr>
+          <tr><td>Port</td><td><code>5433</code></td></tr>
+          <tr><td>Database</td><td><code>island_tours</code> <span style="color:var(--ink-3)">(underscore)</span></td></tr>
+          <tr><td>User</td><td><code>POSTGRES_USER</code> from the compose <code>.env</code></td></tr>
+          <tr><td>Password</td><td><code>POSTGRES_PASSWORD</code> from the compose <code>.env</code></td></tr>
+          <tr><td>SSL</td><td>disable — the tunnel already encrypts it</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>Any of these work. Pick one:</p>
+    <ul>
+      <li><strong>TablePlus</strong> — fastest and cleanest on macOS; also speaks Redis, so one app covers both. Free tier is enough.</li>
+      <li><strong>DBeaver</strong> — free, no limits, heavier UI, best if you write real SQL.</li>
+      <li><strong>pgAdmin 4</strong> — the official tool; the most "admin panel" of the three.</li>
+    </ul>
+
+    <h3>d. Prisma Studio — the schema-aware option</h3>
+    <p>
+      A desktop client shows raw tables. Prisma Studio shows your <em>model</em> — relations are
+      clickable, enums are dropdowns, JSON columns are formatted. Best for eyeballing a booking
+      and its operator and its tour together.
+    </p>
+
+    <div class="code">
+      <div class="code-label">with the tunnel from (b) still open, on your laptop</div>
+      <pre><code>cd ~/devripon/tripwheel-x-islandtours/island-tour-development/backend
+
+DATABASE_URL="postgresql://island:YOUR_PASSWORD@127.0.0.1:5433/island_tours?schema=public" \
+  pnpm prisma studio
+
+<span class="c"># opens http://localhost:5555</span></code></pre>
+    </div>
+
+    <div class="note warn">
+      <span class="tag">Prisma Studio writes are real writes</span>
+      <p>
+        Studio bypasses every business rule the API enforces. Editing
+        <code>tier_key</code> without also updating <code>tier_rank</code>,
+        <code>commission_tier</code> and <code>deposit_pct</code> leaves a tour permanently
+        mis-ranked; a confirmed booking with a null <code>commission_amount</code> is treated as
+        data corruption and blocks conversion tracking. Use Studio to <strong>read</strong>. Make
+        changes through the dashboard, and if you must write SQL, take a backup first.
+      </p>
+    </div>
+
+    <h3>e. Quick queries without any of the above</h3>
+    <p>Sometimes you just want to check one number. SSH in and use psql directly:</p>
+
+    <div class="code">
+      <pre><code>cd /srv/tripwheel/island-tour-development
+
+<span class="c"># interactive shell</span>
+docker compose exec postgres psql -U island -d island_tours
+
+<span class="c"># one-off query</span>
+docker compose exec postgres psql -U island -d island_tours \
+  -c "SELECT status, count(*) FROM bookings GROUP BY status;"</code></pre>
+    </div>
+
+    <p>Handy psql commands once you're in: <code>\dt</code> lists tables, <code>\d bookings</code>
+      describes one, <code>\q</code> quits.</p>
+
+    <h3>f. A browser-based GUI on a subdomain (convenient, but read this first)</h3>
+    <p>
+      If you genuinely want <code>db.tripwheel.app</code> in a browser from anywhere, run
+      <strong>pgweb</strong> as a container on the internal network and put Caddy's basic auth in
+      front. Understand the trade: you are turning a database that is currently unreachable into
+      one that is one stolen password away. The SSH tunnel above is strictly safer, and only
+      slightly less convenient.
+    </p>
+
+    <div class="code">
+      <div class="code-label">add to docker-compose.yml</div>
+      <pre><code>  pgweb:
+    image: sosedoff/pgweb:latest
+    restart: unless-stopped
+    environment:
+      PGWEB_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+    ports:
+      - <span class="s">'127.0.0.1:8081:8081'</span>
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - island-net</code></pre>
+    </div>
+
+    <div class="code">
+      <div class="code-label">generate a password hash, then add the site to your Caddyfile</div>
+      <pre><code>caddy hash-password
+<span class="c"># prompts twice, then prints a $2a$... hash — copy it into the block below</span></code></pre>
+    </div>
+
+    <p>
+      The <code>basic_auth</code> directive below needs <strong>Caddy 2.8 or newer</strong> (it was
+      spelled <code>basicauth</code> before). Check with <code>caddy version</code>; the apt repo
+      in step 3 installs a current build.
+    </p>
+
+    <div class="code">
+      <div class="code-label">/etc/caddy/Caddyfile</div>
+      <pre><code>db.tripwheel.app {
+	basic_auth {
+		ripon $2a$14$PASTE_THE_HASH_HERE
+	}
+	reverse_proxy 127.0.0.1:8081
+}</code></pre>
+    </div>
+
+    <p>
+      Add an <code>A</code> record for <code>db</code> pointing at the VPS, then
+      <code>sudo systemctl reload caddy</code>. Caddy issues the certificate automatically, as
+      with every other host.
+    </p>
+
+    <h3>g. Should you use Neon instead?</h3>
+    <p>
+      Neon is managed Postgres in the cloud with its own web SQL editor and table browser — no
+      tunnel, no container, nice branching for staging. It's a real option, but it changes the
+      shape of this deployment:
+    </p>
+
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th></th><th>Postgres in Docker (this guide)</th><th>Neon</th></tr></thead>
+        <tbody>
+          <tr><td>Cost</td><td>Included in the VPS</td><td>Free tier, then monthly</td></tr>
+          <tr><td>Query latency</td><td>Same machine — sub-millisecond</td><td>Network hop per query; noticeably slower unless the region matches your VPS</td></tr>
+          <tr><td>GUI</td><td>Tunnel + client (above)</td><td>Built into their dashboard</td></tr>
+          <tr><td>Backups</td><td>You set up the cron in step 10</td><td>Automatic, point-in-time restore</td></tr>
+          <tr><td>Setup change</td><td>None</td><td>Must edit <code>docker-compose.yml</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      If you do switch: delete the <code>postgres</code> service from
+      <code>docker-compose.yml</code> <em>and</em> remove the <code>DATABASE_URL</code> line from
+      the backend service's <code>environment:</code> block, then put your Neon connection string
+      in <code>backend/.env.production</code> instead. That override is the catch — leave it in
+      place and compose will keep pointing the app at a Postgres container that no longer exists.
+    </p>
+
+    <div class="note tip">
+      <span class="tag">My recommendation</span>
+      <p>
+        Stay on the Docker Postgres. This app is chatty with its database — booking flows,
+        ranking jobs and page prerendering all issue many small queries — and same-machine
+        latency is worth more here than a hosted SQL editor. Use the SSH tunnel plus TablePlus;
+        it takes ten seconds to open and exposes nothing.
+      </p>
+    </div>
+
+    <h3>Redis, while you're here</h3>
+    <p>
+      The password lives in the compose <code>.env</code>, not in your shell — load it first, or
+      <code>redis-cli</code> authenticates with an empty string and every command returns
+      <code>NOAUTH</code>.
+    </p>
+    <div class="code">
+      <pre><code>cd /srv/tripwheel/island-tour-development
+export $(grep '^REDIS_PASSWORD=' .env | xargs)
+
+docker compose exec redis redis-cli -a "$REDIS_PASSWORD" ping        <span class="c"># PONG</span>
+docker compose exec redis redis-cli -a "$REDIS_PASSWORD" keys 'bull:*'</code></pre>
+    </div>
+    <p>
+      Those <code>bull:*</code> keys are the background job queues — nightly ranking, email
+      sending, translations. If they're piling up and never draining, the worker side is stuck.
+    </p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<section class="step" id="rec">
+  <div class="step-num">REC</div>
+  <div class="step-body">
+    <h2>Recommendations</h2>
+    <p class="step-why">
+      Opinions, not instructions — what I'd actually do with this stack, in the order I'd do it.
+      Each one says why, so you can disagree with the reasoning rather than just the conclusion.
+    </p>
+
+    <h3>Before you launch</h3>
+
+    <h4>1 · Keep Postgres in Docker; reach it by SSH tunnel</h4>
+    <p>
+      Don't move to Neon and don't put a database GUI on a public subdomain. This app is unusually
+      chatty with its database — a single tour page issues many small queries, and the nightly
+      ranking job walks the whole catalogue — so same-machine latency is worth more here than a
+      hosted SQL editor. The tunnel from §11b takes ten seconds to open, exposes nothing, and
+      gives you the same TablePlus window you'd get from a managed provider.
+    </p>
+    <p>
+      Revisit only if backups become the thing you keep forgetting. Neon's automatic point-in-time
+      restore is a genuine advantage over a cron job you have to remember to test — but solve that
+      by testing the cron job, not by moving the database.
+    </p>
+
+    <h4>2 · Add a healthcheck to the backend service</h4>
+    <p>
+      <code>docker-compose.yml</code> health-checks Postgres and Redis but not the API itself, so
+      a backend that boots and then wedges still shows as <code>Up</code> and Docker never
+      restarts it. One block fixes that:
+    </p>
+    <div class="code">
+      <div class="code-label">docker-compose.yml → backend service</div>
+      <pre><code>    healthcheck:
+      test: ['CMD-SHELL', 'node -e "fetch(\'http://127.0.0.1:5050/api/v1/health\').then(r=&gt;process.exit(r.ok?0:1)).catch(()=&gt;process.exit(1))"']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s</code></pre>
+    </div>
+    <p>
+      <code>start_period: 60s</code> matters — migrations run before the server listens, and
+      without it a slow migration looks like a failing container.
+    </p>
+
+    <h4>3 · Take the backup off the server on day one</h4>
+    <p>
+      The cron job in §10 writes dumps to the same disk as the database it's dumping. That
+      protects you from <code>DROP TABLE</code> and from nothing else. Add a second line that
+      copies them somewhere else — Hostinger snapshots, an S3 bucket, <code>rclone</code> to
+      Google Drive, anything off-box.
+    </p>
+    <p>
+      Then <strong>restore one</strong> into a scratch database before you launch. An untested
+      backup is a guess. This is the single highest-value hour in this entire document.
+    </p>
+
+    <h4>4 · Keep Swagger closed</h4>
+    <p>
+      The <code>@docs path</code> block in the step-7 Caddyfile is written as optional. Make it
+      permanent. Swagger is served in production by deliberate decision, which is fine on a
+      private network and free reconnaissance on a public one — it publishes every route, every
+      DTO field and the exact auth header names. You lose nothing: run the API locally when you
+      need the docs.
+    </p>
+
+    <h4>5 · Set <code>NEXT_PUBLIC_ENABLE_TRACKING=false</code> anywhere that isn't production</h4>
+    <p>
+      That flag exists precisely because staging also builds with <code>NODE_ENV=production</code>.
+      Get it wrong on a staging host and your test bookings land in real Google Ads and Meta
+      conversion data, which is expensive to notice and worse to unpick. If you add a staging
+      deployment later, this is the first variable to set.
+    </p>
+
+    <h3>First week</h3>
+
+    <h4>6 · Uptime monitoring on the health endpoint</h4>
+    <p>
+      UptimeRobot's free tier checking <code>https://api.tripwheel.app/api/v1/health</code> every
+      five minutes is enough. Without it, the way you find out the API is down is an operator
+      messaging you. Add a second check on the public site's homepage — the API can be perfectly
+      healthy while PM2 has the storefront in a crash loop.
+    </p>
+
+    <h4>7 · Sentry, before you need it</h4>
+    <p>
+      Self-hosting means no platform error dashboard. When a traveller reports "checkout didn't
+      work", your only evidence is <code>pm2 logs</code> and whatever scrolled past. The backend
+      repo's ops guide has the setup steps in §8 — do it while things are calm, not while
+      debugging.
+    </p>
+
+    <h4>8 · fail2ban and unattended upgrades</h4>
+    <div class="code">
+      <pre><code>sudo apt install -y fail2ban unattended-upgrades
+sudo dpkg-reconfigure --priority=low unattended-upgrades</code></pre>
+    </div>
+    <p>
+      Key-only SSH already blocks password brute-force; fail2ban stops the log noise and the
+      wasted CPU. Unattended upgrades keep the OS patched without you scheduling it. Two commands,
+      no ongoing cost.
+    </p>
+
+    <h4>9 · Watch disk, not just memory</h4>
+    <p>
+      Docker image layers accumulate on every <code>--build</code>, and Hostinger VPS disks are
+      small. A full disk takes down Postgres in a way that reads like corruption. Monthly:
+    </p>
+    <div class="code">
+      <pre><code>df -h
+docker system prune -af --filter "until=168h"   <span class="c"># images unused for a week</span></code></pre>
+    </div>
+    <p>
+      Not <code>--volumes</code>. Ever. That flag deletes <code>postgres-data</code>.
+    </p>
+
+    <h3>When traffic grows</h3>
+
+    <h4>10 · Push image resizing to Cloudinary before buying a bigger VPS</h4>
+    <p>
+      Next's image optimizer is the first thing to saturate CPU on a self-hosted storefront, and
+      your images already live in Cloudinary — which resizes on delivery, for free, at the edge.
+      Serving <code>.../w_800,q_auto,f_auto/...</code> URLs through a custom loader moves that work
+      off your server entirely. Cheaper and faster than scaling the box.
+    </p>
+
+    <h4>11 · Scale vertically first, and stay single-instance while you do</h4>
+    <p>
+      Adding VPS RAM and cores is a reboot. Running a second backend instance is a project: the
+      rate limiter counts in memory per process, and the BullMQ workers would need explicit
+      concurrency control before two of them are safe. One well-sized server carries this
+      workload a long way — take the reboot.
+    </p>
+
+    <h4>12 · Split the frontends off before you split the backend</h4>
+    <p>
+      If one VPS does stop being enough, move the three Next.js apps to a second box (or back to
+      Vercel) and leave the API, Postgres and Redis together. The apps are stateless and trivially
+      relocatable; the database is neither. Only two things change: the Caddyfile
+      <code>reverse_proxy</code> targets become the new host, and <code>CORS_ORIGINS</code> stays
+      exactly as it is — because it lists public origins, not machines.
+    </p>
+
+    <div class="note tip">
+      <span class="tag">If you only do three of these</span>
+      <p>
+        Off-site backups that you have actually restored once (3), a healthcheck on the backend
+        (2), and uptime monitoring (6). Those three turn "the site is down and I don't know why or
+        for how long" into a solved problem. Everything else on this list is an optimisation.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<section class="step" id="ref">
+  <div class="step-num">REF</div>
+  <div class="step-body">
+    <h2>Env reference: what must match what</h2>
+    <p class="step-why">
+      Print this table. Almost every "it worked locally" production failure is one of these rows
+      being out of sync.
+    </p>
+
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Value</th>
+            <th>Backend</th>
+            <th>Public site</th>
+            <th>Dashboard</th>
+            <th>Tripwheel app</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>INTERNAL_API_SECRET</code></td>
+            <td class="yes">same</td><td class="yes">same</td><td class="yes">same</td><td class="no">—</td>
+          </tr>
+          <tr>
+            <td><code>REVALIDATE_SECRET</code></td>
+            <td class="yes">same</td><td class="yes">same (list)</td><td class="yes">same</td><td class="no">—</td>
+          </tr>
+          <tr>
+            <td><code>COOKIE_DOMAIN</code></td>
+            <td class="yes">.tripwheel.app</td><td class="no">—</td><td class="yes">.tripwheel.app</td><td class="no">—</td>
+          </tr>
+          <tr>
+            <td>Backend URL</td>
+            <td class="no">—</td>
+            <td><code>NEXT_PUBLIC_BACKEND_URL</code></td>
+            <td><code>NEXT_PUBLIC_BACKEND_URL</code></td>
+            <td><code>NEXT_PUBLIC_API_URL</code></td>
+          </tr>
+          <tr>
+            <td>Listed in <code>CORS_ORIGINS</code></td>
+            <td class="no">—</td>
+            <td class="yes">required</td><td class="yes">required</td><td class="yes">required</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Every URL, and who reads it</h3>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>Variable</th><th>Set in</th><th>Value</th><th>What breaks if wrong</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>BETTER_AUTH_URL</code></td><td>backend</td><td class="wrap-ok"><code>https://api.tripwheel.app</code></td><td>Auth links in emails point nowhere</td></tr>
+          <tr><td><code>ISLAND_TOURS_URL</code></td><td>backend</td><td class="wrap-ok"><code>https://islandtours.tripwheel.app</code></td><td>Traveller booking links go to the dashboard instead</td></tr>
+          <tr><td><code>PORTAL_URL</code></td><td>backend</td><td class="wrap-ok"><code>https://dashboard.tripwheel.app/portal</code></td><td>Operator invite "set password" links 404</td></tr>
+          <tr><td><code>REVALIDATE_TARGET_URL</code></td><td>dashboard</td><td class="wrap-ok"><code>https://islandtours.tripwheel.app/api/revalidate</code></td><td>Public site serves stale prices, silently</td></tr>
+          <tr><td><code>NEXT_PUBLIC_SITE_URL</code></td><td>public site</td><td class="wrap-ok"><code>https://islandtours.tripwheel.app</code></td><td>Canonical tags, sitemap and OG images point at localhost</td></tr>
+          <tr><td><code>NEXT_PUBLIC_FACING_APP_URL</code></td><td>dashboard</td><td class="wrap-ok"><code>https://islandtours.tripwheel.app</code></td><td>"View public site" link is inert</td></tr>
+          <tr><td><code>NEXT_PUBLIC_DASHBOARD_URL</code></td><td>tripwheel app</td><td class="wrap-ok"><code>https://dashboard.tripwheel.app</code></td><td>Admin logs in and lands nowhere</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Listed in the example files but not actually read</h3>
+    <p>
+      You can skip these — no code in any of the three frontends reads them:
+      <code>NEXT_PUBLIC_OPEN_WEATHER_API_KEY</code> and <code>NEXT_PUBLIC_PORTAL_URL</code>
+      (the public site's example file lists both). <code>NEXT_PUBLIC_ADMIN_LOGIN_URL</code> is
+      read <em>only</em> by the dashboard, despite appearing in the public site's example too.
+    </p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<section class="step" id="trouble">
+  <div class="step-num">FIX</div>
+  <div class="step-body">
+    <h2>Troubleshooting</h2>
+    <p class="step-why">
+      Symptom first, because that's what you'll have.
+    </p>
+
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Backend container exits immediately, logs show <code>Environment validation failed</code></td>
+            <td>A required var is missing, too short, or still contains <code>change-me</code></td>
+            <td>Read the bullet list in the error — it names every offending variable</td>
+          </tr>
+          <tr>
+            <td><code>services.backend.env_file: poorly formatted environment</code></td>
+            <td>The stray <code>the</code> at the top of <code>.env.production</code>, or an unquoted <code>MAIL_FROM</code></td>
+            <td>Delete the stray word; wrap <code>MAIL_FROM</code> in double quotes</td>
+          </tr>
+          <tr>
+            <td>Login succeeds, then the next page says logged out (redirect loop)</td>
+            <td><code>COOKIE_DOMAIN</code> differs between backend and dashboard, or is missing its leading dot</td>
+            <td>Make both exactly <code>.tripwheel.app</code>, rebuild the dashboard, clear cookies</td>
+          </tr>
+          <tr>
+            <td>Every dashboard request fails with a CORS error</td>
+            <td>That origin isn't in <code>CORS_ORIGINS</code>, or the list has spaces after the commas</td>
+            <td>Add it, no spaces, then <code>docker compose up -d</code></td>
+          </tr>
+          <tr>
+            <td>Caddy log: <code>could not get certificate</code></td>
+            <td>DNS not resolving to this server yet, port 80 blocked, or a Cloudflare orange cloud</td>
+            <td><code>dig +short &lt;host&gt;</code>, <code>ufw status</code>, grey-cloud the record</td>
+          </tr>
+          <tr>
+            <td>Public site shows old prices after a dashboard edit</td>
+            <td><code>REVALIDATE_SECRET</code> mismatch or <code>REVALIDATE_TARGET_URL</code> unset</td>
+            <td>Align the secrets; check dashboard logs for a <code>401</code> from <code>/api/revalidate</code></td>
+          </tr>
+          <tr>
+            <td>Site loads but every API call from the browser 401s</td>
+            <td>Cookie not shared — an app is on a different apex domain</td>
+            <td>All four hosts must sit under the one apex in <code>COOKIE_DOMAIN</code></td>
+          </tr>
+          <tr>
+            <td><code>next build</code> fails with <code>429</code> or timeouts</td>
+            <td><code>INTERNAL_API_SECRET</code> doesn't match the backend, so the build is rate-limited as an anonymous visitor</td>
+            <td>Copy the exact backend value into the app's <code>.env.production</code>, rebuild</td>
+          </tr>
+          <tr>
+            <td>Build dies with <code>Killed</code></td>
+            <td>Out of memory</td>
+            <td>Enable swap, build one app at a time, cap the heap</td>
+          </tr>
+          <tr>
+            <td>Bad gateway from Caddy</td>
+            <td>The app behind that port isn't running</td>
+            <td><code>pm2 status</code> / <code>docker compose ps</code>, then check that app's logs</td>
+          </tr>
+          <tr>
+            <td>No emails arriving</td>
+            <td>Resend domain unverified, or <code>MAIL_FROM</code> uses an unverified domain</td>
+            <td>Finish the DKIM/SPF records in DNS; the address must be on the verified domain</td>
+          </tr>
+          <tr>
+            <td>Changed a <code>NEXT_PUBLIC_*</code> value, nothing changed</td>
+            <td>Those are compiled into the bundle at build time</td>
+            <td><code>pnpm build</code> then <code>pm2 restart &lt;app&gt;</code> — restart alone never works</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <h3 style="margin-top:0">Where this doc stops</h3>
+  <p>
+    This is the <strong>deploy-day</strong> runbook: get it live, correctly, once. For everything
+    after that — rotating database and Redis passwords, restoring a backup, audit logs, Sentry
+    error monitoring, OpenTelemetry tracing, tuning the rate limiter, scaling past one VPS — read
+    <code>technical-doc/06-operations/VPS-OPERATIONS-GUIDE.md</code> in the backend repo.
+  </p>
+  <p>
+    Two places that guide diverges from this one, because it was written against the earlier plan:
+    it assumes <strong>nginx</strong> in front (you're on Caddy — step 7 replaces its reverse-proxy
+    and TLS instructions entirely) and it assumes the <strong>frontends live on Vercel</strong>
+    (they're on this VPS under PM2 — step 8 replaces that). Everything it says about Postgres,
+    Redis, backups and monitoring still applies as written.
+  </p>
+
+  <p style="margin-top:28px">
+    Written against the repositories as they stand on 19 August 2026: backend NestJS 11 / Prisma 7
+    in Docker (Postgres 16, Redis 7), Next.js 16.2 with Cache Components on all three frontends.
+    Ports 5050 / 3000 / 3001 / 3002 are pinned by the code, not incidental — the cache-revalidation
+    wiring depends on the 3000 / 3001 split.
+  </p>
+</footer>
+
+</div>
+</body>
+</html>
