@@ -119,8 +119,20 @@ export function SeoForm() {
       />
 
       <div className="grid gap-6 sm:grid-cols-2">
-        <TextField label="Google Analytics ID" registration={register('googleAnalyticsId')} error={errors.googleAnalyticsId?.message} placeholder="G-XXXXXXX" />
-        <TextField label="Google Tag Manager ID" registration={register('googleTagManagerId')} error={errors.googleTagManagerId?.message} placeholder="GTM-XXXXX" />
+        <TextField
+          label="Google Analytics ID"
+          description="GA4 Measurement ID. Setting it loads GA4 on the public site, so do NOT also add a Google tag / GA4 configuration tag in GTM - that double-counts pageviews. Clear the field to switch GA4 off."
+          registration={register('googleAnalyticsId')}
+          error={errors.googleAnalyticsId?.message}
+          placeholder="G-XXXXXXXXXX"
+        />
+        <TextField
+          label="Google Tag Manager ID"
+          description="Loads the GTM container, which fans out the booking conversion to Google Ads, GA4 and the Meta Pixel. Clear the field to switch it off."
+          registration={register('googleTagManagerId')}
+          error={errors.googleTagManagerId?.message}
+          placeholder="GTM-XXXXXXX"
+        />
         <TextField
           label="Search Console Verification Code"
           description="Ownership token from Google Search Console (HTML-tag method) - rendered on the site as the google-site-verification meta tag. Not a G-XXXX ID."
