@@ -14,7 +14,7 @@
 | Cookiebot Domain Group ID (CBID) | Dashboard -> Settings -> SEO & Tracking |
 | Meta Pixel ID | Dashboard -> Settings -> SEO & Tracking (`facebookPixelId`) |
 | Meta CAPI access token (+ optional test code) | Dashboard -> Settings -> Integrations |
-| GA4 Measurement ID (`G-XXXXXXX`) | GTM container (GA4 tag), below |
+| GA4 Measurement ID (`G-XXXXXXX`) | Dashboard -> Settings -> SEO (`googleAnalyticsId`) - the app loads gtag.js from it |
 | Google Ads Conversion ID + Label | GTM container (Ads tag), below |
 
 Production also needs `NEXT_PUBLIC_ENABLE_TRACKING=true` on the frontend deploy (the explicit
@@ -69,8 +69,24 @@ One Custom Event trigger: **`booking_complete`** (event name, exact match). All 
 3. **GA4 purchase** - tag type "Google Analytics: GA4 Event", event name `purchase`.
    Parameters: `transaction_id = {{dlv - event_id}}`, `value = {{dlv - booking_value}}`,
    `currency = {{dlv - booking_currency}}`, `items = {{dlv - items}}`.
-   (Needs one "Google tag" (GA4 config) with your `G-XXXXXXX` on All Pages first.)
+   Set its **Measurement ID** to the same `G-XXXXXXX` you entered in the dashboard.
    Trigger: `booking_complete`.
+
+   > **Do NOT add a "Google tag" / GA4 configuration tag here.** The app loads gtag.js
+   > itself from the dashboard's `googleAnalyticsId` (see
+   > `components/frontend/tracking/google-tag-manager.tsx`), so a configuration tag in
+   > the container would be a SECOND configuration for the same property and would
+   > double-count pageviews. The container owns the `purchase` EVENT only.
+   >
+   > **Why removing it is safe:** a GA4 Event tag needs gtag.js initialised for its
+   > Measurement ID, which is normally what the configuration tag provides. Here the
+   > app's own loader has already done it - the consent defaults and gtag.js run in one
+   > inline script before gtm.js, so by the time this tag fires the transport exists.
+   > That ordering is the whole reason this works; do not move the GA4 loader out of
+   > that script. Google's public docs do not spell this dependency out either way, so
+   > **confirm it empirically** on the first test booking (§6: exactly one `purchase` in
+   > DebugView). If no `purchase` appears while pageviews do, add a Google tag with the
+   > same ID on All Pages and REMOVE the Measurement ID override here.
 4. **Meta Pixel** - Custom HTML tag (or the Meta template from the gallery):
    ```html
    <script>

@@ -17,6 +17,11 @@ open, called out in §2.6; it does not affect tracking.)
 > business days, it is the only thing on the list you cannot do yourself, and cancellation
 > corrections cannot go live without it. Section 4, step 2.
 
+> **Doing the setup right now?** Use the
+> **[runbook](./03-implementation/SEO-AND-TRACKING-SETUP-RUNBOOK.md)** instead — same steps as
+> section 4, but as a tickable checklist with a verification command under each one and no
+> explanation in the way. Come back here when you want to know *why* something works.
+
 ---
 
 ## Contents
@@ -466,11 +471,15 @@ code is already written and simply does nothing until the credentials exist.
 **Settings → SEO** (the tab is called just "SEO"): Google Tag Manager ID, Facebook Pixel ID, Google Analytics ID,
 Search Console verification code.
 
-> Two of those four behave differently from how they look. The **Facebook Pixel ID is load-bearing**
-> — our server reads it to send conversions to Meta directly. The **Google Analytics ID field is
-> not used by the public site at all**: GA4 receives data only through a tag inside the Tag Manager
-> container (step 5). Fill in this tab, skip step 6, and you will see no GA4 data with nothing
-> obviously wrong.
+> Both tracking IDs on this tab are load-bearing. The **Facebook Pixel ID** is read by our server to
+> send conversions to Meta directly. The **Google Analytics ID** loads GA4 itself — enter it here and
+> GA4 starts recording pageviews and sessions, with nothing to do in Tag Manager for that part.
+>
+> ⚠️ **The corollary:** because the site loads GA4, you must **not** also add a "Google tag" / GA4
+> configuration tag inside the container (step 6), **and not paste a GA4 snippet into Settings →
+> Scripts either.** Two configurations for one property double-count pageviews — and the Scripts
+> route is worse than double-counting: those snippets run during page parse, *before* the consent
+> defaults are set, so a GA4 tag pasted there would fire with no consent signal at all.
 
 **Settings → Integration → Analytics and Tracking** — note the tab is "Integration" (singular) and the tracking settings live in its **Analytics and Tracking** sub-tab. Three cards there:
 
@@ -515,20 +524,27 @@ dlv - user_data
 
 **Create 1 trigger:** a Custom Event named exactly `booking_complete`.
 
-**Create 5 tags.** Note that **two of them do *not* use the `booking_complete` trigger** — they have
+**Create 4 tags.** Note that **one of them does *not* use the `booking_complete` trigger** — it has
 to run on every page:
 
 1. **Conversion Linker** — trigger **All Pages / Initialization**, *not* `booking_complete`. Nothing
    to configure. It exists to capture the ad click when the visitor *lands*, so putting it on the
    thank-you page defeats its entire purpose.
-2. **Google tag (GA4 configuration)** — your `G-XXXXXXXXXX`, trigger **All Pages**. Easy to miss and
-   nothing works without it: the GA4 purchase tag below has nowhere to send data until this exists.
-3. **Google Ads Conversion** — trigger `booking_complete`. Value `{{dlv - booking_value}}`, currency
+2. **Google Ads Conversion** — trigger `booking_complete`. Value `{{dlv - booking_value}}`, currency
    `{{dlv - booking_currency}}`, **Transaction ID `{{dlv - event_id}}`**, and turn on **Enhanced
    Conversions** reading from `{{dlv - user_data}}`.
-4. **GA4 purchase** — trigger `booking_complete`. Event name `purchase`, with `transaction_id`,
-   `value`, `currency` and `items` from the matching variables.
-5. **Meta Pixel** — trigger `booking_complete`. And this one has a trap:
+3. **GA4 purchase** — trigger `booking_complete`. Event name `purchase`, with `transaction_id`,
+   `value`, `currency` and `items` from the matching variables, and its **Measurement ID** set to the
+   same `G-` ID you entered in the dashboard.
+
+   > **Do not add a "Google tag" / GA4 configuration tag.** The site already loads GA4 from the
+   > dashboard field (step 5). Adding one here is a second configuration for the same property and
+   > double-counts pageviews. The container owns the `purchase` *event* only.
+   >
+   > **If §5.3 shows pageviews but no `purchase`**, that is the one case where you *do* need a
+   > Google tag: add one with the same ID on All Pages, and clear the Measurement ID here. Google
+   > does not document this dependency clearly, so treat §5.3 as the real answer.
+4. **Meta Pixel** — trigger `booking_complete`. And this one has a trap:
 
 > 🚨 **The Meta tag must pass `eventID = {{dlv - event_id}}`.** That single setting is what tells
 > Meta the browser event and our server event are the same booking. **Leave it out and every booking
@@ -576,7 +592,7 @@ Do these in order. Each one catches a different failure.
 2. Make a real test booking.
 3. On the thank-you page, the debug panel should show **one** `booking_complete` event, with the
    three `booking_complete` tags fired (Google Ads, GA4 purchase, Meta Pixel). The Conversion Linker
-   and the GA4 configuration tag fire on *every* page, not here — that is correct, not a fault.
+   fires on *every* page, not here — that is correct, not a fault.
 
 **Nothing at all?** Check `NEXT_PUBLIC_ENABLE_TRACKING` is `true` and the GTM ID is saved in the
 dashboard.
@@ -689,7 +705,9 @@ Match rate should be comfortably above **60%**.
 | **Every booking counted twice in Meta** | The Meta tag is missing `eventID = {{dlv - event_id}}` |
 | A `Refund` in Meta for a booking you didn't refund | Expected. A kept-deposit cancellation still sends a labelled refund event to Meta; only Google Ads is left alone. See §3.7 |
 | Values look far too big | Something is reporting the tour price instead of commission — escalate |
-| No GA4 data, everything else fine | GA4 only receives data through its tag in the Tag Manager container. The "Google Analytics ID" dashboard field does not feed it |
+| No GA4 data at all | Check the Google Analytics ID is saved in Settings → SEO and is a `G-…` value — a malformed one is ignored rather than half-loaded. Then confirm the frontend was rebuilt after step 7 |
+| GA4 pageviews arrive but **no `purchase`** | Either no GTM container ID is configured — the purchase event is a *container* tag, so GA4 alone gives you pageviews and nothing else — or the GA4 purchase tag's Measurement ID is unset |
+| GA4 pageviews roughly doubled | You have a "Google tag" / GA4 configuration tag in the container *as well as* the dashboard ID. Remove the container one |
 | No conversions from EU visitors | Expected if they declined cookies. Consent Mode fills part of this gap with modelled conversions |
 | Google Ads cancellations not correcting | The Google Ads developer token or credentials aren't entered. The code is live but idle until they are. (If **Meta** refunds are also missing, it's the Meta Pixel ID / CAPI token instead — different credentials) |
 | Fewer conversions than bookings | Some travellers close the tab before the thank-you page finishes loading. A known, accepted trade-off — the server-side Meta message is unaffected |
@@ -747,6 +765,7 @@ Deeper references, all under `technical-doc/`:
 | --- | --- |
 | Tracking architecture | `02-architecture/TRACKING-AND-ANALYTICS.md` |
 | GTM container recipe | `03-implementation/GTM-CONTAINER-SETUP.md` |
+| Setup runbook (tickable) | `03-implementation/SEO-AND-TRACKING-SETUP-RUNBOOK.md` |
 | PRD status + what's open | `03-implementation/AD-CONVERSION-TRACKING-PRD-CHECKLIST.md` |
 | SEO specification | `02-architecture/SEO-STRATEGY.md` |
 | Currency handling | `02-architecture/FX-AND-MULTI-CURRENCY.md` |

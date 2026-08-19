@@ -1,5 +1,62 @@
 # Frontend changelog
 
+## 2026-08-19 — GA4 loads from the dashboard, reversing a documented "unused" decision
+
+The dashboard has always had a **Google Analytics ID** field. Nothing on the
+public site read it. GA4 in fact depended on a "Google tag" someone had to
+remember to add inside the GTM container, so filling in the field felt like
+configuring GA4 and did nothing at all — a config surface that lies.
+
+`components/frontend/tracking/google-tag-manager.tsx` now loads `gtag.js` from
+`googleAnalyticsId`. **This reverses the previous deliberate position** that GA4
+lived entirely in the container (`GTM-CONTAINER-SETUP.md` used to list a GA4
+configuration tag as one of five). Recorded here because that file is the audit
+record for exactly this class of change.
+
+### The trade-off, and why it is the right way round
+
+The container must now **not** carry a GA4 configuration tag, or pageviews
+double-count. That is a one-line instruction in a doc, and it is checkable in
+GA4 DebugView. The alternative — leaving the field inert — was an unbounded
+number of people entering an ID and wondering why Analytics was empty.
+
+Google's own docs do not settle whether a GA4 *Event* tag needs a configuration
+tag present, so the runbook verifies it empirically on the first test booking and
+names the fallback (add a Google tag, clear the Measurement ID override) rather
+than asserting.
+
+### Two things review caught that were worse than the feature
+
+**Case sensitivity was a silent total outage.** The first cut validated both IDs
+case-insensitively and returned them as typed. `gtm.js?id=` is fully
+case-sensitive — verified against the live endpoint: `GTM-N5LT88` → 200,
+`gtm-n5lt88` → 404, `GTM-n5lt88` → 404. So a lowercase paste emitted a
+healthy-looking loader whose fetch 404'd, and the **entire** `booking_complete`
+fan-out died: Ads conversion, GA4 purchase and Meta Pixel all gone, with the
+dataLayer push still firing into a container nobody was listening to. Both IDs
+are now uppercase-normalised, and the test that had blessed the lowercase
+behaviour is inverted.
+
+**The ordering invariant was the safety property and the one untested part.**
+Consent Mode v2 defaults must be set before either container loads, or tags fire
+un-consented for EEA/UK visitors. That lived in three template strings inside an
+async Server Component with nothing enforcing it. Extracted to
+`lib/tracking/google-tags-snippet.ts` and pinned: reordering the loaders ahead of
+the defaults fails three tests. Adding a `u` flag to the ID regexes — which would
+let Unicode look-alikes through — fails another.
+
+### Deliberately NOT moved to the dashboard
+
+The **Google Ads Conversion ID + Label**. The Ads conversion is fired *by* the
+GTM tag; firing it from the app as well would double-count every booking, the
+same failure mode as a missing Meta `eventID`. Enhanced Conversions and the
+Transaction ID also live in that tag's config, so splitting the ID away from them
+buys nothing.
+
+Also warned about in both docs: pasting a GA4 snippet into **Settings → Scripts**
+is a third route to a duplicate configuration, and a worse one — those snippets
+run during page parse, *before* the consent defaults exist.
+
 ## 2026-08-08 — Search results screen rebuilt to the client mockup (mck-12)
 
 The client's own render of `/search` (mck-12, supplied as screenshots — the HTML

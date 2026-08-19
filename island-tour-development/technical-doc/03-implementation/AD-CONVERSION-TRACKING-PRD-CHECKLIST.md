@@ -2,7 +2,16 @@
 
 > **PRD:** `technical-doc/Island Tours — Server-Side Ad Conversion Tracking PRD.md` (Rezina,
 > 2026-08-16). **Architecture:** `02-architecture/TRACKING-AND-ANALYTICS.md` (master §8).
-> **Container recipe:** `03-implementation/GTM-CONTAINER-SETUP.md`.
+>
+> **→ Setting it up? Use these, not this doc.** This one is the audit trail; those are the
+> instructions:
+>
+> | If you want to… | Read |
+> | --- | --- |
+> | **Do the setup, step by step, ticking boxes** | **[`SEO-AND-TRACKING-SETUP-RUNBOOK.md`](./SEO-AND-TRACKING-SETUP-RUNBOOK.md)** |
+> | Understand what any of it means, in plain language | [`../SEO-AND-TRACKING-EXPLAINED.md`](../SEO-AND-TRACKING-EXPLAINED.md) |
+> | Configure the GTM container tag by tag | [`GTM-CONTAINER-SETUP.md`](./GTM-CONTAINER-SETUP.md) |
+>
 > **This doc:** every PRD requirement cross-checked against the actual code, split into
 > DONE / NOT DONE, with a where-and-how plan for everything open.
 > **Last verified against code: 2026-08-19.** That pass closed the last four open engineering
@@ -44,14 +53,15 @@ no-show reporting are all built, tested and merged.
 
 **Everything still open is external, configuration, or QA** - and one item gates most of the rest:
 
-| Blocker | Why it matters |
-| --- | --- |
-| **Google Ads developer token not requested** | 2-3 business days, external. The retraction code is live but a warn-once no-op until it plus the credentials exist. The PRD says submit it on day one for exactly this reason. |
-| Ad-platform access not provisioned | GTM admin, Google Ads admin, GA4 editor, Meta BM (pixel + system user) |
-| GTM container not configured | The dataLayer push, consent defaults and CAPI dedup contract all ship in code; the container that consumes them is empty |
-| IDs not entered in the dashboard | SEO & Tracking tab (GTM / GA4 / Pixel / Search Console) + Integrations tab (Meta CAPI, Cookiebot, Google Ads) |
-| `NEXT_PUBLIC_ENABLE_TRACKING` not set on prod | Nothing fires at all until it is `'true'` on the production frontend deploy only |
-| QA, walkthrough, 14-day monitoring | PRD milestone 6 + the contractual deliverables |
+| Blocker | Why it matters | Runbook step |
+| --- | --- | --- |
+| **Google Ads developer token not requested** | 2-3 business days, external. The retraction code is live but a warn-once no-op until it plus the credentials exist. The PRD says submit it on day one for exactly this reason. | **2** |
+| **Live canonical URL is a placeholder** (`https://islandtours.example`) | Verified on prod 2026-08-19: every canonical tag, every hreflang alternate and the whole sitemap point at a domain that is not yours. One dashboard field. | **3** |
+| Ad-platform access not provisioned | GTM admin, Google Ads admin, GA4 editor, Meta BM (pixel + system user) | 1 |
+| IDs not entered in the dashboard | **Settings → SEO** (GTM / GA4 / Pixel / Search Console / Canonical URL) + **Settings → Integration → Analytics and Tracking** (Meta CAPI, Cookiebot, Google Ads). Verified empty on prod 2026-08-19. | 4-5 |
+| GTM container not configured | The dataLayer push, consent defaults and CAPI dedup contract all ship in code; the container that consumes them is empty | 6 |
+| `NEXT_PUBLIC_ENABLE_TRACKING` not set on prod | The browser half fires nothing until it is `'true'` - **and the frontend is rebuilt**, because it is inlined at build time. The server-side Meta feed is NOT gated on it and arms at step 5. | 7 |
+| QA, walkthrough, 14-day monitoring | PRD milestone 6 + the contractual deliverables | 8-10 |
 
 ---
 
@@ -167,11 +177,45 @@ no-show reporting are all built, tested and merged.
 ### 2.1 GTM container 4-tag fan-out - CONFIGURATION, not code ~ blocked on IDs
 
 The dataLayer push, consent defaults, and CAPI dedup contract all ship in code; the container that
-consumes them is empty. Follow `GTM-CONTAINER-SETUP.md` verbatim: 7 Data Layer Variables, one
-`booking_complete` trigger, 4 tags (Conversion Linker, **dynamic-value Google Ads conversion action**
-with Enhanced Conversions from `{{dlv - user_data}}`, GA4 `purchase`, Meta Pixel **with
-`eventID = {{dlv - event_id}}`** - without it every booking double-counts against CAPI).
-Blocked on: GTM container ID, GA4 `G-` ID, Google Ads Conversion ID + Label, Meta Pixel ID.
+consumes them is empty. Follow `GTM-CONTAINER-SETUP.md` verbatim: 7 Data Layer Variables named WITH
+the `dlv - ` prefix, one `booking_complete` trigger, and 4 tags:
+
+1. **Conversion Linker** - trigger **All Pages / Initialization**, not `booking_complete`. It exists
+   to capture the click at LANDING, so putting it on the TYP defeats it.
+2. **Google Ads conversion** (dynamic value) with Enhanced Conversions from `{{dlv - user_data}}`
+   and Transaction ID `{{dlv - event_id}}`.
+3. **GA4 `purchase`** with its own Measurement ID. **No "Google tag" / GA4 configuration tag** - the
+   app now loads gtag.js itself (§2.1b), so a config tag here would double-count pageviews.
+4. **Meta Pixel with `eventID = {{dlv - event_id}}`** - without it every booking double-counts
+   against the server CAPI.
+
+Blocked on: GTM container ID, Google Ads Conversion ID + Label, Meta Pixel ID. (The GA4 `G-` ID is
+no longer a container input - it is a dashboard field, §2.1b.)
+
+### 2.1b GA4 is loaded from the dashboard - ✅ RESOLVED 2026-08-19
+
+The dashboard's **Google Analytics ID** field was inert: nothing on the public site read
+`googleAnalyticsId`, and GA4 in fact depended on a "Google tag" someone had to remember to add
+inside GTM. Filling the field in felt like configuring GA4 and did nothing.
+
+`components/frontend/tracking/google-tag-manager.tsx` now loads `gtag.js` from it, so entering the
+ID is what switches GA4 on. Alongside:
+
+- **GA4 and GTM are independently gated.** The component previously returned `null` without a GTM
+  ID, so GA4 could never have loaded on its own.
+- **Both IDs are format-validated** (`lib/tracking/tag-ids.ts`, 23 tests) because they are
+  interpolated into an INLINE SCRIPT - a stray apostrophe would have broken every page, a crafted
+  value would have executed. Malformed = treated as not configured.
+- **Consent ordering preserved**: the Consent Mode v2 defaults and both loaders are concatenated
+  into ONE inline script in that order, which is the only way to guarantee the defaults land first.
+- **Trade-off, documented in three places**: the container must NOT also carry a GA4 configuration
+  tag, or pageviews double-count. Google's docs do not settle whether an Event tag needs a config
+  tag, so the runbook verifies it empirically and names the fallback.
+
+**Deliberately NOT moved to the dashboard: the Google Ads Conversion ID + Label.** The Ads
+conversion is fired BY the GTM tag; firing it from the app as well would double-count every booking -
+the same failure mode as a missing `eventID`. Enhanced Conversions and the Transaction ID also live
+in that tag's config, so splitting the ID away from them buys nothing.
 
 ### 2.2 dataLayer payload is missing spec'd fields - ✅ RESOLVED 2026-08-17 (Phase 2 shipped)
 
