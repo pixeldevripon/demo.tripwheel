@@ -1,0 +1,580 @@
+'use client';
+
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
+import { format } from 'date-fns';
+import {
+    Popover,
+    PopoverAnchor,
+    PopoverContent,
+} from '@/components/ui/popover';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { cn } from '@/lib/utils';
+import type { OverviewDay, OverviewDeparture, OverviewTour } from '@/types/trip';
+import { crossFade } from '@/lib/motion';
+import { AddEventForm } from './add-event-popover';
+import { gmtLabel, keyToDate } from './calendar-utils';
+import { DayPeek } from './day-peek';
+import { DepartureChip } from './departure-chip';
+
+// Keep in lockstep with the classes below: hour rows are h-20 (80px), chips
+// h-12 (48px). The numbers exist only for position math.
+const HOUR_PX = 80;
+
+interface Positioned {
+    dep: OverviewDeparture;
+    top: number;
+    lane: number;
+    lanes: number;
+    /** Final geometry (percent of the column) - lane/lanes resolved against
+     *  the item's own VISUAL overlap component, so a two-departure band
+     *  stretches to full width even when the 07:00 rush needed three lanes. */
+    leftPct: number;
+    widthPct: number;
+}
+
+/** A same-time cluster's hidden tail, rendered as one "+N" chip. */
+interface OverflowGroup {
+    key: string;
+    top: number;
+    lane: number;
+    lanes: number;
+    leftPct: number;
+    widthPct: number;
+    deps: OverviewDeparture[];
+}
+
+/** Rendered chip height (h-12). Two items overlap VISUALLY when their tops
+ *  are closer than this - the test the width post-pass uses. */
+const CHIP_PX = 48;
+
+function minutesOf(dep: OverviewDeparture): number {
+    const [h, m] = dep.startTime.split(':').map(Number);
+    return h * 60 + m;
+}
+
+/**
+ * Greedy lane assignment so same-time departures sit side by side. Lanes are
+ * counted PER OVERLAP CLUSTER, not per day - a lone 15:00 departure renders
+ * full-width even when the 09:00 rush needed three lanes. Clusters denser
+ * than `maxLanes` keep the first lanes as chips and fold the rest into a
+ * "+N" group - a platform-wide 07:00 rush must never shred the column into
+ * sliver-wide chips. A chip occupies one visual hour for overlap purposes.
+ */
+function layoutDay(
+    deps: OverviewDeparture[],
+    startHour: number,
+    maxLanes: number,
+): { chips: Positioned[]; overflows: OverflowGroup[] } {
+    const sorted = [...deps].sort(
+        (a, b) => minutesOf(a) - minutesOf(b) || a.tourName.localeCompare(b.tourName),
+    );
+    const chips: Positioned[] = [];
+    const overflows: OverflowGroup[] = [];
+    let cluster: (Omit<Positioned, 'lanes' | 'leftPct' | 'widthPct'> & {
+        start: number;
+    })[] = [];
+    let laneEnds: number[] = [];
+    let clusterEnd = -1;
+    const flush = () => {
+        if (cluster.length === 0) return;
+        const lanes = Math.min(laneEnds.length, maxLanes);
+        // With overflow, the last lane belongs to the "+N" chip.
+        const laneCutoff =
+            laneEnds.length > maxLanes ? maxLanes - 1 : maxLanes;
+        const hidden = cluster.filter((c) => c.lane >= laneCutoff);
+        for (const c of cluster) {
+            if (c.lane < laneCutoff) {
+                chips.push({
+                    dep: c.dep,
+                    lane: c.lane,
+                    top: c.top,
+                    lanes,
+                    leftPct: (c.lane / lanes) * 100,
+                    widthPct: 100 / lanes,
+                });
+            }
+        }
+        if (hidden.length > 0) {
+            overflows.push({
+                key: `${hidden[0].dep.id}-overflow`,
+                top: Math.min(...hidden.map((c) => c.top)),
+                lane: lanes - 1,
+                lanes,
+                leftPct: ((lanes - 1) / lanes) * 100,
+                widthPct: 100 / lanes,
+                deps: hidden.map((c) => c.dep),
+            });
+        }
+        cluster = [];
+        laneEnds = [];
+        clusterEnd = -1;
+    };
+    for (const dep of sorted) {
+        const start = minutesOf(dep);
+        if (cluster.length > 0 && start >= clusterEnd) flush();
+        let lane = laneEnds.findIndex((end) => end <= start);
+        if (lane === -1) {
+            lane = laneEnds.length;
+            laneEnds.push(0);
+        }
+        laneEnds[lane] = start + 60;
+        clusterEnd = Math.max(clusterEnd, start + 60);
+        cluster.push({
+            dep,
+            lane,
+            start,
+            top: ((start - startHour * 60) / 60) * HOUR_PX,
+        });
+    }
+    flush();
+
+    // Width post-pass (founder feedback 2026-08-13): a band with free space
+    // stretches its chips into it. The 60-minute occupancy above chains a
+    // whole morning into one cluster, so a two-departure 08:00 band was stuck
+    // at third-width because the 07:00 rush needed three lanes. Here every
+    // VISUAL overlap component (rendered chips + "+N" chips whose tops sit
+    // within one chip height) re-derives geometry from the DISTINCT lanes it
+    // actually uses. Safe by construction: pass one never gives two
+    // overlapping rendered items the same lane, so the compact remap keeps
+    // them apart.
+    const items: { top: number; lane: number; set: (l: number, w: number) => void }[] = [
+        ...chips.map((c) => ({
+            top: c.top,
+            lane: c.lane,
+            set: (l: number, w: number) => {
+                c.leftPct = l;
+                c.widthPct = w;
+            },
+        })),
+        ...overflows.map((o) => ({
+            top: o.top,
+            lane: o.lane,
+            set: (l: number, w: number) => {
+                o.leftPct = l;
+                o.widthPct = w;
+            },
+        })),
+    ];
+    // Connected components over visual overlap, via index-sorted sweep.
+    const order = items.map((_, i) => i).sort((a, b) => items[a].top - items[b].top);
+    let component: number[] = [];
+    let componentEnd = -Infinity;
+    const finishComponent = () => {
+        if (component.length === 0) return;
+        const laneSet = [...new Set(component.map((i) => items[i].lane))].sort(
+            (a, b) => a - b,
+        );
+        const width = 100 / laneSet.length;
+        for (const i of component) {
+            items[i].set(laneSet.indexOf(items[i].lane) * width, width);
+        }
+        component = [];
+        componentEnd = -Infinity;
+    };
+    for (const i of order) {
+        if (component.length > 0 && items[i].top >= componentEnd) {
+            finishComponent();
+        }
+        component.push(i);
+        componentEnd = Math.max(componentEnd, items[i].top + CHIP_PX);
+    }
+    finishComponent();
+
+    return { chips, overflows };
+}
+
+/**
+ * The Week/Day time grid: one column per day, departures positioned by start
+ * time, click on empty space to add a departure/schedule at that hour. Week
+ * and Day are the same component - a day is a one-column week. The day
+ * header lives INSIDE the scrollport as a sticky row, so header and body
+ * columns share one width and the scrollbar never misaligns them.
+ */
+export function CalendarTimeGrid({
+    days,
+    today,
+    selectedDate,
+    tours,
+    timeZone,
+    operatorNameById,
+    isAdmin,
+    canAdd,
+    onOpenDay,
+}: {
+    days: OverviewDay[];
+    today: string;
+    /** The mini-calendar's picked date - marked in header + column. */
+    selectedDate?: string;
+    tours: OverviewTour[];
+    /** First tour's IANA zone - feeds the "GMT-4" gutter corner label. */
+    timeZone?: string;
+    operatorNameById: Map<string, string>;
+    isAdmin: boolean;
+    canAdd: boolean;
+    onOpenDay: (date: string) => void;
+}) {
+    const reduceMotion = useReducedMotion();
+    // A lone day column has room for more side-by-side chips than a week's;
+    // narrow screens cap harder so chips never turn into slivers.
+    const isMobile = useIsMobile();
+    const maxLanes = days.length === 1 ? (isMobile ? 2 : 6) : isMobile ? 1 : 3;
+
+    // The visible hour span hugs the data but never collapses below 08-19,
+    // so an empty week still looks like a working day.
+    const [startHour, endHour] = useMemo(() => {
+        let min = 8;
+        let max = 19;
+        for (const day of days) {
+            for (const dep of day.departures) {
+                const h = Math.floor(minutesOf(dep) / 60);
+                if (h < min) min = h;
+                if (h + 1 > max) max = h + 1;
+            }
+        }
+        return [min, Math.min(max + 1, 24)];
+    }, [days]);
+    const hours = Array.from(
+        { length: endHour - startHour },
+        (_, i) => startHour + i,
+    );
+
+    const scrollRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        // Land the viewport on the morning, not 00:00-adjacent whitespace.
+        scrollRef.current?.scrollTo({ top: (8 - startHour) * HOUR_PX });
+    }, [startHour]);
+
+    // One controlled popover for click-to-add: the anchor is an invisible dot
+    // placed where the click landed, so the card opens right at the hour.
+    const [addTarget, setAddTarget] = useState<{
+        date: string;
+        time: string;
+        top: number;
+        dayIndex: number;
+    } | null>(null);
+
+    function handleColumnClick(
+        e: React.MouseEvent<HTMLDivElement>,
+        day: OverviewDay,
+        dayIndex: number,
+    ) {
+        if (!canAdd || day.date < today) return;
+        /*
+         * Chips handle their own clicks - but their POPOVERS could not, because
+         * React re-dispatches portalled events up the React tree: a click on
+         * the seats field inside a departure card is a React descendant of this
+         * column and arrived here, popping the add-departure target at an hour
+         * computed from a `clientY` that happened somewhere else entirely.
+         *
+         * Physical containment first, then the button guard.
+         */
+        if (!e.currentTarget.contains(e.target as Node)) return;
+        if ((e.target as HTMLElement).closest('button')) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const y = e.clientY - rect.top;
+        const hour = Math.min(
+            endHour - 1,
+            Math.max(startHour, startHour + Math.floor(y / HOUR_PX)),
+        );
+        setAddTarget({
+            date: day.date,
+            time: `${String(hour).padStart(2, '0')}:00`,
+            top: (hour - startHour) * HOUR_PX,
+            dayIndex,
+        });
+    }
+
+    // The now-line renders only when the browser's own date matches the
+    // island's today - a founder browsing from another timezone gets no
+    // misleading line rather than a wrong one.
+    const [nowMinutes, setNowMinutes] = useState<number | null>(null);
+    useEffect(() => {
+        const update = () => {
+            const now = new Date();
+            setNowMinutes(
+                format(now, 'yyyy-MM-dd') === today
+                    ? now.getHours() * 60 + now.getMinutes()
+                    : null,
+            );
+        };
+        update();
+        const id = window.setInterval(update, 60_000);
+        return () => window.clearInterval(id);
+    }, [today]);
+    const nowTop =
+        nowMinutes === null
+            ? null
+            : ((nowMinutes - startHour * 60) / 60) * HOUR_PX;
+    const showNowLine =
+        nowTop !== null && nowTop >= 0 && days.some((d) => d.date === today);
+
+    return (
+        <div className='flex h-full flex-col overflow-hidden rounded-lg border border-border/70 bg-background'>
+            {/* One scrollport for header + grid: the sticky header row scrolls
+                horizontally never (no x overflow) and vertically stays pinned,
+                so columns always line up with their headers. The frame height
+                comes from the shared view wrapper; the scrollbar is hidden
+                (user call) - wheel/touch scrolling still works. */}
+            <div
+                ref={scrollRef}
+                // overflow-x-auto: on phones each week column keeps a real
+                // minimum width and the grid swipes horizontally INSIDE this
+                // frame (the page itself never scrolls sideways); on md+ the
+                // columns share the width and no x-scroll exists.
+                className='min-h-0 flex-1 overflow-x-auto overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+                <div className='sticky top-0 z-20 flex min-w-fit border-b border-border/50 bg-background'>
+                    <div className='sticky left-0 z-30 flex w-12 shrink-0 items-center justify-center bg-background sm:w-14'>
+                        <span className='text-2xs text-muted-foreground'>
+                            {gmtLabel(timeZone)}
+                        </span>
+                    </div>
+                    {days.map((day) => {
+                        const d = keyToDate(day.date);
+                        const isToday = day.date === today;
+                        const isSelected =
+                            day.date === selectedDate && days.length > 1;
+                        return (
+                            <button
+                                key={day.date}
+                                type='button'
+                                onClick={() => onOpenDay(day.date)}
+                                className={cn(
+                                    'flex h-11 flex-1 items-center justify-center gap-1.5 border-l border-border/50 transition-colors duration-normal hover:bg-muted/50',
+                                    days.length > 1 ? 'min-w-24 md:min-w-0' : 'min-w-0',
+                                )}>
+                                <span className='text-2xs font-medium uppercase tracking-wider text-muted-foreground'>
+                                    {format(d, 'EEE')}
+                                </span>
+                                <span
+                                    className={cn(
+                                        'relative flex size-6 items-center justify-center rounded-full text-sm font-medium',
+                                        isToday && 'bg-foreground text-background',
+                                    )}>
+                                    {/* The mini calendar's pick (when not
+                                        simply today) - the shared layoutId
+                                        glides the ring between days. */}
+                                    {isSelected && !isToday && (
+                                        <motion.span
+                                            layoutId='timegrid-selected-day'
+                                            aria-hidden
+                                            transition={
+                                                reduceMotion
+                                                    ? { duration: 0 }
+                                                    : crossFade
+                                            }
+                                            className='pointer-events-none absolute inset-0 rounded-full ring-2 ring-inset ring-primary/60'
+                                        />
+                                    )}
+                                    {format(d, 'd')}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
+
+                <div className='relative flex min-w-fit'>
+                    {/* Hour gutter - pinned while the columns swipe. */}
+                    <div className='sticky left-0 z-20 w-12 shrink-0 bg-background sm:w-14'>
+                        {hours.map((h) => (
+                            <div
+                                key={h}
+                                className='relative h-20 border-t border-border/40 first:border-t-0'>
+                                <span className='absolute -top-2 right-1.5 bg-background px-0.5 text-2xs tabular-nums text-muted-foreground sm:right-2'>
+                                    {h === startHour
+                                        ? ''
+                                        : `${String(h).padStart(2, '0')}:00`}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Waton-style now-line: dashed across the whole grid,
+                        with a solid dot pinned to today's column. */}
+                    {showNowLine && (
+                        <div
+                            aria-hidden
+                            className='pointer-events-none absolute inset-x-0 z-10 border-t border-dashed border-destructive/50 top-(--now-top)'
+                            {...{
+                                style: {
+                                    '--now-top': `${nowTop}px`,
+                                } as React.CSSProperties,
+                            }}
+                        />
+                    )}
+
+                    {days.map((day, dayIndex) => {
+                        const { chips, overflows } = layoutDay(
+                            day.departures,
+                            startHour,
+                            maxLanes,
+                        );
+                        const isPastDay = day.date < today;
+                        return (
+                            <div
+                                key={day.date}
+                                onClick={(e) => handleColumnClick(e, day, dayIndex)}
+                                className={cn(
+                                    'relative flex-1 border-l border-border/50',
+                                    days.length > 1 ? 'min-w-24 md:min-w-0' : 'min-w-0',
+                                    isPastDay && 'bg-muted/20',
+                                    canAdd && !isPastDay && 'cursor-pointer',
+                                )}>
+                                {/* The picked column's wash glides with the
+                                    header ring (week view only - a day view
+                                    IS the picked date). */}
+                                {day.date === selectedDate &&
+                                    days.length > 1 && (
+                                        <motion.div
+                                            layoutId='timegrid-selected-col'
+                                            aria-hidden
+                                            transition={
+                                                reduceMotion
+                                                    ? { duration: 0 }
+                                                    : crossFade
+                                            }
+                                            className='pointer-events-none absolute inset-0 border-x border-primary/25 bg-primary-subtle/50'
+                                        />
+                                    )}
+                                {/* Hover lights ONE hour cell, matching the
+                                    month view's per-cell wash - never the
+                                    whole day column (founder 2026-07-31). */}
+                                {hours.map((h) => (
+                                    <div
+                                        key={h}
+                                        className={cn(
+                                            'h-20 border-t border-border/40 first:border-t-0',
+                                            canAdd &&
+                                                !isPastDay &&
+                                                'transition-colors duration-normal hover:bg-accent',
+                                        )}
+                                    />
+                                ))}
+
+                                {/* Chips live in an inset layer so the
+                                    column's left/right breathing room matches
+                                    the month view's cell padding (founder
+                                    feedback 2026-08-13). pointer-events-none
+                                    keeps empty-space clicks landing on the
+                                    hour cells; each chip re-enables its own.
+
+                                    03 §8.3: runtime geometry travels through
+                                    CSS custom properties; the spread keeps a
+                                    literal `style` attribute out of the JSX. */}
+                                <div className='pointer-events-none absolute inset-y-0 left-1 right-1'>
+                                {chips.map(({ dep, top, leftPct, widthPct }) => (
+                                    <div
+                                        key={dep.id}
+                                        className='pointer-events-auto absolute h-12 overflow-hidden px-0.5 top-(--dep-top) left-(--dep-left) w-(--dep-w)'
+                                        {...{
+                                            style: {
+                                                '--dep-top': `${top + 1}px`,
+                                                '--dep-left': `${leftPct}%`,
+                                                '--dep-w': `${widthPct}%`,
+                                            } as React.CSSProperties,
+                                        }}>
+                                        <DepartureChip
+                                            dep={dep}
+                                            variant='block'
+                                            operatorName={
+                                                isAdmin
+                                                    ? operatorNameById.get(
+                                                          dep.operatorId,
+                                                      )
+                                                    : undefined
+                                            }
+                                        />
+                                    </div>
+                                ))}
+
+                                {/* Dense clusters fold their tail into a "+N"
+                                    chip in the last lane - it opens the DAY
+                                    (MCK-16 §3), where the overflow can be
+                                    read in full with its actions. */}
+                                {overflows.map((group) => (
+                                    <div
+                                        key={group.key}
+                                        className='pointer-events-auto absolute h-12 px-0.5 top-(--dep-top) left-(--dep-left) w-(--dep-w)'
+                                        {...{
+                                            style: {
+                                                '--dep-top': `${group.top + 1}px`,
+                                                '--dep-left': `${group.leftPct}%`,
+                                                '--dep-w': `${group.widthPct}%`,
+                                            } as React.CSSProperties,
+                                        }}>
+                                        <button
+                                            type='button'
+                                            onClick={() =>
+                                                onOpenDay(day.date)
+                                            }
+                                            className='flex h-full w-full items-center justify-center rounded-lg bg-muted/70 text-xs font-medium text-muted-foreground transition-colors duration-normal hover:bg-muted'>
+                                            +{group.deps.length}
+                                        </button>
+                                    </div>
+                                ))}
+                                </div>
+
+                                {day.date === today && nowTop !== null && (
+                                    <div
+                                        aria-hidden
+                                        className='pointer-events-none absolute z-10 -ml-1 size-2 -translate-y-1/2 rounded-full bg-destructive top-(--now-top)'
+                                        {...{
+                                            style: {
+                                                '--now-top': `${nowTop}px`,
+                                            } as React.CSSProperties,
+                                        }}
+                                    />
+                                )}
+
+                                {addTarget?.dayIndex === dayIndex && (
+                                    <Popover
+                                        open
+                                        onOpenChange={(o) => {
+                                            if (!o) setAddTarget(null);
+                                        }}>
+                                        <PopoverAnchor asChild>
+                                            <span
+                                                className='absolute left-1/2 size-0 top-(--add-top)'
+                                                {...{
+                                                    style: {
+                                                        '--add-top': `${addTarget.top}px`,
+                                                    } as React.CSSProperties,
+                                                }}
+                                            />
+                                        </PopoverAnchor>
+                                        <PopoverContent
+                                            className='w-80 p-0'
+                                            align='start'
+                                            collisionPadding={12}
+                                            // A Select's portaled dropdown is
+                                            // outside this content node; keep
+                                            // the card open while it is used.
+                                            onInteractOutside={(e) => {
+                                                const t = e.target as
+                                                    | HTMLElement
+                                                    | null;
+                                                if (
+                                                    t?.closest(
+                                                        "[data-slot='select-content']",
+                                                    )
+                                                ) {
+                                                    e.preventDefault();
+                                                }
+                                            }}>
+                                            <AddEventForm
+                                                date={addTarget.date}
+                                                tours={tours}
+                                                defaultTime={addTarget.time}
+                                                onDone={() => setAddTarget(null)}
+                                            />
+                                        </PopoverContent>
+                                    </Popover>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        </div>
+    );
+}

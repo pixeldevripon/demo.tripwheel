@@ -1,0 +1,21 @@
+import { ListPageSkeleton } from '@/components/skeletons/list-page-skeleton';
+
+/**
+ * The Suspense boundary for this segment. Without it the App Router cannot
+ * commit the navigation until the whole RSC payload arrives, so a sidebar click
+ * leaves the previous page on screen looking frozen.
+ *
+ * Title and description are the REAL strings - the server already knows them,
+ * so painting them at once makes the navigation read as finished while only the
+ * rows are still arriving.
+ */
+export default function TourOperatorsLoading() {
+    return (
+        <ListPageSkeleton
+            title='Tour Operators'
+            description='Create and manage tour operator accounts'
+            columns={8}
+            filters={4}
+        />
+    );
+}

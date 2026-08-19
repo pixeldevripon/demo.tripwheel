@@ -1,0 +1,381 @@
+/* ── Page editor styles - SCOPED, never global ──────────────────────────────
+ *
+ * Two things live here, both namespaced so nothing leaks into the dashboard's
+ * own theme (the wattup TipTap template this replaces overrode shadcn :root
+ * tokens app-wide - that hazard is exactly what this file avoids):
+ *
+ *   .it-page-editor  - the editor chrome (frame, focus, ProseMirror UX bits:
+ *                      selected-cell overlay, gap cursor, placeholder).
+ *   .it-page-prose   - the CONTENT typography. A value-inlined mirror of
+ *                      `.it-page-prose` in the public frontend's
+ *                      app/(frontend)/frontend-tokens.css - THE source of
+ *                      truth. Keep the two in sync BY COPYING rule-for-rule
+ *                      (tokens resolved: --it-heading #2c2c2c,
+ *                      --it-ink-secondary #444444, --it-primary #e8611a,
+ *                      --it-border #ededed). This is what makes the editor a
+ *                      true WYSIWYG for the legal pages: what an admin types
+ *                      here IS how /en/terms renders.
+ * ------------------------------------------------------------------------ */
+
+/* ── Chrome ── */
+
+.it-page-editor {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--background);
+}
+
+.it-page-editor .it-page-editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* The content area is ALWAYS white, in both dashboard themes: it previews the
+ * public page, which is light - and the prose colors below are hardcoded
+ * dark-on-light, so a dark dashboard theme would otherwise render them
+ * unreadable. */
+.it-page-editor .it-page-editor-content {
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 20px 24px 32px;
+  background: #ffffff;
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
+.it-page-editor .ProseMirror {
+  outline: none;
+  min-height: 320px;
+}
+
+/* Selected table cells (ProseMirror tables). */
+.it-page-editor .ProseMirror .selectedCell {
+  position: relative;
+}
+.it-page-editor .ProseMirror .selectedCell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(232, 97, 26, 0.12);
+  pointer-events: none;
+}
+
+/* Gap cursor (arrow-key navigation past tables/hr). */
+.it-page-editor .ProseMirror-gapcursor {
+  display: none;
+  pointer-events: none;
+  position: relative;
+}
+.it-page-editor .ProseMirror-gapcursor::after {
+  content: '';
+  display: block;
+  position: absolute;
+  top: -2px;
+  width: 20px;
+  border-top: 1px solid #2c2c2c;
+  animation: it-page-editor-blink 1.1s steps(2, start) infinite;
+}
+.it-page-editor .ProseMirror.ProseMirror-focused .ProseMirror-gapcursor {
+  display: block;
+}
+@keyframes it-page-editor-blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+/* While EDITING, empty cells need visible column separators on top of the
+ * public design (row hairlines + header surface alone leave a fresh 3x3
+ * table's columns invisible). Editor-only affordance; the stored HTML is
+ * unaffected. */
+.it-page-editor .it-page-prose th,
+.it-page-editor .it-page-prose td {
+  border-right: 1px dashed #c9c9c9;
+  border-bottom: 1px solid #d9d9d9;
+}
+
+.it-page-editor .it-page-prose th:last-child,
+.it-page-editor .it-page-prose td:last-child {
+  border-right: 0;
+}
+
+/* Resizable image node view: selected outline + the drag corner handle. */
+.it-page-editor .it-page-image-node {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  line-height: 0;
+}
+
+.it-page-editor .it-page-image-node.is-selected img {
+  outline: 2px solid #e8611a;
+  outline-offset: 2px;
+}
+
+.it-page-editor .it-page-image-handle {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: #e8611a;
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  cursor: nwse-resize;
+  touch-action: none;
+}
+
+/* Highlight swatch previews (values mirror lib/page-highlight-colors.ts -
+ * they are document data, shared with the sanitizer's color allowlist). */
+.it-page-swatch-yellow { background-color: #fef08a; }
+.it-page-swatch-green  { background-color: #bbf7d0; }
+.it-page-swatch-blue   { background-color: #bfdbfe; }
+.it-page-swatch-pink   { background-color: #fbcfe8; }
+.it-page-swatch-orange { background-color: #fed7aa; }
+.it-page-swatch-purple { background-color: #e9d5ff; }
+
+/* ── Prose (mirror of frontend-tokens.css .it-page-prose) ── */
+
+.it-page-prose h1 {
+  margin: 40px 0 16px;
+  font-weight: 500;
+  font-size: 26px;
+  line-height: 1.2;
+  letter-spacing: -0.012em;
+  color: #2c2c2c;
+}
+
+.it-page-prose h4 {
+  margin: 24px 0 8px;
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #2c2c2c;
+}
+
+.it-page-prose h2 {
+  margin: 40px 0 12px;
+  font-weight: 500;
+  font-size: 20px;
+  line-height: 1.3;
+  letter-spacing: -0.012em;
+  color: #2c2c2c;
+}
+
+.it-page-prose h3 {
+  margin: 28px 0 8px;
+  font-weight: 500;
+  font-size: 17px;
+  line-height: 1.4;
+  color: #2c2c2c;
+}
+
+.it-page-prose p {
+  margin: 0 0 16px;
+  font-size: 15px;
+  line-height: 1.7;
+  letter-spacing: -0.006em;
+  color: #444444;
+}
+
+.it-page-prose ul,
+.it-page-prose ol {
+  margin: 0 0 16px;
+  padding-left: 20px;
+}
+
+.it-page-prose ul {
+  list-style-type: disc;
+}
+.it-page-prose ol {
+  list-style-type: decimal;
+}
+
+.it-page-prose li {
+  margin-bottom: 6px;
+  font-size: 15px;
+  line-height: 1.7;
+  letter-spacing: -0.006em;
+  color: #444444;
+}
+
+.it-page-prose strong {
+  font-weight: 600;
+  color: #2c2c2c;
+}
+
+.it-page-prose a {
+  color: #e8611a;
+  text-decoration: none;
+}
+
+.it-page-prose a:hover {
+  text-decoration: underline;
+}
+
+/* Tables: rounded hairline card + surface header row (mirror of the public
+ * design). In the editor, TipTap's own `.tableWrapper` div plays the role of
+ * the public `.it-page-table-scroller`. */
+.it-page-editor .tableWrapper {
+  overflow-x: auto;
+  margin: 8px 0 20px;
+  border: 1px solid #ededed;
+  border-radius: 14px;
+}
+
+.it-page-editor .tableWrapper table {
+  margin: 0;
+}
+
+.it-page-prose table {
+  margin-bottom: 16px;
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.it-page-prose th,
+.it-page-prose td {
+  border-bottom: 1px solid #ededed;
+  padding: 12px 16px;
+  vertical-align: top;
+  font-size: 13px;
+}
+
+.it-page-prose th {
+  background: #f8f8f8;
+  font-weight: 600;
+  color: #2c2c2c;
+}
+
+.it-page-prose td {
+  line-height: 1.6;
+  color: #444444;
+}
+
+.it-page-prose tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* TipTap wraps cell and list-item content in <p>. Neutralise the paragraph
+ * styling inside those containers so `<td><p>x</p></td>` renders identically
+ * to the hand-authored `<td>x</td>` - otherwise the first editor save would
+ * visibly change every table and list. */
+.it-page-prose th p,
+.it-page-prose td p,
+.it-page-prose li p {
+  margin: 0;
+  font-size: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+}
+
+/* ── Rich-content vocabulary beyond the legal baseline ── */
+
+.it-page-prose blockquote {
+  margin: 0 0 16px;
+  padding: 4px 0 4px 16px;
+  border-left: 3px solid #e8611a;
+  color: #444444;
+}
+
+.it-page-prose blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+.it-page-prose hr {
+  margin: 24px 0;
+  border: 0;
+  border-top: 1px solid #ededed;
+}
+
+.it-page-prose code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+  background: #f8f8f8;
+  border: 1px solid #ededed;
+  border-radius: 6px;
+  padding: 1px 6px;
+  color: #2c2c2c;
+}
+
+.it-page-prose pre {
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  background: #f8f8f8;
+  border: 1px solid #ededed;
+  border-radius: 12px;
+  overflow-x: auto;
+}
+
+.it-page-prose pre code {
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.it-page-prose mark {
+  background-color: #fef08a; /* default; multicolor sets inline style */
+  border-radius: 3px;
+  padding: 0 2px;
+  color: inherit;
+}
+
+.it-page-prose img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 12px;
+  margin: 8px 0 16px;
+  background: #ededed; /* image-fallback surface while loading */
+}
+
+/* Task lists (checkbox items). Checkboxes render disabled on the public page
+ * - they are content, not controls. */
+.it-page-prose ul[data-type='taskList'] {
+  list-style: none;
+  padding-left: 2px;
+}
+
+.it-page-prose ul[data-type='taskList'] li {
+  display: flex;
+  gap: 8px;
+}
+
+.it-page-prose ul[data-type='taskList'] li > label {
+  flex: 0 0 auto;
+  margin-top: 4px;
+  user-select: none;
+}
+
+.it-page-prose ul[data-type='taskList'] li > label input {
+  accent-color: #e8611a;
+}
+
+.it-page-prose ul[data-type='taskList'] li > div {
+  flex: 1 1 auto;
+}
+
+@media (min-width: 768px) {
+  .it-page-prose h2 {
+    font-size: 24px;
+  }
+  .it-page-prose h3 {
+    font-size: 19px;
+  }
+  .it-page-prose p,
+  .it-page-prose li {
+    font-size: 16px;
+  }
+  .it-page-prose th,
+  .it-page-prose td {
+    font-size: 14px;
+  }
+}

@@ -1,0 +1,133 @@
+/* Island Tours brand tokens - LOGIN SURFACES ONLY (/portal, /staff)
+ *
+ * WHY THIS FILE EXISTS, AND WHY IT IS NOT DEBT
+ * ────────────────────────────────────────────
+ * The login screens are the operator's front door, and they are deliberately
+ * BRANDED: Island Tours logo, ocean gradient, coral primary, SF Pro Display.
+ * They are meant to look like Island Tours, not like the admin CRM behind them.
+ * That is a settled product decision (2026-07-17), not a migration shortcut, so
+ * these tokens are a permanent, first-class part of this repo.
+ *
+ * The admin UI does NOT use them. Verified at extraction: zero `--it-*` usages
+ * across components/dashboard, components/ui, components/onboarding and the app
+ * routes. The only consumers are `components/login/**` and `app/(login)/**`
+ * (81 utility usages across 20 tokens). Everything else uses the dashboard's own
+ * tokens in `globals.css`. Keep it that way:
+ *
+ *   - Admin surface  -> dashboard tokens (globals.css). NEVER `--it-*`.
+ *   - Login surface  -> these tokens. Scoped by `.frontend-root` on
+ *                       `app/(login)/layout.tsx`.
+ *
+ * This is a FORK of the public site's `app/(frontend)/frontend-tokens.css`,
+ * reduced from 524 lines to only what the login surfaces actually reference.
+ * The two files are independent by design and are ALLOWED to drift - the public
+ * site may restyle its storefront without touching this door. If you need a
+ * token here that the public site has, copy the value in; do not re-import the
+ * public file.
+ *
+ * Source of the values: Figma "island-tours-ui".
+ */
+
+/* ── Colors ─────────────────────────────────────────────────────────────── */
+:root {
+    /* Primary - coral orange */
+    --it-primary: #e8611a;
+    --it-primary-fg: #ffffff;
+
+    /* Green - success feedback (password reset confirmation) */
+    --it-green-subtle: color-mix(in oklch, #00c950, white 88%);
+    --it-green-fg: #ffffff;
+
+    /* Ink - text & strokes */
+    --it-ink: #1a1a1a;
+    --it-ink-placeholder: #a6a6a6;
+
+    /* Content text on light surfaces */
+    --it-heading: #2c2c2c;
+    --it-text-muted: #767676;
+
+    /* Surfaces */
+    --it-white: #ffffff;
+    --it-bg: #f9fafb;
+    --it-surface: #f8f8f8;
+    --it-border: #ededed;
+
+    /* Type - SF Pro system stack, no next/font */
+    --it-font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
+    --it-font-body: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+    --it-weight-semibold: 600;
+    --it-leading-tight: 1.2;
+    --it-tracking-tight: -0.019em;
+    --it-tracking-tightest: -0.03em;
+
+    /* Elevation */
+    --it-shadow-sm: 0 2px 8px 0 rgba(0, 0, 0, 0.06);
+    --it-shadow-md: 0 11px 14px -9px rgba(0, 0, 0, 0.1);
+}
+
+/* ── Tailwind v4 theme extension ────────────────────────────────────────── */
+/* `inline` so the utilities resolve `var()` at use time. Only the tokens the
+ * login surfaces reference are mapped - adding an unused one here ships dead CSS. */
+@theme inline {
+    --color-it-primary: var(--it-primary);
+    --color-it-primary-fg: var(--it-primary-fg);
+    --color-it-green-subtle: var(--it-green-subtle);
+    --color-it-green-fg: var(--it-green-fg);
+    --color-it-ink: var(--it-ink);
+    --color-it-ink-placeholder: var(--it-ink-placeholder);
+    --color-it-heading: var(--it-heading);
+    --color-it-text-muted: var(--it-text-muted);
+    --color-it-white: var(--it-white);
+    --color-it-bg: var(--it-bg);
+    --color-it-surface: var(--it-surface);
+    --color-it-border: var(--it-border);
+
+    --shadow-it-sm: var(--it-shadow-sm);
+    --shadow-it-md: var(--it-shadow-md);
+
+    --font-it-display: var(--it-font-display);
+    --font-it-body: var(--it-font-body);
+}
+
+/* ── Base styles (applied when .frontend-root is present) ───────────────── */
+/* `app/(login)/layout.tsx` puts `.frontend-root` on its wrapper, which scopes
+ * every rule below to the login surfaces. The admin tree never carries the
+ * class, so none of this can leak into the dashboard. */
+@layer base {
+    .frontend-root {
+        font-family: var(--it-font-body);
+        color: var(--it-ink);
+        background-color: var(--it-bg);
+        letter-spacing: var(--it-tracking-tight);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    .frontend-root h1,
+    .frontend-root h2,
+    .frontend-root h3,
+    .frontend-root h4,
+    .frontend-root h5,
+    .frontend-root h6 {
+        font-family: var(--it-font-display);
+        font-weight: var(--it-weight-semibold);
+        line-height: var(--it-leading-tight);
+        letter-spacing: var(--it-tracking-tightest);
+        color: var(--it-ink);
+    }
+
+    /* Chrome/Safari paint the autofill background a hard-coded blue-grey and it
+     * cannot be overridden with background-color. Repaint it with an inset
+     * box-shadow the size of the field, and restore the token text colour. The
+     * long transition delay keeps the fill from flashing back on focus. */
+    .frontend-root input:-webkit-autofill,
+    .frontend-root input:-webkit-autofill:hover,
+    .frontend-root input:-webkit-autofill:focus,
+    .frontend-root input:-webkit-autofill:active {
+        -webkit-box-shadow: 0 0 0 1000px var(--it-white) inset;
+        box-shadow: 0 0 0 1000px var(--it-white) inset;
+        -webkit-text-fill-color: var(--it-ink);
+        caret-color: var(--it-ink);
+        transition: background-color 5000s ease-in-out 0s;
+    }
+}

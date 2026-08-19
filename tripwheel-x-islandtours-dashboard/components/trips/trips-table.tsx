@@ -1,0 +1,199 @@
+'use client';
+
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Location01Icon, PlusSignIcon } from '@hugeicons/core-free-icons';
+
+import Link from 'next/link';
+import { toast } from 'sonner';
+import { DataTable } from '@/components/data-table/data-table';
+import {
+  DataTableActions,
+  DataTableSearch,
+} from '@/components/data-table/data-table-toolbar';
+import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { makeTripColumns } from '@/components/common/trip-columns';
+import { OperatorFilterPopover } from '@/components/common/operator-filter-popover';
+import { useRemoveTrip } from '@/hooks/trips/use-trips';
+import { useActiveDestinations } from '@/hooks/destinations/use-destinations';
+import { useRole } from '@/contexts/role-context';
+import { useSession } from '@/lib/auth-client';
+import { settleAll } from '@/lib/async/settle-all';
+import type { TripListItem } from '@/types/trip';
+
+interface TripsTableProps {
+  data: TripListItem[];
+  total: number;
+  page: number;
+  limit: number;
+  isLoading: boolean;
+  searchValue: string;
+  isAdminView?: boolean;
+  onSearchChange: (value: string) => void;
+  onPageChange: (page: number) => void;
+  onLimitChange: (limit: number) => void;
+  onFilterChange: (key: string, value: string | undefined) => void;
+  /** Atomic multi-key filter write - the status control must set `status`
+   *  and `approvalStatus` in ONE URL update or the writes clobber each
+   *  other (see useTableState.setFilters). */
+  onFiltersChange: (patch: Record<string, string | undefined>) => void;
+  /** Current filter values (URL-derived; empty string = all). */
+  filters?: Record<string, string | undefined>;
+}
+
+export function TripsTable({
+  data,
+  total,
+  page,
+  limit,
+  isLoading,
+  searchValue,
+  isAdminView = false,
+  onSearchChange,
+  onPageChange,
+  onLimitChange,
+  onFilterChange,
+  onFiltersChange,
+  filters = {},
+}: TripsTableProps) {
+  const { mutateAsync: removeTripAsync } = useRemoveTrip();
+  const { can } = useRole();
+  const { data: session } = useSession();
+  const { data: destinations } = useActiveDestinations();
+
+  const columns = makeTripColumns({
+    showOperator: isAdminView,
+    currentUserEmail: session?.user?.email,
+  });
+
+  const newTripButton = can('CREATE_TRIP') && (
+    <Button asChild size='sm'>
+      <Link href='/trips/new'>
+        <HugeiconsIcon icon={PlusSignIcon} />
+        New Tour
+      </Link>
+    </Button>
+  );
+
+  return (
+    <DataTable
+      columns={columns}
+      data={data}
+      isLoading={isLoading}
+      pagination={{ total, page, limit, onPageChange, onLimitChange }}
+      skeletonRows={limit > 10 ? 10 : limit}
+      empty={{
+        icon: Location01Icon,
+        title: 'No tours found.',
+        description: isAdminView
+          ? 'No tours match the current filters.'
+          : 'Create your first tour to get started.',
+        action: newTripButton,
+      }}
+      toolbar={(table) => (
+        <>
+          <DataTableSearch
+            value={searchValue}
+            onChange={onSearchChange}
+            placeholder='Search tours...'
+          />
+          {/* Lifecycle status only. The review axis (In review / Changes
+              requested) moved to the Submissions queue (client 2026-08-15) -
+              for an admin those tours are not in this list at all. The
+              atomic two-key write stays: picking a status also clears any
+              approvalStatus left in the URL from the pre-move era, and two
+              same-tick setFilter calls would clobber each other. */}
+          <Select
+            value={filters.status ?? 'all'}
+            onValueChange={(v) => {
+              onFiltersChange({
+                status: v === 'all' ? undefined : v,
+                approvalStatus: undefined,
+              });
+            }}
+          >
+            <SelectTrigger className='w-40 shrink-0'>
+              <SelectValue placeholder='Status' />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value='all'>All Status</SelectItem>
+              <SelectItem value='DRAFT'>Draft</SelectItem>
+              <SelectItem value='LIVE'>Live</SelectItem>
+              <SelectItem value='PAUSED'>Paused</SelectItem>
+              <SelectItem value='ARCHIVED'>Archived</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={filters.destinationId ?? 'all'}
+            onValueChange={(v) =>
+              onFilterChange('destinationId', v === 'all' ? undefined : v)
+            }
+          >
+            <SelectTrigger className='w-44 shrink-0'>
+              <SelectValue placeholder='Destination' />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value='all'>All Destinations</SelectItem>
+              {(destinations ?? []).map((d) => (
+                <SelectItem key={d.id} value={d.id}>
+                  {d.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {isAdminView && (
+            <OperatorFilterPopover
+              value={filters.operatorId}
+              onChange={(v) => onFilterChange('operatorId', v)}
+            />
+          )}
+          <DataTableActions>
+            {newTripButton}
+          </DataTableActions>
+        </>
+      )}
+      bulkActions={(rows, clearSelection) =>
+        can('DELETE_TRIP') && (
+          <Button
+            size='sm'
+            variant='destructive'
+            onClick={async () => {
+              const draftRows = rows.filter(
+                (r) => r.original.status === 'DRAFT',
+              );
+              if (draftRows.length === 0) {
+                toast.error(
+                  'No deletable trips selected. Only DRAFT trips can be deleted.',
+                );
+                return;
+              }
+              // Report what ACTUALLY happened: the old code toasted success and
+              // cleared selection synchronously, before any delete settled, so a
+              // total failure still read "N deleted" (code-review M3).
+              const { succeeded, failed } = await settleAll(draftRows, (r) =>
+                removeTripAsync(r.original.id),
+              );
+              if (succeeded.length) {
+                toast.success(`${succeeded.length} trip(s) deleted.`);
+              }
+              if (failed.length) {
+                toast.error(
+                  `${failed.length} trip(s) could not be deleted.`,
+                );
+              }
+              clearSelection();
+            }}
+          >
+            Delete
+          </Button>
+        )
+      }
+    />
+  );
+}

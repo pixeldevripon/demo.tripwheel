@@ -1,0 +1,344 @@
+/**
+ * Bridges dashboard mutations to the public site's `'use cache'` layer.
+ *
+ * Every authenticated dashboard write goes through `apiFetch` (`lib/api/fetch.ts`).
+ * After a write succeeds, `apiFetch` calls `revalidatePublicForPath(path, method)`,
+ * which maps the endpoint to the cache tags it affects and fires the
+ * `revalidateCacheTags` Server Action to bust them - so an edit shows up on the
+ * public site instantly instead of waiting out the `cacheLife` window.
+ *
+ * Granularity (Level A): a mutation busts the specific entity's tag (`tour:<id>`)
+ * so only THAT entity's detail/render page regenerates, plus the coarse tags for
+ * the aggregates it appears in (listings, search, facets). Detail reads in
+ * `lib/api/public/*` are tagged `type:<id>` to match; aggregate/embedding reads
+ * keep the coarse tag. The entity id is read straight from the mutation path.
+ *
+ * Path segments with no mapping (per-user wishlist, operator settings,
+ * read-only slug-registry lookups) trigger no revalidation.
+ *
+ * THE RULE: every mutation busts the tags its DATA backs - including page
+ * content, homepage and settings. A write that busts nothing is invisible on
+ * the public site for a full `cacheLife` (usually days) with no error anywhere:
+ * the save succeeds, the dashboard shows the new value, the site serves the old
+ * one. Never lean on a short `cacheLife` as the freshness mechanism.
+ *
+ * When adding an endpoint, map it by following the DATA, not the URL. A field
+ * can live on one entity and surface in another entity's cached payload -
+ * `SiteInfo.enableInstagram` is written at `/settings/site` but gates the
+ * `instagram`-tagged feed, so that case emits both tags.
+ */
+import type { CacheTag } from '@/lib/cache-tags';
+import { enqueueRevalidation } from './revalidation-throttle';
+
+const MUTATING_METHODS = new Set(['POST', 'PATCH', 'PUT', 'DELETE']);
+
+/**
+ * Lifecycle sub-route verbs (`/entity/:id/<verb>`) that can change whether a slug
+ * resolves (publish/archive => page appears/404s). Covers tour lifecycle (POST
+ * verbs) and collection status (`PATCH /collections/:id/status`) alike.
+ */
+const LIFECYCLE_VERBS = new Set(['status', 'publish', 'pause', 'unpause', 'archive', 'restore', 'force']);
+
+/**
+ * Whether this mutation can create / delete / rename / (de)activate an entity -
+ * i.e. change what the router's slug resolver returns. True ONLY for root-entity
+ * writes (`POST /entity`, `DELETE|PATCH /entity/:id`) and lifecycle sub-routes
+ * (`/entity/:id/<verb>`). Content-only sub-resource writes (page-content,
+ * translations, FAQs, images, highlights, ...) do NOT churn the routing cache.
+ */
+function affectsSlugRegistry(parts: string[], method: string): boolean {
+  if (parts.length === 1 && method === 'POST') return true; // POST /entity (create)
+  if (parts.length === 2 && (method === 'DELETE' || method === 'PATCH')) return true; // /entity/:id
+  if (parts.length === 3 && LIFECYCLE_VERBS.has(parts[2])) return true; // /entity/:id/<verb>
+  return false;
+}
+
+/**
+ * Map a completed mutation (path + method) to the cache tags it invalidates.
+ * Returns `[]` for endpoints that back no cached public page.
+ */
+function tagsForMutation(path: string, method: string): CacheTag[] {
+  // Strip any query string / fragment first so a `?locale=…` never leaks into a
+  // path segment (which would throw off the length-based rules below), then split.
+  const parts = path.split(/[?#]/, 1)[0].replace(/^\/+/, '').split('/').filter(Boolean);
+  const [seg0, seg1, seg2] = parts;
+  const tags: CacheTag[] = [];
+  const slug: CacheTag[] = affectsSlugRegistry(parts, method) ? ['slug-registry'] : [];
+
+  switch (seg0) {
+    // A tour appears (with price/rating baked in) on every discovery surface, so
+    // its own detail busts `tour:<id>` while listings/search/renders that embed
+    // it bust coarse `tours`/`search`. FAQ/translation/page-content sub-routes
+    // (`/tours/:id/...`) also carry the id at seg1. This also covers the editorial
+    // `PATCH /tours/:id/locals-favourite` toggle: the destination "Locals'
+    // favourites" grid (`getDestinationTours`) is tagged `tours`, so it regenerates.
+    case 'tours':
+      if (seg1 && seg1 !== 'slug') tags.push(`tour:${seg1}`);
+      tags.push('tours', 'search', ...slug);
+      break;
+
+    // Recurring schedules / date exceptions. No cached public availability read
+    // exists (it is fetched dynamically), but date-filtered tour listings cache
+    // under `tours`, so bust those. `POST /availability/check` is a READ shaped
+    // as a POST (the public date-availability lookup) - revalidating on it loops:
+    // bust -> RSC refresh -> new props -> the hub date filter re-fires the check.
+    case 'availability':
+      if (seg1 === 'check') break;
+      tags.push('tours', 'search');
+      break;
+
+    // Tier change / spotlight. `/tiers/tours/:tourId/...` carries the tour id;
+    // admin spotlight approve/reject (`/tiers/admin/spotlight/:id`) does not.
+    case 'tiers':
+      if (seg1 === 'tours' && seg2) tags.push(`tour:${seg2}`);
+      tags.push('tours', 'search');
+      break;
+
+    // Attribute definitions drive tour filters/facets and per-tour attribute
+    // display; per-tour attribute values are hit at `/tours/:id/...` (handled
+    // above), so this branch is the dictionary itself.
+    case 'attributes':
+      tags.push('tours', 'search');
+      break;
+
+    // Operator company name/logo appear on the tour detail page (tagged
+    // `operator:<id>` there) and feed the per-user dashboard profile
+    // (getUserProfile reads operator company-info / social-media). `tours`/
+    // `search` too, defensively, in case a listing card ever surfaces operator.
+    case 'operators':
+      // Email timeline reads/resends under /operators/:id/emails change no
+      // public content - purging operator/tours/search for every resend is
+      // pure cache churn (review finding 7 on PR #56).
+      if (parts[2] === 'emails') break;
+      if (seg1) tags.push(`operator:${seg1}`);
+      tags.push('tours', 'search', 'user-profile');
+      break;
+
+    case 'destinations':
+      if (seg1) tags.push(`destination:${seg1}`);
+      tags.push('destinations', ...slug);
+      break;
+
+    case 'categories':
+      if (seg1) tags.push(`category:${seg1}`);
+      tags.push('categories', ...slug);
+      break;
+
+    case 'collections':
+      if (seg1) tags.push(`collection:${seg1}`);
+      tags.push('collections', ...slug);
+      break;
+
+    case 'hubs':
+      if (seg1) tags.push(`hub:${seg1}`);
+      tags.push('hubs', ...slug);
+      break;
+
+    // Review moderation (approve/hold/reject/respond/delete). `getTourReviews`
+    // and `getTourReviewSummary` are tagged `reviews` + `tour:<id>`, and tour
+    // cards carry the rating aggregate via `tours`/`search`.
+    //
+    // The backend routes are TOP-LEVEL (`PATCH /reviews/:id/moderate`), so the
+    // path carries the REVIEW id, not the tour id - `seg1` here is useless for
+    // busting, and `tour:<tourId>` cannot be derived from the URL. That granular
+    // tag is what refreshes the tour detail page's rating, count and star chart
+    // (`getTourBySlug` + `getTourReviewSummary`), so without it an approval
+    // updates the review list while the number above it stays stale for a full
+    // `cacheLife('days')`.
+    //
+    // Following the URL is the bug; follow the DATA. The write client knows the
+    // tourId from the row it just moderated, so it calls
+    // `revalidateReviewWrite(tourId)` below IN ADDITION to this mapping.
+    case 'reviews':
+      tags.push('reviews', 'tours', 'search');
+      break;
+
+    // Profile edits hit `/users/me` (name/phone/location/timezone); getUserProfile
+    // (tag `user-profile`) is the per-user dashboard profile cache. Not public.
+    case 'users':
+      tags.push('user-profile');
+      break;
+
+    // Admin social media (`/settings/social-media`) also feeds getUserProfile;
+    // other platform settings are harmless to fold in (cheap per-user regen).
+    //
+    // On top of that, site/seo/social-media/company writes back public reads on
+    // the marketing site (the `settings/public/*` projections: logo + WhatsApp,
+    // meta/OG tags, footer social links, footer legal block), all cached under
+    // the coarse `site-info` tag with `cacheLife('days')`. Stripe/Mollie
+    // stay out - no cached public page reads them.
+    //
+    // Both live in ONE case on purpose: a second `case 'settings'` below this one
+    // is unreachable (the first match wins), which is exactly how `site-info` went
+    // un-busted for `cacheLife('days')` at a time.
+    case 'settings':
+      tags.push('user-profile');
+      if (
+        seg1 === 'site' ||
+        seg1 === 'seo' ||
+        seg1 === 'social-media' ||
+        seg1 === 'company'
+      ) {
+        tags.push('site-info');
+      }
+      // SiteInfo also stores `enableInstagram` (+ `instagramWidgetId`), and the
+      // public Instagram section reads that kill switch as `enabled` on
+      // `/instagram/public/feed`, which is cached under `instagram` - a
+      // different tag on a different endpoint. Busting only `site-info` left the
+      // section rendering (or hidden) for a full cacheLife('days') after an
+      // admin flipped the toggle. Follow the DATA, not the URL.
+      if (seg1 === 'site') {
+        tags.push('instagram');
+      }
+      break;
+
+    // Media library. `excludeFromIndexing` on any attachment changes the
+    // platform-wide exclusion list behind `getExcludedMediaUrls`, which decides
+    // what may appear in og:image, structured data and sitemaps. That loader
+    // used to rely on `cacheLife('hours')` alone, so a toggle could sit
+    // unapplied for an hour; every write here now busts it. Uploads count too -
+    // a new attachment can be created already flagged.
+    // unapplied for an hour; every write here now busts it. Uploads count too -
+    // a new attachment can be created already flagged.
+    //
+    // `media-seo` rides along on the same writes: the attachment panel's Title,
+    // Description and Alt Text fields (and their per-locale translations at
+    // `/media-gallery/:id/translations/:locale`) feed `getMediaSeo`, which
+    // captions og:image, gallery photos and heroes. Both tags on every write
+    // rather than branching on the body - the two are edited from the same panel,
+    // and the cost of an extra tag is one cache generation.
+    case 'media-gallery':
+      tags.push('media-indexing', 'media-seo');
+      break;
+
+    // Homepage editorial content (hero copy/image, editorial CTA, section
+    // headings) and its per-locale copy at `/home-page/translations/:locale`.
+    // One coarse tag covers both: there is a single homepage, and every locale's
+    // read is cached under the same tag.
+    case 'home-page':
+      tags.push('homepage');
+      break;
+
+    // Island Tours' post-booking recommendations, featured on the thank-you page
+    // (Recommendations): create, edit, delete, reorder, category CRUD and
+    // per-locale copy at `/recommendations/:id/translations/:locale`. One coarse
+    // tag covers all of them - the public read serves whichever recommendation
+    // wins the promotion order for a surface, so editing row B can change the card
+    // row A was filling.
+    //
+    // This bust is load-bearing in a way the homepage's is not: the same fields
+    // an admin edits here also DECIDE WHETHER THE SECTION RENDERS. Switching one
+    // off, or clearing its photo, English title or link, hands the card to the
+    // next one or takes it down - so without this the old promo would keep showing
+    // for a full cacheLife('days').
+    case 'recommendations':
+      tags.push('recommendations');
+      break;
+
+    // The Pages system (legal/policy permalinks): create/edit/publish/rename/
+    // delete and per-locale content at `/pages/:id/translations/:locale`. One
+    // coarse tag - a rename must bust the OLD slug's cached entry too, which a
+    // per-slug tag could not (the producer only knows the new one).
+    case 'pages':
+      tags.push('pages');
+      break;
+
+    // "Top Island Experiences" curation. Same coarse tag as the rest of the
+    // homepage - the cards are standalone presentation (label + media), so the
+    // public loader is tagged `homepage` only and admin card writes are the
+    // only thing that can change the deck.
+    case 'featured-experiences':
+      tags.push('homepage');
+      break;
+
+    // Reviews integration (Settings > Reviews): config saves and manual
+    // refreshes both change the public testimonials band.
+    case 'platform-reviews':
+      tags.push('platform-reviews');
+      break;
+
+    // Instagram grid (Settings > Instagram): the handle row and every tile
+    // write. Not `site-info` - only the kill switch lives there, and it is
+    // saved through `/settings/site`, which the case above already covers.
+    // Covers the tiles AND `/instagram/credentials`. Saving or CLEARING the
+    // access token changes whether the public section renders at all (the feed
+    // reports `enabled: false` with no token, tiles or no tiles), so the token
+    // write has to bust this tag exactly like a tile edit does - otherwise
+    // removing the credential leaves the grid up for a full cacheLife('days').
+    case 'instagram':
+      tags.push('instagram');
+      break;
+
+    // Custom scripts (Settings > SEO > Custom Scripts). Covers create, edit,
+    // toggle, reorder and delete - `/custom-scripts` and `/custom-scripts/:id`
+    // alike, since every one of them changes what the public payload returns.
+    //
+    // This is the highest-stakes bust in this file. These rows render into the
+    // ROOT LAYOUT of every page, and an admin toggling one off is usually
+    // mid-incident, isolating which vendor broke the site - "wait out
+    // cacheLife('days')" is not an answer then. It is deliberately NOT folded
+    // into `site-info`: that tag carries the footer and every NeedHelp surface,
+    // and this one regenerates the most expensive thing on the site.
+    case 'custom-scripts':
+      tags.push('custom-scripts');
+      break;
+
+    // The admin email centre (WP-H): `/email/settings` PATCHes, test-sends
+    // and the send-log/opt-out/consent reads back no cached public page -
+    // they configure OUTBOUND mail, not site content. The `default` below
+    // would already skip them; this case pins that as a decision (H-17) so a
+    // future `case 'email'` addition cannot accidentally start purging the
+    // public cache on every switchboard save.
+    case 'email':
+      break;
+
+    default:
+      break; // operator-settings, wishlist, read-only lookups, ...
+  }
+
+  // De-dupe (e.g. a POST already pushed 'slug-registry' once).
+  return [...new Set(tags)];
+}
+
+/**
+ * Bust the cache tags affected by a just-completed mutation. No-op for GETs and
+ * for endpoints that back no cached public page. Fire-and-forget: a revalidation
+ * hiccup must never fail or slow down the write the user just made.
+ *
+ * Handing off to the throttle rather than calling the Server Action directly:
+ * the tags go out on the leading edge (so a single save is as immediate as it
+ * ever was) and a burst of identical saves collapses into roughly one call per
+ * second instead of one per write. See `revalidation-throttle.ts`.
+ */
+export function revalidatePublicForPath(path: string, method?: string): void {
+  const verb = (method ?? 'GET').toUpperCase();
+  if (!MUTATING_METHODS.has(verb)) return;
+
+  const tags = tagsForMutation(path, verb);
+  if (!tags.length) return;
+
+  enqueueRevalidation(tags);
+}
+
+/**
+ * Bust the granular `tour:<tourId>` tag after a review write.
+ *
+ * Call this from the reviews API client alongside the automatic
+ * `revalidatePublicForPath` that `apiFetch` fires. It exists because review
+ * routes are top-level (`PATCH /reviews/:id/moderate`), so the path carries the
+ * review id and the tour id is only known to the caller - see the `case 'reviews'`
+ * note above.
+ *
+ * What goes stale without it: the tour detail page's rating, review count and
+ * star distribution chart, all of which read `getTourBySlug` /
+ * `getTourReviewSummary` under `tour:<id>` with `cacheLife('days')`. The review
+ * LIST would refresh (it also carries the coarse `reviews` tag) while the
+ * aggregate above it did not, which reads as a bug to whoever just approved.
+ *
+ * Fire-and-forget, same contract as `revalidatePublicForPath`: never awaited,
+ * never throws, never blocks the write.
+ */
+export function revalidateReviewWrite(tourId: string | null | undefined): void {
+  if (!tourId) return;
+  enqueueRevalidation([`tour:${tourId}`]);
+}

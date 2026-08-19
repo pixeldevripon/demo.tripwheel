@@ -1,0 +1,183 @@
+'use client';
+
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Delete02Icon, File02Icon, HelpCircleIcon, MoreHorizontalIcon, PencilEdit02Icon, Search01Icon, Tag02Icon, ToggleOffIcon, ToggleOnIcon, TranslateIcon, ViewIcon, ZapIcon } from '@hugeicons/core-free-icons';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { useForceDeleteHub, useUpdateHub } from '@/hooks/hubs/use-hubs';
+import { useRole } from '@/contexts/role-context';
+import type { HubLocalized } from '@/types/hub';
+import { HubQuickEditSheet } from './hub-quick-edit-sheet';
+import { HubDeleteDialog } from './hub-delete-dialog';
+import { ForceDeleteDialog } from '@/components/common/force-delete-dialog';
+
+interface HubRowActionsProps {
+  hub: HubLocalized;
+}
+
+export function HubRowActions({ hub }: HubRowActionsProps) {
+  const router = useRouter();
+  const [quickEditOpen, setQuickEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [forceDeleteOpen, setForceDeleteOpen] = useState(false);
+  const { mutate: updateHub, isPending } = useUpdateHub();
+  const { mutate: forceDeleteHub, isPending: isForceDeleting } = useForceDeleteHub();
+  const { can, role } = useRole();
+
+  function handleForceDelete() {
+    forceDeleteHub(hub.id, {
+      onSuccess: () => {
+        toast.success(`"${hub.name}" permanently deleted.`);
+        setForceDeleteOpen(false);
+      },
+      onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to delete hub.'),
+    });
+  }
+
+  function handleToggleActive() {
+    updateHub(
+      { id: hub.id, payload: { isActive: !hub.isActive } },
+      {
+        onSuccess: () => {
+          toast.success(`Hub ${!hub.isActive ? 'activated' : 'deactivated'} successfully.`, {
+            duration: 10_000,
+            action: {
+              label: 'Undo',
+              onClick: () =>
+                updateHub(
+                  { id: hub.id, payload: { isActive: hub.isActive } },
+                  {
+                    onSuccess: () =>
+                      toast.success(
+                        `Hub restored to ${hub.isActive ? 'active' : 'inactive'}.`
+                      ),
+                    onError: (err) =>
+                      toast.error(err instanceof Error ? err.message : 'Undo failed.'),
+                  }
+                ),
+            },
+          });
+        },
+        onError: (err) => {
+          toast.error(err instanceof Error ? err.message : 'Failed to update hub.');
+        },
+      }
+    );
+  }
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon-sm">
+            <HugeiconsIcon icon={MoreHorizontalIcon} />
+            <span className="sr-only">Open menu</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-52">
+          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+          <DropdownMenuItem onClick={() => router.push(`/hubs/${hub.id}`)}>
+            <HugeiconsIcon icon={ViewIcon} />
+            View
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push(`/hubs/${hub.id}/edit`)}>
+            <HugeiconsIcon icon={PencilEdit02Icon} />
+            Edit
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setQuickEditOpen(true)}>
+            <HugeiconsIcon icon={ZapIcon} />
+            Quick Edit
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={() => router.push(`/translations/hub/${hub.id}/es`)}
+          >
+            <HugeiconsIcon icon={TranslateIcon} />
+            Manage Translations
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => router.push(`/hubs/${hub.id}/edit?tab=page-content`)}
+          >
+            <HugeiconsIcon icon={File02Icon} />
+            Page Content
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => router.push(`/hubs/${hub.id}/edit?tab=seo`)}
+          >
+            <HugeiconsIcon icon={Search01Icon} />
+            SEO
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => router.push(`/hubs/${hub.id}/edit?tab=faqs`)}
+          >
+            <HugeiconsIcon icon={HelpCircleIcon} />
+            Manage FAQs
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => router.push(`/hubs/${hub.id}/edit?tab=allowed-categories`)}
+          >
+            <HugeiconsIcon icon={Tag02Icon} />
+            Allowed Categories
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={handleToggleActive}
+            disabled={isPending || hub.isSeeded}
+          >
+            {hub.isActive ? <HugeiconsIcon icon={ToggleOffIcon} /> : <HugeiconsIcon icon={ToggleOnIcon} />}
+            {hub.isActive ? 'Deactivate' : 'Activate'}
+          </DropdownMenuItem>
+          {can('MANAGE_HUBS') && !hub.isSeeded && hub.isActive && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                onClick={() => setDeleteOpen(true)}
+              >
+                <HugeiconsIcon icon={Delete02Icon} />
+                Deactivate
+              </DropdownMenuItem>
+            </>
+          )}
+          {role === 'ADMIN' && !hub.isSeeded && !hub.isActive && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                onClick={() => setForceDeleteOpen(true)}
+              >
+                <HugeiconsIcon icon={Delete02Icon} />
+                Force Delete
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <HubQuickEditSheet hub={hub} open={quickEditOpen} onOpenChange={setQuickEditOpen} />
+      <HubDeleteDialog hub={hub} open={deleteOpen} onOpenChange={setDeleteOpen} />
+
+      <ForceDeleteDialog
+        open={forceDeleteOpen}
+        onOpenChange={setForceDeleteOpen}
+        title="Force Delete Hub"
+        entityName={hub.name}
+        consequenceNote="The hub's translations, page content, FAQs, picks and comparison data are permanently removed, tours lose this hub tag, and its URL slug enters the 90-day reuse cooldown."
+        onConfirm={handleForceDelete}
+        isPending={isForceDeleting}
+        confirmLabel="Force Delete Hub"
+      />
+    </>
+  );
+}

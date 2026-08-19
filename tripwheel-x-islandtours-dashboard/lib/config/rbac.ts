@@ -1,0 +1,409 @@
+// Mirrors backend: src/config/roles.config.ts + prisma/enums.prisma
+// Keep in sync with the backend whenever Permission or Role enums change.
+
+export const Permission = {
+  // System
+  VIEW_PERMISSIONS: 'VIEW_PERMISSIONS',
+  MANAGE_SYSTEM: 'MANAGE_SYSTEM',
+  MANAGE_TRIPS: 'MANAGE_TRIPS',
+  // Editorial curation (Locals' favourite etc.) — admin-only, never operators.
+  MANAGE_EDITORIAL: 'MANAGE_EDITORIAL',
+  // Schedules, exceptions, departures - and the calendar export feeds built on them.
+  MANAGE_AVAILABILITY: 'MANAGE_AVAILABILITY',
+  // Matrix v1.7 stop-sell split: close/reopen only (the dock-staff grant) -
+  // no timetable or capacity edits.
+  STOP_SELL: 'STOP_SELL',
+  MANAGE_OPERATORS: 'MANAGE_OPERATORS',
+  CREATE_CONTENT: 'CREATE_CONTENT',
+  VIEW_CONTENT: 'VIEW_CONTENT',
+  EDIT_CONTENT: 'EDIT_CONTENT',
+  DELETE_CONTENT: 'DELETE_CONTENT',
+  VIEW_MEDIA: 'VIEW_MEDIA',
+  VIEW_ORDERS: 'VIEW_ORDERS',
+  EDIT_ORDER: 'EDIT_ORDER',
+  DELETE_ORDER: 'DELETE_ORDER',
+
+  // Users
+  MANAGE_USERS: 'MANAGE_USERS',
+  VIEW_USERS: 'VIEW_USERS',
+  CREATE_USER: 'CREATE_USER',
+  UPDATE_USER: 'UPDATE_USER',
+  DELETE_USER: 'DELETE_USER',
+
+  // Staff & teams. MANAGE_STAFF = platform (admin-side) staff + designations;
+  // MANAGE_TEAM = an operator's own team seats. MANAGE_STAFF is never grantable
+  // to staff themselves (backend ceiling), so it is effectively admin-only.
+  MANAGE_STAFF: 'MANAGE_STAFF',
+  MANAGE_TEAM: 'MANAGE_TEAM',
+
+  // Operators
+  CREATE_OPERATOR: 'CREATE_OPERATOR',
+  VIEW_OPERATOR_PROFILE: 'VIEW_OPERATOR_PROFILE',
+  EDIT_OPERATOR_PROFILE: 'EDIT_OPERATOR_PROFILE',
+  MANAGE_OPERATOR_PAYMENTS: 'MANAGE_OPERATOR_PAYMENTS',
+  DELETE_OPERATOR: 'DELETE_OPERATOR',
+
+  // Trips
+  CREATE_TRIP: 'CREATE_TRIP',
+  VIEW_TRIPS: 'VIEW_TRIPS',
+  EDIT_TRIP: 'EDIT_TRIP',
+  DELETE_TRIP: 'DELETE_TRIP',
+
+  // Blogs
+  CREATE_BLOG: 'CREATE_BLOG',
+  VIEW_BLOGS: 'VIEW_BLOGS',
+  EDIT_BLOG: 'EDIT_BLOG',
+  DELETE_BLOG: 'DELETE_BLOG',
+
+  // Destinations & Hubs
+  CREATE_DESTINATION: 'CREATE_DESTINATION',
+  VIEW_DESTINATIONS: 'VIEW_DESTINATIONS',
+  EDIT_DESTINATION: 'EDIT_DESTINATION',
+  DELETE_DESTINATION: 'DELETE_DESTINATION',
+  MANAGE_HUBS: 'MANAGE_HUBS',
+
+  // Activities
+  CREATE_ACTIVITY: 'CREATE_ACTIVITY',
+  VIEW_ACTIVITIES: 'VIEW_ACTIVITIES',
+  EDIT_ACTIVITY: 'EDIT_ACTIVITY',
+  DELETE_ACTIVITY: 'DELETE_ACTIVITY',
+
+  // Pickups & Drops
+  CREATE_PICKUP_DROP: 'CREATE_PICKUP_DROP',
+  VIEW_PICKUP_DROPS: 'VIEW_PICKUP_DROPS',
+  EDIT_PICKUP_DROP: 'EDIT_PICKUP_DROP',
+  DELETE_PICKUP_DROP: 'DELETE_PICKUP_DROP',
+
+  // Categories
+  CREATE_CATEGORY: 'CREATE_CATEGORY',
+  VIEW_CATEGORIES: 'VIEW_CATEGORIES',
+  EDIT_CATEGORY: 'EDIT_CATEGORY',
+  DELETE_CATEGORY: 'DELETE_CATEGORY',
+
+  CREATE_COLLECTION: 'CREATE_COLLECTION',
+  VIEW_COLLECTIONS: 'VIEW_COLLECTIONS',
+  EDIT_COLLECTION: 'EDIT_COLLECTION',
+  DELETE_COLLECTION: 'DELETE_COLLECTION',
+
+  // Bookings
+  VIEW_BOOKINGS: 'VIEW_BOOKINGS',
+  EDIT_BOOKING: 'EDIT_BOOKING',
+  DELETE_BOOKING: 'DELETE_BOOKING',
+  MANAGE_BOOKINGS: 'MANAGE_BOOKINGS',
+  // Conflict #7: money + traveler contact on booking rows. Without it a seat
+  // gets the MANIFEST projection (who/when/where).
+  VIEW_BOOKING_FINANCIALS: 'VIEW_BOOKING_FINANCIALS',
+
+  // Payments
+  VIEW_PAYMENTS: 'VIEW_PAYMENTS',
+  EDIT_PAYMENT: 'EDIT_PAYMENT',
+  DELETE_PAYMENT: 'DELETE_PAYMENT',
+  // Payout-ledger flips (settlements mark-paid/unpaid) - admin-only, mirrors
+  // the backend platform-staff ceiling exclusion.
+  MANAGE_PAYMENTS: 'MANAGE_PAYMENTS',
+
+  // Enquiries
+  VIEW_ENQUIRIES: 'VIEW_ENQUIRIES',
+  DELETE_ENQUIRY: 'DELETE_ENQUIRY',
+  REPLY_ENQUIRY: 'REPLY_ENQUIRY',
+
+  // Leads
+  VIEW_LEADS: 'VIEW_LEADS',
+  EDIT_LEAD: 'EDIT_LEAD',
+  DELETE_LEAD: 'DELETE_LEAD',
+
+  // Reviews
+  VIEW_REVIEWS: 'VIEW_REVIEWS',
+  EDIT_REVIEW: 'EDIT_REVIEW',
+  DELETE_REVIEW: 'DELETE_REVIEW',
+  APPROVE_REVIEW: 'APPROVE_REVIEW',
+
+  // Commercial tiers & spotlight
+  MANAGE_TIERS: 'MANAGE_TIERS',
+  APPROVE_SPOTLIGHT: 'APPROVE_SPOTLIGHT',
+
+
+  // Files & Media
+  UPLOAD_MEDIA: 'UPLOAD_MEDIA',
+  MANAGE_MEDIA: 'MANAGE_MEDIA',
+
+  // Profile
+  VIEW_PROFILE: 'VIEW_PROFILE',
+  EDIT_PROFILE: 'EDIT_PROFILE',
+
+  // Settings
+  MANAGE_SETTINGS: 'MANAGE_SETTINGS',
+  VIEW_SETTINGS: 'VIEW_SETTINGS',
+
+  // Analytics & Data
+  VIEW_ANALYTICS: 'VIEW_ANALYTICS',
+  EXPORT_DATA: 'EXPORT_DATA',
+  BULK_OPERATIONS: 'BULK_OPERATIONS',
+} as const;
+
+export type PermissionKey = keyof typeof Permission;
+
+export const Role = {
+  ADMIN: 'ADMIN',
+  EDITOR: 'EDITOR',
+  STAFF: 'STAFF',
+  GUIDE: 'GUIDE',
+  TOUR_OPERATOR: 'TOUR_OPERATOR',
+  USER: 'USER',
+} as const;
+
+export type RoleKey = keyof typeof Role;
+
+export const ROLE_PERMISSIONS: Record<RoleKey, PermissionKey[]> = {
+  [Role.ADMIN]: [
+    'VIEW_PERMISSIONS',
+    'MANAGE_OPERATORS',
+    'CREATE_OPERATOR',
+    'VIEW_OPERATOR_PROFILE',
+    'EDIT_OPERATOR_PROFILE',
+    'MANAGE_OPERATOR_PAYMENTS',
+    'MANAGE_SYSTEM',
+    'MANAGE_TRIPS',
+    'MANAGE_EDITORIAL',
+    'MANAGE_AVAILABILITY',
+    'STOP_SELL',
+    'CREATE_CONTENT',
+    'VIEW_CONTENT',
+    'EDIT_CONTENT',
+    'DELETE_CONTENT',
+    'VIEW_MEDIA',
+    'VIEW_ORDERS',
+    'EDIT_ORDER',
+    'MANAGE_USERS',
+    'VIEW_USERS',
+    'CREATE_USER',
+    'UPDATE_USER',
+    'DELETE_USER',
+    'MANAGE_STAFF',
+    'MANAGE_TEAM',
+    'CREATE_TRIP',
+    'VIEW_TRIPS',
+    'EDIT_TRIP',
+    'DELETE_TRIP',
+    'CREATE_BLOG',
+    'VIEW_BLOGS',
+    'EDIT_BLOG',
+    'DELETE_BLOG',
+    'CREATE_DESTINATION',
+    'VIEW_DESTINATIONS',
+    'EDIT_DESTINATION',
+    'DELETE_DESTINATION',
+    'MANAGE_HUBS',
+    'CREATE_ACTIVITY',
+    'VIEW_ACTIVITIES',
+    'EDIT_ACTIVITY',
+    'DELETE_ACTIVITY',
+    'CREATE_PICKUP_DROP',
+    'VIEW_PICKUP_DROPS',
+    'EDIT_PICKUP_DROP',
+    'DELETE_PICKUP_DROP',
+    'CREATE_CATEGORY',
+    'VIEW_CATEGORIES',
+    'EDIT_CATEGORY',
+    'DELETE_CATEGORY',
+    'CREATE_COLLECTION',
+    'VIEW_COLLECTIONS',
+    'EDIT_COLLECTION',
+    'DELETE_COLLECTION',
+    'VIEW_BOOKINGS',
+    'EDIT_BOOKING',
+    'DELETE_BOOKING',
+    'VIEW_BOOKING_FINANCIALS',
+    // Admin-only booking ops (non-payment forfeit confirmation - guide s15).
+    'MANAGE_BOOKINGS',
+    'VIEW_PAYMENTS',
+    'EDIT_PAYMENT',
+    'DELETE_PAYMENT',
+    // Payout ledger (settlements mark-paid/unpaid) - admin-only.
+    'MANAGE_PAYMENTS',
+    'VIEW_ENQUIRIES',
+    'DELETE_ENQUIRY',
+    'REPLY_ENQUIRY',
+    'VIEW_LEADS',
+    'EDIT_LEAD',
+    'DELETE_LEAD',
+    'VIEW_REVIEWS',
+    'EDIT_REVIEW',
+    'DELETE_REVIEW',
+    'APPROVE_REVIEW',
+    'MANAGE_TIERS',
+    'APPROVE_SPOTLIGHT',
+    'DELETE_OPERATOR',
+    'UPLOAD_MEDIA',
+    'MANAGE_MEDIA',
+    'VIEW_PROFILE',
+    'EDIT_PROFILE',
+    'MANAGE_SETTINGS',
+    'VIEW_SETTINGS',
+    'VIEW_ANALYTICS',
+    'EXPORT_DATA',
+    'BULK_OPERATIONS',
+  ],
+
+  [Role.EDITOR]: [
+    'CREATE_TRIP',
+    'VIEW_TRIPS',
+    'EDIT_TRIP',
+    'DELETE_TRIP',
+    'CREATE_BLOG',
+    'VIEW_BLOGS',
+    'EDIT_BLOG',
+    'DELETE_BLOG',
+    'CREATE_DESTINATION',
+    'VIEW_DESTINATIONS',
+    'EDIT_DESTINATION',
+    'DELETE_DESTINATION',
+    'MANAGE_HUBS',
+    'CREATE_ACTIVITY',
+    'VIEW_ACTIVITIES',
+    'EDIT_ACTIVITY',
+    'DELETE_ACTIVITY',
+    'CREATE_PICKUP_DROP',
+    'VIEW_PICKUP_DROPS',
+    'EDIT_PICKUP_DROP',
+    'DELETE_PICKUP_DROP',
+    'CREATE_CATEGORY',
+    'VIEW_CATEGORIES',
+    'EDIT_CATEGORY',
+    'DELETE_CATEGORY',
+    'CREATE_COLLECTION',
+    'VIEW_COLLECTIONS',
+    'EDIT_COLLECTION',
+    'DELETE_COLLECTION',
+    'VIEW_BOOKINGS',
+    'EDIT_BOOKING',
+    'DELETE_BOOKING',
+    'VIEW_BOOKING_FINANCIALS',
+    'VIEW_PAYMENTS',
+    'EDIT_PAYMENT',
+    'DELETE_PAYMENT',
+    'VIEW_ENQUIRIES',
+    'DELETE_ENQUIRY',
+    'REPLY_ENQUIRY',
+    'VIEW_LEADS',
+    'EDIT_LEAD',
+    'DELETE_LEAD',
+    'VIEW_REVIEWS',
+    'EDIT_REVIEW',
+    'DELETE_REVIEW',
+    'APPROVE_REVIEW',
+    'UPLOAD_MEDIA',
+    'VIEW_MEDIA',
+    'MANAGE_MEDIA',
+    'VIEW_PROFILE',
+    'EDIT_PROFILE',
+    'VIEW_ANALYTICS',
+    'EXPORT_DATA',
+    'BULK_OPERATIONS',
+  ],
+
+  [Role.STAFF]: [
+    'CREATE_TRIP',
+    'VIEW_TRIPS',
+    'CREATE_BLOG',
+    'VIEW_BLOGS',
+    'VIEW_BOOKINGS',
+    'EDIT_BOOKING',
+    'DELETE_BOOKING',
+    'VIEW_BOOKING_FINANCIALS',
+    'VIEW_PAYMENTS',
+    'EDIT_PAYMENT',
+    'DELETE_PAYMENT',
+    'VIEW_ENQUIRIES',
+    'DELETE_ENQUIRY',
+    'REPLY_ENQUIRY',
+    'VIEW_LEADS',
+    'EDIT_LEAD',
+    'DELETE_LEAD',
+    'VIEW_REVIEWS',
+    'EDIT_REVIEW',
+    'DELETE_REVIEW',
+    'APPROVE_REVIEW',
+    'UPLOAD_MEDIA',
+    'VIEW_MEDIA',
+    'MANAGE_MEDIA',
+    'VIEW_PROFILE',
+    'EDIT_PROFILE',
+    'VIEW_ANALYTICS',
+  ],
+
+  [Role.GUIDE]: [
+    'VIEW_USERS',
+    'VIEW_PROFILE',
+    'VIEW_BOOKINGS',
+    'VIEW_TRIPS',
+    'VIEW_REVIEWS',
+  ],
+
+  [Role.TOUR_OPERATOR]: [
+    'VIEW_OPERATOR_PROFILE',
+    'EDIT_OPERATOR_PROFILE',
+    'MANAGE_OPERATOR_PAYMENTS',
+    // Held by owners via the full role set; non-owner seats never receive it
+    // (the backend seat ceiling excludes it from every grant).
+    'MANAGE_TEAM',
+    'VIEW_USERS',
+    'CREATE_TRIP',
+    'EDIT_TRIP',
+    'DELETE_TRIP',
+    'VIEW_TRIPS',
+    'VIEW_BLOGS',
+    'VIEW_ANALYTICS',
+    'EXPORT_DATA',
+    'VIEW_REVIEWS',
+    'VIEW_PERMISSIONS',
+    'CREATE_CONTENT',
+    'EDIT_CONTENT',
+    'DELETE_CONTENT',
+    'VIEW_CONTENT',
+    'UPLOAD_MEDIA',
+    'VIEW_MEDIA',
+    'VIEW_ORDERS',
+    // Mirrors backend roles.config: operators view OWN bookings/payments only
+    // (the list endpoints scope by operatorId).
+    'VIEW_BOOKINGS',
+    // Owners/managers keep the full booking row; a guide-level designation
+    // omits this and gets the manifest projection instead (conflict #7).
+    'VIEW_BOOKING_FINANCIALS',
+    // Gates only the two operator REPORT routes (report-non-payment,
+    // report-cancellation) - ownership-pinned server-side, no money moves.
+    'EDIT_BOOKING',
+    'VIEW_PAYMENTS',
+    'VIEW_PROFILE',
+    'EDIT_PROFILE',
+    // Conflict #1: NO MANAGE_TRIPS - publishing is always Island Tours'.
+    // Operators submit-for-review + pause/archive via EDIT_TRIP routes.
+    'MANAGE_AVAILABILITY',
+    'STOP_SELL',
+    'VIEW_CATEGORIES',
+  ],
+
+  // Travellers cannot sign in to this app at all since the /account door was
+  // removed on 2026-07-28 - their account area is on the public site and is
+  // authorized by the traveler session, not by these grants. Kept as an
+  // explicit empty list rather than deleted: the Record is exhaustive over
+  // Role on purpose, so a new role cannot be added without a decision here.
+  // (The BACKEND still holds real USER grants for the public traveller reads;
+  // this map only describes what THIS dashboard renders.)
+  [Role.USER]: [],
+};
+
+export const hasPermission = (userRole: string, permission: string): boolean => {
+  const perms = ROLE_PERMISSIONS[userRole as RoleKey] ?? [];
+  return perms.includes(permission as PermissionKey);
+};
+
+export const hasAnyPermission = (userRole: string, permissions: string[]): boolean => {
+  const perms = ROLE_PERMISSIONS[userRole as RoleKey] ?? [];
+  return permissions.some((p) => perms.includes(p as PermissionKey));
+};
+
+export const hasAllPermissions = (userRole: string, permissions: string[]): boolean => {
+  const perms = ROLE_PERMISSIONS[userRole as RoleKey] ?? [];
+  return permissions.every((p) => perms.includes(p as PermissionKey));
+};

@@ -1,0 +1,929 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+/* Island Tours brand tokens - LOGIN SURFACES ONLY (/portal, /staff).
+ * Scoped by `.frontend-root` on app/(login)/layout.tsx; the admin tree never
+ * carries that class. This is a deliberate fork of the public site's token file,
+ * NOT a leftover import - the login screens are intentionally brand-styled.
+ * See the header of login-tokens.css. */
+@import './login-tokens.css';
+
+/* 03 §3. `:where` (not `:is`) so the variant adds ZERO specificity: a dark:
+ * utility then beats its base utility on source order alone, which is how
+ * Tailwind orders variants. `:is(.dark *)` - the old form - also failed to match
+ * the `.dark` element itself. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ═══ VEGA RE-SKIN (2026-07-17) ════════════════════════════════════════════
+ * COLORS: the gate-green Vega-tuned system (user decision: "keep the color
+ * as previous" after evaluating the raw preset) - lavender-tinted canvas,
+ * brighter raised cards, teal-blue brand (hue 214), vivid blue focus ring,
+ * blue (not orange) dark-mode primary, near-black dark canvas.
+ * TYPOGRAPHY: the Devripon preset's ramp - DM Sans headings (h1-h6 +
+ * CardTitle), Geist body at default size / 1.65 line-height, IBM Plex Mono.
+ * Any color change here MUST be mirrored in scripts/contrast-gate.mjs. */
+
+/* ─── Primitives: mode-independent ─────────────────────────────────────────
+ * Nothing in this block may ever appear in `.dark` (D-3: radius/type may not
+ * change with theme). */
+@theme {
+    --spacing: 0.25rem;
+
+    /* Radius - vega ladder. 2xl/3xl inherit Tailwind defaults on purpose. */
+    --radius-none: 0;
+    --radius-sm: 0.375rem; /* 6px  - inputs, chips */
+    --radius-md: 0.5rem; /* 8px  - buttons, cells */
+    --radius-lg: 0.625rem; /* 10px - cards, popovers */
+    --radius-xl: 0.875rem; /* 14px - dialogs, sheets */
+    --radius-full: 9999px;
+
+    /* Dense-UI text steps (tables, micro-labels). */
+    --text-2xs: 0.6875rem; /* 11px - uppercase micro-labels ONLY */
+    --text-2xs--line-height: 1rem;
+    --text-xs: 0.75rem; /* 12px - dense table meta */
+    --text-xs--line-height: 1.125rem;
+    --text-sm: 0.875rem; /* 14px - table cells, controls */
+    --text-sm--line-height: 1.25rem;
+    --text-base: 1rem; /* 16px - body default, form inputs */
+    --text-base--line-height: 1.5rem;
+    --text-lg: 1.25rem; /* 20px - card + section titles */
+    --text-lg--line-height: 1.75rem;
+    --text-xl: 1.5rem; /* 24px - page titles */
+    --text-xl--line-height: 2rem;
+    --text-2xl: 1.875rem; /* 30px - metrics */
+    --text-2xl--line-height: 2.25rem;
+
+    --tracking-tight: -0.011em;
+    --tracking-normal: 0em;
+    --tracking-caps: 0.06em;
+
+    /* Motion */
+    --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+    --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+    --duration-fast: 120ms;
+    --duration-normal: 180ms;
+    --duration-slow: 260ms;
+
+    /* Tailwind v4 resolves the `duration-*` utility against the
+     * `--transition-duration-*` namespace, NOT `--duration-*`. Without these
+     * aliases `duration-fast` is an unknown candidate that compiles to nothing,
+     * so every `transition-* duration-fast` in the app silently fell back to
+     * --default-transition-duration (150ms). 03 §7 names the tokens
+     * `--duration-*`, so keep those canonical and alias into the namespace
+     * rather than renaming 26 call sites away from the spec. */
+    --transition-duration-fast: var(--duration-fast);
+    --transition-duration-normal: var(--duration-normal);
+    --transition-duration-slow: var(--duration-slow);
+}
+
+/* ─── Neutral + brand ramps ───────────────────────────────────────────────
+ * One hue family across BOTH modes (D-5). Vega re-skin: neutrals carry the
+ * lavender cast (~266-275, chroma raised on the light steps); brand is the
+ * teal-blue 214 at vega's softer chroma. */
+@theme {
+    --color-n-0: oklch(1 0 0);
+    --color-n-25: oklch(0.9793 0.0083 271);
+    --color-n-50: oklch(0.9555 0.0125 271);
+    --color-n-100: oklch(0.9443 0.0165 275);
+    --color-n-200: oklch(0.9142 0.0208 274);
+    --color-n-300: oklch(0.8893 0.0169 262);
+    --color-n-400: oklch(0.7 0.014 265);
+    --color-n-500: oklch(0.53 0.015 265);
+    --color-n-600: oklch(0.47 0.015 265);
+    --color-n-700: oklch(0.38 0.014 265);
+    --color-n-800: oklch(0.28 0.012 268);
+    --color-n-900: oklch(0.21 0.012 268);
+    --color-n-950: oklch(0.15 0.009 272);
+    --color-n-1000: oklch(0.1 0.006 275);
+
+    --color-brand-50: oklch(0.97 0.018 214);
+    --color-brand-100: oklch(0.94 0.035 214);
+    --color-brand-200: oklch(0.88 0.06 214);
+    --color-brand-300: oklch(0.79 0.085 214);
+    --color-brand-400: oklch(0.7 0.1 214);
+    --color-brand-500: oklch(0.6 0.11 214);
+    --color-brand-600: oklch(0.52 0.11 214);
+    --color-brand-700: oklch(0.45 0.1 214);
+    --color-brand-800: oklch(0.37 0.08 214);
+    --color-brand-900: oklch(0.29 0.055 214);
+}
+
+/* ─── Semantic layer: mode-switching ──────────────────────────────────────
+ * Plain (unlayered) custom properties; the @theme inline block below maps
+ * utilities onto them so they switch with the mode.
+ *
+ * Vega surface model (light): the canvas is the TINTED field (n-50) and
+ * cards rise BRIGHTER toward white; the sidebar sits brighter than the
+ * canvas. */
+:root {
+    --surface: var(--color-n-50);
+    --surface-raised: var(--color-n-25);
+    --surface-sunken: var(--color-n-100);
+    --surface-overlay: var(--color-n-0);
+    --surface-inset: var(--color-n-200);
+
+    --content: var(--color-n-900); /* primary text */
+    --content-muted: var(--color-n-600); /* secondary */
+    --content-subtle: var(--color-n-500); /* tertiary - lowest allowed */
+    --content-inverse: var(--color-n-0);
+
+    --line: var(--color-n-300); /* default border - vega's visible tinted line */
+    --line-strong: oklch(0.83 0.018 262);
+    --line-subtle: oklch(0.925 0.012 268);
+
+    --primary: var(--color-brand-600);
+    --primary-hover: var(--color-brand-700);
+    --primary-content: var(--color-n-0);
+    --primary-subtle: var(--color-brand-50);
+    --primary-subtle-content: var(--color-brand-700);
+
+    /* Vega signature: the focus ring is a VIVID blue, deliberately hotter
+     * than the teal-blue primary, so keyboard focus is unmistakable. */
+    --focus-ring: oklch(0.48 0.2 260);
+
+    --success-subtle: oklch(0.95 0.02 150);
+    --success-border: oklch(0.85 0.05 150);
+    --success-fg: oklch(0.42 0.12 150);
+    --success-solid: oklch(0.55 0.15 150);
+
+    --warning-subtle: oklch(0.96 0.02 75);
+    --warning-border: oklch(0.86 0.05 75);
+    --warning-fg: oklch(0.44 0.12 75);
+    --warning-solid: oklch(0.7 0.15 75);
+
+    --danger-subtle: oklch(0.95 0.02 25);
+    --danger-border: oklch(0.85 0.05 25);
+    --danger-fg: oklch(0.45 0.12 25);
+    --danger-solid: oklch(0.55 0.15 25);
+
+    --info-subtle: oklch(0.96 0.02 250);
+    --info-border: oklch(0.86 0.05 250);
+    --info-fg: oklch(0.45 0.12 250);
+    --info-solid: oklch(0.55 0.15 250);
+
+    /* Calendar departure states - the DECIDED vocabulary (MCK-16 change 9,
+     * availability review §3.5): Open = teal outline, Sold out = violet
+     * solid. Deliberately distinct from success (green) and info (blue) so
+     * calendar state reads as its own language, red stays reserved for
+     * cancellation (the one state that moves money), and a routine closure
+     * is never red. */
+    --cal-open-subtle: oklch(0.96 0.02 185);
+    --cal-open-border: oklch(0.75 0.08 185);
+    --cal-open-fg: oklch(0.4 0.09 185);
+    --cal-open-solid: oklch(0.58 0.11 185);
+
+    --cal-sold-subtle: oklch(0.95 0.03 300);
+    --cal-sold-border: oklch(0.82 0.07 300);
+    --cal-sold-fg: oklch(0.45 0.13 300);
+    --cal-sold-solid: oklch(0.5 0.16 300);
+
+    /* Chart palette: the Devripon preset's set (user decision 2026-07-17 -
+     * the old chart-2 red made positive booking bars read as danger). */
+    --chart-1: oklch(0.68 0.14 159.65);
+    --chart-2: var(--color-brand-500); /* brand teal - keeps charts on the dashboard aesthetic */
+    --chart-3: oklch(0.4 0.16 259.09);
+    --chart-4: oklch(0.43 0.16 259.85);
+    --chart-5: oklch(0.29 0.07 260.37);
+    --chart-6: oklch(0.6 0.11 190);
+
+    --elevation-xs: 0 1px 2px 0 oklch(0.21 0.03 265 / 0.05);
+    --elevation-sm: 0 1px 3px 0 oklch(0.21 0.03 265 / 0.08),
+        0 1px 2px -1px oklch(0.21 0.03 265 / 0.06);
+    --elevation-md: 0 4px 8px -2px oklch(0.21 0.03 265 / 0.1),
+        0 2px 4px -2px oklch(0.21 0.03 265 / 0.06);
+    --elevation-lg: 0 12px 20px -4px oklch(0.21 0.03 265 / 0.12),
+        0 4px 8px -4px oklch(0.21 0.03 265 / 0.08);
+
+    /* Vega: sidebar is BRIGHTER than the canvas. */
+    --sidebar: oklch(0.972 0.006 268);
+    --sidebar-content: var(--color-n-700);
+    --sidebar-active: var(--color-brand-50);
+    --sidebar-active-content: var(--color-brand-700);
+    --sidebar-line: oklch(0.9 0.014 268);
+
+    /* ── Compatibility aliases (see the block comment below) ── */
+    --background: var(--surface);
+    --foreground: var(--content);
+    --card: var(--surface-raised);
+    --card-foreground: var(--content);
+    --popover: var(--surface-overlay);
+    --popover-foreground: var(--content);
+    --primary-foreground: var(--primary-content);
+    --secondary: var(--surface-inset);
+    --secondary-foreground: var(--content);
+    --muted: var(--surface-sunken);
+    --muted-foreground: var(--content-muted);
+    --accent: var(--surface-inset);
+    --accent-foreground: var(--content);
+    --destructive: var(--danger-solid);
+    --destructive-foreground: var(--content-inverse);
+    --border: var(--line);
+    --input: var(--line);
+    --ring: var(--focus-ring);
+    --radius: var(--radius-md);
+
+    --sidebar-foreground: var(--sidebar-content);
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-content);
+    --sidebar-accent: var(--sidebar-active);
+    --sidebar-accent-foreground: var(--sidebar-active-content);
+    --sidebar-border: var(--sidebar-line);
+    --sidebar-ring: var(--focus-ring);
+
+    --success: var(--success-solid);
+    --success-foreground: var(--color-n-0);
+    --warning: var(--warning-solid);
+    --warning-foreground: var(--color-n-1000);
+    --info: var(--info-solid);
+    --info-foreground: var(--color-n-0);
+
+    /* Shell surfaces (D-4). */
+    --shell-gutter: var(--sidebar);
+    --shell-content: var(--surface);
+}
+
+/* Vega dark: deep near-black canvas with cards lifting in visible steps.
+ * Primary stays in the brand-blue family (user decision - not the preset's
+ * orange), flipped to the light end with dark ink. */
+.dark {
+    --surface: oklch(0.09 0.005 280);
+    --surface-raised: oklch(0.14 0.006 280);
+    --surface-sunken: oklch(0.07 0.004 280);
+    --surface-overlay: oklch(0.17 0.007 280);
+    --surface-inset: oklch(0.21 0.009 278);
+
+    --content: oklch(0.93 0.01 265);
+    --content-muted: oklch(0.71 0.02 261);
+    --content-subtle: oklch(0.64 0.018 262);
+    --content-inverse: oklch(0.09 0.005 280);
+
+    --line: oklch(0.23 0.011 278);
+    --line-strong: oklch(0.31 0.013 274);
+    --line-subtle: oklch(0.18 0.009 278);
+
+    --primary: var(--color-brand-400);
+    --primary-hover: var(--color-brand-300);
+    --primary-content: var(--color-n-1000);
+    --primary-subtle: var(--color-brand-900);
+    --primary-subtle-content: var(--color-brand-200);
+
+    --focus-ring: oklch(0.56 0.24 261);
+
+    --success-subtle: oklch(0.26 0.02 150);
+    --success-border: oklch(0.36 0.05 150);
+    --success-fg: oklch(0.8 0.12 150);
+    --success-solid: oklch(0.62 0.15 150);
+
+    --warning-subtle: oklch(0.27 0.02 75);
+    --warning-border: oklch(0.37 0.05 75);
+    --warning-fg: oklch(0.82 0.12 75);
+    --warning-solid: oklch(0.75 0.15 75);
+
+    --danger-subtle: oklch(0.26 0.02 25);
+    --danger-border: oklch(0.36 0.05 25);
+    --danger-fg: oklch(0.8 0.12 25);
+    --danger-solid: oklch(0.62 0.15 25);
+
+    --info-subtle: oklch(0.27 0.02 250);
+    --info-border: oklch(0.37 0.05 250);
+    --info-fg: oklch(0.82 0.12 250);
+    --info-solid: oklch(0.62 0.15 250);
+
+    --cal-open-subtle: oklch(0.26 0.02 185);
+    --cal-open-border: oklch(0.42 0.06 185);
+    --cal-open-fg: oklch(0.8 0.1 185);
+    --cal-open-solid: oklch(0.62 0.11 185);
+
+    --cal-sold-subtle: oklch(0.28 0.04 300);
+    --cal-sold-border: oklch(0.42 0.07 300);
+    --cal-sold-fg: oklch(0.8 0.1 300);
+    --cal-sold-solid: oklch(0.56 0.15 300);
+
+    --chart-1: oklch(0.69 0.16 156.32);
+    --chart-2: var(--color-brand-400); /* brand teal, lightened for dark surfaces */
+    --chart-3: oklch(0.69 0.17 256);
+    --chart-4: oklch(0.43 0.16 259.85);
+    --chart-5: oklch(0.29 0.07 260.37);
+    --chart-6: oklch(0.74 0.11 190);
+
+    --elevation-xs: 0 1px 2px 0 oklch(0 0 0 / 0.3);
+    --elevation-sm: 0 1px 3px 0 oklch(0 0 0 / 0.4),
+        0 1px 2px -1px oklch(0 0 0 / 0.3);
+    --elevation-md: 0 4px 8px -2px oklch(0 0 0 / 0.45),
+        0 2px 4px -2px oklch(0 0 0 / 0.3);
+    --elevation-lg: 0 12px 20px -4px oklch(0 0 0 / 0.55),
+        0 4px 8px -4px oklch(0 0 0 / 0.4);
+
+    --sidebar: oklch(0.12 0.006 280);
+    --sidebar-content: oklch(0.71 0.02 261);
+    --sidebar-active: var(--color-brand-900);
+    --sidebar-active-content: var(--color-brand-200);
+    --sidebar-line: oklch(0.2 0.01 278);
+
+    /* Aliases whose target differs by mode. `--radius` is absent: D-3. */
+    --success-foreground: var(--color-n-1000);
+    --warning-foreground: var(--color-n-1000);
+    --info-foreground: var(--color-n-1000);
+}
+
+/* ─── Compatibility aliases: DELETE AT PHASE 20 ───────────────────────────
+ * ~2,000 call sites still use the shadcn names. They are ALIASES, not a
+ * second system: each points at exactly one semantic token. Never give one
+ * its own literal value. */
+
+/* ─── Utility mapping ─────────────────────────────────────────────────────
+ * @theme inline emits `--x: var(--x)` pairs; the real values live in the
+ * UNLAYERED `:root` above, which outranks every layer. */
+@theme inline {
+    /* Typography: ONE text face. `--font-heading` is an alias of the sans
+     * stack, not a second webfont - the h1-h6 rules below and the few
+     * `font-heading` utilities keep working, they just resolve to Geist.
+     * IBM Plex Mono still carries code/refs/money. Wired in app/layout.tsx. */
+    --font-heading: var(--font-sans);
+    --font-sans: var(--font-sans);
+    --font-mono: var(--font-mono-face);
+
+    --color-surface: var(--surface);
+    --color-surface-raised: var(--surface-raised);
+    --color-surface-sunken: var(--surface-sunken);
+    --color-surface-overlay: var(--surface-overlay);
+    --color-surface-inset: var(--surface-inset);
+
+    --color-content: var(--content);
+    --color-content-muted: var(--content-muted);
+    --color-content-subtle: var(--content-subtle);
+    --color-content-inverse: var(--content-inverse);
+
+    --color-line: var(--line);
+    --color-line-strong: var(--line-strong);
+    --color-line-subtle: var(--line-subtle);
+
+    --color-primary: var(--primary);
+    --color-primary-hover: var(--primary-hover);
+    --color-primary-content: var(--primary-content);
+    --color-primary-subtle: var(--primary-subtle);
+    --color-primary-subtle-content: var(--primary-subtle-content);
+
+    --color-focus-ring: var(--focus-ring);
+
+    --color-success-subtle: var(--success-subtle);
+    --color-success-border: var(--success-border);
+    --color-success-fg: var(--success-fg);
+    --color-success-solid: var(--success-solid);
+
+    --color-warning-subtle: var(--warning-subtle);
+    --color-warning-border: var(--warning-border);
+    --color-warning-fg: var(--warning-fg);
+    --color-warning-solid: var(--warning-solid);
+
+    --color-danger-subtle: var(--danger-subtle);
+    --color-danger-border: var(--danger-border);
+    --color-danger-fg: var(--danger-fg);
+    --color-danger-solid: var(--danger-solid);
+
+    --color-info-subtle: var(--info-subtle);
+    --color-info-border: var(--info-border);
+    --color-info-fg: var(--info-fg);
+    --color-info-solid: var(--info-solid);
+
+    --color-cal-open-subtle: var(--cal-open-subtle);
+    --color-cal-open-border: var(--cal-open-border);
+    --color-cal-open-fg: var(--cal-open-fg);
+    --color-cal-open-solid: var(--cal-open-solid);
+
+    --color-cal-sold-subtle: var(--cal-sold-subtle);
+    --color-cal-sold-border: var(--cal-sold-border);
+    --color-cal-sold-fg: var(--cal-sold-fg);
+    --color-cal-sold-solid: var(--cal-sold-solid);
+
+    --color-chart-1: var(--chart-1);
+    --color-chart-2: var(--chart-2);
+    --color-chart-3: var(--chart-3);
+    --color-chart-4: var(--chart-4);
+    --color-chart-5: var(--chart-5);
+    --color-chart-6: var(--chart-6);
+
+    --color-sidebar: var(--sidebar);
+    --color-sidebar-content: var(--sidebar-content);
+    --color-sidebar-active: var(--sidebar-active);
+    --color-sidebar-active-content: var(--sidebar-active-content);
+    --color-sidebar-line: var(--sidebar-line);
+
+    --shadow-xs: var(--elevation-xs);
+    --shadow-sm: var(--elevation-sm);
+    --shadow-md: var(--elevation-md);
+    --shadow-lg: var(--elevation-lg);
+
+    /* ── Compatibility utility mappings: DELETE AT PHASE 20 ── */
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-ring: var(--sidebar-ring);
+
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-warning: var(--warning);
+    --color-warning-foreground: var(--warning-foreground);
+    --color-info: var(--info);
+    --color-info-foreground: var(--info-foreground);
+
+    --color-shell-gutter: var(--shell-gutter);
+    --color-shell-content: var(--shell-content);
+}
+
+/* ─── Base typography (Devripon preset ramp) ─────────────────────────────── */
+@layer base {
+    *,
+    ::after,
+    ::before,
+    ::backdrop,
+    ::file-selector-button {
+        border-color: var(--color-line);
+    }
+    button {
+        cursor: pointer;
+    }
+    html {
+        @apply font-sans;
+        /* The viewport scrollbar is hidden entirely (scrolling still works);
+         * with no bar there is nothing to pop in/out, so page-height changes
+         * (accordions) can never shift the layout sideways. */
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+    html::-webkit-scrollbar {
+        display: none;
+    }
+    body {
+        @apply bg-surface text-content font-sans antialiased;
+        line-height: 1.65;
+    }
+    /* Radix (react-remove-scroll) locks the body whenever a dropdown, select
+     * or dialog opens, and pads it to make up for the scrollbar it just
+     * removed. The viewport scrollbar is hidden and occupies no pixels, so
+     * that compensation is an allowance for space that was never taken and
+     * the page slides sideways every time a menu opens. Drop it. */
+    body[data-scroll-locked] {
+        padding-right: 0 !important;
+        margin-right: 0 !important;
+    }
+
+    h1 {
+        font-family: var(--font-heading);
+        font-size: 2.25rem;
+        line-height: 1.2;
+        letter-spacing: -0.025em;
+        font-weight: 700;
+    }
+
+    h2 {
+        font-family: var(--font-heading);
+        font-size: 1.875rem;
+        line-height: 1.25;
+        letter-spacing: -0.02em;
+        font-weight: 600;
+    }
+
+    h3 {
+        font-family: var(--font-heading);
+        font-size: 1.5rem;
+        line-height: 1.3;
+        letter-spacing: -0.015em;
+        font-weight: 600;
+    }
+
+    h4 {
+        font-family: var(--font-heading);
+        font-size: 1.25rem;
+        line-height: 1.4;
+        letter-spacing: -0.01em;
+        font-weight: 600;
+    }
+
+    h5 {
+        font-family: var(--font-heading);
+        font-size: 1.125rem;
+        line-height: 1.5;
+        letter-spacing: -0.01em;
+        font-weight: 600;
+    }
+
+    h6 {
+        font-family: var(--font-heading);
+        font-size: 1rem;
+        line-height: 1.5;
+        letter-spacing: 0;
+        font-weight: 600;
+    }
+
+    code,
+    pre {
+        font-family: var(--font-mono);
+    }
+
+    :focus-visible {
+        outline: 2px solid var(--focus-ring);
+        outline-offset: 2px;
+    }
+}
+
+@layer base {
+    ::-webkit-scrollbar {
+        width: 7px;
+        height: 7px; /* horizontal bars were browser-default fat (data tables) */
+    }
+
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: var(--primary);
+        border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: color-mix(in oklch, var(--primary), transparent 20%);
+    }
+
+    .hide-scrollbar {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    .hide-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* The code editor in Settings > Scripts owns TWO scrollable elements: its
+       own wrapper and CodeMirror's internal `.cm-scroller`. `hide-scrollbar` on
+       the wrapper only reaches the first, so a second bar sat right beside it -
+       two teal rails a few pixels apart inside one dialog.
+       CodeMirror renders `.cm-scroller` itself, so this has to be a descendant
+       rule; it is scoped to the editor's `data-slot` rather than applied to
+       `.cm-scroller` globally, which would silently restyle every future
+       CodeMirror in the app. Scrolling is unaffected - only the bar is hidden. */
+    [data-slot='script-editor'] .cm-scroller {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    [data-slot='script-editor'] .cm-scroller::-webkit-scrollbar {
+        display: none;
+    }
+
+    .scrollbar-thin {
+        scrollbar-width: thin; /* Firefox */
+        scrollbar-color: color-mix(in oklch, var(--content-subtle), transparent 40%)
+            transparent;
+    }
+
+    .scrollbar-thin::-webkit-scrollbar {
+        height: 6px;
+        width: 4px;
+        cursor: pointer;
+    }
+
+    /* Inside data surfaces the loud primary thumb is a distraction; a quiet
+     * neutral that darkens on hover reads premium and stays out of the way. */
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+        background: color-mix(in oklch, var(--content-subtle), transparent 40%);
+        border-radius: 10px;
+    }
+
+    .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+        background: var(--content-muted);
+    }
+
+    @keyframes collapsible-down {
+        from {
+            height: 0;
+            opacity: 0;
+        }
+        to {
+            height: var(--radix-collapsible-content-height);
+            opacity: 1;
+        }
+    }
+
+    @keyframes collapsible-up {
+        from {
+            height: var(--radix-collapsible-content-height);
+            opacity: 1;
+        }
+        to {
+            height: 0;
+            opacity: 0;
+        }
+    }
+}
+
+@layer utilities {
+    .animate-collapsible-down {
+        animation: collapsible-down 300ms ease-out;
+    }
+
+    .animate-collapsible-up {
+        animation: collapsible-up 300ms ease-out;
+    }
+}
+
+/* Enhanced sidebar menu styling */
+.sidebar-menu-item {
+    @apply relative;
+}
+
+[data-slot='sidebar'] {
+    background-color: var(--sidebar) !important;
+    color: var(--sidebar-foreground);
+}
+
+/* Smooth sidebar collapse animation */
+[data-slot='sidebar-inset'] {
+    transition: margin-left 0.2s ease;
+}
+
+/* ── Toast (sonner): the status ribbon ───────────────────────────────────────
+ * Redesigned 2026-07-30 (user calls, in order): top-centre ribbon instead of
+ * a 356px corner card; then content-hugging width (min 350px) so text WIDENS
+ * instead of wrapping; splash entrance reduced to a gentle content rise (the
+ * icon drop/ripple drew the eye to the icon instead of the words).
+ *
+ * Rich colour (2026-08-16, user call): the severity now paints the WHOLE
+ * toast - subtle wash as the background, the matching border token, the fg
+ * token on the text - and the icon rides a solid accent chip. All of it comes
+ * from the app's own colour ramps (both themes), NOT sonner's `richColors`
+ * prop, which ships a baked palette that ignores these tokens. Untyped and
+ * loading toasts keep the neutral overlay surface via the var() fallbacks.
+ *
+ * SPECIFICITY NOTE: sonner ships its own styles at up to
+ * `[data-sonner-toast][data-styled='true'] [data-x]` = (0,3,0), and its
+ * stylesheet loads AFTER globals.css, so ties lose. Every rule here rides the
+ * `.cn-toast[data-sonner-toast][data-styled='true']` prefix to sit one class
+ * above whatever sonner says. Do not "simplify" the selectors back down.
+ */
+
+/* The LANE a toast may occupy: viewport minus a gutter. Sonner writes its
+ * 356px default as an INLINE --width on the <ol>, hence !important
+ * (03 §8.3 bans the inline-style escape hatch). */
+.toaster[data-sonner-toaster] {
+    --width: calc(100vw - 2rem) !important;
+}
+
+/* Geometry: the li is position:absolute (sonner stacks via --y transforms),
+ * stretched left/right 0 across the lane with a fit-content box inside it.
+ * The MARGINS decide alignment and must follow the Toaster's `position` prop
+ * (sonner stamps data-x-position on the li) - a bare `margin-inline: auto`
+ * here once force-centred every position, which read as "position not
+ * working". Short toasts hold a 350px floor; long ones widen to the lane. */
+.cn-toast[data-sonner-toast][data-styled='true'] {
+    display: flex;
+    left: 0;
+    right: 0;
+    width: fit-content;
+    min-width: min(350px, 100%);
+    max-width: 100%;
+    align-items: flex-start;
+    gap: 0.75rem;
+    overflow: hidden;
+    /* Wider right padding reserves the edge for the pinned dismiss button. */
+    padding: 0.875rem 3rem 0.875rem 1rem;
+    border: 1px solid var(--cn-toast-border, var(--line));
+    border-radius: var(--radius-lg);
+    background: var(--cn-toast-wash, var(--surface-overlay));
+    box-shadow: var(--elevation-lg);
+}
+.cn-toast[data-sonner-toast][data-styled='true'][data-x-position='center'] {
+    margin-inline: auto;
+}
+.cn-toast[data-sonner-toast][data-styled='true'][data-x-position='right'] {
+    margin-left: auto;
+    margin-right: 0;
+}
+.cn-toast[data-sonner-toast][data-styled='true'][data-x-position='left'] {
+    margin-left: 0;
+    margin-right: auto;
+}
+
+/* The severity ramp, one block per type: wash (background), border, fg (text),
+ * accent (solid chip + action button) and the accent's own readable
+ * foreground. `--cn-toast-desc` pre-mixes the description tint so the rule
+ * below stays a one-liner. */
+.cn-toast[data-type='error'] {
+    --cn-toast-wash: var(--danger-subtle);
+    --cn-toast-border: var(--danger-border);
+    --cn-toast-fg: var(--danger-fg);
+    --cn-toast-desc: color-mix(in oklab, var(--danger-fg) 80%, transparent);
+    --cn-toast-accent: var(--danger-solid);
+    --cn-toast-accent-fg: var(--destructive-foreground);
+}
+.cn-toast[data-type='success'] {
+    --cn-toast-wash: var(--success-subtle);
+    --cn-toast-border: var(--success-border);
+    --cn-toast-fg: var(--success-fg);
+    --cn-toast-desc: color-mix(in oklab, var(--success-fg) 80%, transparent);
+    --cn-toast-accent: var(--success-solid);
+    --cn-toast-accent-fg: var(--success-foreground);
+}
+.cn-toast[data-type='warning'] {
+    --cn-toast-wash: var(--warning-subtle);
+    --cn-toast-border: var(--warning-border);
+    --cn-toast-fg: var(--warning-fg);
+    --cn-toast-desc: color-mix(in oklab, var(--warning-fg) 80%, transparent);
+    --cn-toast-accent: var(--warning-solid);
+    --cn-toast-accent-fg: var(--warning-foreground);
+}
+.cn-toast[data-type='info'] {
+    --cn-toast-wash: var(--info-subtle);
+    --cn-toast-border: var(--info-border);
+    --cn-toast-fg: var(--info-fg);
+    --cn-toast-desc: color-mix(in oklab, var(--info-fg) 80%, transparent);
+    --cn-toast-accent: var(--info-solid);
+    --cn-toast-accent-fg: var(--info-foreground);
+}
+
+/* Icon: the bare glyph in solid severity colour, sized to sit on the title's
+ * first line. No chip behind it - a filled tile around an already-circular
+ * glyph read as a box-in-a-box on the tinted body (user call 2026-08-16). */
+.cn-toast[data-sonner-toast][data-styled='true'] [data-icon] {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin: 0;
+    flex-shrink: 0;
+    color: var(--cn-toast-accent, var(--content-subtle));
+}
+
+.cn-toast[data-sonner-toast][data-styled='true'] [data-content] {
+    position: relative;
+    min-width: 0;
+    align-self: center;
+}
+
+.cn-toast[data-sonner-toast][data-styled='true'] [data-title] {
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.45;
+    color: var(--cn-toast-fg, var(--content));
+}
+
+/* Detail reads as body copy: same hue as the title, mixed towards transparent
+ * so the hierarchy survives on the tinted background. */
+.cn-toast[data-sonner-toast][data-styled='true'] [data-description] {
+    margin-top: 0.125rem;
+    font-size: 0.8125rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--cn-toast-desc, var(--content-muted));
+}
+
+/* Action (e.g. Undo) rides the right edge, just inside the dismiss - a solid
+ * accent button so it reads as THE thing to click before the toast leaves. */
+.cn-toast[data-sonner-toast][data-styled='true'] [data-button] {
+    position: relative;
+    height: 1.75rem;
+    margin-left: auto;
+    align-self: center;
+    flex-shrink: 0;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding-inline: 0.625rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    background: var(--cn-toast-accent, var(--content));
+    color: var(--cn-toast-accent-fg, var(--surface-overlay));
+    cursor: pointer;
+    transition: filter 0.15s ease;
+}
+.cn-toast[data-sonner-toast][data-styled='true'] [data-button]:hover {
+    filter: brightness(1.08);
+}
+/* A cancel button stays quiet next to the solid action. `.toaster` prefix:
+ * sonner's dark theme styles [data-cancel] at (0,5,0), which ties without it. */
+.toaster
+    .cn-toast[data-sonner-toast][data-styled='true']
+    [data-button][data-cancel] {
+    background: transparent;
+    color: var(--cn-toast-fg, var(--content-muted));
+}
+
+/* Dismiss: pinned right-centre. Sonner floats its close disc off the TOP-LEFT
+ * corner via inline-start vars + its own transform - hence the !importants.
+ * The `.toaster` prefix is load-bearing: sonner's DARK theme ships
+ * `[data-sonner-toaster][data-sonner-theme='dark'] [data-sonner-toast]
+ * [data-close-button]` at (0,4,0), which ties the usual prefix and wins by
+ * load order - that was the solid black disc in dark mode. */
+.toaster .cn-toast[data-sonner-toast][data-styled='true'] [data-close-button] {
+    position: absolute;
+    left: auto !important;
+    right: 0.75rem !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    width: 1.625rem;
+    height: 1.625rem;
+    border: none;
+    border-radius: 9999px;
+    background: transparent;
+    color: color-mix(
+        in oklab,
+        var(--cn-toast-fg, var(--content-subtle)) 70%,
+        transparent
+    );
+    cursor: pointer;
+    pointer-events: auto;
+}
+.toaster
+    .cn-toast[data-sonner-toast][data-styled='true']
+    [data-close-button]:hover {
+    background: color-mix(
+        in oklab,
+        var(--cn-toast-accent, var(--content)) 12%,
+        transparent
+    );
+    color: var(--cn-toast-fg, var(--content));
+}
+
+/* Dark: the ramp's border tokens are tuned for badge-sized chips; across a
+ * full toast edge they read neon, so blend them back toward the wash. */
+.dark .cn-toast[data-type='error'] {
+    --cn-toast-border: color-mix(
+        in oklab,
+        var(--danger-border) 50%,
+        var(--danger-subtle)
+    );
+}
+.dark .cn-toast[data-type='success'] {
+    --cn-toast-border: color-mix(
+        in oklab,
+        var(--success-border) 50%,
+        var(--success-subtle)
+    );
+}
+.dark .cn-toast[data-type='warning'] {
+    --cn-toast-border: color-mix(
+        in oklab,
+        var(--warning-border) 50%,
+        var(--warning-subtle)
+    );
+}
+.dark .cn-toast[data-type='info'] {
+    --cn-toast-border: color-mix(
+        in oklab,
+        var(--info-border) 50%,
+        var(--info-subtle)
+    );
+}
+
+/* Entrance: one gentle rise on the content while sonner slides the toast in.
+ * The icon-drop + ripple splash was tried and pulled (user call 2026-07-30). */
+.cn-toast[data-sonner-toast][data-styled='true'] [data-content],
+.cn-toast[data-sonner-toast][data-styled='true'] [data-button],
+.cn-toast[data-sonner-toast][data-styled='true'] [data-close-button] {
+    animation: cn-toast-surface 0.45s ease-out 0.1s backwards;
+}
+@keyframes cn-toast-surface {
+    0% {
+        transform: translateY(0.375rem);
+        opacity: 0;
+    }
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cn-toast[data-sonner-toast][data-styled='true'] [data-content],
+    .cn-toast[data-sonner-toast][data-styled='true'] [data-button],
+    .cn-toast[data-sonner-toast][data-styled='true'] [data-close-button] {
+        animation: none;
+    }
+}

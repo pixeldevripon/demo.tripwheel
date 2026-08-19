@@ -1,0 +1,29 @@
+import { Breadcrumb } from '@/components/breadcrumb';
+import { OperatorCreateForm } from '@/components/operators/operator-create-form';
+import { Store01Icon } from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
+
+export default function NewTourOperatorPage() {
+    return (
+        <div className='w-full max-w-6xl'>
+            <Breadcrumb
+                items={[
+                    { label: 'Dashboard', href: '/' },
+                    { label: 'Tour Operators', href: '/tour-operators' },
+                    { label: 'New Operator' },
+                ]}
+            />
+            <div className='mb-6 flex items-center gap-3'>
+                <HugeiconsIcon
+                    icon={Store01Icon}
+                    className='size-6 text-muted-foreground'
+                />
+                <h1 className='text-2xl font-medium'>New Tour Operator</h1>
+            </div>
+            <div>
+                <OperatorCreateForm />
+            </div>
+        </div>
+    );
+}
+

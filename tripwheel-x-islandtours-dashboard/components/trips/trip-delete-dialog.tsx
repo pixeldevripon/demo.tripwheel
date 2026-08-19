@@ -1,0 +1,103 @@
+'use client';
+
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Delete02Icon } from '@hugeicons/core-free-icons';
+
+import { toast } from 'sonner';
+import { useRemoveTrip } from '@/hooks/trips/use-trips';
+import type { TripListItem } from '@/types/trip';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+
+interface TripDeleteDialogProps {
+  trip: TripListItem;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSuccess?: () => void;
+  isForce?: boolean;
+}
+
+export function TripDeleteDialog({
+  trip,
+  open,
+  onOpenChange,
+  onSuccess,
+  isForce = false,
+}: TripDeleteDialogProps) {
+  const { mutate: removeTrip, isPending } = useRemoveTrip();
+
+  function handleConfirm() {
+    removeTrip(trip.id, {
+      onSuccess: () => {
+        toast.success(`"${trip.name}" permanently deleted.`);
+        onOpenChange(false);
+        onSuccess?.();
+      },
+      onError: (err) => {
+        toast.error(err instanceof Error ? err.message : 'Failed to delete trip.');
+      },
+    });
+  }
+
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="flex size-10 items-center justify-center rounded-full bg-destructive/10 shrink-0">
+              <HugeiconsIcon icon={Delete02Icon} className="size-5 text-destructive" />
+            </div>
+            <AlertDialogTitle>
+              {isForce ? 'Force Delete Trip' : 'Permanently Delete Trip'}
+            </AlertDialogTitle>
+          </div>
+          <AlertDialogDescription asChild>
+            <div className="space-y-2">
+              <p>
+                Are you sure you want to permanently delete{' '}
+                <strong className="text-foreground">{trip.name}</strong>?
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {isForce
+                  ? 'Admin force delete - the trip will be permanently removed regardless of its current status. All associated data (images, inclusions, age bands, add-ons, schedules) will also be permanently removed.'
+                  : 'This archived trip will be permanently removed along with all its data (images, inclusions, age bands, add-ons, schedules). This cannot be undone.'}
+              </p>
+              {/* Bookings and reviews never cascade off a tour (commission,
+                  payment and reputation history) - the backend refuses the
+                  delete while either exists, for admins too. */}
+              <p className="text-xs text-muted-foreground">
+                A trip with bookings or reviews cannot be deleted - booking and
+                review history are permanent records. Archive it instead; it
+                disappears from every listing.
+              </p>
+              <p className="text-xs font-medium text-destructive">
+                This action is irreversible and cannot be undone.
+              </p>
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            variant="destructive"
+            disabled={isPending}
+            onClick={(e) => {
+              e.preventDefault();
+              handleConfirm();
+            }}
+          >
+            {isPending ? 'Deleting...' : isForce ? 'Force Delete' : 'Permanently Delete'}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
