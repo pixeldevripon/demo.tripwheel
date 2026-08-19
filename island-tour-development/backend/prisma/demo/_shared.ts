@@ -12,13 +12,7 @@
 
 import { createHash } from 'node:crypto';
 import { PrismaPg } from '@prisma/adapter-pg';
-import {
-  Currency,
-  Locale,
-  Prisma,
-  PrismaClient,
-  TierKey,
-} from '@prisma/client';
+import { Locale, Prisma, PrismaClient, TierKey } from '@prisma/client';
 import 'dotenv/config';
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
@@ -114,13 +108,12 @@ export const D = (v: Prisma.Decimal.Value) => new Prisma.Decimal(v);
 export const money = (v: Prisma.Decimal.Value) =>
   new Prisma.Decimal(v).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
 
-const DEFAULT_USD_TO_EUR = 0.92;
-export function eurFxRate(currency: Currency): Prisma.Decimal {
-  if (currency === Currency.EUR) return D(1);
-  const raw = process.env.FX_USD_TO_EUR;
-  const parsed = raw ? Number(raw) : NaN;
-  return D(Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_USD_TO_EUR);
-}
+// Re-exported from the real implementation, NOT re-declared. This used to be a
+// second copy of the old `EUR ? 1 : usdRate` shape - which meant the seeds would
+// have kept compiling, and silently seeded at the USD rate, after a third
+// `Currency` member broke the build in src/. One copy, one `never` guard, one
+// place to fix.
+export { eurFxRate } from '@/common/utils/fx.util';
 
 /** Round a raw average to 1 dp (mirror review-display.util roundRating). */
 export function roundRating(value: number | null | undefined): number | null {

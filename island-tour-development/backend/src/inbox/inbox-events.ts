@@ -147,6 +147,14 @@ export const INBOX_EVENTS: Record<InboxEvent, InboxEventDefinition> = {
     audience: 'platform',
     permission: Permission.MANAGE_PAYMENTS,
   },
+  // BOOKINGS, not PAYMENTS: a no-show moves no money (the deposit is simply
+  // kept), so it belongs with the operational booking worklist rather than the
+  // payments queue. MANAGE_BOOKINGS matches the admin action that resolves it.
+  [InboxEvent.BOOKING_OPERATOR_REPORTED_NO_SHOW]: {
+    category: InboxCategory.BOOKINGS,
+    audience: 'platform',
+    permission: Permission.MANAGE_BOOKINGS,
+  },
 
   // ── Reviews ────────────────────────────────────────────────────────────────
   [InboxEvent.REVIEW_SUBMITTED]: {

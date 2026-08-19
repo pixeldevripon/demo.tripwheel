@@ -41,6 +41,23 @@ export interface ConversionUserData {
 import type { ConversionClickIds } from '@/lib/tracking/click-ids';
 export type { ConversionClickIds };
 
+/**
+ * Why the backend withheld a conversion payload, when the reason is a CORRUPT
+ * booking rather than the ordinary "already claimed / unverified / not yet
+ * confirmed". Mirrors the backend `ConversionDataError` enum.
+ *
+ * `conversion: null` is the healthy majority case (every refresh returns it), so
+ * the TYP can never treat a bare null as a fault. This is the one case that is.
+ */
+export type ConversionDataError = 'NULL_COMMISSION';
+
+/** Result of the one-time conversion claim: the payload, or the reason it is
+ *  missing when that reason is a data fault worth rendering (rule #22). */
+export interface ConversionClaim {
+    conversion: TypConversion | null;
+    dataError: ConversionDataError | null;
+}
+
 export interface TypConversion {
     event: string;
     eventId: string;
@@ -263,17 +280,25 @@ export async function getTypByRef(
 export async function claimConversionPush(
     publicRef: string,
     sessionToken?: string | null
-): Promise<TypConversion | null> {
+): Promise<ConversionClaim> {
     const extraHeaders: Record<string, string> = {};
     if (sessionToken) extraHeaders[TRAVELER_SESSION_HEADER] = sessionToken;
 
     const clientIp = await visitorIp();
     if (clientIp) extraHeaders[INTERNAL_CLIENT_IP_HEADER] = clientIp;
 
-    const res = await publicPost<{ conversion: TypConversion | null }>(
+    const res = await publicPost<{
+        conversion: TypConversion | null;
+        dataError: ConversionDataError | null;
+    }>(
         `/bookings/typ/${encodeURIComponent(publicRef)}/conversion`,
         Object.keys(extraHeaders).length > 0 ? extraHeaders : undefined
     );
-    return res?.conversion ?? null;
+    return {
+        conversion: res?.conversion ?? null,
+        // A transport failure is NOT corruption - an unreachable backend must not
+        // put a data-integrity banner in front of a traveller who booked fine.
+        dataError: res?.dataError ?? null,
+    };
 }
 

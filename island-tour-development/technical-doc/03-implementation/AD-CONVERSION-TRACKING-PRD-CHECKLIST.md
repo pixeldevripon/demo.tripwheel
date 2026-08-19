@@ -3,8 +3,12 @@
 > **PRD:** `technical-doc/Island Tours — Server-Side Ad Conversion Tracking PRD.md` (Rezina,
 > 2026-08-16). **Architecture:** `02-architecture/TRACKING-AND-ANALYTICS.md` (master §8).
 > **Container recipe:** `03-implementation/GTM-CONTAINER-SETUP.md`.
-> **This doc:** every PRD requirement cross-checked against the actual code on **2026-08-17**,
-> split into DONE / NOT DONE, with a where-and-how plan for everything open.
+> **This doc:** every PRD requirement cross-checked against the actual code, split into
+> DONE / NOT DONE, with a where-and-how plan for everything open.
+> **Last verified against code: 2026-08-19.** That pass closed the last four open engineering
+> items - the TYP null-commission error render, the `eurFxRate` third-currency guard, the
+> attribution consent gate, and no-show reporting - so **every remaining item below is external,
+> configuration, or QA. There is no platform code left to write for this PRD.**
 
 ---
 
@@ -12,31 +16,42 @@
 
 | PRD requirement | Status | One-liner |
 | --- | --- | --- |
-| Click-ID capture at landing (gclid/gbraid/wbraid/fbclid + UTMs, first-party cookie) | ✅ BUILT | `it.attribution` cookie, 90 days, last-click wins per param |
+| Click-ID capture at landing (gclid/gbraid/wbraid/fbclid + UTMs, first-party cookie) | ✅ BUILT · CONSENT-GATED 2026-08-19 | `it.attribution.v2` cookie, 90 days, last-click wins per param. Written ONLY on Cookiebot marketing consent; landing params held in memory so a late Accept still captures; withdrawal clears it; sanitised on read |
 | Click IDs + UTMs persisted on the booking record | ✅ BUILT | 9 columns on `Booking`, write-once at reserve |
 | Fire on transition to CONFIRMED | ✅ BUILT | single choke point `finalizeConfirmation`, all 3 confirm paths |
-| Conversion value = server-resolved `commission_amount`, never GMV | ✅ BUILT | rule #22; null commission = corruption, no fire |
-| EUR normalization + documented rounding | ✅ BUILT | HALF_UP 2dp, PSP charge-rate re-anchoring, FX audit columns |
+| Conversion value = server-resolved `commission_amount`, never GMV | ✅ BUILT · ERROR RENDER 2026-08-19 | rule #22; null commission = corruption, no fire, AND the TYP now renders the error instead of a silent fallback (`dataError: 'NULL_COMMISSION'`) |
+| EUR normalization + documented rounding | ✅ BUILT · GUARDED 2026-08-19 | HALF_UP 2dp, PSP charge-rate re-anchoring, FX audit columns. `eurFxRate` is now exhaustive over `Currency` (`never` default), so a third currency breaks the BUILD instead of silently pricing at the USD rate |
 | Atomic mark-fired dedup guard | ✅ BUILT | `conversionFiredAt` (server) + `conversionPushedAt` (browser), guarded `updateMany` in tx |
 | Meta CAPI server-side, parallel to Pixel, shared transaction id | ✅ BUILT | queued `tracking.capi-conversion` job, `event_id = publicRef` |
 | Enhanced Conversions hashed PII (email, E.164 phone, name, address) | ✅ BUILT (code) | one SHA-256 pass server-side; envelope emitted in the dataLayer push |
-| Consent Mode v2 region-aware defaults + Cookiebot | ✅ BUILT | EEA+UK denied default, inline before gtm.js; CBID dashboard-managed |
+| Consent Mode v2 region-aware defaults + Cookiebot | ✅ BUILT | EEA+UK denied default, inline before gtm.js; CBID dashboard-managed on the **Integrations** tab (its own Cookiebot card), with a `NEXT_PUBLIC_COOKIEBOT_CBID` dev fallback |
 | GTM container 4-tag fan-out (Conversion Linker / Ads / GA4 / Pixel) | 🟡 CONFIG ONLY | code side done; container work blocked on stakeholder IDs |
 | Click IDs / booking_ref / operator / island / user_id **inside** the dataLayer payload | ✅ BUILT 2026-08-17 | Phase 2 shipped: full §8.3 payload + typed `BookingCompleteEvent` CI contract |
 | Cancellation correction: Google Ads negative adjustments | ✅ BUILT 2026-08-17 | Phase 3c: delayed `tracking.ads-adjustment` job -> RETRACTION by `orderId = publicRef`; config-gated no-op until the developer token + credentials are entered |
 | Cancellation correction: Meta refund events | ✅ BUILT 2026-08-17 | Phase 3.1: `booking.cancelled` outbox -> `tracking.meta-refund` job -> CAPI `Refund` + `conversion_events` audit |
-| No-show correction | ❌ BLOCKED | no no-show state exists anywhere in the schema (documented skip) |
+| No-show correction | ✅ BUILT 2026-08-19 (as a NON-correction) | phase 3f: operator reports -> admin confirms (`utcNoShowReportedAt`/`utcNoShowConfirmedAt`). Deliberately sends NOTHING to the ad platforms - the kept deposit IS the commission (LD24), so the reported value is still true |
 | Paid vs affiliate/organic separation at the data-model level | 🟡 PARTIAL | `affiliateId` column exists and is separate from UTMs, but nothing writes it (Trackdesk not integrated) |
-| Google Ads developer token request | ❌ NOT STARTED | external, stakeholder action - the ONLY thing between the built retraction code and live corrections |
+| Google Ads developer token request | ❌ NOT STARTED | external, stakeholder action - **now the single biggest blocker**: with all platform code done, this is what stands between the built retraction code and live corrections. 2-3 business days |
 | QA across card / deposit / pay-on-arrival + test cancellation | ❌ NOT RUN | §8.4 Definition-of-Done checks pending container config |
 | Recorded walkthrough + written event reference | ❌ NOT DONE | reference doc should live in this folder (Phase 6 below) |
 | 14-day post-launch monitoring | ❌ NOT STARTED | needs the failed-job visibility already present in Bull Board |
 
-Bottom line: **the platform-code half of the PRD is ~80% built and live** (attribution capture,
-commission-EUR value, dedup guards, Meta CAPI, consent). The genuinely missing engineering is the
-**post-conversion correction pipeline** (Google Ads adjustments + Meta refund events + a no-show
-concept), the **payload completion** on the TYP push, and everything **external** (GTM container
-config, ad-platform access, developer token, QA, walkthrough, monitoring).
+Bottom line as of **2026-08-19: the platform-code half of the PRD is COMPLETE.** Attribution
+capture (now consent-gated), the commission-EUR value, both dedup guards, the full §8.3 payload,
+Meta CAPI, Consent Mode v2, the cancellation-correction pipeline (Meta Refund + Google Ads
+retraction), the conversion audit trail, the rule #22 error render, the FX exhaustiveness guard and
+no-show reporting are all built, tested and merged.
+
+**Everything still open is external, configuration, or QA** - and one item gates most of the rest:
+
+| Blocker | Why it matters |
+| --- | --- |
+| **Google Ads developer token not requested** | 2-3 business days, external. The retraction code is live but a warn-once no-op until it plus the credentials exist. The PRD says submit it on day one for exactly this reason. |
+| Ad-platform access not provisioned | GTM admin, Google Ads admin, GA4 editor, Meta BM (pixel + system user) |
+| GTM container not configured | The dataLayer push, consent defaults and CAPI dedup contract all ship in code; the container that consumes them is empty |
+| IDs not entered in the dashboard | SEO & Tracking tab (GTM / GA4 / Pixel / Search Console) + Integrations tab (Meta CAPI, Cookiebot, Google Ads) |
+| `NEXT_PUBLIC_ENABLE_TRACKING` not set on prod | Nothing fires at all until it is `'true'` on the production frontend deploy only |
+| QA, walkthrough, 14-day monitoring | PRD milestone 6 + the contractual deliverables |
 
 ---
 
@@ -168,33 +183,69 @@ backend, `TypConversion` + the typed `BookingCompleteEvent` contract on the fron
 when absent. The CI type-check items (MASTER-CHECKLIST :426/:1082) and the GA4 `user_id`
 hashed-email item (:427) closed with it.
 
-### 2.3 Cancellation correction pipeline - the PRD's headline gap
+### 2.3 Cancellation correction pipeline - ✅ RESOLVED 2026-08-17 (was the PRD's headline gap)
 
-- **No Google Ads integration exists at all.** Zero matches for any Google Ads API surface in
-  `backend/src`. `gclid`/`gbraid`/`wbraid` are captured, stored - and never read by any code path.
-- **No Meta refund/cancel event.** `TrackingService` only knows `fireBookingComplete`.
-- **No `booking.cancelled` outbox event.** `cancel()` (`bookings.service.ts:3205`) emits only
-  `booking.refund-owed` (money retry, and only on FULL refunds) - a tracking dispatcher has nothing
-  to subscribe to.
-- **No adjustment mark/audit.** Nothing records that a correction was sent; there is no
-  `conversionAdjustedAt` guard and no conversion log table (CAPI failures today are logged and
-  swallowed, `tracking.service.ts:149-161`).
-- **Settlement reversal already works** (`reverseSettlement`, `bookings.service.ts:2017-2040` +
-  nightly sweep) - the money side reverses, the marketing side doesn't hear about it.
+Every bullet that used to sit here is now built. Kept as a record of what changed:
 
-### 2.4 No-show correction - blocked on schema + product decision
+- **Google Ads integration** - `src/tracking/google-ads.service.ts`. `ConversionAdjustmentUpload`
+  RETRACTION keyed on `orderId = publicRef` (the Transaction ID the GTM Ads tag reports, so no
+  gclid round-trip). Delayed 24h so Google has ingested the conversion first; still inside the
+  PRD's 24-48h SLA. Retracts only when the commission is actually lost (FULL refund), never on a
+  NONE-refund cancellation where the kept deposit IS the commission.
+- **Meta refund event** - `TrackingService.fireBookingCancelled`, CAPI `Refund` with
+  `event_id = <publicRef>:refund`.
+- **`booking.cancelled` outbox event** - committed in the `cancel()` transaction, only when
+  `conversionFiredAt` is set, fanned out by the relay to both jobs.
+- **Adjustment audit** - the `conversion_events` table (`prisma/tracking.prisma`), one row per send
+  attempt with SENT/FAILED and the platform error. This is the PRD's verifiability metric.
 
-`BookingStatus` (`prisma/enums.prisma:406-414`) = `ON_HOLD | CONFIRMED | EXPIRED | CANCELLED |
-REDEEMED | PENDING | REJECTED` - **no no-show state**, and the gap is already documented in code
-(`mail/next-adventure-emails.service.ts:347-348`: "nothing in the schema marks a no-show today").
-A no-show adjustment cannot be built until an operator-reported no-show exists.
+Still true, and still the blocker: **none of it fires until the Google Ads developer token and
+credentials exist** (§2.5). The service is a warn-once no-op until then, which is why it was safe
+to merge ahead of the token.
 
-### 2.5 Google Ads server-side credentials + developer token
+### 2.4 No-show correction - ✅ RESOLVED 2026-08-19 (phase 3f)
 
-`IntegrationsConfiguration` has no Google Ads fields (developer token, customer ID, conversion
-action, OAuth refresh token), `env.validate.ts` has no `GOOGLE_ADS_*` vars, and the developer-token
-request (external, 2-3 business days) has not been submitted. The PRD wants it submitted on day one
-because only the adjustment stage depends on it.
+Built, but deliberately NOT as an ad-platform correction - and that is the finding, not a shortcut.
+
+**The PRD asks for no-show corrections on the premise that Smart Bidding keeps optimising on
+bookings that never complete.** Under this platform's money model that premise does not hold: a
+no-show keeps the deposit, and per LD24 the deposit IS the commission. The revenue is real and
+already correctly reported, so there is nothing to retract. Retracting anyway would under-report
+genuine revenue to Smart Bidding - the opposite of the PRD's own goal. This is the same rule the
+shipped cancellation pipeline already applies when it skips a NONE-refund cancellation.
+
+So what shipped is the operational half:
+
+- `utcNoShowReportedAt` + `noShowReason` + `utcNoShowConfirmedAt` on `Booking` (migration
+  `20260819120000_booking_no_show`). A FLAG, not a `BookingStatus`: the tour ran and the seat was
+  consumed, so there is no transition to make and no state machine to rework.
+- `POST /bookings/:id/report-no-show` (operator, `EDIT_BOOKING`, ownership 404s a foreign booking),
+  `POST /bookings/:id/confirm-no-show` and `/dismiss-no-show` (admin, `MANAGE_BOOKINGS`) - the exact
+  report-then-confirm shape as the non-payment forfeit, because "they didn't come" is one party's
+  word about an event with no system trace.
+- Refused before the trip has departed (reuses `hasDeparted`, which handles the local-wall-clock and
+  legacy date-only cases) and on any non-CONFIRMED booking.
+- Confirming changes nothing else: no status flip, no refund, no seat release, no settlement
+  reversal, no outbox event.
+- **Closes the documented email-suppression skip** in `next-adventure-emails.service.ts` - MK-1 now
+  suppresses on `utcNoShowConfirmedAt`, gated on the CONFIRMED stamp rather than the report so a
+  mistaken report cannot silently switch off someone's marketing.
+
+Companion dashboard PR adds the row actions.
+
+### 2.5 Google Ads developer token - THE remaining blocker
+
+The **plumbing is done**: `IntegrationsConfiguration` carries all seven Google Ads fields (developer
+token, customer id, optional login-customer id, OAuth client id/secret, refresh token, conversion
+action id) with the secrets encrypted and masked on read; `env.validate.ts` has the matching
+`GOOGLE_ADS_*` fallbacks (all defaulting to null); and the dashboard Integrations tab has the card
+(dashboard PR #109).
+
+**What has NOT happened is the external request.** The developer token (Google Ads -> Tools -> API
+Center, 2-3 business days) has still not been submitted. The PRD asks for it on day one precisely
+because it is the only external dependency and everything else was built to proceed in parallel -
+which it now has. With all platform code complete, this is the single item holding up live
+corrections.
 
 ### 2.6 Affiliate/channel separation is model-only
 
@@ -208,13 +259,57 @@ land with the container work.
 - [x] CI type-check of the `booking_complete` payload contract (missing required field = build
   error, not runtime fallback) - DONE 2026-08-17 (typed `BookingCompleteEvent`, composition
   compile-checked; `tsc` runs in CI).
-- [ ] TYP error render (no conversion) when a confirmed booking has null `commission_amount` -
-  MASTER-CHECKLIST :888 (backend guard exists; the TYP currently renders normally).
+- [x] TYP error render (no conversion) when a confirmed booking has null `commission_amount` -
+  DONE 2026-08-19 (MASTER-CHECKLIST :888). The claim endpoint returns
+  `dataError: 'NULL_COMMISSION'` next to the null payload so the page can distinguish corruption
+  from the ordinary nulls; `ThankYouRecordIssueNotice` renders above the hero in all 7 locales.
+  **Deliberate reading of "render an error":** a banner, not a thrown error page - the booking is
+  paid and valid and only its *reporting* value is missing, so blanking the traveller's tour date,
+  meeting point and operator contact would turn an internal accounting defect into a customer-facing
+  outage. Nothing fires on any platform, the backend logs `data corruption` on every render, and the
+  mark-first guard is deliberately not burned so a repaired booking can still convert.
 - [x] `user_id` for GA4 cross-device from the hashed email - DONE 2026-08-17 (derived in
   `buildConversionPayload` from the same email hash; `Booking.customerId` column stays reserved).
-- [ ] `eurFxRate()` treats every non-EUR currency as USD (`fx.util.ts:26`) - fine for the EUR/USD
-  launch pair, but add a guard before any third currency ships, because this number is the
-  conversion value ad platforms optimize on.
+- [x] `eurFxRate()` no longer treats every non-EUR currency as USD - DONE 2026-08-19. It was
+  `currency === EUR ? 1 : usdToEurRate()`, which reads "anything that is not EUR is USD" and is
+  true only while `Currency` has exactly two members; a third (GBP, ANG, …) would have been priced
+  silently at the USD rate. Now an exhaustive `switch` whose `default` assigns to `never`, so
+  **extending the enum stops the build** - that is the real guard - plus a runtime throw for a
+  value arriving from outside the type system (raw SQL, stale client). Matters because this rate
+  produces `commission_amount`, the number Google Ads and Meta bid against (rule #22), and it is
+  snapshotted onto the booking forever as `fxRateToEur`. `StaticFxProvider` already warned-and-
+  skipped unknown pairs, so it needed no change. Security review also caught a SECOND copy of the
+  old shape in `prisma/demo/_shared.ts` - inside the TS program, so it would have kept compiling
+  and silently seeded at the USD rate after the real one broke the build; it is now a re-export of
+  the single implementation. Code review also found the same latent shape in
+  `fx-rates.service.ts` `REQUIRED_PAIRS` - a hardcoded two-currency array with nothing tying it to
+  `Currency`, so a third member would have compiled clean, had no rate fetched, and silently made
+  the platform unable to book in it (`getRate` 503s at reserve - safe direction, zero build
+  signal); it is now derived from a `Record<Exclude<Currency, 'EUR'>, true>` that the enum forces
+  to grow. (`src/octo/common/octo-money.ts` `Record<Currency, number>` was already an independent
+  guard on the same enum and needs no change.) **The guard was verified empirically**, not by
+  reasoning: adding `GBP` to `enums.prisma` + `prisma generate` + `tsc` produced
+  `TS2322: Type '"GBP"' is not assignable to type 'never'`, and `prisma generate` is prepended to
+  both `build` and `start:dev` so a schema-only edit cannot hide it.
+
+### 2.7b Follow-up surfaced by the FX security review (2026-08-19, NOT introduced by it)
+
+- [ ] **A `CONFIRMED` booking with `conversionFiredAt IS NULL` is a terminal state with no repair
+  path.** Every reader of that column skips on null (`bookings.service.ts` :1299/:1622/:1648/:1706/
+  :1719/:3493) and no sweeper re-attempts `finalizeConfirmation`. So if that method ever throws
+  after the status flip commits, the booking is confirmed and paid but has no confirmation email,
+  no settlement row, no outbox event and no conversion - and a webhook redelivery just throws
+  again. Unreachable today (the FX guard's precondition is independently prevented at the DTO,
+  the PG enum and a fail-closed `getRate`), but it is the right safety net for ANY throw in that
+  method, not just this one. A nightly sweep over `status=CONFIRMED AND conversionFiredAt IS NULL`
+  would close it.
+- [ ] **The Stripe webhook lane cannot self-heal that state, and Mollie can.** `payments.service.ts`
+  inserts the `stripe_webhook_events` row BEFORE processing (:573) and rethrows leaving
+  `processedAt` null so Stripe retries (:620) - but the retry re-enters, hits the unique violation
+  on the same event id (:583), logs `already processed - skipping` and returns. Nothing anywhere
+  reads `processedAt IS NULL`, so on Stripe a lost finalization is lost permanently. Mollie is
+  fine: it upserts with `update: { processedAt: null }` (:642-654), so a redelivery genuinely
+  reprocesses. Fixing the sweep above matters more on the Stripe lane for this reason.
 
 ### 2.8 QA, verification, deliverables (PRD milestones 4-6)
 
@@ -230,8 +325,10 @@ land with the container work.
 
 ## 3. IMPLEMENTATION PLAN - where and how
 
-Order matters: Phases 0-1 are external/config and unblock nothing in code; Phase 2 is a small,
-independent code change; Phase 3 is the real build; 4-6 close out the PRD.
+**Phases 2, 3 and 4 are SHIPPED - all platform code for this PRD is merged.** What is left is
+Phase 0 (access + the developer token), Phase 1 (the GTM container), and Phases 5-6 (QA, the
+walkthrough, the written event reference and the 14-day monitoring window). They are listed in the
+order they must happen: nothing in 1 or 5 can start before the access in 0.
 
 ### Phase 0 - Access + credentials (day 1, mostly stakeholder)
 
@@ -409,14 +506,32 @@ part.
 
 ### Phase 4 - Consent hardening (small, decide-then-do)
 
-- **`it.attribution` is written pre-consent** (`attribution.ts` runs unconditionally; Cookiebot
-  auto-blocking cannot intercept first-party `document.cookie` writes). Two options - pick one with
-  the stakeholder: (a) declare it in the Cookiebot cookie declaration as a first-party
-  functional/marketing cookie and rely on GTM consent-gating the *use* of the data (nothing leaves
-  the site until a consent-gated tag fires; the CAPI fire carries click IDs only for consented EU
-  users once 4b lands), or (b) gate `captureAttribution()` on `Cookiebot.consent.marketing` in a
-  callback - safest for EEA, costs attribution for EU decliners (which is also what Consent Mode
-  expects). Option (b) is the compliance-clean default.
+- [x] **`it.attribution` is no longer written pre-consent** - DONE 2026-08-19, founder chose
+  option (b), the compliance-clean default. The cookie is written ONLY once
+  `Cookiebot.consent.marketing` is true. This had to be enforced in our own code: `blockingmode=auto`
+  works by holding back third-party `<script>` tags and cannot intercept a first-party
+  `document.cookie` write, so `AttributionCapture` IS the control.
+  **Fails closed** - no Cookiebot on the page means no capture, ever.
+  **The landing params are snapshotted into memory on mount and persisted only when consent
+  arrives**, because click ids exist on the landing URL and nowhere else: by the time a visitor has
+  read the banner and clicked Accept they have usually navigated on, and a naive gate would have
+  silently gutted attribution for every *consenting* EEA visitor. Memory is not storage and needs
+  no consent.
+  **Withdrawal actively CLEARS the cookie** (subscribes to ConsentReady/Accept/Decline, which also
+  fire via `Cookiebot.renew()`), rather than merely stopping future writes.
+  Also: `secure` added to the cookie on https, and the duplicate `window.Cookiebot` global
+  declaration consolidated into `lib/tracking/cookiebot.ts` (TS merges `declare global` across
+  files, so two shapes would not compile). Cost, accepted by design: EU decliners lose attribution -
+  which is exactly what Consent Mode expects.
+  **The gate is not retroactive, so the cookie NAME was versioned to `it.attribution.v2`** and the
+  old name is deleted unconditionally on mount. Security review's catch: the pre-gate build wrote
+  `it.attribution` for every visitor with a 90-day life, and the clear path only runs when Cookiebot
+  is present - which is exactly what an ad blocker, a CSP block or an unset CBID removes. That
+  legacy cookie would still have been read at checkout and snapshotted onto the booking forever.
+  **The cookie is also sanitised on READ** (known keys only, strings only, caps re-applied): cookies
+  match on (name, domain, path), so a sibling subdomain can plant a `Domain`-scoped duplicate that a
+  host-only delete cannot remove - and an unknown key merged forward would 400 every booking attempt
+  against `forbidNonWhitelisted`.
 - Consider moving the Cookiebot `<Script>` ahead of GTM more forcefully (`beforeInteractive`) - today
   ordering rests on JSX order in `app/(frontend)/layout.tsx:66` vs `:77`.
 
@@ -460,21 +575,39 @@ Run on production config with the Meta test event code, then clear it:
 2. **Meta refund semantics.** Meta offers no true retraction; the Refund CAPI event is the
    correction signal but Ads Manager won't subtract it from Purchase totals. Confirm this meets the
    stakeholder's "corrections reflected" expectation before Phase 3d is called done.
-3. **No-show definition.** Who may report (operator only?), how long after departure, and whether a
-   no-show on a deposit booking forfeits or refunds - product call before 3f.
-4. **Attribution-cookie consent stance** (Phase 4 option a vs b).
+3. ~~**No-show definition.**~~ RESOLVED 2026-08-19. Operator reports / admin confirms; allowed any
+   time after departure (no upper window - a late report is better than a lost one, and the admin
+   is the check); the deposit is KEPT, matching the non-payment forfeit. And the founder's call on
+   the substantive question: a confirmed no-show sends NOTHING to the ad platforms, because the
+   kept deposit is the commission.
+4. ~~**Attribution-cookie consent stance**~~ RESOLVED 2026-08-19: option (b), gate on Cookiebot marketing consent. Shipped.
 5. **Affiliate channel go-live.** Trackdesk integration (writes `affiliateId`) is out of the PRD's
    scope but the "channel separation" metric will be judged against it eventually.
 
 ## 5. Doc bugs found during this audit (fix opportunistically)
 
-- `TRACKING-AND-ANALYTICS.md:6` status banner says "Not yet built" - contradicted by its own §5
-  table (most items BUILT 2026-07-25).
-- `user_data` name-hash nesting differs between `TRACKING-AND-ANALYTICS.md` §3 (root-level
-  `sha256_first_name`) and `GTM-CONTAINER-SETUP.md` §1 (nested under `address`). The code
-  (`pii-hash.util.ts:96`, `toGoogleUserData`) puts names at the **root** - fix the GTM doc.
-- Stale-unchecked lines contradicting done-work elsewhere: `BOOKING-CHECKLIST.md:638,:644`,
-  `BOOKING-COMPLETION-PROGRESS.md` E8/D4 + its "🔴 ~5%" status row,
-  `BOOKING-FLOW-DESIGN-GUIDE.md:866-867`, `MASTER-CHECKLIST.md:1909,:1937`.
+Re-verified 2026-08-19.
+
+**Fixed since the original audit:**
+
+- ~~`TRACKING-AND-ANALYTICS.md:6` status banner says "Not yet built"~~ - now reads BUILT and points
+  at its own §5 table.
+- ~~`user_data` name-hash nesting differs between `TRACKING-AND-ANALYTICS.md` §3 and
+  `GTM-CONTAINER-SETUP.md` §1~~ - the GTM doc now matches the code (names at root, address nested).
+
+**Still open:**
+
+- Stale-unchecked lines contradicting done work elsewhere: `BOOKING-CHECKLIST.md:641,:644`
+  (items 6/7/8 - Meta CAPI, GTM fan-out, Consent Mode - all shipped),
+  `BOOKING-COMPLETION-PROGRESS.md:57` ("🔴 ~5%" for the whole tracking layer), `:564` (D4 CAPI job),
+  `:651` (E8 Consent Mode), `BOOKING-FLOW-DESIGN-GUIDE.md:866-867`,
+  `MASTER-CHECKLIST.md:1909,:1937`.
+- `SEO-STRATEGY.md` is stale twice: its "Implementation status" section says the frontend rendering
+  layer is still a build task (it is built - sitemap, robots, JSON-LD all ship), and its
+  structured-data table says tour detail emits `Product`/`Offer` when the code emits `TouristTrip`.
+- `frontend/lib/seo/site-url.ts` falls back to `https://www.tripwheel.app`, not island.tours, when
+  both the Settings canonical URL and `NEXT_PUBLIC_SITE_URL` are unset.
+- `ItemList` JSON-LD on the All Tours grid is spec'd in `SEO-STRATEGY.md` but not implemented
+  (`MASTER-CHECKLIST.md:1067`).
 - The August PRD is linked from no architecture doc; its cancellation-SLA, channel-separation,
-  dev-token, and monitoring requirements exist nowhere else - this checklist is now that link.
+  dev-token, and monitoring requirements exist nowhere else - this checklist is that link.

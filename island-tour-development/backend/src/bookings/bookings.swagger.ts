@@ -179,6 +179,53 @@ export const ApiDismissNonPaymentDocs = () =>
     ApiConflictResponse({ type: ConflictErrorDto }),
   );
 
+export const ApiReportNoShowDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Operator reports the traveller never turned up (PRD phase 3f)',
+      description:
+        'Stamps utcNoShowReportedAt once (idempotent). A REPORT, not a verdict - ' +
+        'nothing counts until an admin confirms, because a no-show leaves no ' +
+        "trace in the system and is one party's word. Refused before the trip " +
+        'has departed, and on any non-CONFIRMED booking. Operator must own the ' +
+        'booking (admins may report on their behalf).',
+    }),
+    ApiOkResponse({ type: BookingResponseDto }),
+    ApiNotFoundResponse({ type: NotFoundErrorDto }),
+    ApiConflictResponse({ type: ConflictErrorDto }),
+  );
+
+export const ApiConfirmNoShowDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Admin confirms a no-show report',
+      description:
+        'Stamps utcNoShowConfirmedAt. Deliberately does NOT change status, ' +
+        'release seats, refund, or reverse settlement: the tour ran, the seat ' +
+        'was consumed and the deposit is kept. It also sends NOTHING to Google ' +
+        'Ads or Meta - the kept deposit IS the commission (LD24), so the ' +
+        'conversion value already reported is still true, the same rule that ' +
+        'makes a NONE-refund cancellation skip retraction. Its purpose is ' +
+        'marketing-email suppression and an honest operational record.',
+    }),
+    ApiOkResponse({ type: BookingResponseDto }),
+    ApiNotFoundResponse({ type: NotFoundErrorDto }),
+    ApiConflictResponse({ type: ConflictErrorDto }),
+  );
+
+export const ApiDismissNoShowDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Admin dismisses a no-show report (the traveller did arrive)',
+      description:
+        'Clears utcNoShowReportedAt and the reason. Refused once the no-show is ' +
+        'confirmed - reversing a confirmed no-show is a separate decision.',
+    }),
+    ApiOkResponse({ type: BookingResponseDto }),
+    ApiNotFoundResponse({ type: NotFoundErrorDto }),
+    ApiConflictResponse({ type: ConflictErrorDto }),
+  );
+
 export const ApiReportCancellationDocs = () =>
   applyDecorators(
     ApiOperation({
@@ -468,8 +515,11 @@ export const ApiClaimConversionDocs = () =>
         'booking gets the `booking_complete` payload to push to the dataLayer; every ' +
         'later call (refresh, second tab, shared link, unverified, non-confirmed, or ' +
         'null-commission) returns `{ conversion: null }`. Conversion value = ' +
-        'commission_amount in EUR (rule #22). Requires the X-Traveler-Session owning ' +
-        'the booking. Throttled to 5 per publicRef / minute.',
+        'commission_amount in EUR (rule #22). A CONFIRMED booking with a null ' +
+        'commission is data corruption: it returns `dataError: "NULL_COMMISSION"` ' +
+        'alongside the null conversion so the TYP renders an error rather than a ' +
+        'silent fallback, and it does NOT consume the one-time guard. Requires the ' +
+        'X-Traveler-Session owning the booking. Throttled to 5 per publicRef / minute.',
     }),
     ApiOkResponse({ type: ConversionPushResponseDto }),
     ApiNotFoundResponse({ type: NotFoundErrorDto }),

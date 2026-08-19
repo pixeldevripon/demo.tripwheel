@@ -267,16 +267,28 @@ describe('ReviewRequestsService', () => {
 
       expect(res.suppressed).toBe(2);
       const call = prisma.reviewInvitation.updateMany.mock.calls[0][0];
-      expect(call.where.booking.status.in).toEqual(
+      // Two independent terminal signals, either of which revokes.
+      const [byStatus, byNoShow] = call.where.booking.OR;
+      expect(byStatus.status.in).toEqual(
         expect.arrayContaining([
           BookingStatus.CANCELLED,
           BookingStatus.EXPIRED,
           BookingStatus.REJECTED,
         ]),
       );
+      // A no-show never attended, but keeps status CONFIRMED - so the status
+      // list alone cannot catch it, and an invitation minted before the admin's
+      // verdict would otherwise still ship with a working token.
+      expect(byNoShow).toEqual({ utcNoShowConfirmedAt: { not: null } });
       // Revoked, never deleted: the ledger stays honest about what happened.
       expect(call.data.revokedAt).toBeInstanceOf(Date);
       expect(call.where.completedAt).toBeNull();
+    });
+
+    it('never invites a confirmed no-show to review a tour they did not attend', async () => {
+      await svc.run(at('2026-03-11T14:00:00.000Z'));
+      const where = prisma.booking.findMany.mock.calls[0][0].where;
+      expect(where.utcNoShowConfirmedAt).toBeNull();
     });
 
     it('excludes revoked invitations from both send queries', async () => {

@@ -47,6 +47,7 @@ import {
   WholeUnitType,
 } from '@prisma/client';
 import { BookingsService } from './bookings.service';
+import { ConversionDataError } from './dto/booking.dto';
 import {
   hashLoginCode,
   issueBookingSession,
@@ -2233,6 +2234,247 @@ describe('BookingsService', () => {
     });
   });
 
+  // PRD phase 3f: the operator REPORTS a no-show, only an admin CONFIRMS it.
+  // Confirming records the fact and nothing else - no status change, no refund,
+  // no settlement reversal, and nothing to the ad platforms.
+  describe('no-show (PRD phase 3f)', () => {
+    const admin = { id: 'admin-1', role: Role.ADMIN };
+    // Departed: local start 2030-06-05 09:00 in a real zone, well in the past
+    // relative to nothing - the service compares against `new Date()`, so use a
+    // date that has already happened.
+    const departed = (over: Record<string, unknown> = {}) =>
+      fakeBooking({
+        status: BookingStatus.CONFIRMED,
+        utcConfirmedAt: new Date('2020-06-01T00:00:00Z'),
+        localDate: new Date('2020-06-05T00:00:00.000Z'),
+        tourStartDateTime: new Date('2020-06-05T09:00:00.000Z'),
+        tourTimeZone: 'America/Curacao',
+        utcNoShowReportedAt: null,
+        utcNoShowConfirmedAt: null,
+        ...over,
+      });
+
+    it('report stamps utcNoShowReportedAt with the reason (repeats are idempotent)', async () => {
+      m.booking.findUnique.mockResolvedValue(departed());
+      m.booking.updateMany.mockResolvedValue({ count: 1 });
+
+      await svc.reportNoShow('b1', admin, '  Waited 20 minutes.  ');
+      expect(m.booking.updateMany).toHaveBeenCalledWith({
+        // Conditional on the column still being null: two concurrent first
+        // reports must produce ONE worklist entry, not two.
+        where: { id: 'b1', utcNoShowReportedAt: null },
+        data: {
+          utcNoShowReportedAt: expect.any(Date),
+          noShowReason: 'Waited 20 minutes.', // trimmed
+        },
+      });
+
+      m.booking.updateMany.mockClear();
+      m.booking.findUnique.mockResolvedValue(
+        departed({ utcNoShowReportedAt: new Date('2020-06-06') }),
+      );
+      await svc.reportNoShow('b1', admin);
+      expect(m.booking.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('the LOSER of two concurrent first-reports writes nothing further', async () => {
+      m.booking.findUnique.mockResolvedValue(departed());
+      m.booking.updateMany.mockResolvedValue({ count: 0 }); // lost the race
+      const notify = (svc as any).inbox.notify as jest.Mock;
+      notify.mockClear();
+
+      await svc.reportNoShow('b1', admin, 'Second reporter');
+
+      // One report, one alert - never two rows on the admin worklist.
+      expect(notify).not.toHaveBeenCalled();
+    });
+
+    it('caps how fast one operator can accuse across their bookings', async () => {
+      // Every first report is an accusation a human must adjudicate; bulk
+      // filing is also the cheapest way to bury a genuine one.
+      m.booking.findUnique.mockResolvedValue(departed());
+      m.booking.updateMany.mockResolvedValue({ count: 1 });
+
+      await svc.reportNoShow('b1', admin);
+
+      expect(targetLimiter.consume).toHaveBeenCalledWith(
+        'op-no-show-report',
+        'op1',
+        [{ max: 10, windowMs: 60 * 60 * 1000 }],
+      );
+    });
+
+    it('stores a blank reason as null, and strips control characters', async () => {
+      // A NUL byte in a TEXT column is a PostgreSQL 22021 error, i.e. a 500
+      // rather than a validation failure.
+      m.booking.findUnique.mockResolvedValue(departed());
+      m.booking.updateMany.mockResolvedValue({ count: 1 });
+
+      await svc.reportNoShow('b1', admin, '   ');
+      expect(m.booking.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ noShowReason: null }),
+        }),
+      );
+
+      m.booking.updateMany.mockClear();
+      await svc.reportNoShow('b1', admin, 'No\u0000 show\u0007');
+      expect(m.booking.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ noShowReason: 'No show' }),
+        }),
+      );
+    });
+
+    it('alerts the admin worklist, with a key that survives a re-report', async () => {
+      m.booking.findUnique.mockResolvedValue(departed());
+      m.booking.updateMany.mockResolvedValue({ count: 1 });
+      const stamped = new Date('2020-06-06T10:00:00.000Z');
+      m.booking.findUnique
+        .mockResolvedValueOnce(departed())
+        .mockResolvedValueOnce(departed({ utcNoShowReportedAt: stamped }));
+      const notify = (svc as any).inbox.notify as jest.Mock;
+      notify.mockClear();
+
+      await svc.reportNoShow('b1', admin);
+
+      // The default `event:entityId` key plus skipDuplicates would swallow a
+      // second alert forever after a dismissal + re-report.
+      expect(notify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: InboxEvent.BOOKING_OPERATOR_REPORTED_NO_SHOW,
+          dedupeKey: `BOOKING_OPERATOR_REPORTED_NO_SHOW:b1:${stamped.toISOString()}`,
+        }),
+      );
+    });
+
+    it('REFUSES a report before the trip has departed', async () => {
+      // Nobody can have failed to show up for a trip that has not run.
+      m.booking.findUnique.mockResolvedValue(
+        departed({
+          localDate: new Date('2099-06-05T00:00:00.000Z'),
+          tourStartDateTime: new Date('2099-06-05T09:00:00.000Z'),
+        }),
+      );
+      await expect(svc.reportNoShow('b1', admin)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+      expect(m.booking.update).not.toHaveBeenCalled();
+    });
+
+    it('REFUSES a report on a non-CONFIRMED booking', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        departed({ status: BookingStatus.CANCELLED }),
+      );
+      await expect(svc.reportNoShow('b1', admin)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+    });
+
+    it('404s a foreign booking for an operator who does not own it', async () => {
+      // Existence is never confirmed to a non-owner (rule #19).
+      m.booking.findUnique.mockResolvedValue(departed());
+      m.operator.findUnique.mockResolvedValue({ id: 'other-op' });
+      await expect(
+        svc.reportNoShow('b1', { id: 'u-op', role: Role.TOUR_OPERATOR }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('confirm stamps utcNoShowConfirmedAt and changes NOTHING else', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        departed({ utcNoShowReportedAt: new Date('2020-06-06') }),
+      );
+      m.booking.update.mockResolvedValue(
+        departed({ utcNoShowConfirmedAt: new Date() }),
+      );
+
+      await svc.confirmNoShow('b1', admin);
+
+      // The whole point: the tour ran, the seat was consumed, the deposit is
+      // kept. No status flip, no refund verdict, no seat release.
+      expect(m.booking.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: { utcNoShowConfirmedAt: expect.any(Date) },
+        }),
+      );
+      const data = m.booking.update.mock.calls[0][0].data as Record<
+        string,
+        unknown
+      >;
+      expect(data.status).toBeUndefined();
+      expect(data.cancellationRefund).toBeUndefined();
+      expect(data.utcCancelledAt).toBeUndefined();
+    });
+
+    it('confirm fires NOTHING at the ad platforms - the commission is still real', async () => {
+      // LD24: the kept deposit IS the commission, so the conversion value
+      // already reported is true. Same rule that makes a NONE-refund
+      // cancellation skip retraction. Correcting here would under-report
+      // genuine revenue to Smart Bidding.
+      m.booking.findUnique.mockResolvedValue(
+        departed({ utcNoShowReportedAt: new Date('2020-06-06') }),
+      );
+      m.booking.update.mockResolvedValue(departed());
+
+      await svc.confirmNoShow('b1', admin);
+
+      expect(m.outboxEvent.create).not.toHaveBeenCalled();
+    });
+
+    it('confirm REFUSES without a prior report, and is idempotent once confirmed', async () => {
+      m.booking.findUnique.mockResolvedValue(departed());
+      await expect(svc.confirmNoShow('b1', admin)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+
+      m.booking.update.mockClear();
+      m.booking.findUnique.mockResolvedValue(
+        departed({
+          utcNoShowReportedAt: new Date('2020-06-06'),
+          utcNoShowConfirmedAt: new Date('2020-06-07'),
+        }),
+      );
+      await svc.confirmNoShow('b1', admin);
+      expect(m.booking.update).not.toHaveBeenCalled();
+    });
+
+    it('dismiss clears the report and its reason', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        departed({
+          utcNoShowReportedAt: new Date('2020-06-06'),
+          noShowReason: 'Waited 20 minutes.',
+        }),
+      );
+      m.booking.update.mockResolvedValue(departed());
+
+      await svc.dismissNoShowReport('b1', admin);
+      expect(m.booking.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: { utcNoShowReportedAt: null, noShowReason: null },
+        }),
+      );
+    });
+
+    it('dismiss REFUSES once the no-show is confirmed', async () => {
+      // Reversing a confirmed no-show is a separate decision, not a dismissal.
+      m.booking.findUnique.mockResolvedValue(
+        departed({
+          utcNoShowReportedAt: new Date('2020-06-06'),
+          utcNoShowConfirmedAt: new Date('2020-06-07'),
+        }),
+      );
+      await expect(svc.dismissNoShowReport('b1', admin)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+    });
+
+    it('dismiss is a no-op when there is nothing reported', async () => {
+      m.booking.findUnique.mockResolvedValue(departed());
+      await svc.dismissNoShowReport('b1', admin);
+      expect(m.booking.update).not.toHaveBeenCalled();
+    });
+  });
+
   // Guide s15: operator reports non-payment of the OPERATOR_LINK balance; only an
   // admin confirmation forfeits the deposit (kept - no refund, settlement NOT
   // reversed) and releases the spot. Never automatic.
@@ -3900,14 +4142,98 @@ describe('BookingsService', () => {
         pushable({ commissionAmount: null }),
       );
 
-      const { conversion } = await svc.claimConversionPush(
+      const { conversion, dataError } = await svc.claimConversionPush(
         'p1',
         issueTravelerSession('guest@example.test'),
       );
       expect(conversion).toBeNull();
+      // The TYP needs to tell corruption apart from the ordinary nulls, or it
+      // would have to render an error for every refresh (rule #22 error render).
+      expect(dataError).toBe(ConversionDataError.NULL_COMMISSION);
       expect(m.booking.updateMany).not.toHaveBeenCalled();
       expect(err).toHaveBeenCalled();
       err.mockRestore();
+    });
+
+    it.each([
+      ['the mark-first LOSER', () => pushable(), { count: 0 }],
+      [
+        'a not-yet-confirmed booking',
+        () => pushable({ status: BookingStatus.ON_HOLD }),
+        { count: 1 },
+      ],
+    ])(
+      'reports NO dataError for %s - a healthy null must never render an error',
+      async (_label, booking, updateResult) => {
+        m.booking.findUnique.mockResolvedValue(booking());
+        m.booking.updateMany.mockResolvedValue(updateResult);
+
+        const { conversion, dataError } = await svc.claimConversionPush(
+          'p1',
+          issueTravelerSession('guest@example.test'),
+        );
+        expect(conversion).toBeNull();
+        expect(dataError).toBeNull();
+      },
+    );
+
+    it('does NOT spend the per-booking budget on an unverified caller', async () => {
+      // `publicRef` is in the hands of anyone the TYP link was forwarded to. If
+      // the per-target limiter were charged before the verified gate, a link
+      // holder could exhaust it and 429 the real owner's next render - costing
+      // the owner the conversion AND hiding the rule #22 corruption banner,
+      // which rides the same response.
+      m.booking.findUnique.mockResolvedValue(pushable());
+
+      await svc.claimConversionPush('p1'); // no session
+
+      expect(targetLimiter.consume).not.toHaveBeenCalled();
+    });
+
+    it('spends the per-booking budget once the caller is verified', async () => {
+      m.booking.findUnique.mockResolvedValue(pushable());
+
+      await svc.claimConversionPush(
+        'p1',
+        issueTravelerSession('guest@example.test'),
+      );
+
+      expect(targetLimiter.consume).toHaveBeenCalledWith(
+        'conversion-push',
+        'p1',
+        [{ max: 5, windowMs: 60_000 }],
+      );
+    });
+
+    it('reports NO dataError for an unverified link, even on a corrupt booking', async () => {
+      // Corruption is an operational signal for the booking's owner, not
+      // something a bare shared link should be told about.
+      m.booking.findUnique.mockResolvedValue(
+        pushable({ commissionAmount: null }),
+      );
+
+      const { conversion, dataError } = await svc.claimConversionPush('p1');
+      expect(conversion).toBeNull();
+      expect(dataError).toBeNull();
+    });
+
+    it('keeps reporting the error on every render - corruption never burns the guard', async () => {
+      jest
+        .spyOn((svc as any).logger, 'error')
+        .mockImplementation(() => undefined);
+      m.booking.findUnique.mockResolvedValue(
+        pushable({ commissionAmount: null }),
+      );
+      const session = issueTravelerSession('guest@example.test');
+
+      const first = await svc.claimConversionPush('p1', session);
+      const second = await svc.claimConversionPush('p1', session);
+
+      // A repaired booking must still be able to fire, so the second render is
+      // identical to the first rather than degrading to a silent null.
+      expect(first.dataError).toBe(ConversionDataError.NULL_COMMISSION);
+      expect(second.dataError).toBe(ConversionDataError.NULL_COMMISSION);
+      expect(m.booking.updateMany).not.toHaveBeenCalled();
     });
 
     it('404s an unknown publicRef', async () => {
@@ -4066,6 +4392,41 @@ describe('BookingsService', () => {
       expect(data.commissionAmount).toEqual(D('20'));
       expect(data.eurFxProvider).toBeUndefined();
       expect(data.eurFxProviderAsOf).toBeUndefined();
+    });
+
+    it('falls back to the configured env rate when the reserve FX snapshot is missing', async () => {
+      // The `booking.fxRateToEur ?? eurFxRate(booking.currency)` branch. Current
+      // reserve always snapshots a rate, so this covers legacy/imported rows -
+      // and it is the ONLY production caller of eurFxRate, so without this the
+      // exhaustiveness guard added to that function has no runtime coverage at
+      // the place that actually uses it.
+      const priorRate = process.env.FX_USD_TO_EUR;
+      process.env.FX_USD_TO_EUR = '0.92';
+      m.booking.updateMany.mockResolvedValue({ count: 1 });
+      m.booking.findUnique.mockResolvedValue(
+        confirmable({
+          currency: 'USD',
+          totalRetail: D('100'),
+          fxRateToEur: null, // no reserve snapshot
+          totalEur: null,
+          commissionRate: D('0.2'),
+          commissionAmount: null,
+        }),
+      );
+
+      await svc.confirmFromPayment('b1'); // no PSP rate supplied
+
+      const finalizeCall = m.booking.updateMany.mock.calls.find(
+        ([arg]: [{ where: { conversionFiredAt?: null } }]) =>
+          arg.where && 'conversionFiredAt' in arg.where,
+      );
+      expect(finalizeCall).toBeDefined();
+      const data = finalizeCall![0].data as Record<string, unknown>;
+      expect(data.totalEur).toEqual(D('92')); // 100 USD * 0.92
+      expect(data.commissionAmount).toEqual(D('18.4')); // 92 * 0.2
+
+      if (priorRate === undefined) delete process.env.FX_USD_TO_EUR;
+      else process.env.FX_USD_TO_EUR = priorRate;
     });
 
     it('the caller that LOSES the status flip fires NO side effects (still backfills billing)', async () => {
@@ -4272,6 +4633,67 @@ describe('BookingsService', () => {
       const where = prisma.booking.findMany.mock.calls.at(-1)[0].where;
       expect(where.status).toBe(BookingStatus.CANCELLED);
       expect(where.utcForfeitedAt).toBeUndefined();
+    });
+
+    it('translates NO_SHOW_REPORTED to the admin queue (reported, not yet ruled on)', async () => {
+      prisma.booking.count.mockResolvedValue(0);
+      prisma.booking.findMany.mockResolvedValue([]);
+      await svc.list(
+        { status: 'NO_SHOW_REPORTED' },
+        { id: 'admin-1', role: Role.ADMIN },
+      );
+      const where = prisma.booking.findMany.mock.calls.at(-1)[0].where;
+      expect(where.status).toBe(BookingStatus.CONFIRMED);
+      expect(where.utcNoShowReportedAt).toEqual({ not: null });
+      expect(where.utcNoShowConfirmedAt).toBeNull();
+    });
+
+    it('NEVER shows a traveller the accusation made against them', async () => {
+      // A no-show leaves status CONFIRMED, so `selfScoped` skips the manifest
+      // projection and would otherwise hand the accused traveller the
+      // operator's free-text reason - before any admin has ruled on it.
+      prisma.booking.count.mockResolvedValue(1);
+      prisma.booking.findMany.mockResolvedValue([
+        listRow({
+          status: BookingStatus.CONFIRMED,
+          userId: 'traveller-1',
+          utcNoShowReportedAt: new Date('2030-06-06T10:00:00.000Z'),
+          noShowReason: 'Waited 20 minutes; nobody arrived.',
+          utcNoShowConfirmedAt: new Date('2030-06-07T10:00:00.000Z'),
+          utcNonPaymentReportedAt: new Date('2030-06-06T10:00:00.000Z'),
+          utcOperatorCancellationReportedAt: new Date(
+            '2030-06-06T10:00:00.000Z',
+          ),
+          operatorCancellationReason: 'Boat broke down.',
+        }),
+      ]);
+
+      const res = await svc.list({}, { id: 'traveller-1', role: Role.USER });
+      const row = res.data[0] as Record<string, unknown>;
+
+      // The whole ops report/verdict family, not just the no-show fields.
+      expect(row.noShowReason).toBeUndefined();
+      expect(row.utcNoShowReportedAt).toBeUndefined();
+      expect(row.utcNoShowConfirmedAt).toBeUndefined();
+      expect(row.operatorCancellationReason).toBeUndefined();
+      expect(row.utcNonPaymentReportedAt).toBeUndefined();
+      expect(row.utcOperatorCancellationReportedAt).toBeUndefined();
+      expect(row.utcForfeitedAt).toBeUndefined();
+    });
+
+    it('still shows an ADMIN the report fields (the strip is traveller-only)', async () => {
+      prisma.booking.count.mockResolvedValue(1);
+      prisma.booking.findMany.mockResolvedValue([
+        listRow({
+          status: BookingStatus.CONFIRMED,
+          utcNoShowReportedAt: new Date('2030-06-06T10:00:00.000Z'),
+          noShowReason: 'Waited 20 minutes; nobody arrived.',
+        }),
+      ]);
+      const res = await svc.list({}, { id: 'admin-1', role: Role.ADMIN });
+      const row = res.data[0] as Record<string, unknown>;
+      expect(row.noShowReason).toBe('Waited 20 minutes; nobody arrived.');
+      expect(row.displayStatus).toBe('NO_SHOW_REPORTED');
     });
 
     it('maps the list row (tourName, partySize, deadline, window verdict)', async () => {

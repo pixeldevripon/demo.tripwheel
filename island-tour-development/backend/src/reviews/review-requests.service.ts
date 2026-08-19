@@ -71,6 +71,10 @@ type Cadence = typeof DEFAULTS;
  * Booking states that must NEVER receive a review request. Mirrors the pre-tour
  * reminder's suppression rules: asking someone to review a tour they did not
  * take, or that we cancelled on them, is worse than not asking at all.
+ *
+ * NOT the whole rule. A confirmed no-show also did not take the tour but keeps
+ * status CONFIRMED, so it is excluded separately via `utcNoShowConfirmedAt`
+ * below - a status list alone cannot express it.
  */
 const SUPPRESSED_STATUSES: BookingStatus[] = [
   BookingStatus.CANCELLED,
@@ -164,6 +168,13 @@ export class ReviewRequestsService {
     const candidates = await this.prisma.booking.findMany({
       where: {
         status: { in: COMPLETED_STATUSES },
+        // A confirmed no-show never attended. Status alone cannot catch this:
+        // a no-show leaves the booking CONFIRMED (the tour ran, the seat was
+        // consumed), so it sits squarely inside COMPLETED_STATUSES. Inviting
+        // them would solicit a PUBLIC review of a tour they did not take -
+        // the exact harm this service's own suppression rule exists to prevent,
+        // and worse than the marketing email MK-1 already suppresses.
+        utcNoShowConfirmedAt: null,
         reviewInvitation: null,
         review: null,
         // A tour that has not started cannot have finished. The precise local
@@ -217,11 +228,20 @@ export class ReviewRequestsService {
       where: {
         revokedAt: null,
         completedAt: null,
-        booking: { status: { in: SUPPRESSED_STATUSES } },
+        // Either terminal signal revokes: the booking left the completed
+        // states, OR it was confirmed a no-show after the invitation was
+        // created. Without the second arm an invitation minted before the
+        // admin's verdict would still ship - and its token would still work.
+        booking: {
+          OR: [
+            { status: { in: SUPPRESSED_STATUSES } },
+            { utcNoShowConfirmedAt: { not: null } },
+          ],
+        },
       },
       data: {
         revokedAt: new Date(),
-        suppressedReason: 'Booking no longer in a completed state',
+        suppressedReason: 'Booking no longer eligible for a review request',
       },
     });
     return count;

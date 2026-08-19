@@ -171,6 +171,25 @@ model Booking {
   utcOperatorCancellationReportedAt DateTime?
   operatorCancellationReason        String?
 
+  // No-show (ad-conversion PRD phase 3f): the traveller never turned up. Same
+  // report-then-confirm shape as the non-payment forfeit above - the operator
+  // REPORTS, only an admin CONFIRMS - because "they didn't come" is one party's
+  // word about an event with no system trace.
+  //
+  // A FLAG, NOT A BookingStatus. The tour ran, the seat was consumed and the
+  // deposit is kept, so there is no state transition to make: the booking stays
+  // CONFIRMED and gains a mark. Adding a status would have meant reworking every
+  // state machine that reads one.
+  //
+  // NOTHING IS REPORTED TO THE AD PLATFORMS on confirmation, deliberately. The
+  // kept deposit IS the commission (LD24), so the conversion value already
+  // reported is still true - exactly the reasoning that makes the shipped
+  // cancellation pipeline skip a NONE-refund cancellation. A no-show is an
+  // operational and email-suppression signal, not a conversion correction.
+  utcNoShowReportedAt  DateTime?
+  noShowReason         String?
+  utcNoShowConfirmedAt DateTime?
+
   // B6 queued-job idempotency guards (EVENT-DRIVEN-AND-QUEUES.md §5.1): each
   // consumer checks-then-stamps its own column, so a redelivered job never
   // double-sends. CAPI needs no column - Meta dedups by event id (publicRef).

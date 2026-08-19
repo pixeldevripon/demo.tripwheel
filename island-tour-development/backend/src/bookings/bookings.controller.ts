@@ -28,6 +28,7 @@ import {
   QuoteBookingDto,
   RecoverReferenceDto,
   ReportCancellationDto,
+  ReportNoShowDto,
   ChangeBookingDateDto,
   RequestCancellationDto,
   RequestTravellerCodeDto,
@@ -44,6 +45,9 @@ import {
   ApiDismissNonPaymentDocs,
   ApiReportCancellationDocs,
   ApiReportNonPaymentDocs,
+  ApiReportNoShowDocs,
+  ApiConfirmNoShowDocs,
+  ApiDismissNoShowDocs,
   ApiClaimConversionDocs,
   ApiConfirmDocs,
   ApiAcceptOperatorTermsDocs,
@@ -176,6 +180,46 @@ export class BookingsController {
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
     return this.bookings.dismissNonPaymentReport(id, {
+      id: user.id,
+      role: user.role,
+    });
+  }
+
+  // ── No-show (PRD phase 3f) - operator reports, only an admin confirms ────
+
+  @Post(':id/report-no-show')
+  @RequirePermissions(Permission.EDIT_BOOKING)
+  @ApiReportNoShowDocs()
+  reportNoShow(
+    @Param('id') id: string,
+    @Body() dto: ReportNoShowDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.bookings.reportNoShow(
+      id,
+      { id: user.id, role: user.role },
+      dto.reason,
+    );
+  }
+
+  @Post(':id/confirm-no-show')
+  @RequirePermissions(Permission.MANAGE_BOOKINGS)
+  @ApiConfirmNoShowDocs()
+  confirmNoShow(
+    @Param('id') id: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.bookings.confirmNoShow(id, { id: user.id, role: user.role });
+  }
+
+  @Post(':id/dismiss-no-show')
+  @RequirePermissions(Permission.MANAGE_BOOKINGS)
+  @ApiDismissNoShowDocs()
+  dismissNoShow(
+    @Param('id') id: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.bookings.dismissNoShowReport(id, {
       id: user.id,
       role: user.role,
     });

@@ -919,6 +919,8 @@
         "talkLocals": "Praat met de locals die hem runnen, zij weten het best:",
         "issueTitle": "Probleem met boeking of betaling?",
         "issueBody": "Mail {email} en vermeld je ref ({ref})",
+        "recordIssueTitle": "We moeten iets controleren bij deze boeking",
+        "recordIssueBody": "Je boeking is bevestigd en je plek staat vast - er is niets aan de hand. Een deel van onze interne administratie hiervan is onvolledig en ons team is gewaarschuwd. Klopt er iets niet op deze pagina, neem dan contact met ons op met je boekingsreferentie via",
         "replyTime": "We reageren meestal binnen 12 uur",
         "verifyTitle": "Sommige gegevens zijn verborgen",
         "verifyBody": "Je bekijkt een gedeelde link, dus persoonlijke gegevens zijn gemaskeerd. Is dit jouw boeking? Verifieer met je e-mail en boekingsreferentie om alles te zien.",

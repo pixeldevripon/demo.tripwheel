@@ -36,11 +36,28 @@ export const retailWhole = (v: Prisma.Decimal): Prisma.Decimal =>
 /** Identity rate never expires (same-currency, no provider). */
 const IDENTITY_TTL_MS = 3_650 * 24 * 60 * 60 * 1000; // ~10y
 
-/** Pairs the platform actively converts (both directions of the launch currencies). */
-const REQUIRED_PAIRS: FxPair[] = [
-  { from: Currency.USD, to: Currency.EUR },
-  { from: Currency.EUR, to: Currency.USD },
-];
+/**
+ * Every currency that needs a provider-backed rate against EUR, keyed by
+ * `Currency` so the type system forces this list to grow with the enum.
+ *
+ * DO NOT flatten this back into a literal `FxPair[]`. As a plain array it was a
+ * hardcoded two-currency list with nothing tying it to `Currency`: adding a
+ * third member compiled clean, no rate was ever fetched for its pairs, and the
+ * platform silently could not take a booking in it (`getRate` 503s at reserve).
+ * That fails in the safe direction - no mispricing - but with zero build signal,
+ * which is the same silent-drift bug the `never` guard in `fx.util.ts` closes.
+ *
+ * EUR is excluded because it is the base: EUR->EUR is the identity rate.
+ */
+const CROSS_CURRENCIES: Record<Exclude<Currency, 'EUR'>, true> = { USD: true };
+
+/** Pairs the platform actively converts (both directions against EUR). */
+const REQUIRED_PAIRS: FxPair[] = (
+  Object.keys(CROSS_CURRENCIES) as Exclude<Currency, 'EUR'>[]
+).flatMap((currency) => [
+  { from: currency, to: Currency.EUR },
+  { from: Currency.EUR, to: currency },
+]);
 
 function envInt(name: string, fallback: number): number {
   const n = Number(process.env[name]);

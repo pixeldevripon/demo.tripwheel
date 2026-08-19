@@ -259,6 +259,35 @@ describe('NextAdventureEmailsService', () => {
     expect(emailLog.claimAndSend).not.toHaveBeenCalled();
   });
 
+  it('an admin-CONFIRMED no-show → SUPPRESSED "no-show"', async () => {
+    // A no-show leaves status CONFIRMED - the tour ran and the seat was
+    // consumed - so nothing above this check catches it. Selling the next
+    // adventure to someone who never turned up is the wireframe's own
+    // suppression case.
+    prisma.booking.findMany.mockResolvedValue([
+      bookingRow({
+        utcNoShowConfirmedAt: new Date('2026-08-08T10:00:00.000Z'),
+      }),
+    ]);
+    await svc.sweep(MONDAY_MORNING_OPEN);
+    expect(suppressionReasons()).toEqual(['no-show']);
+    expect(emailLog.claimAndSend).not.toHaveBeenCalled();
+  });
+
+  it('a REPORTED but unconfirmed no-show still sends - a report is not a verdict', async () => {
+    // The load-bearing half. Gating on the report would let one operator's
+    // unreviewed accusation silently switch off a traveller's marketing.
+    prisma.booking.findMany.mockResolvedValue([
+      bookingRow({
+        utcNoShowReportedAt: new Date('2026-08-08T10:00:00.000Z'),
+        utcNoShowConfirmedAt: null,
+      }),
+    ]);
+    await svc.sweep(MONDAY_MORNING_OPEN);
+    expect(suppressionReasons()).toEqual([]);
+    expect(emailLog.claimAndSend).toHaveBeenCalled();
+  });
+
   it('a 1–2★ review → SUPPRESSED "low-star-review"; a 3★ one does not suppress', async () => {
     prisma.booking.findMany.mockResolvedValue([
       bookingRow({ review: { rating: 2 } }),

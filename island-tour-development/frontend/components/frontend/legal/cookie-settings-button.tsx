@@ -1,12 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-
-declare global {
-    interface Window {
-        Cookiebot?: { renew?: () => void };
-    }
-}
+// Type-only: documents where `window.Cookiebot` is declared without pulling that
+// module's runtime helpers into this page's chunk. The single definition is
+// shared with the attribution consent gate - TS merges `declare global` blocks
+// across files, so a second local declaration here with a narrower shape would
+// be a compile error, not an override.
+import type {} from '@/lib/tracking/cookiebot';
 
 /**
  * The "[Open your cookie settings]" block from the Manage Cookies handover

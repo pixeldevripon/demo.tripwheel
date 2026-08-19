@@ -6,6 +6,7 @@ import { ThankYouRelatedTours } from '@/components/frontend/thank-you/thank-you-
 import { ThankYouSummary } from '@/components/frontend/thank-you/thank-you-summary';
 import { ThankYouVerifyNotice } from '@/components/frontend/thank-you/thank-you-verify-notice';
 import { ConversionPush } from '@/components/frontend/thank-you/conversion-push';
+import { ThankYouRecordIssueNotice } from '@/components/frontend/thank-you/thank-you-record-issue-notice';
 import { BookingManageHeader } from '@/components/frontend/thank-you/booking-manage-header';
 import { ThankYouPageSkeleton } from '@/components/frontend/skeletons/thank-you-page-skeleton';
 import { getActiveDestinations } from '@/lib/api/public';
@@ -123,10 +124,13 @@ async function ThankYouBody({
     // verified render of a CONFIRMED booking with a non-null EUR commission, and
     // null on every later call (refresh / second tab / shared link / not-yet-
     // confirmed). Gated on `verified` so a bare link never even asks. The value is
-    // the EUR commission; a confirmed booking with null commission fires nothing.
-    const conversion = booking.verified
+    // the EUR commission; a confirmed booking with null commission fires nothing
+    // and comes back with `dataError` so the page can render the rule #22 error
+    // instead of a silent fallback - a bare `conversion: null` is the HEALTHY
+    // case (every refresh returns it) and must never be treated as a fault.
+    const { conversion, dataError } = booking.verified
         ? await claimConversionPush(publicRef, sessionToken)
-        : null;
+        : { conversion: null, dataError: null };
 
     // Cross-sell + apartment upsell belong to the celebratory moment only; the
     // management/masked views are utilitarian, so skip both fetches there
@@ -156,6 +160,18 @@ async function ThankYouBody({
                 is non-null only on the mark-first winning render; a no-op when
                 tracking is disabled. */}
             <ConversionPush conversion={conversion} />
+            {/* Rule #22 data-corruption guard: a CONFIRMED booking with no EUR
+                commission has no honest conversion value, so nothing fires and
+                the fault is rendered rather than swallowed. Sits ABOVE the hero
+                so it cannot be missed, and the booking still renders in full -
+                the reservation is valid, only our reporting record is not. */}
+            {dataError === 'NULL_COMMISSION' && (
+                <ThankYouRecordIssueNotice
+                    displayRef={booking.displayRef}
+                    supportEmail={booking.supportEmail}
+                    dict={dict.thankYou}
+                />
+            )}
             {mode === 'celebratory' && (
                 <ThankYouHero booking={booking} dict={dict.thankYou} />
             )}

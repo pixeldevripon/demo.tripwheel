@@ -159,7 +159,10 @@ import type {
   VerifyTravellerCodeDto,
   VerifyTravellerCodeResponseDto,
 } from './dto/booking.dto';
-import { deriveBookingDisplayStatus } from './dto/booking.dto';
+import {
+  ConversionDataError,
+  deriveBookingDisplayStatus,
+} from './dto/booking.dto';
 import { deriveRefundState } from './refund-state.util';
 import {
   mapMollieRefundStatus,
@@ -338,6 +341,48 @@ function hasDeparted(
     );
   }
   return now.getTime() >= booking.localDate.getTime() + DAY_ENDED_EVERYWHERE_MS;
+}
+
+/**
+ * Drop every ops-lifecycle report/verdict field from a booking row.
+ *
+ * ONE definition, used by BOTH traveller-facing surfaces - the `traveller/*`
+ * routes and the `selfScoped` branch of `GET /bookings` - because they diverged
+ * once and that is exactly how the operator's free-text no-show accusation
+ * reached the traveller it accused. Anything added to this family belongs here,
+ * not in a second inline destructure.
+ *
+ * These are not "financial" fields the manifest projection already handles.
+ * They are one party's claim awaiting an admin ruling, and `noShowReason` names
+ * the traveller as the wrongdoer.
+ */
+function stripOpsOnlyReportFields<T extends Record<string, unknown>>(item: T) {
+  const {
+    utcNonPaymentReportedAt: _utcNonPaymentReportedAt,
+    utcForfeitedAt: _utcForfeitedAt,
+    utcOperatorCancellationReportedAt: _utcOperatorCancellationReportedAt,
+    operatorCancellationReason: _operatorCancellationReason,
+    utcNoShowReportedAt: _utcNoShowReportedAt,
+    noShowReason: _noShowReason,
+    utcNoShowConfirmedAt: _utcNoShowConfirmedAt,
+    ...rest
+  } = item;
+  return rest;
+}
+
+/**
+ * Normalize operator-supplied free text before it reaches a TEXT column.
+ *
+ * Trim, then strip C0/C1 control characters. The trim is cosmetic; the strip is
+ * not: PostgreSQL rejects a NUL byte in a TEXT value outright (22021), so a single
+ * NUL byte in the body would surface as a 500 rather than a validation error.
+ * Returns null for anything that is empty once cleaned, so the column holds NULL
+ * rather than an empty string.
+ */
+function sanitizeReportText(raw: string | null | undefined): string | null {
+  // eslint-disable-next-line no-control-regex
+  const cleaned = raw?.replace(/[\u0000-\u001F\u007F-\u009F]/g, '').trim();
+  return cleaned ? cleaned : null;
 }
 
 /** Why a booking cannot be put up for cancellation (null = it can). */
@@ -3956,6 +4001,164 @@ export class BookingsService {
   }
 
   // ════════════════════════════════════════════════════════════════════════
+  // No-show (ad-conversion PRD phase 3f)
+  // ════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Operator reports that the traveller never turned up.
+   *
+   * A REPORT, not a verdict - the same shape as the non-payment forfeit above,
+   * and for the same reason: "they didn't come" is one party's word about an
+   * event that leaves no trace in the system. Only an admin confirmation makes
+   * it real. Stamps once; a repeat report is an idempotent no-op.
+   *
+   * ONLY AFTER DEPARTURE. Reusing `hasDeparted` rather than re-deriving the
+   * instant: `tourStartDateTime` is a LOCAL wall clock and means nothing without
+   * `tourTimeZone`, and that helper already handles the legacy date-only rows
+   * conservatively.
+   */
+  async reportNoShow(
+    id: string,
+    actor: { id: string; role: Role },
+    reason?: string,
+  ) {
+    const booking = await this.loadOr404(id);
+    await this.assertOwnsBooking(booking, actor);
+
+    if (booking.status !== BookingStatus.CONFIRMED) {
+      throw new ConflictException(
+        `Cannot report a no-show on a ${booking.status} booking`,
+      );
+    }
+    if (!hasDeparted(booking)) {
+      throw new ConflictException(
+        'This trip has not departed yet, so nobody can have failed to show up',
+      );
+    }
+    if (booking.utcNoShowReportedAt) {
+      return mapBookingForActor(booking, actor); // already reported - idempotent
+    }
+
+    // Per-OPERATOR cap, same limiter and budget as the cancellation report.
+    // Every first report is an accusation against a paying customer that lands
+    // on the admin worklist, so bound how fast one operator can file them across
+    // their bookings - bulk-accusing is also the cheapest way to bury a genuine
+    // report an admin needs to see.
+    this.targetLimiter.consume('op-no-show-report', booking.operatorId, [
+      { max: 10, windowMs: 60 * 60 * 1000 },
+    ]);
+
+    // Race-safe stamp: two concurrent first-reports must produce ONE worklist
+    // entry. The conditional updateMany makes the loser a no-op (count 0).
+    const { count } = await this.prisma.booking.updateMany({
+      where: { id: booking.id, utcNoShowReportedAt: null },
+      data: {
+        utcNoShowReportedAt: new Date(),
+        noShowReason: sanitizeReportText(reason),
+      },
+    });
+    const updated = await this.loadOr404(booking.id);
+    if (count === 0) {
+      return mapBookingForActor(updated, actor); // lost the race - already reported
+    }
+
+    this.inbox.notify({
+      event: InboxEvent.BOOKING_OPERATOR_REPORTED_NO_SHOW,
+      // Explicit per-REPORT key, not the default `event:entityId`. A no-show is
+      // the flow most likely to be re-reported (dismissed for thin evidence,
+      // then filed again with more), and the default key plus `skipDuplicates`
+      // would silently swallow that second alert forever. Stamping the report
+      // instant opens a fresh thread per report cycle.
+      dedupeKey: `${InboxEvent.BOOKING_OPERATOR_REPORTED_NO_SHOW}:${updated.id}:${
+        updated.utcNoShowReportedAt?.toISOString() ?? 'unknown'
+      }`,
+      operatorId: updated.operatorId,
+      title: `No-show reported: ${updated.displayRef}`,
+      body: 'The operator says this traveller never arrived. Confirm before it counts - nothing is recorded until you do.',
+      url: `/bookings?ref=${updated.displayRef}`,
+      entityType: 'booking',
+      entityId: updated.id,
+      actorUserId: actor.id,
+    });
+    this.logger.log(
+      `No-show reported for booking ${updated.displayRef} (awaiting admin confirmation)`,
+    );
+    return mapBookingForActor(updated, actor);
+  }
+
+  /**
+   * Admin confirms a no-show report.
+   *
+   * WHAT THIS DELIBERATELY DOES NOT DO:
+   *
+   * - **No status change.** The tour ran and the seat was consumed; there is no
+   *   transition to make and no inventory to release. The booking stays
+   *   CONFIRMED and gains a mark.
+   * - **No refund, no settlement reversal.** The deposit is kept, exactly as in
+   *   the non-payment forfeit.
+   * - **Nothing is sent to Google Ads or Meta.** The kept deposit IS the
+   *   commission (LD24), so the conversion value already reported is still
+   *   true - the same reasoning that makes the shipped cancellation pipeline
+   *   skip a NONE-refund cancellation. Correcting here would under-report real
+   *   revenue to Smart Bidding. (The PRD asks for a no-show correction assuming
+   *   the revenue is lost; under this platform's money model it is not.)
+   *
+   * What it IS for: the marketing-email suppression the wireframes require, and
+   * an honest operational record.
+   */
+  async confirmNoShow(id: string, actor: { id: string; role: Role }) {
+    const booking = await this.loadOr404(id);
+
+    if (!booking.utcNoShowReportedAt) {
+      throw new ConflictException('No no-show report exists for this booking');
+    }
+    if (booking.utcNoShowConfirmedAt) {
+      return mapBookingForActor(booking, actor); // already confirmed - idempotent
+    }
+    if (booking.status !== BookingStatus.CONFIRMED) {
+      throw new ConflictException(
+        `Cannot confirm a no-show on a ${booking.status} booking`,
+      );
+    }
+
+    const updated = await this.prisma.booking.update({
+      where: { id: booking.id },
+      data: { utcNoShowConfirmedAt: new Date() },
+      include: { unitItems: true },
+    });
+    this.logger.warn(
+      `Booking ${updated.displayRef} confirmed NO-SHOW (deposit kept, commission stays earned, no ad-platform correction)`,
+    );
+    return mapBookingForActor(updated, actor);
+  }
+
+  /**
+   * Admin dismisses a no-show report (mistake, or the traveller did arrive).
+   * Clears the report stamp. Refused once confirmed - reversing a confirmed
+   * no-show is a separate decision, not a dismissal.
+   */
+  async dismissNoShowReport(id: string, actor: { id: string; role: Role }) {
+    const booking = await this.loadOr404(id);
+    if (!booking.utcNoShowReportedAt) {
+      return mapBookingForActor(booking, actor); // nothing to dismiss
+    }
+    if (booking.utcNoShowConfirmedAt) {
+      throw new ConflictException(
+        'This no-show is already confirmed - the report cannot be dismissed',
+      );
+    }
+    const updated = await this.prisma.booking.update({
+      where: { id: booking.id },
+      data: { utcNoShowReportedAt: null, noShowReason: null },
+      include: { unitItems: true },
+    });
+    this.logger.log(
+      `No-show report dismissed for booking ${updated.displayRef}`,
+    );
+    return mapBookingForActor(updated, actor);
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
   // Operator cancellation report (access-roles matrix conflict #2)
   // ════════════════════════════════════════════════════════════════════════
 
@@ -6000,13 +6203,10 @@ export class BookingsService {
   async claimConversionPush(
     publicRef: string,
     sessionToken?: string | null,
-  ): Promise<{ conversion: BookingConversionDto | null }> {
-    // Per-target throttle (mirrors resend/settle): the browser calls this once,
-    // but a hostile multi-IP caller must not hammer one booking's endpoint.
-    this.targetLimiter.consume('conversion-push', publicRef, [
-      { max: 5, windowMs: 60_000 },
-    ]);
-
+  ): Promise<{
+    conversion: BookingConversionDto | null;
+    dataError: ConversionDataError | null;
+  }> {
     const booking = await this.prisma.booking.findUnique({
       where: { publicRef },
       select: {
@@ -6058,18 +6258,42 @@ export class BookingsService {
       id: booking.id,
       contactEmail: booking.contactEmail,
     });
-    if (!verified) return { conversion: null };
+    if (!verified) return { conversion: null, dataError: null };
+
+    // Per-target throttle (mirrors resend/settle): the browser calls this once,
+    // but a hostile multi-IP caller must not hammer one booking's endpoint.
+    //
+    // Consumed AFTER the verified gate on purpose. Keyed on `publicRef`, which a
+    // TYP link hands to anyone it is forwarded to - so charging it before the
+    // gate let a mere link-holder spend the real owner's budget, and every
+    // subsequent SSR render 429'd. That cost the owner the conversion AND, since
+    // the corruption discriminator rides the same response, hid the rule #22
+    // banner. Unverified callers are still bounded by the per-IP @Throttle on
+    // the controller (3/10s, 5/min, 20/hr).
+    this.targetLimiter.consume('conversion-push', publicRef, [
+      { max: 5, windowMs: 60_000 },
+    ]);
 
     // Only a CONFIRMED booking with a non-null EUR commission is a real
     // conversion (rule #22). Neither non-confirmed nor null-commission burns the
     // guard: a not-yet-confirmed race can fire on a later call, and a null
     // commission is data corruption to repair, not to silently swallow forever.
-    if (booking.status !== BookingStatus.CONFIRMED) return { conversion: null };
+    if (booking.status !== BookingStatus.CONFIRMED) {
+      return { conversion: null, dataError: null };
+    }
     if (booking.commissionAmount == null) {
       this.logger.error(
         `Conversion push for ${booking.displayRef}: confirmed booking has null commissionAmount - not fired (data corruption)`,
       );
-      return { conversion: null };
+      // Surfaced, not swallowed: the TYP renders an error banner instead of a
+      // silently conversion-less page (rule #22 "render an error, never a silent
+      // fallback"). Deliberately does NOT burn the mark-first guard, so the
+      // banner keeps appearing - and the push can still fire - until the record
+      // is repaired.
+      return {
+        conversion: null,
+        dataError: ConversionDataError.NULL_COMMISSION,
+      };
     }
 
     // Mark-first: exactly one caller flips `conversionPushedAt` from null and
@@ -6080,9 +6304,12 @@ export class BookingsService {
       where: { id: booking.id, conversionPushedAt: null },
       data: { conversionPushedAt: new Date() },
     });
-    if (count === 0) return { conversion: null };
+    if (count === 0) return { conversion: null, dataError: null };
 
-    return { conversion: this.buildConversionPayload(booking) };
+    return {
+      conversion: this.buildConversionPayload(booking),
+      dataError: null,
+    };
   }
 
   /**
@@ -6211,6 +6438,14 @@ export class BookingsService {
       where.status = BookingStatus.CONFIRMED;
       where.utcOperatorCancellationReportedAt = { not: null };
       where.utcCancelledAt = null;
+    } else if (query.status === 'NO_SHOW_REPORTED') {
+      // The admin's working queue: reported, not yet ruled on.
+      where.status = BookingStatus.CONFIRMED;
+      where.utcNoShowReportedAt = { not: null };
+      where.utcNoShowConfirmedAt = null;
+    } else if (query.status === 'NO_SHOW') {
+      where.status = BookingStatus.CONFIRMED;
+      where.utcNoShowConfirmedAt = { not: null };
     } else if (query.status) {
       where.status = query.status;
     }
@@ -6267,8 +6502,18 @@ export class BookingsService {
           actor.role,
         );
         const item = seesFinancials ? full : applyManifestProjection(full);
+        // `selfScoped` means the actor IS the traveller (a Role.USER reading
+        // their own bookings). That branch skips the manifest projection because
+        // they may see their own money - but the ops report/verdict fields are a
+        // different class entirely: they are one operator's accusation awaiting
+        // an admin ruling, and `noShowReason` names the traveller as the
+        // wrongdoer. Same strip as the other traveller surface, one definition,
+        // so the two cannot drift.
         return selfScoped
-          ? { ...item, review: this.reviewStateForRow(row) }
+          ? {
+              ...stripOpsOnlyReportFields(item),
+              review: this.reviewStateForRow(row),
+            }
           : item;
       }),
     };
@@ -7360,6 +7605,15 @@ function mapBookingListItem(
       ? b.utcOperatorCancellationReportedAt.toISOString()
       : null,
     operatorCancellationReason: b.operatorCancellationReason ?? null,
+    // No-show lifecycle (PRD phase 3f) - drives the dashboard's
+    // report/confirm/dismiss row actions. Ops-only, like the two blocks above.
+    utcNoShowReportedAt: b.utcNoShowReportedAt
+      ? b.utcNoShowReportedAt.toISOString()
+      : null,
+    noShowReason: b.noShowReason ?? null,
+    utcNoShowConfirmedAt: b.utcNoShowConfirmedAt
+      ? b.utcNoShowConfirmedAt.toISOString()
+      : null,
     freeCancelDeadline: deadline ? deadline.toISOString() : null,
     requestedInFreeWindow:
       b.utcCancellationRequestedAt && deadline
@@ -7454,12 +7708,8 @@ function mapTravellerBookingItem(
     settlementHeld: _settlementHeld,
     contactFullName: _contactFullName,
     contactEmail: _contactEmail,
-    utcNonPaymentReportedAt: _utcNonPaymentReportedAt,
-    utcForfeitedAt: _utcForfeitedAt,
-    utcOperatorCancellationReportedAt: _utcOperatorCancellationReportedAt,
-    operatorCancellationReason: _operatorCancellationReason,
     ...traveller
-  } = mapBookingListItem(b);
+  } = stripOpsOnlyReportFields(mapBookingListItem(b));
 
   // Same priority the confirmation email uses (assembleConfirmationContext):
   // the START location's localized title, else the tour's meeting-point text.

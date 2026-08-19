@@ -919,6 +919,8 @@
         "talkLocals": "Talk to the locals running it, they know it best:",
         "issueTitle": "Booking or payment issue?",
         "issueBody": "Email {email} and include your ref ({ref})",
+        "recordIssueTitle": "We need to check something on this booking",
+        "recordIssueBody": "Your booking is confirmed and your place is held - nothing is at risk. Part of our internal record for it is incomplete and our team has been alerted. If something looks wrong on this page, contact us with your booking reference at",
         "replyTime": "We usually reply within 12 hours",
         "verifyTitle": "Some details are hidden",
         "verifyBody": "You're viewing a shared link, so personal details are masked. If this is your booking, verify with your email and booking reference to see everything.",

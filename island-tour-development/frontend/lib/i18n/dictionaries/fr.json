@@ -919,6 +919,8 @@
         "talkLocals": "Parlez aux locaux qui l'organisent, ils le connaissent mieux que personne :",
         "issueTitle": "Problème de réservation ou de paiement ?",
         "issueBody": "Écrivez à {email} en indiquant votre réf. ({ref})",
+        "recordIssueTitle": "Nous devons vérifier un détail sur cette réservation",
+        "recordIssueBody": "Votre réservation est confirmée et votre place est garantie - il n'y a aucun risque. Une partie de notre enregistrement interne la concernant est incomplète et notre équipe en a été informée. Si quelque chose semble incorrect sur cette page, contactez-nous avec votre référence de réservation à",
         "replyTime": "Nous répondons généralement sous 12 heures",
         "verifyTitle": "Certains détails sont masqués",
         "verifyBody": "Vous consultez un lien partagé, les informations personnelles sont donc masquées. C'est votre réservation ? Vérifiez avec votre e-mail et votre référence de réservation pour tout voir.",

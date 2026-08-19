@@ -88,6 +88,7 @@ const BOOKING_SELECT = {
   tourTimeZone: true,
   utcCancellationRequestedAt: true,
   utcCancelledAt: true,
+  utcNoShowConfirmedAt: true,
   tourId: true,
   review: { select: { rating: true } },
   tour: {
@@ -170,11 +171,10 @@ const CARD_TOUR_SELECT = (locale: Locale, windowStart: Date, windowEnd: Date) =>
  *
  * ## Suppressions (G-12) — decisions, with reasons
  * cancelled (status left CONFIRMED/REDEEMED) · cancellation-pending ·
- * low-star-review (1–2★) · booked-again · no-consent · opted-out ·
- * insufficient-open-tours (G-07). Two of the wireframe's six have NO signal
- * in the platform today and are documented skips in `evaluate`:
- * no-show (no field marks a no-show anywhere in the schema) and complained
- * (no bounce/complaint webhook exists).
+ * no-show (admin-CONFIRMED only) · low-star-review (1–2★) · booked-again ·
+ * no-consent · opted-out · insufficient-open-tours (G-07). One of the
+ * wireframe's six still has NO signal in the platform and stays a documented
+ * skip in `evaluate`: complained (no bounce/complaint webhook exists).
  */
 @Injectable()
 export class NextAdventureEmailsService {
@@ -344,9 +344,16 @@ export class NextAdventureEmailsService {
       return 'skipped';
     }
 
-    // Wireframe suppression "no-show": DOCUMENTED SKIP — nothing in the
-    // schema marks a no-show today (no booking field, no unit-item state).
-    // When redemption tracking lands, the check belongs right here.
+    // Wireframe suppression "no-show" (unblocked 2026-08-19 by PRD phase 3f).
+    // Gated on the CONFIRMED stamp, never the report: a report is one operator's
+    // word awaiting an admin verdict, and suppressing on it would let a mistaken
+    // report silently switch off someone's marketing. A no-show leaves status
+    // CONFIRMED - the tour ran and the seat was consumed - so nothing above
+    // catches it.
+    if (booking.utcNoShowConfirmedAt) {
+      await this.suppress(booking, email, 'no-show');
+      return 'skipped';
+    }
 
     // Wireframe suppression "complained": DOCUMENTED SKIP — no
     // bounce/complaint webhook exists today (no Resend inbound events).

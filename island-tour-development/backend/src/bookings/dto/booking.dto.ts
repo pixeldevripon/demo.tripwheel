@@ -54,6 +54,8 @@ export const BOOKING_DISPLAY_STATUSES = [
   'OPERATOR_CANCELLATION_REPORTED',
   'NON_PAYMENT_REPORTED',
   'FORFEITED',
+  'NO_SHOW_REPORTED',
+  'NO_SHOW',
 ] as const;
 
 export type BookingDisplayStatus =
@@ -61,7 +63,9 @@ export type BookingDisplayStatus =
   | 'CANCELLATION_REQUESTED'
   | 'OPERATOR_CANCELLATION_REPORTED'
   | 'NON_PAYMENT_REPORTED'
-  | 'FORFEITED';
+  | 'FORFEITED'
+  | 'NO_SHOW_REPORTED'
+  | 'NO_SHOW';
 
 export function deriveBookingDisplayStatus(booking: {
   status: BookingStatus;
@@ -70,6 +74,8 @@ export function deriveBookingDisplayStatus(booking: {
   utcNonPaymentReportedAt?: Date | null;
   utcForfeitedAt?: Date | null;
   utcOperatorCancellationReportedAt?: Date | null;
+  utcNoShowReportedAt?: Date | null;
+  utcNoShowConfirmedAt?: Date | null;
 }): BookingDisplayStatus {
   // Forfeited (guide s15): terminated by an admin-confirmed non-payment report -
   // the deposit was kept, which "Cancelled" alone would misrepresent.
@@ -104,6 +110,25 @@ export function deriveBookingDisplayStatus(booking: {
     (booking.utcForfeitedAt ?? null) === null
   ) {
     return 'NON_PAYMENT_REPORTED';
+  }
+  // No-show (PRD phase 3f). Ranked BELOW the money states above on purpose: an
+  // unpaid balance or a pending cancellation is the more urgent thing about the
+  // same booking, and both can legitimately co-exist with a no-show report.
+  //
+  // Without these two, a no-show is invisible - it leaves status CONFIRMED, so
+  // a pending report and a settled no-show would both render as plain
+  // "Confirmed" and no admin could filter for the queue they are meant to work.
+  if (
+    booking.status === BookingStatus.CONFIRMED &&
+    (booking.utcNoShowConfirmedAt ?? null) !== null
+  ) {
+    return 'NO_SHOW';
+  }
+  if (
+    booking.status === BookingStatus.CONFIRMED &&
+    (booking.utcNoShowReportedAt ?? null) !== null
+  ) {
+    return 'NO_SHOW_REPORTED';
   }
   return booking.status;
 }
@@ -606,6 +631,27 @@ export class ThankYouResponseDto {
 }
 
 /**
+ * Why a conversion payload was withheld, when the reason is a CORRUPT booking
+ * rather than the ordinary "already claimed / unverified / not yet confirmed".
+ *
+ * `conversion: null` is overwhelmingly the healthy case - it is what a refresh,
+ * a second tab and a shared link all get - so the TYP cannot treat a bare null
+ * as a fault. This discriminator carries the one case that IS a fault, so the
+ * page renders an error instead of a silent fallback (rule #22, master 8.2 /
+ * TRACKING-AND-ANALYTICS §8.2).
+ */
+export enum ConversionDataError {
+  /**
+   * A CONFIRMED booking whose `commissionAmount` is null. The conversion value
+   * is the commission (never GMV), so there is no honest number to report and
+   * nothing is fired on any platform. The booking itself is valid and paid -
+   * only its reporting value is missing - so this is an operational repair
+   * signal, not a reason to withhold the traveler's booking details.
+   */
+  NULL_COMMISSION = 'NULL_COMMISSION',
+}
+
+/**
  * Response of `POST typ/:publicRef/conversion` (master 8.2). `conversion` is the
  * one-time `booking_complete` push payload for the mark-first WINNER; every later
  * caller (refresh, second tab, shared link, non-verified, not-yet-confirmed)
@@ -621,6 +667,19 @@ export class ConversionPushResponseDto {
       'session, a non-confirmed booking, or a null-commission (corrupt) booking.',
   })
   conversion!: BookingConversionDto | null;
+
+  @ApiPropertyOptional({
+    enum: ConversionDataError,
+    nullable: true,
+    description:
+      'Set ONLY when `conversion` is null because the booking record is corrupt ' +
+      '(rule #22: a CONFIRMED booking with a null commission_amount). It ' +
+      'distinguishes that case from the ordinary nulls - already claimed, ' +
+      'unverified, not yet confirmed - so the TYP can render an error instead of ' +
+      'silently falling back (master 8.2 no-silent-fallback). Never set for a ' +
+      'healthy booking.',
+  })
+  dataError!: ConversionDataError | null;
 }
 
 export class BookingResponseDto {
@@ -742,6 +801,25 @@ export class BookingListItemDto extends BookingResponseDto {
       'When the operator reported they must cancel this booking (conflict #2 flow); the admin executes or dismisses.',
   })
   utcOperatorCancellationReportedAt!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'When the operator reported the traveller never turned up (PRD phase 3f); awaiting an admin verdict while set.',
+  })
+  utcNoShowReportedAt!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      "The operator's context for the no-show. Ops-only - never on a traveller-facing payload.",
+  })
+  noShowReason!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'When an admin confirmed the no-show. Records the fact only: no status change, no refund, ' +
+      'no settlement reversal, and nothing sent to the ad platforms (the kept deposit IS the commission).',
+  })
+  utcNoShowConfirmedAt!: string | null;
   @ApiPropertyOptional({
     nullable: true,
     description: "The operator's stated reason for the cancellation report.",
@@ -1693,6 +1771,20 @@ export class ReportCancellationDto {
   @ApiPropertyOptional({
     example: 'Engine failure - boat is out of service this week.',
     description: 'Why the operator must cancel (shown to the admin).',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  reason?: string;
+}
+
+/** Body of POST /bookings/:id/report-no-show (ad-conversion PRD phase 3f). */
+export class ReportNoShowDto {
+  @ApiPropertyOptional({
+    example: 'Waited 20 minutes at the meeting point; nobody arrived.',
+    description:
+      'Optional context for the admin who confirms it. A no-show has no system ' +
+      'trace, so this is the only evidence the report carries.',
   })
   @IsOptional()
   @IsString()

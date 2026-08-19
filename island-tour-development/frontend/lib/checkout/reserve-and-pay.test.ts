@@ -69,7 +69,7 @@ beforeEach(() => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     reserveBooking.mockResolvedValue(BOOKING);
     updateBookingContact.mockResolvedValue({ sessionToken: 'v1.tok.sig' });
-    readAttribution.mockReturnValue({ utm_source: 'google' });
+    readAttribution.mockReturnValue({ utmSource: 'google' });
     createPaymentIntent.mockResolvedValue({
         paymentRequired: true,
         provider: 'STRIPE',
@@ -172,7 +172,7 @@ describe('reserveAndPay - the request it builds', () => {
     it('attaches the captured attribution', async () => {
         await reserveAndPay(INPUT);
         expect(reserveBooking.mock.calls[0][0].attribution).toEqual({
-            utm_source: 'google',
+            utmSource: 'google',
         });
     });
 

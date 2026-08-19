@@ -243,9 +243,10 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     // Conflict #7: owners/managers keep the full booking row; a guide-level
     // designation omits this and gets the manifest projection instead.
     Permission.VIEW_BOOKING_FINANCIALS,
-    // EDIT_BOOKING gates ONLY the two operator REPORT routes
-    // (report-non-payment, report-cancellation) - both ownership-pinned in the
-    // service and neither moves money (the admin executes forfeit/refund).
+    // EDIT_BOOKING gates ONLY the three operator REPORT routes
+    // (report-non-payment, report-cancellation, report-no-show) - all
+    // ownership-pinned in the service and none of them moves money or settles
+    // anything (the admin executes the forfeit/refund/no-show verdict).
     Permission.EDIT_BOOKING,
     Permission.VIEW_PAYMENTS,
     Permission.VIEW_PROFILE,

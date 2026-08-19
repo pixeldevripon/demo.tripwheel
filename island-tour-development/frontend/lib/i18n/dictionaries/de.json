@@ -919,6 +919,8 @@
         "talkLocals": "Sprich mit den Locals, die sie durchführen - sie kennen sie am besten:",
         "issueTitle": "Problem mit Buchung oder Zahlung?",
         "issueBody": "Schreib an {email} und gib deine Ref. an ({ref})",
+        "recordIssueTitle": "Wir müssen etwas zu dieser Buchung prüfen",
+        "recordIssueBody": "Deine Buchung ist bestätigt und dein Platz ist reserviert - es besteht kein Risiko. Ein Teil unserer internen Aufzeichnungen dazu ist unvollständig und unser Team wurde informiert. Falls auf dieser Seite etwas nicht stimmt, kontaktiere uns mit deiner Buchungsreferenz unter",
         "replyTime": "Wir antworten meist innerhalb von 12 Stunden",
         "verifyTitle": "Einige Angaben sind ausgeblendet",
         "verifyBody": "Du siehst einen geteilten Link, daher sind persönliche Angaben maskiert. Ist das deine Buchung? Bestätige dich mit E-Mail und Buchungsreferenz, um alles zu sehen.",
