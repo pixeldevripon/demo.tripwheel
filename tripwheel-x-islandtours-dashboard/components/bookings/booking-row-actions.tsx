@@ -40,6 +40,9 @@ import {
   useDismissNonPayment,
   useReportCancellation,
   useReportNonPayment,
+  useReportNoShow,
+  useConfirmNoShow,
+  useDismissNoShow,
   useRestoreBooking,
 } from '@/hooks/bookings/use-bookings';
 import { reviewUrl } from '@/lib/public-site';
@@ -66,6 +69,12 @@ export function BookingRowActions({
   const [restoreOpen, setRestoreOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [forfeitOpen, setForfeitOpen] = useState(false);
+  // Captured once, not read during render: `Date.now()` in render is impure and
+  // the lint rule rejects it (precedent: trip-promotion-tab.tsx).
+  const [now] = useState(() => Date.now());
+  const [noShowOpen, setNoShowOpen] = useState(false);
+  const [noShowReason, setNoShowReason] = useState('');
+  const [confirmNoShowOpen, setConfirmNoShowOpen] = useState(false);
   const [reportCancelOpen, setReportCancelOpen] = useState(false);
   const [reportCancelReason, setReportCancelReason] = useState('');
   const { mutate: cancelBooking, isPending } = useCancelBooking();
@@ -77,6 +86,12 @@ export function BookingRowActions({
     useConfirmForfeit();
   const { mutate: dismissNonPayment, isPending: isDismissing } =
     useDismissNonPayment();
+  const { mutate: reportNoShow, isPending: isReportingNoShow } =
+    useReportNoShow();
+  const { mutate: confirmNoShow, isPending: isConfirmingNoShow } =
+    useConfirmNoShow();
+  const { mutate: dismissNoShow, isPending: isDismissingNoShow } =
+    useDismissNoShow();
   const { mutate: reportCancellation, isPending: isReportingCancel } =
     useReportCancellation();
   const {
@@ -127,6 +142,47 @@ export function BookingRowActions({
     booking.status === 'CONFIRMED' &&
     reported &&
     booking.utcForfeitedAt == null;
+  // No-show (PRD phase 3f): the operator files it, only an admin decides. Offered
+  // only AFTER departure - nobody can have failed to show up for a trip that has
+  // not run. The backend's timezone-aware `hasDeparted` is the real check; this
+  // only keeps a pointless item off the menu.
+  //
+  // PREFER THE SERVER'S VERDICT. `cancellationBlockedReason === 'DEPARTED'` is
+  // computed by that same `hasDeparted`, against the tour's own snapshotted
+  // timezone. Re-deriving it here from `localDate` + `startTime` cannot be
+  // right: those are a LOCAL wall clock with no zone attached, so the browser
+  // parses them in the VIEWER's timezone - which runs early for an admin east
+  // of the tour and, worse, LATE for one to the west, hiding the action for
+  // hours after a trip really departed.
+  //
+  // The local guess stays only as a fallback, because the server reason reads
+  // ALREADY_REQUESTED when a cancellation is pending, which masks DEPARTED. It
+  // is OR'd in, so it can only ever reveal the item earlier, never hide it
+  // later - and the API refuses a premature report anyway.
+  const noShowReported = booking.utcNoShowReportedAt != null;
+  const noShowConfirmed = booking.utcNoShowConfirmedAt != null;
+  const departedAtLocal = Date.parse(
+    `${booking.localDate}T${booking.startTime ?? '00:00'}`,
+  );
+  const hasTravelled =
+    booking.cancellationBlockedReason === 'DEPARTED' ||
+    Number.isNaN(departedAtLocal) ||
+    departedAtLocal <= now;
+  const canReportNoShow =
+    can('EDIT_BOOKING') &&
+    booking.status === 'CONFIRMED' &&
+    hasTravelled &&
+    !noShowReported;
+  // Confirming requires CONFIRMED (the backend refuses otherwise); DISMISSING
+  // does not - and must not, or a report filed before an admin cancelled the
+  // booking would be stranded with no UI path to clear it.
+  const canConfirmNoShow =
+    can('MANAGE_BOOKINGS') &&
+    booking.status === 'CONFIRMED' &&
+    noShowReported &&
+    !noShowConfirmed;
+  const canDismissNoShow =
+    can('MANAGE_BOOKINGS') && noShowReported && !noShowConfirmed;
   const due = refundDue(booking);
 
   return (
@@ -217,6 +273,32 @@ export function BookingRowActions({
               >
                 <HugeiconsIcon icon={CheckmarkCircle02Icon} /> Dismiss report
               </DropdownMenuItem>
+            </>
+          )}
+          {canReportNoShow && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setNoShowOpen(true)}>
+                <HugeiconsIcon icon={Alert02Icon} /> Report no-show
+              </DropdownMenuItem>
+            </>
+          )}
+          {(canConfirmNoShow || canDismissNoShow) && (
+            <>
+              <DropdownMenuSeparator />
+              {canConfirmNoShow && (
+                <DropdownMenuItem onClick={() => setConfirmNoShowOpen(true)}>
+                  <HugeiconsIcon icon={Alert02Icon} /> Confirm no-show
+                </DropdownMenuItem>
+              )}
+              {canDismissNoShow && (
+                <DropdownMenuItem
+                  disabled={isDismissingNoShow}
+                  onClick={() => dismissNoShow(booking.id)}
+                >
+                  <HugeiconsIcon icon={CheckmarkCircle02Icon} /> Dismiss no-show
+                </DropdownMenuItem>
+              )}
             </>
           )}
           {canCancel && !canDecideCancelReport && (
@@ -331,6 +413,77 @@ export function BookingRowActions({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* No-show report (PRD phase 3f): reason + confirm. */}
+      <Dialog
+        open={noShowOpen}
+        onOpenChange={(open) => {
+          setNoShowOpen(open);
+          if (!open) setNoShowReason(''); // Esc / overlay / Back all clear it
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Report a no-show for {booking.displayRef}?</DialogTitle>
+            <DialogDescription>
+              Use this when the traveller never turned up. Nothing happens
+              automatically - an admin reviews the report first. A no-show
+              leaves the deposit with us, so the booking is not refunded and
+              your payout is unaffected.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={noShowReason}
+            onChange={(e) => setNoShowReason(e.target.value)}
+            maxLength={500}
+            rows={3}
+            placeholder="What happened? (shown to Island Tours)"
+          />
+          <DialogFooter>
+            <Button
+              variant="outline"
+              disabled={isReportingNoShow}
+              onClick={() => setNoShowOpen(false)}
+            >
+              Back
+            </Button>
+            <Button
+              disabled={isReportingNoShow}
+              onClick={() =>
+                reportNoShow(
+                  { id: booking.id, reason: noShowReason.trim() || undefined },
+                  {
+                    onSuccess: () => {
+                      setNoShowOpen(false);
+                      setNoShowReason('');
+                    },
+                  },
+                )
+              }
+            >
+              Report no-show
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmDialog
+        open={confirmNoShowOpen}
+        onOpenChange={setConfirmNoShowOpen}
+        title={`Confirm the no-show for ${booking.displayRef}?`}
+        description={`This records that the traveller did not turn up.${
+          booking.noShowReason
+            ? ` The operator reported: "${booking.noShowReason}"`
+            : ' The operator gave no further detail.'
+        } It moves no money - the deposit stays with us and the commission is already earned - and it does not change the booking's status. It does stop this traveller being invited to review the tour and receiving our marketing emails. This cannot be undone.`}
+        confirmLabel="Confirm no-show"
+        loading={isConfirmingNoShow}
+        onConfirm={() =>
+          confirmNoShow(booking.id, {
+            onSuccess: () => setConfirmNoShowOpen(false),
+          })
+        }
+      />
 
       <ConfirmDialog
         open={reportOpen}

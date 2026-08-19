@@ -89,6 +89,32 @@ export const bookingsDashboardApi = {
         });
     },
 
+    // ── No-show (PRD phase 3f) ──────────────────────────────────────────────
+
+    /** Operator reports the traveller never turned up (idempotent stamp). */
+    reportNoShow(id: string, reason?: string): Promise<BookingListItem> {
+        return apiFetch<BookingListItem>(`/bookings/${id}/report-no-show`, {
+            method: 'POST',
+            body: JSON.stringify(reason ? { reason } : {}),
+        });
+    },
+
+    /** Admin confirms the no-show. Records the fact; moves no money. */
+    confirmNoShow(id: string): Promise<BookingListItem> {
+        return apiFetch<BookingListItem>(`/bookings/${id}/confirm-no-show`, {
+            method: 'POST',
+            body: JSON.stringify({}),
+        });
+    },
+
+    /** Admin dismisses a no-show report (the traveller did arrive). */
+    dismissNoShow(id: string): Promise<BookingListItem> {
+        return apiFetch<BookingListItem>(`/bookings/${id}/dismiss-no-show`, {
+            method: 'POST',
+            body: JSON.stringify({}),
+        });
+    },
+
     // ── Operator cancellation report (conflict #2) ──────────────────────────
 
     /** Operator reports they must cancel - the admin executes the refund. */

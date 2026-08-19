@@ -23,7 +23,9 @@ export type BookingDisplayStatus =
     | 'CANCELLATION_REQUESTED'
     | 'OPERATOR_CANCELLATION_REPORTED'
     | 'NON_PAYMENT_REPORTED'
-    | 'FORFEITED';
+    | 'FORFEITED'
+    | 'NO_SHOW_REPORTED'
+    | 'NO_SHOW';
 
 export type BookingPaymentModel =
     | 'OPERATOR_LINK'
@@ -102,6 +104,16 @@ export interface BookingListItem {
     /** Operator cancellation report (conflict #2) - operators report, admin executes. */
     utcOperatorCancellationReportedAt: string | null;
     operatorCancellationReason: string | null;
+    /**
+     * No-show (PRD phase 3f) - operators report, only an admin confirms.
+     * Confirming records the fact and nothing else: no status change, no refund,
+     * no settlement reversal, and nothing sent to the ad platforms (the kept
+     * deposit IS the commission). It does suppress the traveller's marketing
+     * email, which is why the confirm step is admin-only.
+     */
+    utcNoShowReportedAt: string | null;
+    noShowReason: string | null;
+    utcNoShowConfirmedAt: string | null;
     freeCancelDeadline: string | null;
     requestedInFreeWindow: boolean | null;
     /** Ledger-derived: net paid vs totalRetail (see backend derivePaymentState). */

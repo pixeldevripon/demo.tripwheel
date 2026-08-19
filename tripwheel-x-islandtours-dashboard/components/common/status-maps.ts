@@ -104,6 +104,16 @@ export const BOOKING_DISPLAY_STATUS: Record<BookingDisplayStatus, StatusMeta> = 
         variant: 'danger',
         hint: 'Non-payment confirmed by an admin - deposit kept, spot released',
     },
+    NO_SHOW_REPORTED: {
+        label: 'No-show reported',
+        variant: 'warning',
+        hint: 'Operator says the traveller never arrived; awaiting an admin decision',
+    },
+    NO_SHOW: {
+        label: 'No-show',
+        variant: 'danger',
+        hint: 'Confirmed by an admin - deposit kept, no refund, booking stays confirmed',
+    },
 };
 
 export const PAYMENT_STATUS: Record<PaymentStatus, StatusMeta> = {

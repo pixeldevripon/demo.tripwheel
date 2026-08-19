@@ -75,6 +75,55 @@ export function useDismissNonPayment() {
     });
 }
 
+/** Operator reports the traveller never turned up (PRD phase 3f). */
+export function useReportNoShow() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, reason }: { id: string; reason?: string }) =>
+            bookingsDashboardApi.reportNoShow(id, reason),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: bookingKeys.all });
+            toast.success('No-show reported - an admin will review it.');
+        },
+        onError: err =>
+            toast.error(
+                err instanceof Error ? err.message : 'Failed to report the no-show.',
+            ),
+    });
+}
+
+/** Admin confirms a no-show: records the fact, moves no money (PRD phase 3f). */
+export function useConfirmNoShow() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => bookingsDashboardApi.confirmNoShow(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: bookingKeys.all });
+            toast.success('No-show confirmed - the deposit stays with us.');
+        },
+        onError: err =>
+            toast.error(
+                err instanceof Error ? err.message : 'Failed to confirm the no-show.',
+            ),
+    });
+}
+
+/** Admin dismisses a no-show report (the traveller did arrive). */
+export function useDismissNoShow() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => bookingsDashboardApi.dismissNoShow(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: bookingKeys.all });
+            toast.success('No-show report dismissed.');
+        },
+        onError: err =>
+            toast.error(
+                err instanceof Error ? err.message : 'Failed to dismiss the report.',
+            ),
+    });
+}
+
 /** Operator reports they must cancel (conflict #2) - the admin executes. */
 export function useReportCancellation() {
     const queryClient = useQueryClient();

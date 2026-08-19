@@ -46,6 +46,8 @@ const STATUS_OPTIONS = [
   'CONFIRMED',
   'CANCELLATION_REQUESTED',
   'NON_PAYMENT_REPORTED',
+  'NO_SHOW_REPORTED',
+  'NO_SHOW',
   'REDEEMED',
   'EXPIRED',
   'CANCELLED',
@@ -121,6 +123,11 @@ export function BookingsTable({
     <DataTable
       columns={columns}
       data={data}
+      // Key rows on the booking id, not the array index. Without this a focus
+      // refetch that reorders the list leaves an OPEN row dialog bound to a
+      // different booking than the one it names - and this table now carries an
+      // irreversible action (confirm no-show).
+      getRowId={(booking) => booking.id}
       isLoading={isLoading}
       onRowClick={(booking) =>
         setDetailsIndex(data.findIndex((b) => b.id === booking.id))
