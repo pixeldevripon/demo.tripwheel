@@ -27,6 +27,14 @@ export const primaryBtn =
 export const staffBtn =
     'flex w-full items-center justify-center gap-2 rounded-[10px] bg-it-ink px-4 py-3 text-base font-medium text-white transition-opacity hover:opacity-90';
 
+/**
+ * Admin-surface button: the staff shape plus an inset hairline, so the system
+ * admin door reads as a third surface rather than a re-skinned staff page. Same
+ * reasoning as `staffBtn` vs `primaryBtn` - no two doors should feel like one.
+ */
+export const adminBtn =
+    'flex w-full items-center justify-center gap-2 rounded-[10px] bg-it-ink px-4 py-3 text-base font-medium text-white ring-1 ring-inset ring-white/25 transition-opacity hover:opacity-90';
+
 export const quietLink =
     'text-sm font-medium text-it-text-muted transition-colors hover:text-it-primary';
 
@@ -88,15 +96,23 @@ const WRONG_DOOR_COPY: Record<
     // suggests 'admin') - kept so a future admin-adjacent role that CAN be
     // wrong-doored renders sensibly instead of crashing on a missing key.
     admin: {
-        body: 'This email belongs to an administrator account. Please sign in through the admin console.',
-        label: 'Go to admin console',
+        body: 'This email belongs to an administrator account. Please sign in through the admin door.',
+        label: 'Go to admin sign-in',
     },
 };
 
 /**
  * Wrong-door notice: the ErrorNote shell plus a link to the door the account
- * actually belongs at. The admin console lives on another origin
- * (NEXT_PUBLIC_ADMIN_LOGIN_URL), so that one renders a full-navigation <a>.
+ * actually belongs at.
+ *
+ * `admin` is an in-app route (`/admin`) since the admin gate was merged into
+ * this dashboard - it used to be a separate deployment reached through
+ * NEXT_PUBLIC_ADMIN_LOGIN_URL. Only the traveller account area is still on
+ * another origin, so it is the one case that needs a full-navigation <a>.
+ *
+ * Note this notice is never rendered BY the admin door itself: that door
+ * answers every failure with one generic string, deliberately never hinting
+ * which other surface an email belongs to. See `admin-login.tsx`.
  */
 export function WrongDoorNote({
     correctSurface,
@@ -107,19 +123,15 @@ export function WrongDoorNote({
     // from an unvalidated API response - fall back rather than crash the
     // login page if an unexpected value ever slips through.
     const copy = WRONG_DOOR_COPY[correctSurface] ?? WRONG_DOOR_COPY.portal;
-    const adminUrl = process.env.NEXT_PUBLIC_ADMIN_LOGIN_URL || '/portal';
     return (
         <ErrorNote>
             {copy.body}{' '}
-            {/* Both live on ANOTHER origin, so they need a full navigation
-                rather than a client-side <Link>. */}
-            {correctSurface === 'admin' || correctSurface === 'account' ? (
+            {correctSurface === 'account' ? (
+                /* The traveller account area lives on ANOTHER origin (the
+                   public site), so it needs a full navigation rather than a
+                   client-side <Link>. */
                 <a
-                    href={
-                        correctSurface === 'admin'
-                            ? adminUrl
-                            : travellerAccountUrl()
-                    }
+                    href={travellerAccountUrl()}
                     className='font-medium underline underline-offset-2'>
                     {copy.label}
                 </a>

@@ -7,64 +7,50 @@ The operator + admin CRM for the Island Tours marketplace. Standalone Next.js 16
 
 ---
 
-## Push remotes — per repo, not a shared convention
+## Repo, git, and where this sits
 
-| Repo | Push to | Base |
-|---|---|---|
-| `tripwheel-x-islandtours-dashboard` (this one) | **`pixelvega`** | `main` |
-| `island-tour-development` | **`pixelvega`** | `prod` |
-| `tripwheel-app` | **`pixelvega`** | `main` |
+> **This is the DEMO monorepo (`demo.tripwheel`).** The sections that used to sit here described
+> three sibling repos and a `pixelvega` push target with a `prod` base. Neither exists in this
+> checkout. **The root `CLAUDE.md` is authoritative on layout, git and deployment.**
 
-**Every change goes on its OWN BRANCH and lands as a PR. Never commit straight to
-the base branch.** Branch off the fetched base, push that branch to `pixelvega`,
-open the PR against the base — one branch per PR, no exceptions and no batching
-of unrelated work onto a shared branch.
+One repo, `origin` → `pixeldevripon/demo.tripwheel`, single `main` branch, branch + PR for every
+change. This directory is `dashboard/`; the API and public site are `../backend-frontend/{backend,
+frontend}`.
 
-```bash
-git fetch pixelvega main
-git switch -c <branch> pixelvega/main
-# ... commit ...
-git push -u pixelvega <branch>
-gh pr create --base main --head <branch>
-```
+This app is the operator + admin CRM **and the admin login gate** — there is no separate admin
+application in this deployment. `../tripwheel-app` is superseded and undeployed.
 
-`pixelvega` here is `pixeldevripon/dashbaord-tripwheel-x-islandtours` (note the typo in the repo
-name — it is real, not a mistake in this doc).
-
-**`origin` (devripon-tr) is stale — do not push there.** As of 2026-08-02 it sat 103 commits behind
-this repo's working branch, so a PR against it spans the whole backlog rather than your change.
-Name the remote explicitly on every push rather than relying on `origin` being the default.
+It deploys to **Vercel** with Root Directory `dashboard`; the API deploys to the VPS. Details in
+`../docs/operations/DEMO-DEPLOYMENT.md`.
 
 ---
 
-## This is a three-repo product
+## The three login doors
 
-Three sibling checkouts live under `tripwheel-x-islandtours/`, each its own git repo on its own
-branch:
+`app/(login)/` owns all of them: `/portal` (operators), `/staff`, and `/admin` (system
+administrators, merged in from `tripwheel-app`). Each has its own shell, its own `forgot` and
+`reset` routes and its own button style, so no two doors read as one surface. All three must stay in
+`proxy.ts`'s `UNGUARDED_PREFIXES` — guarding a login door is a redirect loop.
 
-| Repo | What it is | Port |
-|---|---|---|
-| `island-tour-development` | `backend/` NestJS API + `frontend/` public site | 5050 · 3000 |
-| `tripwheel-x-islandtours-dashboard` (this one) | Operator + admin CRM | 3001 |
-| `tripwheel-app` | **Different product.** Tripwheel marketing + login door; authenticates against `api.tripwheel.app`, not the Island Tours backend | 3002 |
+**`/admin` deliberately does not reuse `AuthForm`.** The operator and staff doors render
+`WrongDoorNote`, which names the surface an account actually belongs to. That is helpful there and
+exactly what the admin door must never do: it would confirm which emails are real admin accounts.
+So `admin-login.tsx` answers every failure with one generic string, and additionally verifies the
+freshly-minted session really is `ADMIN` before handing over. Keeping that logic in its own
+component rather than as an `AuthForm` variant means a later edit to the shared form cannot silently
+reintroduce the hint.
 
-**This repo has no database.** No Prisma client, no `DATABASE_URL` — every read and write is an HTTP
-call to the backend on :5050. Only `island-tour-development/backend` owns one.
+`NEXT_PUBLIC_ADMIN_LOGIN_URL` is retired — there is no other origin to point at.
 
-### Cross-repo coupling — none of this fails to compile locally
+Coupling to respect — all silent, none fails to compile:
 
-- **`lib/config/rbac.ts` mirrors `backend/src/config/roles.config.ts`.** Adding or renaming a
-  `Permission` means editing both repos, or this dashboard silently mis-gates its UI. The backend
-  change should land first.
-- **The backend's `CORS_ORIGINS` must list `http://localhost:3001`.** Every API call here runs in the
-  *browser* with credentials; omit the origin and all of them CORS-fail.
-- **Cache revalidations POST to the public site** (`REVALIDATE_TARGET_URL` →
-  `http://localhost:3000/api/revalidate`) using `INTERNAL_API_SECRET`, which must match the
-  backend's and must never carry a `NEXT_PUBLIC_` prefix.
-- **Better Auth runs on the backend only.** This app never calls `betterAuth()`; the session cookie
-  is issued by the backend and scoped to the shared parent domain (`COOKIE_DOMAIN`).
-- Ports are pinned, not incidental. 3000 and 3001 cannot be swapped — the revalidation target
-  depends on the split.
+- **`lib/config/rbac.ts` mirrors `../backend-frontend/backend/src/config/roles.config.ts`.**
+- **`lib/cache-tags.ts` must be byte-identical** to `../backend-frontend/frontend/lib/cache-tags.ts`.
+- **`COOKIE_DOMAIN` must match the backend's**, or login is an infinite redirect loop.
+- **`INTERNAL_API_SECRET` and `REVALIDATE_SECRET`** must match the backend and the public site.
+  Server-only; never `NEXT_PUBLIC_`-prefixed.
+- **This app's origin must be in the backend's `CORS_ORIGINS`** or every request fails, sign-in
+  included.
 
 ---
 

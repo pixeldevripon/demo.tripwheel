@@ -111,6 +111,12 @@ function clearSessionCookies(request: NextRequest, response: NextResponse) {
 const UNGUARDED_PREFIXES = [
     '/portal',
     '/staff',
+    // The system admin door, merged in from the standalone tripwheel-app.
+    // Guarding it would be the same redirect loop as the other two doors. Safe
+    // as a prefix: no application route lives under /admin - the dashboard's
+    // own pages are all inside the (app) group and none is named `admin`. If
+    // one is ever added there, this entry has to become exact-match.
+    '/admin',
     '/onboarding',
     '/api',
     // Emailed password-change confirmation. Reached from the mailbox, very

@@ -1,215 +1,192 @@
-# Tripwheel × Island Tours — workspace root
+# demo.tripwheel — repo root
 
 Island Tours is a Caribbean tour marketplace operating as a **reseller**: it earns commission on
 bookings taken from local operators. Operators list single-day tours; travellers discover and **book
 instantly** — there is no enquiry model.
 
-> **This directory is not a git repo.** It is a container for three independent ones, so this file is
-> **local and unversioned**. Repo-specific rules belong in that repo's own `CLAUDE.md`, which is
-> versioned and travels with the code. Keep this file to what spans repos.
+**This repo is the DEMO deployment of that product.** It is a single git repository holding all the
+apps as plain directories — not a container for several repos, and not the production checkout.
 
-> **Read `ONBOARDING.md` (beside this file) first** for the narrative tour of the codebase. This file
-> is the index and the rules — it deliberately does not repeat what ONBOARDING covers.
+> The previous version of this file was copied from the upstream three-repo workspace and described
+> a world that does not exist here: three separate repos, a `pixelvega` remote, a `prod` base
+> branch, `tripwheel-app` as a separately deployed product, and three Next.js apps on ports
+> 3000/3001/3002. Anything following it would push to a remote this repo does not have.
 
 ---
 
-## 1. The three repos
+## 1. Layout — one repo, three directories, two of them deployed
 
-| Repo | What it is | Stack | Port |
+| Directory | What it is | Stack | Deployed to |
 |---|---|---|---|
-| `island-tour-development` | `backend/` API + `frontend/` public site | NestJS 11 · Prisma 7 · Postgres / Next.js 16 | 5050 · 3000 |
-| `tripwheel-x-islandtours-dashboard` | Operator + admin CRM | Next.js 16, standalone | 3001 |
-| `tripwheel-app` | **Different product.** Tripwheel marketing + login door; authenticates against `api.tripwheel.app`, *not* the Island Tours backend | Next.js 16 | 3002 |
+| `backend-frontend/backend` | NestJS API — **the only thing that owns a database** | NestJS 11 · Prisma 7 · Postgres | **VPS** (Docker) |
+| `backend-frontend/frontend` | Public traveller site | Next.js 16 | **Vercel** |
+| `dashboard` | Operator + admin CRM — **and the admin login gate** | Next.js 16 | **Vercel** |
+| `tripwheel-app` | Superseded. The admin gate moved into `dashboard` | Next.js 16 | **not deployed** |
 
-**Only `island-tour-development/backend` owns a database.** The dashboard and the public site have no
-Prisma client and no `DATABASE_URL` — every read and write is an HTTP call to `:5050`. Exactly one
-Prisma instance exists in the whole system.
+`tripwheel-app/` is still in the tree but nothing builds, deploys, or references it. Treat it as
+dead weight, not as a fourth app.
 
-### Cross-repo coupling — none of this fails to compile
-
-These are the traps. Every one of them is silent locally.
-
-- **`lib/config/rbac.ts` (dashboard) mirrors `backend/src/config/roles.config.ts`.** Add or rename a
-  `Permission` in one and the other must change too, or the dashboard silently mis-gates its UI. The
-  backend change lands first.
-- **Backend `CORS_ORIGINS` must list `http://localhost:3001`.** Dashboard API calls run in the
-  *browser* with credentials; omit the origin and every one of them CORS-fails.
-- **The dashboard POSTs cache revalidations to the public site** (`REVALIDATE_TARGET_URL` →
-  `http://localhost:3000/api/revalidate`), authenticated with `INTERNAL_API_SECRET` — which must match
-  the backend's and must **never** carry a `NEXT_PUBLIC_` prefix.
-- **`lib/cache-tags.ts` is byte-identical in the dashboard and the public site.** `diff` between the
-  two repos is the check; a drifted tag is rejected as `unknown_tag` at runtime.
-- **Better Auth runs on the backend only.** No frontend calls `betterAuth()`; the session cookie is
-  issued by the backend and scoped to the shared parent domain (`COOKIE_DOMAIN`).
-- **Ports are pinned, not incidental.** 3000 and 3001 cannot be swapped — the revalidation target
-  depends on the split.
+**Only `backend-frontend/backend` owns a database.** The two Next.js apps have no Prisma client and
+no `DATABASE_URL`; every read and write is an HTTP call to the API. Exactly one Prisma instance
+exists in the whole system.
 
 ---
 
-## 2. Git — remote, branch, PR
+## 2. Git — one remote, one branch
 
-**All three repos push to `pixelvega`. Every change goes on its OWN BRANCH and lands as a PR. Never
-commit straight to the base branch.** Only the base differs:
+| | |
+|---|---|
+| Remote | `origin` → `github.com/pixeldevripon/demo.tripwheel` |
+| Base branch | **`main`** (the only branch — there is no `prod` here) |
 
-| Repo | Remote | PR base |
-|---|---|---|
-| `island-tour-development` | `pixelvega` → `pixeldevripon/island-tours` | **`prod`** |
-| `tripwheel-x-islandtours-dashboard` | `pixelvega` → `pixeldevripon/dashbaord-tripwheel-x-islandtours` *(the typo in that repo name is real)* | **`main`** |
-| `tripwheel-app` | `pixelvega` → `pixeldevripon/tripwheel.app` | **`main`** |
+**Every change goes on its own branch and lands as a PR. Never commit straight to `main`.**
 
 ```bash
-git fetch pixelvega <base>
-git switch -c <branch> pixelvega/<base>
+git fetch origin main
+git switch -c <branch> origin/main
 # ... commit ...
-git push -u pixelvega <branch>
-gh pr create --base <base> --head <branch>
+git push -u origin <branch>
+gh pr create --base main --head <branch>
 ```
 
-`island-tour-development` carries **four** remotes — `org` (tripwheel-io), `org-personal`
-(devripon-tr), `origin` (Deveripon via the `github-personal` SSH alias) and `pixelvega`. Only the
-last is the push target. A bare `git push` sends work to whichever remote the branch happens to
-track, across four different GitHub accounts. **Name the remote and the branch explicitly, always.**
-
-`origin` is stale in the dashboard too (devripon-tr, 103 commits behind as of 2026-08-02).
+There is no `pixelvega`, `org`, or `org-personal` remote in this repo. If a doc under
+`backend-frontend/` or `dashboard/` tells you to push to `pixelvega` with base `prod`, that doc is
+upstream text that has not been rewritten — this section wins.
 
 ### No AI attribution
 
-**Never** add `Co-Authored-By: Claude …` to a commit, or a "Generated with Claude Code" footer to a
-PR body. Applies to all three repos.
+**Never** add a `Co-Authored-By: Claude …` trailer to a commit, or a "Generated with Claude Code"
+footer to a PR body.
 
 ---
 
-## 3. Where the documentation is
+## 3. Deployment — and where the docs are
 
-**Canonical source of truth:** `island-tour-development/technical-doc/island-tours-platform-master.html`
-(v1.9). Where any doc or any code disagrees with it, **the master wins**.
+**`docs/operations/DEMO-DEPLOYMENT.md` is the authority for this repo.** Read it before the two
+runbooks beside it: `VPS-DEPLOYMENT-CADDY.md` and `VPS-SECOND-INSTANCE.md` are pulled in from the
+upstream workspace and describe all three Next apps running on the VPS under PM2. That is not this
+deployment. They are still correct about Docker, Caddy/nginx, DNS, secrets and the database.
 
-`island-tour-development/technical-doc/` is the doc tree:
+| Piece | Where | Detail |
+|---|---|---|
+| Backend | VPS `/opt/demo-tripwheel`, Docker | Port `5150` (production holds `5050`); image `demo-tripwheel-backend:<sha>` |
+| Public site | Vercel project | Root Directory `backend-frontend/frontend` |
+| Dashboard | Vercel project | Root Directory `dashboard` |
 
-| Area | Path under `technical-doc/` |
+Demo hosts sit on a **different apex from production** (`tripwheel.io` vs `tripwheel.app`) so the two
+instances' session cookies can never collide — see `VPS-SECOND-INSTANCE.md` §3. `COOKIE_DOMAIN` is
+`.demo.tripwheel.io`.
+
+### CI/CD
+
+Workflows live at **`.github/workflows/` in the repo root**. GitHub reads them nowhere else — they
+previously sat under `backend-frontend/` and consequently had never run once.
+
+| Workflow | Trigger |
 |---|---|
-| Single task checklist — **update in the same commit as the work** | `MASTER-CHECKLIST.md` |
-| Architecture / IA | `02-architecture/PLATFORM-ARCHITECTURE.md`, `ARCHITECTURE-OVERVIEW.md` |
-| Commission tiers, ranking, eligibility | `02-architecture/COMMERCIAL-MODEL.md` |
-| Booking & payments | `02-architecture/BOOKING-AND-PAYMENTS.md` · `03-implementation/BOOKING-CHECKLIST.md` |
-| Availability & departures | `02-architecture/AVAILABILITY-AND-DEPARTURES.md` |
-| Data model · routing · slug registry | `02-architecture/{DATA-MODEL,ROUTING-AND-RESOLUTION,SLUG-REGISTRY}.md` |
-| FX & multi-currency | `02-architecture/FX-AND-MULTI-CURRENCY.md` |
-| Settlement & payouts | `02-architecture/SETTLEMENT-AND-PAYOUTS.md` |
-| Queues / outbox | `02-architecture/EVENT-DRIVEN-AND-QUEUES.md` |
-| Tracking & analytics | `02-architecture/TRACKING-AND-ANALYTICS.md` |
-| Custom scripts (admin-pasted vendor snippets) | `02-architecture/CUSTOM-SCRIPTS.md` |
-| Notifications matrix | `02-architecture/NOTIFICATIONS-AND-ALERTS.md` |
-| SEO strategy | `02-architecture/SEO-STRATEGY.md` |
-| Multilingual (7 locales) | `04-multilingual/MULTILINGUAL-CONTENT.md` |
-| Roles, access, staff & teams | `05-access-management/` |
-| Rendering / revalidation | `02-architecture/{RENDERING,RENDERING-REVALIDATION-REVIEW}.md` |
-| Email programme (wireframes + build status) | `emails/` |
+| `ci.yml` | push/PR on `main` touching `backend-frontend/backend/**` |
+| `deploy-backend.yml` | push on `main` touching `backend-frontend/backend/**` or its `docker-compose.yml`; plus `workflow_dispatch` |
+| `claude-code-review.yml` | every PR; skips cleanly unless `CLAUDE_CODE_OAUTH_TOKEN` is set |
+| `claude.yml` | `@claude` mentions |
 
-Per-repo instruction files:
+Frontend and dashboard deploys are Vercel's Git integration, deliberately not duplicated in Actions.
 
-- `island-tour-development/CLAUDE.md` — backend module patterns, the 23 critical rules, Prisma layout
-- `island-tour-development/frontend/CLAUDE.md` → `AGENTS.md` + `DASHBOARD-PATTERNS.md`
-- `island-tour-development/frontend/CHANGELOG.md` — **the audit record**: what was fixed, what was
-  deliberately *not* changed and why, and what is still open. Read before "improving" anything on the
-  public site; several deliberate decisions look like bugs until you read the entry.
-- `tripwheel-x-islandtours-dashboard/CLAUDE.md` · `tripwheel-app/CLAUDE.md`
+Required repository secrets: `VPS_SSH_HOST`, `VPS_SSH_USER`, `VPS_SSH_KEY`, `VPS_SSH_PORT`
+(optional), and **`VPS_APP_DIR=/opt/demo-tripwheel`** — the *git root*, not the compose directory.
+The deploy script runs `git reset --hard` there and then `cd`s into `backend-frontend/`.
 
 ---
 
-## 4. Skills
+## 4. Cross-app coupling — none of this fails to compile
 
-Sixteen live in `island-tour-development/.claude/skills/` and are **directory-scoped** — they apply
-when the files being changed are under `island-tour-development/`. The dashboard and `tripwheel-app`
-define none of their own, so use the unscoped equivalents there.
+These are the traps. Every one is silent locally.
 
-| When you are… | Skill |
-|---|---|
-| Writing Next.js — file conventions, RSC boundaries, async APIs | `next-best-practices` |
-| Touching `'use cache'`, PPR, `cacheLife`/`cacheTag`, `updateTag` | `next-cache-components` |
-| Optimising React/Next performance | `vercel-react-best-practices` |
-| Configuring Better Auth (server, adapters, sessions, plugins) | `better-auth-best-practices` |
-| Hardening auth — rate limits, CSRF, trusted origins, cookies | `better-auth-security-best-practices` |
-| Email/password flows, verification, reset, hashing | `email-and-password-best-practices` |
-| Any Stripe work — API choice, Connect, billing, webhooks, keys | `stripe-best-practices` |
-| Upgrading Stripe API/SDK versions | `upgrade-stripe` |
-| Spec-driven change workflow | `openspec-{explore,propose,apply-change,update-change,sync-specs,archive-change}` |
-
-**`next-cache-components` matters more than it looks.** The public site runs `cacheComponents: true`,
-which changes rendering semantics and rejects route segment config at *build* time, not typecheck.
-
----
-
-## 5. Review agents
-
-Eight in `island-tour-development/.claude/agents/`. Two were purpose-built for the public site and
-carry the project's own threat model and conventions:
-
-- **`frontend-code-reviewer`** — DRY, SOLID, component purity, composition
-- **`frontend-security-reviewer`** — the traveller-session trust boundary, Route Handlers, XSS sinks,
-  cache poisoning, IDOR
-
-Plus `security-code-reviewer`, `solid-dry-reviewer`, `performance-reviewer`, `seo-reviewer`,
-`test-writer`, `e2e-test-writer` (broader, repo-wide).
-
-**Run the two frontend ones in parallel and verify every finding against source before acting.** They
-report false positives, and several past findings were correctly refuted.
+- **`dashboard/lib/config/rbac.ts` mirrors `backend-frontend/backend/src/config/roles.config.ts`.**
+  Add or rename a `Permission` in one and the other must change too, or the dashboard silently
+  mis-gates its UI. The backend change lands first.
+- **`lib/cache-tags.ts` must be byte-identical** in `backend-frontend/frontend/` and `dashboard/`.
+  `diff` between the two is the check; a drifted tag is rejected as `unknown_tag` at runtime.
+- **Backend `CORS_ORIGINS` must list both Vercel origins.** Dashboard and site API calls run in the
+  *browser* with credentials; omit an origin and every one of its requests CORS-fails, including
+  sign-in.
+- **`COOKIE_DOMAIN` must match between the backend and the dashboard.** A mismatch is an infinite
+  login redirect loop, not an error.
+- **`INTERNAL_API_SECRET` and `REVALIDATE_SECRET`** are matched pairs across the API and the two
+  apps. Both are server-only and must **never** carry a `NEXT_PUBLIC_` prefix.
+- **Better Auth runs on the backend only.** No frontend calls `betterAuth()`; the session cookie is
+  issued by the API and scoped to the shared parent domain.
+- **The dashboard POSTs cache revalidations to the public site** (`REVALIDATE_TARGET_URL` →
+  `<site>/api/revalidate`). Unset in production means silent staleness, never an error.
 
 ---
 
-## 6. Local development
+## 5. Local development
 
-| Service | Fact |
-|---|---|
-| Node · pnpm | v22 · v10 |
-| Postgres | **17.4 only**, port 5432. 14 and 16 were uninstalled 2026-08-08 — two clusters on one port raced at boot and the app hit whichever won |
-| Database | `island_tours` (**underscore**), role `devripon` |
-| Redis | required by BullMQ; `redis-cli ping` → `PONG` |
+Ports here are the ordinary dev ports, not the VPS ones.
 
-**`island-tours` with a hyphen also exists on that cluster — it is a different, older project.** The
-near-miss is easy to hit.
+| Service | Port | Command |
+|---|---|---|
+| Backend API | `5050` | `cd backend-frontend && pnpm dev:backend` |
+| Public site | `3000` | `cd backend-frontend && pnpm dev:frontend` |
+| Dashboard | `3001` | `cd dashboard && pnpm dev` |
 
-```bash
-pnpm dev:backend                    # NestJS :5050
-pnpm prisma:migrate:deploy          # apply migrations
-pnpm prisma:seed  /  :seed:demo     # the DB is schema-only until you do
-```
+`cd backend-frontend && pnpm dev` runs the API and the site together. Node 22 · pnpm 10 · Postgres
+17.4 on 5432 · Redis required by BullMQ.
+
+Backend `CORS_ORIGINS` must include `http://localhost:3000` and `http://localhost:3001` for local
+work.
 
 ### Testing
 
 | Where | Runner |
 |---|---|
-| `backend/` | Jest — `pnpm test` |
-| `frontend/` | **Vitest** — `pnpm test` (300+ unit tests; added 2026-08-02, there were none before) |
-| `frontend/e2e/` | Playwright — `pnpm test:e2e` |
-
-Vitest covers pure modules, route handlers and client components. It does **not** replace Playwright:
-async Server Components, `'use cache'` semantics, PPR boundaries and the real cookie jar are only
-honest in `e2e/`.
-
-### Known traps
-
-- **A stale nested git repo exists at `backend/.git`.** Running `git status` from inside `backend/`
-  reports dozens of phantom modified files (it tracks `node_modules/` and `dist/`). Always run git
-  from the repo root. It should be deleted — that is the owner's call, not an agent's.
-- **`nest build` emits `dist/src/main.js`, not `dist/main.js`** — `prisma/*.ts` in the TS program
-  lifts tsc's `rootDir` to the project root. `docker-entrypoint.sh` resolves this at runtime.
+| `backend-frontend/backend` | Jest — `pnpm test` |
+| `backend-frontend/frontend` | Vitest — `pnpm test` |
+| `backend-frontend/frontend/e2e`, `dashboard/e2e` | Playwright — `pnpm test:e2e` |
 
 ---
 
-## 7. Rules that are easy to get wrong
+## 6. This is a demo — what must differ from production
 
-- **Money has two formatters and they are not interchangeable.** `formatPriceFrom` = listing "From"
-  prices, whole amounts bare. `formatMoney` = concrete totals, always cents. Hand-rolling
-  `symbol + number` is wrong in five of seven locales — ICU puts `€` *after* the number in de/fr/es,
-  and the same is true of `$`.
-- **Never let the frontend decide authorization.** All authority is in the backend; the frontend
-  carries the traveller session token but never verifies it.
-- **`encodeURIComponent` every path segment** interpolated into a backend URL. An unencoded route
-  param resolves dot segments inside `fetch` and relocates the request.
-- **Update `MASTER-CHECKLIST.md` in the same commit as the work.**
-- **Backend: `@/` path alias for all internal imports**; global `ValidationPipe` strips unknown body
-  fields (`whitelist` + `forbidNonWhitelisted`), so every request body needs a matching DTO.
-- **Guard order is `ThrottlerGuard → AuthGuard → RolesGuard → PermissionsGuard`.** Do not reorder.
-- **Comments in this codebase explain *why*, and they are usually right.** If a change would undo a
-  documented tradeoff, re-read it before assuming it is wrong.
+| Setting | Here |
+|---|---|
+| `NEXT_PUBLIC_ENABLE_TRACKING` | `false`. Demo builds are also `NODE_ENV=production`, so this flag is the only thing keeping test bookings out of real Google Ads / GA4 / Meta data |
+| Stripe keys (DB, Admin → Settings) | **test** keys only |
+| `META_*`, `GOOGLE_ADS_*` | blank |
+| Cloudinary | separate cloud, or demo uploads land in production's media gallery |
+| Resend | separate key and a demo `MAIL_FROM` domain. Booking flows send **real** email to whatever address is typed in |
+| Every secret | freshly generated. Never copy production's, `ENCRYPTION_KEY` least of all — it decrypts the stored Stripe keys |
+| Seeding | `RUN_SEED=true` on the first boot only, then `pnpm prisma:seed:demo` |
+
+---
+
+## 7. Documentation index
+
+| Area | Path |
+|---|---|
+| **This deployment** | `docs/operations/DEMO-DEPLOYMENT.md` |
+| VPS runbook (Caddy or nginx) | `docs/operations/VPS-DEPLOYMENT-CADDY.md` |
+| Second instance on one VPS | `docs/operations/VPS-SECOND-INSTANCE.md` |
+| Day-2 ops (backups, Sentry, rate limits, scaling) | `docs/operations/VPS-OPERATIONS-GUIDE.md` |
+| Canonical product spec | `backend-frontend/technical-doc/island-tours-platform-master.html` |
+| Task checklist | `backend-frontend/technical-doc/MASTER-CHECKLIST.md` |
+| Architecture, booking, availability, FX, settlement, queues | `backend-frontend/technical-doc/02-architecture/` |
+| Backend module patterns + the critical rules | `backend-frontend/CLAUDE.md` |
+| Public-site patterns | `backend-frontend/frontend/CLAUDE.md` |
+| Dashboard patterns | `dashboard/CLAUDE.md` |
+
+Where any doc disagrees with the master spec, the master wins — **except** on repo layout, git
+remotes, and deployment, where this file wins, because the master and its derivations were written
+for the three-repo production workspace.
+
+---
+
+## 8. Open items
+
+- **The admin login gate is not merged yet.** `dashboard/app/(login)/` has `portal` and `staff` but
+  no `admin` route. The backend already accepts the surface (`x-login-surface: admin`) and
+  `dashboard/components/login/login-ui.tsx` still links outward via `NEXT_PUBLIC_ADMIN_LOGIN_URL`.
+  Merging the gate means adding the `admin` door here and dropping that outward link.
+- **`ONBOARDING.md` (beside this file) still describes the three-repo world.** It is a good narrative
+  tour of the product; its repo/deployment sections are stale.
+- **`tripwheel-app/` is undeployed.** Deleting it is a decision, not a deployment step.
