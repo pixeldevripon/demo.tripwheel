@@ -53,7 +53,12 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    image: island-tours-backend:${BACKEND_IMAGE_TAG:-latest}
+    # DEMO-SCOPED NAME. Production runs on the same VPS as
+    # island-tours-backend:*, and the deploy workflow prunes old image tags
+    # by reference filter - a shared name would let a demo deploy delete
+    # production's rollback images. Change this and you must change the
+    # filter in .github/workflows/deploy-backend.yml to match.
+    image: demo-tripwheel-backend:${BACKEND_IMAGE_TAG:-latest}
     restart: unless-stopped
     # App secrets (Better Auth, Cloudinary, Resend, Stripe-not-here, etc.).
     env_file:

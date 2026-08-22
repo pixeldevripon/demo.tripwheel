@@ -1,0 +1,99 @@
+name: Deploy backend (VPS)
+
+# Deploys the DEMO backend to the Hostinger VPS on every push to main that
+# touches backend code or the compose stack.
+#
+# This repo has one branch. The upstream three-repo version deployed from `prod`
+# and kept `main` as an integration branch that never deployed; here main IS the
+# release branch, so deploying from anything else would mean never deploying.
+#
+# The frontend and the dashboard deploy through Vercel's Git integration and are
+# intentionally not handled here. There is no third app: the admin login gate
+# lives inside the dashboard, not in a separate deployment.
+#
+# MONOREPO NOTE: this file must live at the REPOSITORY ROOT (.github/workflows/).
+# It previously sat at backend-frontend/.github/workflows/, where GitHub never
+# looks - so this workflow had never run once.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend-frontend/backend/**'
+      - 'backend-frontend/docker-compose.yml'
+      - '.github/workflows/deploy-backend.yml'
+  workflow_dispatch: {} # allow manual "Run workflow"
+
+concurrency:
+  group: deploy-backend-demo
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: SSH deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_SSH_HOST }}
+          username: ${{ secrets.VPS_SSH_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT || 22 }}
+          # The action defaults to 10m, which is not enough for a cold-cache
+          # rebuild on this box. Generous rather than tight - the concurrency
+          # group already serialises deploys, so a slow one blocks only itself.
+          command_timeout: 30m
+          # VPS_APP_DIR is the GIT ROOT of this repo on the server
+          # (e.g. /opt/demo-tripwheel). In the old three-repo layout the git root
+          # and the compose directory were the same folder; in this monorepo they
+          # are not, so the two are tracked separately below. Pointing
+          # VPS_APP_DIR at the compose directory instead would break `git reset`.
+          script: |
+            set -e
+            REPO_DIR="${{ secrets.VPS_APP_DIR }}"
+            COMPOSE_DIR="$REPO_DIR/backend-frontend"
+
+            cd "$REPO_DIR"
+            git fetch --all --prune
+            git reset --hard ${{ github.sha }}
+
+            cd "$COMPOSE_DIR"
+            export BACKEND_IMAGE_TAG=${{ github.sha }}
+
+            # Reclaim BEFORE building, not after. Every deploy tags a new
+            # <image>:<sha>, so those images are never DANGLING and the
+            # `docker image prune -f` below can never touch them - left alone
+            # they accumulate until the box runs out of disk mid-build. Keep the
+            # 3 newest: the running one, plus room to roll back by hand.
+            #
+            # ─────────────────────────────────────────────────────────────
+            # The reference filter is DEMO-SCOPED ON PURPOSE. Production runs
+            # on this same VPS and its images are named island-tours-backend:*.
+            # A filter matching that name would keep only the 3 newest images
+            # ACROSS BOTH INSTANCES and delete production's rollback tags - a
+            # demo deploy reaching into the live instance. The demo compose file
+            # sets `image: demo-tripwheel-backend:...` so the two never overlap;
+            # if you ever change that name, change this filter with it.
+            #
+            # HARD RULE: this step reclaims IMAGES and BUILD CACHE only. Never
+            # `docker system prune --volumes`, never `docker volume rm`, never
+            # `docker compose down -v`. The postgres-data volume IS the demo
+            # database, and `docker builder prune` is shared with production, so
+            # keep every command scoped to images or buildkit cache.
+            # ─────────────────────────────────────────────────────────────
+            docker images --filter=reference='demo-tripwheel-backend:*' \
+              --format '{{.CreatedAt}}\t{{.ID}}' \
+              | sort -r | tail -n +4 | cut -f2 \
+              | xargs -r docker rmi -f || true
+            # Layer cache from builds that are weeks dead. `-a` because the cache
+            # for an image we just deleted is not "dangling" either. `tail -1`
+            # keeps the reclaimed-space total and drops the record-by-record
+            # list, which ran to a thousand lines of log.
+            docker builder prune -af --filter 'until=168h' 2>&1 | tail -1 || true
+            df -h / | tail -1
+
+            # `prisma migrate deploy` runs automatically in docker-entrypoint.sh.
+            docker compose build backend
+            docker compose up -d
+            docker image prune -f
+            docker compose ps

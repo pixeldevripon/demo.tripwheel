@@ -1,0 +1,1402 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Second Instance Runbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+
+<style>
+  :root {
+    --ground:      #F6F8F7;
+    --surface:     #FFFFFF;
+    --surface-2:   #ECF1EF;
+    --ink:         #12201D;
+    --ink-2:       #4B5C57;
+    --ink-3:       #7B8B85;
+    --rule:        #DCE4E1;
+    --rule-strong: #C3D0CC;
+    --accent:      #0B6E5F;
+    --accent-ink:  #06483E;
+    --accent-soft: #E3F0EC;
+    --warn:        #8E4E10;
+    --warn-soft:   #FAF0E1;
+    --warn-rule:   #E6C89A;
+    --danger:      #8E2420;
+    --danger-soft: #FAEAE8;
+    --danger-rule: #E5B3AE;
+    --code-bg:     #0E1C1A;
+    --code-ink:    #D6E4DF;
+    --code-dim:    #7E9A93;
+    --code-key:    #7FD4B8;
+    --code-str:    #E3C88A;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #0A1413;
+      --surface:     #10201D;
+      --surface-2:   #162924;
+      --ink:         #E6EFEB;
+      --ink-2:       #A6B8B2;
+      --ink-3:       #7B8F89;
+      --rule:        #21352F;
+      --rule-strong: #2E4841;
+      --accent:      #4FCFAF;
+      --accent-ink:  #8FE5CD;
+      --accent-soft: #11332B;
+      --warn:        #E0A45F;
+      --warn-soft:   #2C2010;
+      --warn-rule:   #57411E;
+      --danger:      #F0857C;
+      --danger-soft: #331513;
+      --danger-rule: #5C2A26;
+      --code-bg:     #061110;
+      --code-ink:    #CFE0DA;
+      --code-dim:    #6C8781;
+      --code-key:    #7FD4B8;
+      --code-str:    #E3C88A;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:      #0A1413;
+    --surface:     #10201D;
+    --surface-2:   #162924;
+    --ink:         #E6EFEB;
+    --ink-2:       #A6B8B2;
+    --ink-3:       #7B8F89;
+    --rule:        #21352F;
+    --rule-strong: #2E4841;
+    --accent:      #4FCFAF;
+    --accent-ink:  #8FE5CD;
+    --accent-soft: #11332B;
+    --warn:        #E0A45F;
+    --warn-soft:   #2C2010;
+    --warn-rule:   #57411E;
+    --danger:      #F0857C;
+    --danger-soft: #331513;
+    --danger-rule: #5C2A26;
+    --code-bg:     #061110;
+    --code-ink:    #CFE0DA;
+    --code-dim:    #6C8781;
+    --code-key:    #7FD4B8;
+    --code-str:    #E3C88A;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 0 24px 120px;
+  }
+
+  .prose { max-width: 70ch; }
+
+  /* ── Masthead ─────────────────────────────────────────────── */
+
+  header.masthead {
+    padding: 72px 0 40px;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 48px;
+  }
+
+  .eyebrow {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 18px;
+  }
+
+  h1 {
+    font-family: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+    font-weight: 700;
+    font-size: clamp(38px, 6vw, 62px);
+    line-height: 1.02;
+    letter-spacing: -0.025em;
+    margin: 0 0 20px;
+    text-wrap: balance;
+  }
+
+  .standfirst {
+    font-size: 20px;
+    line-height: 1.5;
+    color: var(--ink-2);
+    max-width: 62ch;
+    margin: 0 0 34px;
+  }
+
+  /* ── Table of contents ────────────────────────────────────── */
+
+  nav.toc {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-top: 8px;
+  }
+
+  nav.toc a {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-decoration: none;
+    color: var(--ink-2);
+    border: 1px solid var(--rule-strong);
+    border-radius: 2px;
+    padding: 5px 10px;
+    background: var(--surface);
+    transition: color .12s, border-color .12s, background .12s;
+  }
+
+  nav.toc a:hover,
+  nav.toc a:focus-visible {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  /* ── Steps ────────────────────────────────────────────────── */
+
+  section.step {
+    display: grid;
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 0 24px;
+    padding: 44px 0;
+    border-bottom: 1px solid var(--rule);
+    scroll-margin-top: 24px;
+  }
+
+  .step-num {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    padding-top: 12px;
+    border-top: 2px solid var(--accent);
+    align-self: start;
+  }
+
+  .step-body { min-width: 0; }
+
+  h2 {
+    font-family: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+    font-weight: 600;
+    font-size: clamp(26px, 3.4vw, 34px);
+    line-height: 1.12;
+    letter-spacing: -0.018em;
+    margin: 0 0 8px;
+    text-wrap: balance;
+  }
+
+  .step-why {
+    font-size: 17px;
+    color: var(--ink-2);
+    margin: 0 0 26px;
+    max-width: 66ch;
+  }
+
+  h3 {
+    font-family: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+    font-weight: 600;
+    font-size: 19px;
+    letter-spacing: -0.008em;
+    margin: 34px 0 10px;
+  }
+
+  h4 {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 28px 0 8px;
+  }
+
+  p { margin: 0 0 16px; max-width: 70ch; }
+
+  ul, ol { margin: 0 0 18px; padding-left: 22px; max-width: 70ch; }
+  li { margin-bottom: 7px; }
+
+  a { color: var(--accent); text-underline-offset: 3px; }
+
+  strong { font-weight: 700; color: var(--ink); }
+
+  code {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 0.87em;
+    background: var(--surface-2);
+    border-radius: 3px;
+    padding: 1.5px 5px;
+    color: var(--accent-ink);
+    word-break: break-word;
+  }
+
+  /* ── Code blocks ──────────────────────────────────────────── */
+
+  .code {
+    background: var(--code-bg);
+    border-radius: 4px;
+    margin: 0 0 20px;
+    overflow: hidden;
+    border: 1px solid transparent;
+  }
+
+  .code-label {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--code-dim);
+    padding: 10px 16px 0;
+  }
+
+  pre {
+    margin: 0;
+    padding: 14px 16px 16px;
+    overflow-x: auto;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 13.5px;
+    line-height: 1.62;
+    color: var(--code-ink);
+    tab-size: 2;
+  }
+
+  pre code {
+    background: none;
+    padding: 0;
+    color: inherit;
+    font-size: inherit;
+    word-break: normal;
+  }
+
+  pre .c { color: var(--code-dim); }
+  pre .k { color: var(--code-key); }
+  pre .s { color: var(--code-str); }
+
+  /* ── Tables ───────────────────────────────────────────────── */
+
+  .table-scroll {
+    overflow-x: auto;
+    margin: 0 0 22px;
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    background: var(--surface);
+  }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 15px;
+  }
+
+  th {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    text-align: left;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--rule-strong);
+    background: var(--surface-2);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+    font-variant-numeric: tabular-nums;
+  }
+
+  tr:last-child td { border-bottom: none; }
+
+  td code { font-size: 12.5px; white-space: nowrap; }
+  td.wrap-ok code { white-space: normal; }
+
+  .yes { color: var(--accent); font-weight: 700; }
+  .no  { color: var(--ink-3); }
+
+  /* ── Callouts ─────────────────────────────────────────────── */
+
+  .note {
+    border-left: 3px solid var(--rule-strong);
+    background: var(--surface);
+    padding: 14px 18px;
+    margin: 0 0 22px;
+    border-radius: 0 4px 4px 0;
+    max-width: 74ch;
+  }
+
+  .note p:last-child { margin-bottom: 0; }
+
+  .note .tag {
+    display: block;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+    color: var(--ink-3);
+  }
+
+  .note.trap { border-left-color: var(--danger); background: var(--danger-soft); }
+  .note.trap .tag { color: var(--danger); }
+
+  .note.warn { border-left-color: var(--warn); background: var(--warn-soft); }
+  .note.warn .tag { color: var(--warn); }
+
+  .note.tip { border-left-color: var(--accent); background: var(--accent-soft); }
+  .note.tip .tag { color: var(--accent); }
+
+  /* ── Checklist ────────────────────────────────────────────── */
+
+  ul.check {
+    list-style: none;
+    padding: 0;
+    max-width: 74ch;
+  }
+
+  ul.check li {
+    position: relative;
+    padding-left: 30px;
+    margin-bottom: 12px;
+  }
+
+  ul.check li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 6px;
+    width: 15px;
+    height: 15px;
+    border: 1.5px solid var(--rule-strong);
+    border-radius: 3px;
+    background: var(--surface);
+  }
+
+  /* ── Footer ───────────────────────────────────────────────── */
+
+  footer {
+    padding: 44px 0 0;
+    color: var(--ink-3);
+    font-size: 14px;
+  }
+
+  footer p { max-width: 74ch; }
+
+  @media (max-width: 680px) {
+    body { font-size: 16px; }
+    .wrap { padding: 0 18px 80px; }
+    section.step { grid-template-columns: 1fr; gap: 0; }
+    .step-num {
+      border-top: none;
+      border-left: 2px solid var(--accent);
+      padding: 0 0 0 10px;
+      margin-bottom: 14px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <p class="eyebrow">One VPS · Two independent stacks</p>
+  <h1>Second Instance Runbook</h1>
+  <p class="standfirst">
+    Production is already deployed and healthy at <code>/opt/island-tours</code>. This is how to add
+    an independent demo copy at <code>/opt/demo-tripwheel</code> on the same server — without
+    touching production. Every collision between the two is mapped, split by the thing that
+    actually matters: whether it fails loudly or silently.
+  </p>
+
+  <div class="note tip">
+    <span class="tag">Read the deploy runbook first</span>
+    <p>
+      The deploy itself is not repeated here — DNS, VPS prep, secrets, the Docker backend, the
+      proxy, the PM2 apps all live in <code>VPS-DEPLOYMENT-CADDY.md</code>, and every step there
+      applies to the second instance too. This page covers only what must <strong>differ</strong>,
+      and the three places where "differ" is not optional.
+    </p>
+  </div>
+
+  <nav class="toc">
+    <a href="#conflicts">Conflict map</a>
+    <a href="#s1">1 · Docker isolation</a>
+    <a href="#s2">2 · Ports</a>
+    <a href="#s3">3 · Domains &amp; the cookie</a>
+    <a href="#s4">4 · Environment</a>
+    <a href="#s5">5 · Proxy, PM2, frontends</a>
+    <a href="#s6">6 · Sizing</a>
+    <a href="#s7">7 · Full flow</a>
+    <a href="#s8">8 · Smoke test</a>
+    <a href="#s9">9 · Day-to-day</a>
+  </nav>
+</header>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<section class="step" id="s0">
+  <div class="step-num">MAP</div>
+  <div class="step-body">
+    <h2>The worked example</h2>
+    <p class="step-why">
+      Two stacks, side by side. Every value below is chosen so that nothing is shared except the
+      machine and the proxy.
+    </p>
+
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th></th><th>Production</th><th>Demo</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Directory</td><td><code>/opt/island-tours</code></td><td><code>/opt/demo-tripwheel</code></td></tr>
+          <tr><td>Apex domain</td><td><code>tripwheel.app</code></td><td><code>tripwheel.io</code></td></tr>
+          <tr><td>Backend port</td><td><code>5050</code></td><td><code>5150</code></td></tr>
+          <tr><td>Next.js ports</td><td><code>3000</code> · <code>3001</code> · <code>3002</code></td><td><code>3100</code> · <code>3101</code> · <code>3102</code></td></tr>
+          <tr><td>Compose project</td><td><code>island-tours</code></td><td><code>demo-tripwheel</code></td></tr>
+          <tr><td>Cookie domain</td><td><code>.tripwheel.app</code></td><td><code>.demo.tripwheel.io</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<section class="step" id="conflicts">
+  <div class="step-body" style="grid-column: 1 / -1">
+    <h2>The conflict map</h2>
+    <p class="step-why">
+      Every collision between the two instances, in one place. The useful split is not by severity —
+      it's by <strong>how it fails</strong>.
+    </p>
+
+    <h3>Loud conflicts — these are the harmless ones</h3>
+    <p>They stop the deploy with a clear message. You cannot ship them by accident.</p>
+
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>What collides</th><th>How it fails</th><th>Fix</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Backend host port <code>5050</code></td>
+            <td class="wrap-ok"><code>docker compose up</code> → <code>Bind for 127.0.0.1:5050 failed: port is already allocated</code></td>
+            <td class="wrap-ok"><code>BACKEND_PORT=127.0.0.1:5150</code></td>
+          </tr>
+          <tr>
+            <td>Postgres loopback <code>5432</code> <span style="color:var(--ink-3)">(only if enabled for GUI access)</span></td>
+            <td>same "port is already allocated"</td>
+            <td class="wrap-ok"><code>'127.0.0.1:5433:5432'</code></td>
+          </tr>
+          <tr>
+            <td>Next.js ports <code>3000</code>–<code>3002</code></td>
+            <td class="wrap-ok"><code>Error: listen EADDRINUSE: address already in use :::3001</code></td>
+            <td class="wrap-ok">explicit <code>-p 310x</code> in the PM2 args — <strong>never</strong> <code>pnpm start</code></td>
+          </tr>
+          <tr>
+            <td>Duplicate hostname in the proxy</td>
+            <td class="wrap-ok"><code>caddy validate</code> rejects the duplicate site address; <code>nginx -t</code> reports a conflicting server name</td>
+            <td>unique hostnames per instance</td>
+          </tr>
+          <tr>
+            <td>PM2 app name</td>
+            <td class="wrap-ok"><code>pm2 start</code> refuses — already launched under that name</td>
+            <td class="wrap-ok">distinct <code>demo-*</code> names, separate ecosystem file</td>
+          </tr>
+          <tr>
+            <td>Docker network address pool</td>
+            <td class="wrap-ok"><code>could not find an available, non-overlapping IPv4 address pool</code></td>
+            <td class="wrap-ok"><code>docker network prune</code>, or widen <code>default-address-pools</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Silent conflicts — these are the ones that hurt</h3>
+    <p>Nothing errors. Both instances start and look healthy. You find out later, from the data.</p>
+
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>What collides</th><th>What actually happens</th><th>Fix</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>Compose project name</strong></td>
+            <td class="wrap-ok">The demo attaches to production's <code>postgres-data</code> volume. Its first <code>RUN_SEED=true</code> boot writes over live bookings</td>
+            <td class="wrap-ok"><code>COMPOSE_PROJECT_NAME</code> in <strong>both</strong> <code>.env</code> files</td>
+          </tr>
+          <tr>
+            <td><strong>A shared Redis</strong></td>
+            <td class="wrap-ok">Both instances' workers consume the <em>same</em> queues. The demo can pick up a production job — a real confirmation email, a real CAPI conversion — and process it against the demo database</td>
+            <td>one Redis per instance</td>
+          </tr>
+          <tr>
+            <td><strong>The session cookie</strong></td>
+            <td class="wrap-ok">Same-apex hosts receive two cookies both named <code>better-auth.session_token</code>; the backend reads whichever arrives first. Intermittent logouts on both sites</td>
+            <td>different apex per instance</td>
+          </tr>
+          <tr>
+            <td><strong>Stripe webhook endpoint</strong></td>
+            <td class="wrap-ok">Two instances on one Stripe account receive each other's events</td>
+            <td>separate endpoint URL, test mode on demo</td>
+          </tr>
+          <tr>
+            <td><strong>Cloudinary cloud</strong></td>
+            <td>Demo test uploads appear in the production media gallery</td>
+            <td>separate cloud</td>
+          </tr>
+          <tr>
+            <td><strong>Resend key / <code>MAIL_FROM</code></strong></td>
+            <td class="wrap-ok">The demo sends real email that looks like production</td>
+            <td>separate key and subdomain</td>
+          </tr>
+          <tr>
+            <td><strong>Backup filename</strong></td>
+            <td>The second <code>pg_dump</code> of the day overwrites the first</td>
+            <td>prefix the filename per instance</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note trap">
+      <span class="tag">The Redis one cannot be fixed by configuration</span>
+      <p>
+        <code>buildRedisConnection()</code> in
+        <code>backend/src/common/utils/redis.util.ts</code> sets <code>host</code>,
+        <code>port</code> and <code>password</code> — there is <strong>no <code>db</code> index and
+        no BullMQ <code>prefix</code> option</strong>. The queue names are hardcoded constants shared
+        by every instance: <code>platform-jobs</code>, <code>media-upload</code>, and the
+        content-translation queue. Two instances pointed at one Redis share a keyspace
+        <em>and</em> a queue, and each one's workers will happily consume the other's jobs.
+      </p>
+      <p>
+        The compose stack gives each instance its own <code>redis</code> container, so this is safe
+        by default. It only bites if you point both at a single shared Redis — most likely by reusing
+        one <code>UPSTASH_REDIS_URL</code> across both <code>.env.production</code> files. Don't.
+        Separating them properly would need a code change.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<section class="step" id="s1">
+  <div class="step-num">01</div>
+  <div class="step-body">
+    <h2>Docker isolates itself — but pin it anyway</h2>
+    <p class="step-why">
+      The good news first: you get separate databases for free. The bad news is what that freedom
+      rests on.
+    </p>
+
+    <p>
+      There is no <code>container_name</code> in <code>docker-compose.yml</code>, and the volumes and
+      network are named relatively (<code>postgres-data</code>, <code>redis-data</code>,
+      <code>island-net</code>). Compose prefixes all three with the <strong>project name</strong>,
+      which defaults to the directory name:
+    </p>
+
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th></th><th><code>/opt/island-tours</code></th><th><code>/opt/demo-tripwheel</code></th></tr></thead>
+        <tbody>
+          <tr><td>Volume</td><td><code>island-tours_postgres-data</code></td><td><code>demo-tripwheel_postgres-data</code></td></tr>
+          <tr><td>Network</td><td><code>island-tours_island-net</code></td><td><code>demo-tripwheel_island-net</code></td></tr>
+          <tr><td>Container</td><td><code>island-tours-backend-1</code></td><td><code>demo-tripwheel-backend-1</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      So the two databases are already separate, and the two Redis instances too. Pin the name
+      explicitly anyway — one line in each <code>.env</code>:
+    </p>
+
+    <div class="code">
+      <pre><code><span class="c"># /opt/island-tours/.env</span>
+<span class="k">COMPOSE_PROJECT_NAME</span>=island-tours
+
+<span class="c"># /opt/demo-tripwheel/.env</span>
+<span class="k">COMPOSE_PROJECT_NAME</span>=demo-tripwheel</code></pre>
+    </div>
+
+    <div class="note trap">
+      <span class="tag">Why this one line earns its place</span>
+      <p>
+        That isolation rests on nothing but the directory being named what you expect. If the project
+        name ever collides — a renamed directory, a stray <code>COMPOSE_PROJECT_NAME</code> in the
+        environment, a copy-paste of the wrong <code>.env</code> — the demo stack attaches to the
+        <strong>production <code>postgres-data</code> volume</strong>, and the demo's first
+        <code>RUN_SEED=true</code> boot runs a seed against live bookings.
+      </p>
+      <p>
+        It is the worst outcome available in this exercise, and it fails silently: the containers
+        start perfectly.
+      </p>
+    </div>
+
+    <p>Verify before the first demo boot — not after:</p>
+    <div class="code">
+      <pre><code>cd /opt/demo-tripwheel
+docker compose config --format json \
+  | python3 -c 'import json,sys; print(json.load(sys.stdin)["name"])'
+
+docker volume ls | grep postgres-data     <span class="c"># expect TWO distinct volumes</span></code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<section class="step" id="s2">
+  <div class="step-num">02</div>
+  <div class="step-body">
+    <h2>Ports</h2>
+    <p class="step-why">
+      Fewer conflicts than you'd expect, because most services never touch the host network.
+    </p>
+
+    <p>
+      Only the backend publishes a host port (<code>${BACKEND_PORT:-5050}:5050</code>). Postgres and
+      Redis publish nothing — unless you added the loopback line for GUI access, in which case they
+      collide too. The Next.js apps aren't Docker at all; their ports come from the PM2 args.
+    </p>
+
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Service</th><th>Production</th><th>Demo</th></tr></thead>
+        <tbody>
+          <tr><td>Backend API</td><td><code>5050</code></td><td><code>5150</code></td></tr>
+          <tr><td>Public site</td><td><code>3000</code></td><td><code>3100</code></td></tr>
+          <tr><td>Dashboard</td><td><code>3001</code></td><td><code>3101</code></td></tr>
+          <tr><td>Tripwheel app</td><td><code>3002</code></td><td><code>3102</code></td></tr>
+          <tr><td>Postgres (loopback, if enabled)</td><td><code>5432</code></td><td><code>5433</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="code">
+      <div class="code-label">/opt/demo-tripwheel/.env</div>
+      <pre><code><span class="k">BACKEND_PORT</span>=127.0.0.1:5150</code></pre>
+    </div>
+
+    <p>Check nothing is already listening before you start:</p>
+    <div class="code">
+      <pre><code>sudo ss -tlnp | grep -E ':(5150|3100|3101|3102)\b' || echo "all four free"</code></pre>
+    </div>
+
+    <div class="note trap">
+      <span class="tag">pnpm start will bind the wrong port</span>
+      <p>
+        The dashboard's and tripwheel-app's <code>package.json</code> hardcode
+        <code>next start -p 3001</code> and <code>-p 3002</code>. Run <code>pnpm start</code> in the
+        demo directory and you get a bind conflict with production — or worse, if production happens
+        to be down, a <em>demo app answering on production's port</em>.
+      </p>
+      <p>
+        Always use the PM2 form that calls the Next binary with an explicit <code>-p</code>
+        (section 5). That is exactly why the ecosystem file is written that way rather than as
+        <code>pnpm start</code>.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<section class="step" id="s3">
+  <div class="step-num">03</div>
+  <div class="step-body">
+    <h2>Domains and the session cookie</h2>
+    <p class="step-why">
+      This is the part that bites, and it fails in a way that looks like an application bug rather
+      than a deployment one.
+    </p>
+
+    <p>
+      <strong>The cookie is named the same on every instance.</strong> <code>cookiePrefix</code> is
+      not configured in <code>backend/src/auth/auth.instance.ts</code>, so both instances use Better
+      Auth's default name, <code>better-auth.session_token</code>. Only the cookie's
+      <code>Domain</code> attribute separates them — and <code>Domain</code> matching includes
+      subdomains at <em>any</em> depth.
+    </p>
+
+    <h3>Rule 1 — put the demo on a different apex</h3>
+    <p>
+      Production is on <code>tripwheel.app</code>; the demo is on <code>tripwheel.io</code>. Those
+      share no domain suffix, so neither instance's cookie can ever reach the other. Nothing further
+      is needed.
+    </p>
+    <p>
+      Had the demo gone on a subdomain of the production apex instead —
+      <code>demo.tripwheel.app</code> — the production <code>.tripwheel.app</code> cookie
+      <em>would</em> be sent to every demo host. The browser would send two cookies with the same
+      name, and the backend would read whichever the parser hands it first. The symptoms are
+      intermittent and misleading: random logouts on both sites, the demo rejecting a valid login,
+      production sessions appearing to die when someone opens the demo.
+    </p>
+    <p>
+      If you ever do need the demo under the production apex, the fix is to make the prefix
+      env-driven rather than to work around it:
+    </p>
+    <div class="code">
+      <div class="code-label">backend/src/auth/auth.instance.ts</div>
+      <pre><code>advanced: {
+  cookiePrefix: process.env.AUTH_COOKIE_PREFIX ?? 'better-auth',
+  crossSubDomainCookies: { <span class="c">/* unchanged */</span> },
+}</code></pre>
+    </div>
+    <p>
+      …then set <code>AUTH_COOKIE_PREFIX=demo-auth</code> on the demo only. A separate apex avoids
+      needing it at all.
+    </p>
+
+    <h3>Rule 2 — make <code>demo</code> the parent label, not a child one</h3>
+    <p>
+      <code>COOKIE_DOMAIN</code> has to be the smallest domain covering all four demo hosts. Where
+      you put the word <code>demo</code> decides what that domain is:
+    </p>
+
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Layout</th><th>Smallest covering domain</th><th>Verdict</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="wrap-ok"><code>api.demo.tripwheel.io</code>, <code>app.demo.…</code>, <code>dashboard.demo.…</code></td>
+            <td><code>.demo.tripwheel.io</code></td>
+            <td class="yes">Scoped to the demo instance</td>
+          </tr>
+          <tr>
+            <td class="wrap-ok"><code>demo.api.tripwheel.io</code>, <code>demo.app.…</code>, <code>demo.dashboard.…</code></td>
+            <td><code>.tripwheel.io</code></td>
+            <td style="color:var(--danger)">Leaks to every subdomain of the company domain</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      <code>tripwheel.io</code> is the company domain. A session cookie scoped to
+      <code>.tripwheel.io</code> is sent to every unrelated service on it.
+      <code>backend/.env.production.example</code> warns about precisely this: scope it to "the
+      smallest domain that covers both the frontend and backend hosts — <strong>NOT</strong> a
+      broader shared apex, or the session cookie leaks to every unrelated sibling subdomain."
+    </p>
+
+    <p>So the demo hosts are:</p>
+
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Host</th><th>Serves</th><th>Proxies to</th></tr></thead>
+        <tbody>
+          <tr><td><code>api.demo.tripwheel.io</code></td><td>Backend API</td><td><code>127.0.0.1:5150</code></td></tr>
+          <tr><td><code>app.demo.tripwheel.io</code></td><td>Public site</td><td><code>127.0.0.1:3100</code></td></tr>
+          <tr><td><code>dashboard.demo.tripwheel.io</code></td><td>Dashboard (operators at <code>/portal</code>)</td><td><code>127.0.0.1:3101</code></td></tr>
+          <tr><td><code>demo.tripwheel.io</code></td><td>Tripwheel app / admin door</td><td><code>127.0.0.1:3102</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="code">
+      <pre><code><span class="k">COOKIE_DOMAIN</span>=.demo.tripwheel.io</code></pre>
+    </div>
+
+    <p>
+      A <code>.demo.tripwheel.io</code> cookie is sent to <code>demo.tripwheel.io</code> itself
+      <strong>and</strong> to all three of its subdomains — so all four hosts are covered, and
+      nothing outside the demo is.
+    </p>
+
+    <h3>DNS</h3>
+    <p>Four <code>A</code> records on <code>tripwheel.io</code>, all pointing at the same VPS IP:</p>
+
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Type</th><th>Name</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td><code>A</code></td><td><code>demo</code></td><td>VPS IP</td></tr>
+          <tr><td><code>A</code></td><td><code>api.demo</code></td><td>VPS IP</td></tr>
+          <tr><td><code>A</code></td><td><code>app.demo</code></td><td>VPS IP</td></tr>
+          <tr><td><code>A</code></td><td><code>dashboard.demo</code></td><td>VPS IP</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      Explicit names rather than a wildcard, so the HTTP-01 challenge works without DNS-01
+      credentials.
+    </p>
+
+    <div class="code">
+      <pre><code>for h in demo api.demo app.demo dashboard.demo; do
+  printf "%-24s %s\n" "$h.tripwheel.io" "$(dig +short $h.tripwheel.io)"
+done</code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<section class="step" id="s4">
+  <div class="step-num">04</div>
+  <div class="step-body">
+    <h2>Environment</h2>
+    <p class="step-why">
+      A fresh set of secrets, and a short list of things that must never be shared with the live
+      site.
+    </p>
+
+    <h3>Fresh secrets — do not copy production's</h3>
+    <div class="code">
+      <pre><code>echo "POSTGRES_PASSWORD=$(openssl rand -base64 24 | tr -d '/+=')"
+echo "REDIS_PASSWORD=$(openssl rand -base64 24 | tr -d '/+=')"
+echo "BETTER_AUTH_SECRET=$(openssl rand -base64 32)"
+echo "TRAVELER_SESSION_SECRET=$(openssl rand -base64 32)"
+echo "INTERNAL_API_SECRET=$(openssl rand -base64 32)"
+echo "REVALIDATE_SECRET=$(openssl rand -base64 32)"
+echo "ENCRYPTION_KEY=$(openssl rand -hex 32)"
+echo "ADMIN_PASSWORD=$(openssl rand -base64 18)"</code></pre>
+    </div>
+
+    <div class="note warn">
+      <span class="tag">ENCRYPTION_KEY is the one that matters most</span>
+      <p>
+        It decrypts the Stripe keys and operator OAuth tokens held in the database. Sharing it means
+        the lower-trust demo box can read production payment credentials.
+      </p>
+    </div>
+
+    <p>
+      <code>INTERNAL_API_SECRET</code> and <code>REVALIDATE_SECRET</code> still have to match
+      <strong>within</strong> the demo — its backend and its own three frontends — exactly as in the
+      main runbook. They must not match production's.
+    </p>
+
+    <h3><code>/opt/demo-tripwheel/.env</code></h3>
+    <div class="code">
+      <pre><code><span class="k">COMPOSE_PROJECT_NAME</span>=demo-tripwheel
+
+<span class="k">POSTGRES_USER</span>=island
+<span class="k">POSTGRES_PASSWORD</span>=<span class="s">&lt;fresh&gt;</span>
+<span class="k">POSTGRES_DB</span>=island_tours          <span class="c"># same name is fine - different container, different volume</span>
+
+<span class="k">REDIS_PASSWORD</span>=<span class="s">&lt;fresh&gt;</span>
+
+<span class="k">BACKEND_PORT</span>=127.0.0.1:5150
+<span class="k">BACKEND_IMAGE_TAG</span>=latest
+
+<span class="k">RUN_SEED</span>=true                     <span class="c"># first boot only, then false</span>
+<span class="k">NODE_OPTIONS</span>=</code></pre>
+    </div>
+
+    <h3>Backend — only the lines that differ</h3>
+    <div class="code">
+      <div class="code-label">/opt/demo-tripwheel/island-tour-development/backend/.env.production</div>
+      <pre><code><span class="k">BETTER_AUTH_URL</span>=https://api.demo.tripwheel.io
+<span class="k">ISLAND_TOURS_URL</span>=https://app.demo.tripwheel.io
+<span class="k">PORTAL_URL</span>=https://dashboard.demo.tripwheel.io/portal
+<span class="k">FRONTEND_URL</span>=https://app.demo.tripwheel.io
+
+<span class="k">CORS_ORIGINS</span>=https://app.demo.tripwheel.io,https://dashboard.demo.tripwheel.io,https://demo.tripwheel.io
+
+<span class="k">COOKIE_DOMAIN</span>=.demo.tripwheel.io</code></pre>
+    </div>
+
+    <h3>What the demo must not share with production</h3>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Setting</th><th>On the demo</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>NEXT_PUBLIC_ENABLE_TRACKING</code></td>
+            <td><code>false</code>. This flag exists precisely for this — demo builds are also <code>NODE_ENV=production</code>, so nothing else distinguishes them from the real thing</td>
+          </tr>
+          <tr><td>Stripe keys (DB, Admin → Settings)</td><td>test keys only</td></tr>
+          <tr><td><code>META_PIXEL_ID</code> · <code>META_CAPI_TOKEN</code> · <code>GOOGLE_ADS_*</code></td><td>leave blank</td></tr>
+          <tr><td>Cloudinary</td><td>a separate cloud, or demo test uploads land in your production media gallery</td></tr>
+          <tr><td><code>RESEND_API_KEY</code> · <code>MAIL_FROM</code></td><td>separate key, demo subdomain. Demo booking flows send <strong>real</strong> email to whatever address gets typed in</td></tr>
+          <tr><td><code>ADMIN_EMAIL</code></td><td>a demo inbox — it receives cancellation requests and tour-review submissions</td></tr>
+          <tr><td><code>CORS_ORIGINS</code></td><td>the three demo origins only, never production's</td></tr>
+          <tr><td>Seeding</td><td><code>RUN_SEED=true</code> for the first boot, then <code>pnpm prisma:seed:demo</code> for demo content</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<section class="step" id="s5">
+  <div class="step-num">05</div>
+  <div class="step-body">
+    <h2>Proxy, PM2, and the frontends</h2>
+    <p class="step-why">
+      One proxy serves both instances. PM2 needs distinct names, and the frontend env files are
+      build-time.
+    </p>
+
+    <h3>Caddy</h3>
+    <div class="code">
+      <div class="code-label">append to /etc/caddy/Caddyfile</div>
+      <pre><code>api.demo.tripwheel.io {
+	encode zstd gzip
+	@docs path /api/docs*
+	respond @docs 404
+	reverse_proxy 127.0.0.1:5150
+}
+
+app.demo.tripwheel.io {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:3100
+}
+
+dashboard.demo.tripwheel.io {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:3101
+}
+
+demo.tripwheel.io {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:3102
+}</code></pre>
+    </div>
+    <div class="code">
+      <pre><code>sudo caddy validate --config /etc/caddy/Caddyfile
+sudo systemctl reload caddy</code></pre>
+    </div>
+    <p>
+      On nginx it's four more files in <code>sites-available</code> — identical to the production
+      blocks with the demo hostnames and ports — plus the four demo names appended to the
+      <code>certbot --nginx -d …</code> list.
+    </p>
+
+    <h3>Frontend env files</h3>
+    <p>
+      These are <strong>build-time</strong> values. Write them before <code>pnpm build</code>, or the
+      demo frontends ship pointing at production.
+    </p>
+
+    <div class="code">
+      <div class="code-label">island-tour-development/frontend/.env.production</div>
+      <pre><code><span class="k">NEXT_PUBLIC_BACKEND_URL</span>=https://api.demo.tripwheel.io
+<span class="k">NEXT_PUBLIC_SITE_URL</span>=https://app.demo.tripwheel.io
+<span class="k">INTERNAL_API_SECRET</span>=<span class="s">&lt;demo value&gt;</span>
+<span class="k">REVALIDATE_SECRET</span>=<span class="s">&lt;demo value&gt;</span>
+<span class="k">NEXT_PUBLIC_ENABLE_TRACKING</span>=false</code></pre>
+    </div>
+
+    <div class="code">
+      <div class="code-label">tripwheel-x-islandtours-dashboard/.env.production</div>
+      <pre><code><span class="k">NEXT_PUBLIC_BACKEND_URL</span>=https://api.demo.tripwheel.io
+<span class="k">INTERNAL_API_SECRET</span>=<span class="s">&lt;demo value&gt;</span>
+<span class="k">COOKIE_DOMAIN</span>=.demo.tripwheel.io
+<span class="k">REVALIDATE_TARGET_URL</span>=https://app.demo.tripwheel.io/api/revalidate
+<span class="k">REVALIDATE_SECRET</span>=<span class="s">&lt;demo value&gt;</span>
+<span class="k">NEXT_PUBLIC_FACING_APP_URL</span>=https://app.demo.tripwheel.io
+<span class="k">NEXT_PUBLIC_ADMIN_LOGIN_URL</span>=https://demo.tripwheel.io</code></pre>
+    </div>
+
+    <div class="code">
+      <div class="code-label">tripwheel-app/.env.production</div>
+      <pre><code><span class="k">NEXT_PUBLIC_SITE_URL</span>=https://demo.tripwheel.io
+<span class="k">NEXT_PUBLIC_API_URL</span>=https://api.demo.tripwheel.io
+<span class="k">NEXT_PUBLIC_DASHBOARD_URL</span>=https://dashboard.demo.tripwheel.io
+<span class="k">NEXT_PUBLIC_HOMEPAGE</span>=landing</code></pre>
+    </div>
+
+    <h3>PM2</h3>
+    <div class="note warn">
+      <span class="tag">Distinct app names, separate ecosystem file</span>
+      <p>
+        PM2 keys apps by name. Reusing <code>island-public</code> would <em>replace</em> the running
+        production process rather than add a second one.
+      </p>
+    </div>
+
+    <div class="code">
+      <div class="code-label">/opt/demo-tripwheel/ecosystem.config.js</div>
+      <pre><code>module.exports = {
+  apps: [
+    {
+      name: 'demo-public',
+      cwd: '/opt/demo-tripwheel/island-tour-development/frontend',
+      script: './node_modules/next/dist/bin/next',
+      args: 'start -p 3100',
+      env: { NODE_ENV: 'production' },
+      max_memory_restart: '900M',
+    },
+    {
+      name: 'demo-dashboard',
+      cwd: '/opt/demo-tripwheel/tripwheel-x-islandtours-dashboard',
+      script: './node_modules/next/dist/bin/next',
+      args: 'start -p 3101',
+      env: { NODE_ENV: 'production' },
+      max_memory_restart: '900M',
+    },
+    {
+      name: 'demo-app',
+      cwd: '/opt/demo-tripwheel/tripwheel-app',
+      script: './node_modules/next/dist/bin/next',
+      args: 'start -p 3102',
+      env: { NODE_ENV: 'production' },
+      max_memory_restart: '600M',
+    },
+  ],
+};</code></pre>
+    </div>
+
+    <div class="code">
+      <pre><code>pm2 start /opt/demo-tripwheel/ecosystem.config.js
+pm2 save          <span class="c"># persists BOTH instances' process lists</span>
+pm2 status        <span class="c"># expect six apps</span></code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<section class="step" id="s6">
+  <div class="step-num">06</div>
+  <div class="step-body">
+    <h2>Sizing — the real constraint</h2>
+    <p class="step-why">
+      Not the ports, not the config. Memory is what decides whether this works.
+    </p>
+
+    <p>
+      Two instances means <strong>2 Postgres + 2 Redis + 2 NestJS APIs + 6 Next.js servers</strong>.
+      The main runbook asks for 4 GB for one stack; two wants <strong>8 GB</strong>, and the Next
+      builds are the spike rather than steady state.
+    </p>
+
+    <p>Three things help:</p>
+    <ul>
+      <li>
+        <strong>Build one app at a time</strong>, never in parallel across instances. Six production
+        builds racing for memory is how you get an OOM kill with no useful error.
+      </li>
+      <li>
+        <strong>Ask whether the demo needs all three frontends.</strong> A demo that is just the
+        public site plus the dashboard drops a third of the footprint and two of the four hostnames.
+      </li>
+      <li>
+        <strong>Give the demo lower <code>max_memory_restart</code> values</strong> than production,
+        so under pressure the demo restarts first and production stays up.
+      </li>
+    </ul>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<section class="step" id="s7">
+  <div class="step-num">07</div>
+  <div class="step-body">
+    <h2>The full flow, with every conflict in place</h2>
+    <p class="step-why">
+      The whole deploy, in order, annotated with what collides at each step. Production stays up
+      throughout — nothing here touches <code>/opt/island-tours</code>.
+    </p>
+
+    <h3>Step 0 — record what production is using</h3>
+    <p>Do this first. Every later decision is "not that".</p>
+    <div class="code">
+      <pre><code><span class="c"># Ports in use</span>
+sudo ss -tlnp | grep -E ':(5050|3000|3001|3002|5432|6379)\b'
+
+<span class="c"># Compose project, volumes, networks</span>
+cd /opt/island-tours
+docker compose config --format json | python3 -c 'import json,sys; print(json.load(sys.stdin)["name"])'
+docker volume ls
+docker network ls
+
+<span class="c"># PM2 app names</span>
+pm2 list</code></pre>
+    </div>
+    <p><strong>No conflict yet</strong> — this is the baseline you'll check against.</p>
+
+    <h3>Step 1 — DNS</h3>
+    <p>
+      Add the four <code>A</code> records, then verify before going further. A missing record
+      surfaces later as a certificate failure, which reads like a proxy problem rather than a DNS
+      one.
+    </p>
+    <div class="code">
+      <pre><code>for h in demo api.demo app.demo dashboard.demo; do
+  printf "%-26s %s\n" "$h.tripwheel.io" "$(dig +short $h.tripwheel.io)"
+done</code></pre>
+    </div>
+    <p><strong>Conflict:</strong> none. Different apex from production entirely.</p>
+
+    <h3>Step 2 — clone</h3>
+    <div class="code">
+      <pre><code>sudo mkdir -p /opt/demo-tripwheel &amp;&amp; sudo chown deploy:deploy /opt/demo-tripwheel
+cd /opt/demo-tripwheel
+
+git clone -b prod git@github.com:pixeldevripon/island-tours.git island-tour-development
+git clone -b main git@github.com:pixeldevripon/dashbaord-tripwheel-x-islandtours.git tripwheel-x-islandtours-dashboard
+git clone -b main git@github.com:pixeldevripon/tripwheel.app.git tripwheel-app</code></pre>
+    </div>
+    <p>
+      <strong>Conflict:</strong> none. The existing deploy key works for both; nothing is shared but
+      the key.
+    </p>
+
+    <h3>Step 3 — the compose <code>.env</code></h3>
+    <div class="code">
+      <pre><code>cd /opt/demo-tripwheel/island-tour-development
+cp .env.example .env &amp;&amp; nano .env</code></pre>
+    </div>
+    <div class="code">
+      <pre><code><span class="k">COMPOSE_PROJECT_NAME</span>=demo-tripwheel     <span class="c"># &lt;-- the silent conflict</span>
+<span class="k">BACKEND_PORT</span>=127.0.0.1:5150             <span class="c"># &lt;-- the loud one</span>
+<span class="k">POSTGRES_PASSWORD</span>=<span class="s">&lt;fresh&gt;</span>
+<span class="k">REDIS_PASSWORD</span>=<span class="s">&lt;fresh&gt;</span>
+<span class="k">POSTGRES_USER</span>=island
+<span class="k">POSTGRES_DB</span>=island_tours
+<span class="k">RUN_SEED</span>=true
+<span class="k">NODE_OPTIONS</span>=</code></pre>
+    </div>
+    <p><strong>Conflict — two of them, and they fail in opposite ways.</strong></p>
+    <p>
+      <code>BACKEND_PORT</code> left at <code>5050</code> fails <em>loudly</em> on the next step:
+      <code>Bind for 127.0.0.1:5050 failed: port is already allocated</code>. Annoying, harmless,
+      obvious.
+    </p>
+    <p>
+      <code>COMPOSE_PROJECT_NAME</code> is the one to be careful with. It fails <em>silently</em> —
+      see step 4.
+    </p>
+    <p>
+      Also add the same line to production's <code>.env</code>
+      (<code>COMPOSE_PROJECT_NAME=island-tours</code>) so the value is declared on both sides rather
+      than inferred on both sides. Editing that file changes nothing about the running production
+      stack until its next <code>docker compose up</code>, and the name it resolves to is identical.
+    </p>
+
+    <h3>Step 4 — prove the isolation BEFORE the first boot</h3>
+    <p>
+      This is the step people skip, and the only one that is unrecoverable if you get it wrong.
+    </p>
+    <div class="code">
+      <pre><code>cd /opt/demo-tripwheel/island-tour-development
+docker compose config --format json | python3 -c 'import json,sys; print(json.load(sys.stdin)["name"])'
+<span class="c"># expect: demo-tripwheel</span></code></pre>
+    </div>
+    <div class="note trap">
+      <span class="tag">If that prints island-tours, stop</span>
+      <p>
+        Do not run <code>docker compose up</code>. The demo would attach to production's
+        <code>postgres-data</code> volume, and with <code>RUN_SEED=true</code> the entrypoint would
+        seed over live bookings. Both containers would start perfectly and report healthy. Fix the
+        project name, re-run the check, and only then continue.
+      </p>
+    </div>
+
+    <h3>Step 5 — the backend app env</h3>
+    <div class="code">
+      <pre><code>cp backend/.env.production.example backend/.env.production
+nano backend/.env.production</code></pre>
+    </div>
+    <p>
+      Set the demo URLs, <code>COOKIE_DOMAIN=.demo.tripwheel.io</code>, and a <strong>fresh</strong>
+      set of secrets.
+    </p>
+    <p>
+      <strong>Conflict:</strong> the session cookie, if you reuse production's apex — avoided here by
+      <code>tripwheel.io</code>. And <code>ENCRYPTION_KEY</code>: copying production's would let the
+      demo decrypt production's stored Stripe keys. Neither errors.
+    </p>
+    <p>
+      Also make sure you did <strong>not</strong> carry over a <code>UPSTASH_REDIS_URL</code>
+      pointing at the same Redis production uses. That is the shared-queue conflict from the map, and
+      it is invisible until the demo starts sending real customer email.
+    </p>
+
+    <h3>Step 6 — first boot</h3>
+    <div class="code">
+      <pre><code>docker compose up -d --build
+docker compose logs -f backend</code></pre>
+    </div>
+    <p>
+      Expected, in order: <code>prisma migrate deploy</code> →
+      <code>RUN_SEED=true -&gt; seeding</code> → <code>Starting server</code>.
+    </p>
+    <div class="code">
+      <pre><code><span class="c"># then, immediately:</span>
+sed -i 's/^RUN_SEED=true/RUN_SEED=false/' .env
+docker compose up -d
+
+curl -s http://127.0.0.1:5150/api/v1/health</code></pre>
+    </div>
+    <p>
+      <strong>Conflict:</strong> leaving <code>RUN_SEED=true</code> re-seeds on every later redeploy.
+      Harmless on a demo, but it will silently reset content you were mid-way through demoing.
+    </p>
+    <p>Confirm the two stacks are genuinely separate:</p>
+    <div class="code">
+      <pre><code>docker volume ls | grep postgres-data      <span class="c"># expect TWO</span>
+docker compose ps                          <span class="c"># only demo-tripwheel-* containers</span>
+cd /opt/island-tours &amp;&amp; docker compose ps  <span class="c"># only island-tours-* containers</span></code></pre>
+    </div>
+
+    <h3>Step 7 — the proxy</h3>
+    <div class="code">
+      <pre><code>sudo caddy validate --config /etc/caddy/Caddyfile
+sudo systemctl reload caddy
+sudo journalctl -u caddy -f       <span class="c"># watch the certificates issue</span></code></pre>
+    </div>
+    <p>
+      <strong>Conflict:</strong> a hostname already claimed by production makes
+      <code>caddy validate</code> fail on the duplicate site address — loud, and it refuses to load
+      rather than half-applying. <code>reload</code> (not <code>restart</code>) keeps production
+      serving throughout, and a bad config leaves the old one running.
+    </p>
+    <div class="code">
+      <pre><code>curl -i https://api.demo.tripwheel.io/api/v1/health     <span class="c"># expect 200</span></code></pre>
+    </div>
+
+    <h3>Step 8 — the frontends</h3>
+    <p>Per app: write <code>.env.production</code> <strong>first</strong>, then install, then build.</p>
+    <div class="code">
+      <pre><code>cd /opt/demo-tripwheel/island-tour-development/frontend
+rm -f .env.local                     <span class="c"># would override .env.production in production too</span>
+nano .env.production
+pnpm install --frozen-lockfile
+pnpm build</code></pre>
+    </div>
+    <p>
+      Repeat for the dashboard and tripwheel-app. <strong>One at a time</strong> — six concurrent
+      Next builds on one box is how you get an OOM kill with no useful error.
+    </p>
+    <p>
+      <strong>Conflict:</strong> none at the port level yet, since nothing is listening. The real
+      risk here is a <em>content</em> conflict — a demo frontend built with production's
+      <code>NEXT_PUBLIC_BACKEND_URL</code> will happily talk to the live API, and because those
+      values are compiled in at build time, restarting won't fix it. Only a rebuild will.
+    </p>
+
+    <h3>Step 9 — PM2</h3>
+    <div class="code">
+      <pre><code>nano /opt/demo-tripwheel/ecosystem.config.js     <span class="c"># the file from section 5</span>
+pm2 start /opt/demo-tripwheel/ecosystem.config.js
+pm2 save
+pm2 status                                       <span class="c"># expect six apps</span></code></pre>
+    </div>
+    <p>
+      <strong>Conflict:</strong> a duplicate app name. PM2 keys by name and refuses to launch a
+      second app under an existing one, so this fails loudly — but the <em>dangerous</em> version is
+      later: <code>pm2 restart island-public</code> typed while you were thinking about the demo.
+      Distinct <code>demo-*</code> names are what make that mistake impossible rather than merely
+      unlikely.
+    </p>
+    <p>
+      If a port is still taken, PM2 shows the app as <code>errored</code>, and
+      <code>pm2 logs demo-dashboard</code> will have <code>EADDRINUSE</code>.
+    </p>
+
+    <h3>Step 10 — verify, including production</h3>
+    <p>
+      Run the section 8 smoke test. The two checks that matter most are the ones that look
+      redundant:
+    </p>
+    <ul>
+      <li>Reload <strong>production</strong> and confirm you're still logged in — the cookie-collision check.</li>
+      <li>Create a demo booking and confirm production's booking count is unchanged — the shared-volume check.</li>
+    </ul>
+    <p>Everything else in the deploy fails loudly. These two don't.</p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<section class="step" id="s8">
+  <div class="step-num">08</div>
+  <div class="step-body">
+    <h2>Smoke test — what actually proves the isolation</h2>
+    <p class="step-why">
+      The ordinary checks from the main runbook still apply. These four are specific to running two
+      instances, and each catches a failure the others don't.
+    </p>
+
+    <ul class="check">
+      <li><strong>Log into the demo dashboard, then reload.</strong> Staying logged in proves <code>COOKIE_DOMAIN</code> is right.</li>
+      <li><strong>Then reload production in the same browser and confirm you are still logged in there too.</strong> This is the cookie-collision check — the failure mode is one instance silently signing you out of the other.</li>
+      <li><strong>Create a booking on the demo, then confirm it does not appear in production</strong>, and that production's booking count is unchanged. This is the shared-volume check.</li>
+      <li><strong><code>docker volume ls | grep postgres-data</code></strong> returns two distinct volumes, and <code>docker compose ps</code> in each directory lists only that instance's containers.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<section class="step" id="s9">
+  <div class="step-num">09</div>
+  <div class="step-body">
+    <h2>Day-to-day</h2>
+    <p class="step-why">
+      Every <code>docker compose</code> command is directory-scoped, which is a real footgun when
+      two stacks are this similar.
+    </p>
+
+    <div class="code">
+      <pre><code><span class="c"># Always cd first. `docker compose down` in the wrong directory stops production.</span>
+cd /opt/demo-tripwheel &amp;&amp; docker compose ps
+cd /opt/island-tours   &amp;&amp; docker compose ps
+
+<span class="c"># PM2 is name-scoped, so it is safer:</span>
+pm2 restart demo-public
+pm2 logs demo-dashboard --lines 100
+
+<span class="c"># Backups: separate filenames, or the second dump overwrites the first.</span>
+cd /opt/demo-tripwheel
+docker compose exec -T postgres pg_dump -U island island_tours \
+  | gzip &gt; ~/backups/demo_$(date +%F).sql.gz</code></pre>
+    </div>
+
+    <div class="note tip">
+      <span class="tag">Worth the two minutes</span>
+      <p>
+        Set the shell prompt to show the current directory, or keep two clearly-labelled terminal
+        tabs. The single most likely accident here is running a destructive command in the right
+        shell but the wrong directory.
+      </p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>
+    Companion to <code>VPS-DEPLOYMENT-CADDY.md</code>, which covers the deploy itself for a single
+    instance, and <code>VPS-OPERATIONS-GUIDE.md</code>, which covers day-2 operations. Written
+    against the repositories as they stand on 22 August 2026.
+  </p>
+</footer>
+
+</div>
+</body>
+</html>

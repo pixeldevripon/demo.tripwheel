@@ -438,8 +438,9 @@
   <h1>Island Tours VPS Runbook</h1>
   <p class="standfirst">
     Deploy the whole platform onto one Hostinger VPS: the NestJS API in Docker, the three
-    Next.js apps behind PM2, and Caddy in front handling every domain and certificate
-    automatically. Follow the steps in order — the order matters more than anything else here.
+    Next.js apps behind PM2, and a reverse proxy in front handling every domain and certificate.
+    Caddy is step 7, nginx is step 7b — do one or the other. Follow the steps in order; the order
+    matters more than anything else here.
   </p>
 
   <nav class="toc">
@@ -451,6 +452,7 @@
     <a href="#s5">5 · Secrets</a>
     <a href="#s6">6 · Backend</a>
     <a href="#s7">7 · Caddy + SSL</a>
+    <a href="#s7b">7b · nginx instead</a>
     <a href="#s8">8 · Next.js apps</a>
     <a href="#s9">9 · Smoke test</a>
     <a href="#s10">10 · Redeploys</a>
@@ -511,9 +513,9 @@
       prerender pages, so a build against a dead API produces a broken site.
     </p>
     <ol>
-      <li><strong>DNS first.</strong> Caddy cannot issue a certificate for a name that doesn't resolve to your server.</li>
+      <li><strong>DNS first.</strong> No certificate can be issued for a name that doesn't resolve to your server.</li>
       <li><strong>Backend second.</strong> It must be live at <code>https://api.…</code> and answering.</li>
-      <li><strong>Caddy third</strong>, so the API is reachable over HTTPS.</li>
+      <li><strong>The proxy third</strong> (Caddy or nginx), so the API is reachable over HTTPS.</li>
       <li><strong>Next.js apps last</strong>, because <code>next build</code> fetches from that HTTPS API.</li>
     </ol>
 
@@ -734,7 +736,7 @@ node -v    <span class="c"># v22.x</span>
 pnpm -v    <span class="c"># 10.x</span></code></pre>
     </div>
 
-    <h3>f. Caddy</h3>
+    <h3>f. Caddy — skip this if you're using nginx (step 7b)</h3>
     <div class="code">
       <pre><code>sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
 
@@ -1140,12 +1142,297 @@ sudo journalctl -u caddy -f</code></pre>
     </div>
 
     <div class="note">
-      <span class="tag">Ignore this file</span>
+      <span class="tag">Prefer nginx?</span>
       <p>
-        <code>deploy/nginx/island-api.conf</code> exists in the repo from an earlier plan. You're
-        on Caddy — leave it alone. Do not install nginx alongside; both want port 80 and the
-        second one to start will fail.
+        <code>deploy/nginx/island-api.conf</code> in this repo is the nginx equivalent of the API
+        block above. Skip this section and follow <a href="#s7b">7b</a> instead.
+        <strong>Don't run both</strong> — they each want port 80, and whichever starts second
+        fails.
       </p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<section class="step" id="s7b">
+  <div class="step-num">07B</div>
+  <div class="step-body">
+    <h2>Alternative: nginx instead of Caddy</h2>
+    <p class="step-why">
+      Everything else in this runbook is unchanged — same Docker backend, same PM2 apps, same
+      ports, same env files. Only the reverse proxy differs. Do step 7 <strong>or</strong> step 7b,
+      never both.
+    </p>
+
+    <h3>Which to pick</h3>
+
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th></th><th>Caddy (step 7)</th><th>nginx (step 7b)</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>TLS</td>
+            <td>Automatic, renews itself, nothing to schedule</td>
+            <td><code>certbot</code> issues; a systemd timer renews</td>
+          </tr>
+          <tr>
+            <td>Config size</td>
+            <td>~30 lines total</td>
+            <td>~120 lines across 5 files</td>
+          </tr>
+          <tr>
+            <td>Forwarded headers</td>
+            <td>Default</td>
+            <td>You must set them, or rate limiting breaks</td>
+          </tr>
+          <tr>
+            <td>Request buffering</td>
+            <td>Streams by default</td>
+            <td>You must turn buffering off, or Stripe webhooks break</td>
+          </tr>
+          <tr>
+            <td>Body size limit</td>
+            <td>None</td>
+            <td>Defaults to <strong>1 MB</strong>; uploads fail until you raise it</td>
+          </tr>
+          <tr>
+            <td>If renewal breaks</td>
+            <td>Caddy retries and logs</td>
+            <td>You find out when the certificate expires</td>
+          </tr>
+          <tr>
+            <td>Familiarity</td>
+            <td>Fewer people know it</td>
+            <td>Almost everyone knows it; more answers online</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      Caddy is the better fit for this stack — the three defaults in the middle rows are exactly the
+      three things this app needs, and getting any of them wrong fails in a way that looks like an
+      application bug. Use nginx if you already run it elsewhere, need a feature Caddy lacks, or
+      simply prefer config you can read at a glance.
+    </p>
+
+    <h3>a. Install nginx (and make sure Caddy is not running)</h3>
+    <p>
+      If you already did step 3f, disable Caddy first — otherwise nginx won't bind port 80.
+    </p>
+    <div class="code">
+      <pre><code>sudo systemctl disable --now caddy 2&gt;/dev/null || true
+sudo apt install -y nginx
+sudo systemctl enable --now nginx</code></pre>
+    </div>
+    <p>Going nginx from the start? Skip step 3f entirely; you never need Caddy installed.</p>
+
+    <h3>b. A shared proxy snippet</h3>
+    <p>
+      All five sites need the same proxy headers. Put them in one file rather than repeating them —
+      a header missing from one site is the kind of bug you find weeks later.
+    </p>
+    <div class="code">
+      <div class="code-label">/etc/nginx/snippets/proxy-common.conf</div>
+      <pre><code>proxy_http_version 1.1;
+
+<span class="c"># Forward real client info. Without these the backend's rate limiter sees</span>
+<span class="c"># nginx's own address as every visitor, and Better Auth builds http:// URLs.</span>
+<span class="c"># The app trusts exactly ONE proxy hop - see `trust proxy 1` in main.ts.</span>
+proxy_set_header Host              $host;
+proxy_set_header X-Real-IP         $remote_addr;
+proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+proxy_set_header X-Forwarded-Proto $scheme;
+
+proxy_read_timeout    60s;
+proxy_connect_timeout 10s;</code></pre>
+    </div>
+
+    <h3>c. One file per site</h3>
+
+    <div class="code">
+      <div class="code-label">/etc/nginx/sites-available/island-api</div>
+      <pre><code>server {
+    listen 80;
+    listen [::]:80;
+    server_name api.tripwheel.app;
+
+    <span class="c"># nginx defaults to 1 MB and answers 413 above it. Media uploads and</span>
+    <span class="c"># multipart forms need room. Raise if you hit 413 on a real upload.</span>
+    client_max_body_size 15m;
+
+    <span class="c"># Recommended: keep the API schema off the public internet. Swagger is</span>
+    <span class="c"># served in production by design. Delete this block to leave it open.</span>
+    location ^~ /api/docs {
+        return 404;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:5050;
+        include /etc/nginx/snippets/proxy-common.conf;
+
+        <span class="c"># Stripe webhook signature verification reads the RAW request bytes</span>
+        <span class="c"># (the backend bootstraps with rawBody: true). Buffering rewrites the</span>
+        <span class="c"># body and every webhook then fails signature validation.</span>
+        proxy_request_buffering off;
+    }
+}</code></pre>
+    </div>
+
+    <div class="code">
+      <div class="code-label">/etc/nginx/sites-available/island-public</div>
+      <pre><code>server {
+    listen 80;
+    listen [::]:80;
+    server_name islandtours.tripwheel.app;
+
+    client_max_body_size 25m;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        include /etc/nginx/snippets/proxy-common.conf;
+    }
+}</code></pre>
+    </div>
+
+    <p>
+      <code>island-dashboard</code> is identical with <code>server_name
+      dashboard.tripwheel.app</code> and <code>proxy_pass http://127.0.0.1:3001</code>.
+      <code>tripwheel-app</code> is identical with <code>server_name tripwheel.app</code> and
+      <code>proxy_pass http://127.0.0.1:3002</code>.
+    </p>
+
+    <div class="code">
+      <div class="code-label">/etc/nginx/sites-available/island-www</div>
+      <pre><code>server {
+    listen 80;
+    listen [::]:80;
+    server_name www.tripwheel.app;
+    return 301 https://tripwheel.app$request_uri;
+}</code></pre>
+    </div>
+
+    <div class="note">
+      <span class="tag">No special block for /_next/static</span>
+      <p>
+        Next already sends <code>Cache-Control: public, max-age=31536000, immutable</code> on its
+        build assets, and nginx passes that through untouched. Adding a
+        <code>proxy_cache_valid</code> block without a configured cache zone does nothing at all —
+        skip it.
+      </p>
+    </div>
+
+    <h3>d. Enable and test</h3>
+    <div class="code">
+      <pre><code>for s in island-api island-public island-dashboard tripwheel-app island-www; do
+  sudo ln -sf /etc/nginx/sites-available/$s /etc/nginx/sites-enabled/$s
+done
+
+<span class="c"># The default site answers for any unmatched hostname - drop it.</span>
+sudo rm -f /etc/nginx/sites-enabled/default
+
+sudo nginx -t &amp;&amp; sudo systemctl reload nginx</code></pre>
+    </div>
+    <p>
+      Run <code>nginx -t</code> before every reload. A config error on <code>reload</code> leaves
+      the old config running, which is good; on <code>restart</code> it leaves you with nothing
+      running, which is not. Reload, never restart.
+    </p>
+
+    <h3>e. TLS with certbot</h3>
+    <div class="code">
+      <pre><code>sudo apt install -y certbot python3-certbot-nginx
+
+sudo certbot --nginx \
+  -d api.tripwheel.app \
+  -d islandtours.tripwheel.app \
+  -d dashboard.tripwheel.app \
+  -d tripwheel.app \
+  -d www.tripwheel.app \
+  --redirect --agree-tos -m admin@tripwheel.app --no-eff-email</code></pre>
+    </div>
+    <p>
+      certbot edits each server block in place: it adds the <code>listen 443 ssl</code> block, the
+      certificate paths, and — thanks to <code>--redirect</code> — an HTTP→HTTPS redirect. Your
+      files will look different afterwards. That's expected; don't revert it.
+    </p>
+    <div class="code">
+      <pre><code>systemctl list-timers | grep certbot
+sudo certbot renew --dry-run</code></pre>
+    </div>
+
+    <div class="note warn">
+      <span class="tag">The one real ongoing difference from Caddy</span>
+      <p>
+        Renewal is a separate moving part that can break quietly — a changed server block, a
+        firewall rule, an expired ACME account. You find out when the certificate expires and
+        every app goes untrusted at once. Add a certificate-expiry check to your uptime monitor
+        (recommendation 6); most services, UptimeRobot included, do this free.
+      </p>
+    </div>
+
+    <h3>f. Compression</h3>
+    <p>
+      nginx gzips <code>text/html</code> only by default, leaving JS, CSS and JSON uncompressed —
+      a real page-weight difference on the storefront.
+    </p>
+    <div class="code">
+      <div class="code-label">/etc/nginx/conf.d/gzip.conf</div>
+      <pre><code>gzip on;
+gzip_vary on;
+gzip_proxied any;
+gzip_comp_level 5;
+gzip_min_length 256;
+gzip_types
+    application/javascript
+    application/json
+    application/rss+xml
+    application/xml
+    font/woff2
+    image/svg+xml
+    text/css
+    text/plain
+    text/xml;</code></pre>
+    </div>
+
+    <h3>g. The three things Caddy did for free</h3>
+    <p>
+      If you skip nothing else in this section, don't skip these. Each one fails in a way that
+      looks like an application bug:
+    </p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Missing</th><th>Symptom</th><th>Where</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Forwarded headers</td>
+            <td>Rate limiting throttles all visitors as one IP; auth builds <code>http://</code> URLs</td>
+            <td>7b · b</td>
+          </tr>
+          <tr>
+            <td><code>proxy_request_buffering off</code></td>
+            <td>Every Stripe webhook fails signature verification; payments never confirm</td>
+            <td>the API's <code>location /</code></td>
+          </tr>
+          <tr>
+            <td><code>client_max_body_size</code></td>
+            <td>Uploads fail with <code>413</code> at exactly 1 MB</td>
+            <td>per server block</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>h. Day-to-day commands</h3>
+    <p>Substitute these for the Caddy commands elsewhere in this runbook:</p>
+    <div class="code">
+      <pre><code>sudo nginx -t                            <span class="c"># validate before every reload</span>
+sudo systemctl reload nginx              <span class="c"># apply config (zero downtime)</span>
+sudo tail -f /var/log/nginx/error.log    <span class="c"># proxy failures, upstream errors</span>
+sudo tail -f /var/log/nginx/access.log   <span class="c"># requests</span>
+sudo certbot certificates                <span class="c"># what's issued, and when it expires</span></code></pre>
     </div>
   </div>
 </section>
@@ -1946,7 +2233,7 @@ docker system prune -af --filter "until=168h"   <span class="c"># images unused 
             <td>Add it, no spaces, then <code>docker compose up -d</code></td>
           </tr>
           <tr>
-            <td>Caddy log: <code>could not get certificate</code></td>
+            <td>Caddy: <code>could not get certificate</code> · certbot: <code>Challenge failed</code></td>
             <td>DNS not resolving to this server yet, port 80 blocked, or a Cloudflare orange cloud</td>
             <td><code>dig +short &lt;host&gt;</code>, <code>ufw status</code>, grey-cloud the record</td>
           </tr>
@@ -1971,9 +2258,29 @@ docker system prune -af --filter "until=168h"   <span class="c"># images unused 
             <td>Enable swap, build one app at a time, cap the heap</td>
           </tr>
           <tr>
-            <td>Bad gateway from Caddy</td>
+            <td><code>502 Bad Gateway</code> from the proxy</td>
             <td>The app behind that port isn't running</td>
             <td><code>pm2 status</code> / <code>docker compose ps</code>, then check that app's logs</td>
+          </tr>
+          <tr>
+            <td>nginx won't start: <code>Address already in use</code></td>
+            <td>Caddy still holds port 80</td>
+            <td><code>sudo systemctl disable --now caddy</code></td>
+          </tr>
+          <tr>
+            <td>Every Stripe webhook fails signature verification (nginx)</td>
+            <td><code>proxy_request_buffering off</code> missing from the API block</td>
+            <td>Step 7b · g</td>
+          </tr>
+          <tr>
+            <td>Uploads fail with <code>413</code> at ~1 MB (nginx)</td>
+            <td><code>client_max_body_size</code> left at nginx's 1 MB default</td>
+            <td>Step 7b · g</td>
+          </tr>
+          <tr>
+            <td>Rate limiting throttles everyone at once (nginx)</td>
+            <td><code>X-Forwarded-For</code> not being set</td>
+            <td>Step 7b · b</td>
           </tr>
           <tr>
             <td>No emails arriving</td>
@@ -2001,10 +2308,10 @@ docker system prune -af --filter "until=168h"   <span class="c"># images unused 
   </p>
   <p>
     Two places that guide diverges from this one, because it was written against the earlier plan:
-    it assumes <strong>nginx</strong> in front (you're on Caddy — step 7 replaces its reverse-proxy
-    and TLS instructions entirely) and it assumes the <strong>frontends live on Vercel</strong>
-    (they're on this VPS under PM2 — step 8 replaces that). Everything it says about Postgres,
-    Redis, backups and monitoring still applies as written.
+    its nginx notes cover the API only (step 7b here covers all five sites) and it assumes the
+    <strong>frontends live on Vercel</strong> (they're on this VPS under PM2 — step 8 replaces
+    that). Everything it says about Postgres, Redis, backups and monitoring still applies as
+    written.
   </p>
 
   <p style="margin-top:28px">

@@ -1,12 +1,14 @@
-# VPS Deployment — Hostinger + Caddy
+# VPS Deployment — Hostinger + Caddy (or nginx)
 
-> Deploy-day runbook: the NestJS API in Docker, all three Next.js apps under PM2, Caddy in front
-> handling every domain and certificate.
+> Deploy-day runbook: the NestJS API in Docker, all three Next.js apps under PM2, and a reverse
+> proxy in front handling every domain and certificate. **Caddy is §7; nginx is §7b** — do one or
+> the other, never both.
 >
 > **Day-2 operations** (password rotation, restores, audit logs, Sentry, OTel, rate-limit tuning,
 > scaling) live in `island-tour-development/technical-doc/06-operations/VPS-OPERATIONS-GUIDE.md`.
-> That guide assumes **nginx** and **frontends on Vercel** — §7 and §8 below replace those two
-> parts. Everything it says about Postgres, Redis, backups and monitoring still applies.
+> That guide assumes the **frontends are on Vercel** — §8 below replaces that part. Its nginx
+> notes cover the API only; §7b here covers all five sites. Everything it says about Postgres,
+> Redis, backups and monitoring still applies.
 >
 > Published version (nicer to read): https://claude.ai/code/artifact/6ede3526-e18f-4a13-9cb2-0021eea7f82a
 
@@ -23,9 +25,9 @@
 
 ### Deploy order — it's a dependency chain, not a preference
 
-1. **DNS** — Caddy can't issue a cert for a name that doesn't resolve to the server.
+1. **DNS** — no certificate can be issued for a name that doesn't resolve to the server.
 2. **Backend** — must be live and answering.
-3. **Caddy** — so the API is reachable over HTTPS.
+3. **The proxy** (Caddy §7 or nginx §7b) — so the API is reachable over HTTPS.
 4. **Next.js apps** — because `next build` fetches from that HTTPS API while prerendering.
 
 **Sizing:** at least **4 GB RAM** plus swap. Three Next production builds get OOM-killed on 2 GB
@@ -147,7 +149,7 @@ sudo corepack enable && corepack prepare pnpm@10 --activate
 sudo npm install -g pm2
 ```
 
-### f. Caddy
+### f. Caddy — skip this if you're using nginx (§7b)
 
 ```bash
 sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
@@ -392,8 +394,235 @@ sees real IPs), it **streams** request bodies rather than buffering (Stripe webh
 verification gets the raw bytes), and it has **no request body size limit** (media uploads pass
 through). You don't need `proxy_set_header`, `proxy_request_buffering off` or `client_max_body_size`.
 
-Ignore `deploy/nginx/island-api.conf` — it's from the earlier plan. Don't install nginx alongside;
-both want port 80.
+`deploy/nginx/island-api.conf` in this repo is the nginx equivalent of the API block above. If you'd
+rather use nginx, skip this section and follow §7b instead. **Don't run both** — they each want
+port 80, and whichever starts second fails.
+
+---
+
+## 7b. Alternative: nginx instead of Caddy
+
+Everything else in this runbook is unchanged — same Docker backend, same PM2 apps, same ports, same
+env files. Only the reverse proxy differs. Do §7 **or** §7b, never both.
+
+### Which to pick
+
+| | Caddy (§7) | nginx (§7b) |
+|---|---|---|
+| TLS | Automatic, renews itself, nothing to schedule | `certbot` issues; a systemd timer renews |
+| Config size | ~30 lines total | ~120 lines across 5 files |
+| Forwarded headers | Default | You must set them, or rate limiting breaks |
+| Request buffering | Streams by default | You must turn buffering off, or Stripe webhooks break |
+| Body size limit | None | Defaults to **1 MB**; uploads fail until you raise it |
+| If renewal breaks | Caddy retries and logs | You find out when the certificate expires |
+| Familiarity | Fewer people know it | Almost everyone knows it; more answers online |
+
+Caddy is the better fit for this stack — the three defaults in the middle rows are exactly the
+three things this app needs, and getting any of them wrong fails in a way that looks like an
+application bug. Use nginx if you already run it elsewhere, need a feature Caddy lacks, or simply
+prefer config you can read at a glance.
+
+### a. Install nginx (and make sure Caddy is not running)
+
+If you already did §3f, disable Caddy first — otherwise nginx won't bind port 80.
+
+```bash
+sudo systemctl disable --now caddy 2>/dev/null || true
+sudo apt install -y nginx
+sudo systemctl enable --now nginx
+```
+
+Going nginx from the start? Skip §3f entirely; you never need Caddy installed.
+
+### b. A shared proxy snippet
+
+All five sites need the same proxy headers. Put them in one file rather than repeating them — a
+header missing from one site is the kind of bug you find weeks later.
+
+`/etc/nginx/snippets/proxy-common.conf`:
+
+```nginx
+proxy_http_version 1.1;
+
+# Forward real client info. Without these the backend's rate limiter sees nginx's
+# own address as every visitor, and Better Auth builds http:// callback URLs.
+# The app trusts exactly one proxy hop — see `trust proxy 1` in backend/src/main.ts.
+proxy_set_header Host              $host;
+proxy_set_header X-Real-IP         $remote_addr;
+proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+proxy_set_header X-Forwarded-Proto $scheme;
+
+proxy_read_timeout    60s;
+proxy_connect_timeout 10s;
+```
+
+### c. One file per site
+
+`/etc/nginx/sites-available/island-api`:
+
+```nginx
+server {
+    listen 80;
+    listen [::]:80;
+    server_name api.tripwheel.app;
+
+    # nginx defaults to 1 MB and answers 413 above it. Media uploads and
+    # multipart forms need room. Raise this if you hit 413 on a real upload.
+    client_max_body_size 15m;
+
+    # Recommended: keep the API schema off the public internet. Swagger is
+    # served in production by design. Delete this block to leave it open.
+    location ^~ /api/docs {
+        return 404;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:5050;
+        include /etc/nginx/snippets/proxy-common.conf;
+
+        # Stripe webhook signature verification reads the raw request bytes
+        # (the backend bootstraps with rawBody: true). Buffering rewrites the
+        # body and every webhook then fails signature validation.
+        proxy_request_buffering off;
+    }
+}
+```
+
+`/etc/nginx/sites-available/island-public`:
+
+```nginx
+server {
+    listen 80;
+    listen [::]:80;
+    server_name islandtours.tripwheel.app;
+
+    client_max_body_size 25m;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        include /etc/nginx/snippets/proxy-common.conf;
+    }
+}
+```
+
+`/etc/nginx/sites-available/island-dashboard` — identical, but `server_name
+dashboard.tripwheel.app` and `proxy_pass http://127.0.0.1:3001`.
+
+`/etc/nginx/sites-available/tripwheel-app` — identical, but `server_name tripwheel.app` and
+`proxy_pass http://127.0.0.1:3002`.
+
+`/etc/nginx/sites-available/island-www`:
+
+```nginx
+server {
+    listen 80;
+    listen [::]:80;
+    server_name www.tripwheel.app;
+    return 301 https://tripwheel.app$request_uri;
+}
+```
+
+No special block is needed for `/_next/static` — Next already sends
+`Cache-Control: public, max-age=31536000, immutable` on its build assets, and nginx passes that
+through untouched.
+
+### d. Enable and test
+
+```bash
+cd /etc/nginx/sites-available
+for s in island-api island-public island-dashboard tripwheel-app island-www; do
+  sudo ln -sf /etc/nginx/sites-available/$s /etc/nginx/sites-enabled/$s
+done
+
+# The default site answers for any unmatched hostname — drop it.
+sudo rm -f /etc/nginx/sites-enabled/default
+
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+`nginx -t` before every reload. A config error on `reload` leaves the old config running (good),
+but on `restart` it leaves you with nothing running (bad) — so reload, never restart.
+
+### e. TLS with certbot
+
+```bash
+sudo apt install -y certbot python3-certbot-nginx
+
+sudo certbot --nginx \
+  -d api.tripwheel.app \
+  -d islandtours.tripwheel.app \
+  -d dashboard.tripwheel.app \
+  -d tripwheel.app \
+  -d www.tripwheel.app \
+  --redirect --agree-tos -m admin@tripwheel.app --no-eff-email
+```
+
+certbot edits each server block in place: adds the `listen 443 ssl` block, the certificate paths,
+and (thanks to `--redirect`) an HTTP→HTTPS redirect. Your files will look different afterwards —
+that's expected, don't revert it.
+
+Renewal is a systemd timer installed by the package. Verify both:
+
+```bash
+systemctl list-timers | grep certbot
+sudo certbot renew --dry-run
+```
+
+> **This is the one real ongoing difference from Caddy.** Renewal is a separate moving part that
+> can break quietly — a changed server block, a firewall rule, an expired ACME account. You find
+> out when the certificate expires and every app goes untrusted at once. Add a certificate-expiry
+> check to your uptime monitor (recommendation 6); most services including UptimeRobot do this
+> free.
+
+### f. Compression
+
+nginx gzips `text/html` only by default, which leaves JS, CSS and JSON uncompressed — a real
+page-weight difference on the storefront.
+
+`/etc/nginx/conf.d/gzip.conf`:
+
+```nginx
+gzip on;
+gzip_vary on;
+gzip_proxied any;
+gzip_comp_level 5;
+gzip_min_length 256;
+gzip_types
+    application/javascript
+    application/json
+    application/rss+xml
+    application/xml
+    font/woff2
+    image/svg+xml
+    text/css
+    text/plain
+    text/xml;
+```
+
+Then `sudo nginx -t && sudo systemctl reload nginx`.
+
+### g. The three things Caddy did for free
+
+If you skip nothing else in §7b, don't skip these. Each fails in a way that looks like an
+application bug:
+
+| Missing | Symptom | Directive |
+|---|---|---|
+| Forwarded headers | Rate limiting throttles all visitors as one IP; auth builds `http://` URLs | `proxy_set_header X-Forwarded-*` (§7b b) |
+| `proxy_request_buffering off` | Every Stripe webhook fails signature verification; payments never confirm | in the API's `location /` |
+| `client_max_body_size` | Uploads fail with `413` at exactly 1 MB | per server block |
+
+### h. Day-to-day commands
+
+Substitute these for the Caddy commands elsewhere in this runbook:
+
+```bash
+sudo nginx -t                            # validate before every reload
+sudo systemctl reload nginx              # apply config (zero downtime)
+sudo tail -f /var/log/nginx/error.log    # proxy failures, upstream errors
+sudo tail -f /var/log/nginx/access.log   # requests
+sudo certbot certificates                # what's issued, and when it expires
+```
 
 ---
 
@@ -881,12 +1110,16 @@ appearing in the public site's example too.
 | `services.backend.env_file: poorly formatted environment` | The stray `the` at the top of `.env.production`, or unquoted `MAIL_FROM` | Delete the word; quote `MAIL_FROM` |
 | Login succeeds then says logged out (redirect loop) | `COOKIE_DOMAIN` differs between backend and dashboard, or missing its leading dot | Make both exactly `.tripwheel.app`, rebuild the dashboard, clear cookies |
 | Every dashboard request fails CORS | Origin not in `CORS_ORIGINS`, or spaces after commas | Add it, no spaces, `docker compose up -d` |
-| Caddy: `could not get certificate` | DNS not resolving yet, port 80 blocked, or Cloudflare orange cloud | `dig +short <host>`, `ufw status`, grey-cloud it |
+| Caddy: `could not get certificate`, or certbot: `Challenge failed` | DNS not resolving yet, port 80 blocked, or Cloudflare orange cloud | `dig +short <host>`, `ufw status`, grey-cloud it |
 | Public site shows old prices after an edit | `REVALIDATE_SECRET` mismatch or `REVALIDATE_TARGET_URL` unset | Align secrets; check dashboard logs for a 401 from `/api/revalidate` |
 | Browser API calls all 401 | Cookie not shared — an app is on a different apex | All hosts must sit under the `COOKIE_DOMAIN` apex |
 | `next build` fails with 429 / timeouts | `INTERNAL_API_SECRET` mismatch, so the build is throttled as an anonymous visitor | Copy the exact backend value, rebuild |
 | Build dies with `Killed` | Out of memory | Swap on, build one at a time, cap the heap |
-| Bad gateway from Caddy | The app on that port isn't running | `pm2 status` / `docker compose ps` |
+| `502 Bad Gateway` from the proxy | The app on that port isn't running | `pm2 status` / `docker compose ps` |
+| nginx won't start: `Address already in use` | Caddy still holds port 80 | `sudo systemctl disable --now caddy` |
+| Every Stripe webhook fails signature verification (nginx) | `proxy_request_buffering off` missing from the API block | §7b g |
+| Uploads fail with `413` at ~1 MB (nginx) | `client_max_body_size` left at the default | §7b g |
+| Rate limiting throttles everyone at once (nginx) | `X-Forwarded-For` not being set | §7b b |
 | No emails arriving | Resend domain unverified, or `MAIL_FROM` on an unverified domain | Finish DKIM/SPF in DNS |
 | Changed a `NEXT_PUBLIC_*`, nothing happened | Compiled in at build time | `pnpm build` then `pm2 restart <app>` |
 
