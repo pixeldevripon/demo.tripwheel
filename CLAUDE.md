@@ -14,17 +14,16 @@ apps as plain directories — not a container for several repos, and not the pro
 
 ---
 
-## 1. Layout — one repo, three directories, two of them deployed
+## 1. Layout — one repo, two apps, one API
 
 | Directory | What it is | Stack | Deployed to |
 |---|---|---|---|
 | `backend-frontend/backend` | NestJS API — **the only thing that owns a database** | NestJS 11 · Prisma 7 · Postgres | **VPS** (Docker) |
 | `backend-frontend/frontend` | Public traveller site | Next.js 16 | **Vercel** |
 | `dashboard` | Operator + admin CRM — **and the admin login gate** | Next.js 16 | **Vercel** |
-| `tripwheel-app` | Superseded. The admin gate moved into `dashboard` | Next.js 16 | **not deployed** |
 
-`tripwheel-app/` is still in the tree but nothing builds, deploys, or references it. Treat it as
-dead weight, not as a fourth app.
+There were three apps until the system admin door was merged into `dashboard`; the standalone
+`tripwheel-app` was then deleted. Two apps, one API.
 
 **Only `backend-frontend/backend` owns a database.** The two Next.js apps have no Prisma client and
 no `DATABASE_URL`; every read and write is an HTTP call to the API. Exactly one Prisma instance
@@ -189,4 +188,3 @@ for the three-repo production workspace.
   Merging the gate means adding the `admin` door here and dropping that outward link.
 - **`ONBOARDING.md` (beside this file) still describes the three-repo world.** It is a good narrative
   tour of the product; its repo/deployment sections are stale.
-- **`tripwheel-app/` is undeployed.** Deleting it is a decision, not a deployment step.

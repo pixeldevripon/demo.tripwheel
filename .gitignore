@@ -3,3 +3,22 @@
 
 # Conductor per-machine settings — local only, never committed
 .conductor/
+
+# Dependencies, build output and local env - at the ROOT, covering every project
+# directory. Each project also has its own .gitignore, but those only apply while
+# the file exists: deleting a project directory removes its .gitignore first, at
+# which point a `git add -A` will happily stage that directory's node_modules
+# (35,835 files, in the one instance this actually happened). Root-level rules
+# survive that.
+node_modules/
+.next/
+out/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+.env
+.env.local
+.env.*.local
+.env.production

@@ -15,14 +15,14 @@
 | Backend API | `backend-frontend/backend` | **VPS** (Docker) | The only thing on the VPS |
 | Public site | `backend-frontend/frontend` | **Vercel** | Its own Vercel project |
 | Dashboard | `dashboard` | **Vercel** | Its own Vercel project. **Also carries the admin login gate** |
-| ~~Admin login app~~ | `tripwheel-app` | **not deployed** | Merged into the dashboard — one application, not two |
 
 So on the VPS: one Docker stack (Postgres + Redis + the API) and one Caddy site. No PM2, and none of
 the `3100`/`3101`/`3102` port juggling the second-instance runbook describes.
 
-> **`tripwheel-app/` is still in this repo but is not deployed anywhere.** It is dead weight for the
-> demo. Leaving it is harmless — nothing builds or references it — but it will mislead anyone reading
-> the tree. Deleting it is a separate decision, not a deployment step.
+> **There is no separate admin application.** The system admin door is `/admin` inside the
+> dashboard, merged in from the standalone `tripwheel-app`, which has since been deleted from the
+> repo. Two apps deploy, not three - so the upstream runbooks' third Vercel project and third PM2
+> entry have no counterpart here.
 
 ---
 
@@ -62,9 +62,9 @@ entirely.
 /opt/demo-tripwheel/            <- git root, one repo. This is VPS_APP_DIR.
 ├── .github/workflows/
 ├── backend-frontend/           <- docker-compose.yml lives HERE, not at the git root
-│   └── backend/
-├── dashboard/
-└── tripwheel-app/
+│   ├── backend/                <- the only thing the VPS runs
+│   └── frontend/               <- built by Vercel, not here
+└── dashboard/                  <- built by Vercel, not here
 ```
 
 ```bash
