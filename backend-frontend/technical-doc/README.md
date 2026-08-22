@@ -13,7 +13,7 @@ This is the navigation index. Start here. Only three files live at the root — 
 | [`03-implementation/`](./03-implementation/) | Build guides, module data specs, per-feature checklists |
 | [`04-multilingual/`](./04-multilingual/) | 7-locale translation architecture and AI translation flow |
 | [`05-access-management/`](./05-access-management/) | Roles, permissions, staff & teams |
-| [`06-deployment/`](./06-deployment/) · [`06-operations/`](./06-operations/) | VPS deployment steps and operations runbook |
+| [`06-deployment/`](./06-deployment/) | VPS deployment steps. Live ops runbooks moved to the repo-level [`docs/operations/`](../../docs/operations/) |
 | [`06-octo-migration/`](./06-octo-migration/) | OCTO API standard migration set |
 | [`emails/`](./emails/) | **Email programme**: wireframes (customer funnel, operator onboarding, booking confirmation) + the build-status audit |
 | [`mockups/`](./mockups/) | Design mockups and dev handoffs (`mck-*.html`, card carousel, search) + screenshots |
@@ -92,7 +92,7 @@ Build guides and per-feature checklists: [IMPLEMENTATION-GUIDE.md](./03-implemen
 
 - **04 — Multilingual:** [MULTILINGUAL-CONTENT.md](./04-multilingual/MULTILINGUAL-CONTENT.md) · [AI-TRANSLATION-FLOW.md](./04-multilingual/AI-TRANSLATION-FLOW.md)
 - **05 — Access:** [ROLES-AND-ACCESS-MANAGEMENT.md](./05-access-management/ROLES-AND-ACCESS-MANAGEMENT.md) · [STAFF-AND-TEAMS.md](./05-access-management/STAFF-AND-TEAMS.md)
-- **06 — Deployment/Ops:** [DEPLOYMENT.md](./06-deployment/DEPLOYMENT.md) · [VPS-DEPLOYMENT-STEPS.md](./06-deployment/VPS-DEPLOYMENT-STEPS.md) · [VPS-OPERATIONS-GUIDE.md](./06-operations/VPS-OPERATIONS-GUIDE.md)
+- **06 — Deployment/Ops:** [DEPLOYMENT.md](./06-deployment/DEPLOYMENT.md) · [VPS-DEPLOYMENT-STEPS.md](./06-deployment/VPS-DEPLOYMENT-STEPS.md) · [VPS-OPERATIONS-GUIDE.md](../../docs/operations/VPS-OPERATIONS-GUIDE.md)
 - **06 — OCTO migration:** start with [OCTO-SPECIFICATION-REFERENCE.md](./06-octo-migration/OCTO-SPECIFICATION-REFERENCE.md), then [OCTO-API-MIGRATION-CHECKLIST.md](./06-octo-migration/OCTO-API-MIGRATION-CHECKLIST.md), [OCTO-AVAILABILITY-AND-BOOKING.md](./06-octo-migration/OCTO-AVAILABILITY-AND-BOOKING.md), [OCTO-PRISMA-SCHEMA-DESIGN.md](./06-octo-migration/OCTO-PRISMA-SCHEMA-DESIGN.md), [OCTO-FRONTEND-ALIGNMENT.md](./06-octo-migration/OCTO-FRONTEND-ALIGNMENT.md)
 - **reviews/ (review module):** [REVIEW-MODULE-REQUIREMENTS.md](./reviews/REVIEW-MODULE-REQUIREMENTS.md) · [REVIEW-MODULE-PLAN.md](./reviews/REVIEW-MODULE-PLAN.md) · [REVIEW-MODULE-CHECKLIST.md](./reviews/REVIEW-MODULE-CHECKLIST.md) · [REVIEW-MODULE-EXPLAINED.md](./reviews/REVIEW-MODULE-EXPLAINED.md) · strategy HTMLs (build-vs-buy, strategy, verification)
 - **login/:** numbered set `01-login-design-summary` → `04-why-better-auth`, plus the research/spec/mockup that fed it

@@ -5,7 +5,7 @@
 > the other, never both.
 >
 > **Day-2 operations** (password rotation, restores, audit logs, Sentry, OTel, rate-limit tuning,
-> scaling) live in `island-tour-development/technical-doc/06-operations/VPS-OPERATIONS-GUIDE.md`.
+> scaling) live in `VPS-OPERATIONS-GUIDE.md` (beside this file).
 > That guide assumes the **frontends are on Vercel** — §8 below replaces that part. Its nginx
 > notes cover the API only; §7b here covers all five sites. Everything it says about Postgres,
 > Redis, backups and monitoring still applies.
