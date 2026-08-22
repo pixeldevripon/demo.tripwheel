@@ -676,7 +676,203 @@ the token is set, so don't make it required until then.
 
 ---
 
-## 12. Redeploying
+## 12. Database access and a GUI
+
+Postgres publishes **no port** — `docker-compose.yml` says so in a comment — so nothing on the
+internet can reach it. You don't have to give that up to get a table browser.
+
+The ports below are chosen to avoid three separate collisions: production's Postgres on the VPS, the
+tunnel you may already use for production, and the Postgres 17.4 running on your own machine.
+
+| | Production | **Demo** |
+|---|---|---|
+| VPS loopback port | `5432` | **`5433`** |
+| Your laptop's tunnel port | `5433` | **`5434`** |
+
+### a. Open a loopback port on the VPS (once)
+
+Add a port mapping bound to `127.0.0.1`. Postgres stays invisible to the internet and behind the
+firewall; this is only what makes an SSH tunnel possible.
+
+```yaml
+# backend-frontend/docker-compose.yml -> postgres service
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    ports:
+      # Loopback ONLY, and 5433 because production holds 5432 on this box.
+      # Never '5433:5432' without the 127.0.0.1 - that publishes it to the
+      # world, and Docker's iptables rules bypass UFW.
+      - '127.0.0.1:5433:5432'
+```
+
+```bash
+cd /opt/demo-tripwheel/backend-frontend
+docker compose up -d postgres
+sudo ss -tlnp | grep 5433        # the line must start with 127.0.0.1
+```
+
+### b. Tunnel it to your laptop
+
+Run this locally and leave it open. The demo database appears at `localhost:5434`, encrypted through
+SSH, with no port open anywhere.
+
+```bash
+ssh -N -L 5434:127.0.0.1:5433 deploy@YOUR_VPS_IP
+```
+
+### c. Point a GUI at it
+
+| Field | Value |
+|---|---|
+| Host | `127.0.0.1` |
+| Port | `5434` |
+| Database | `island_tours` (underscore) |
+| User | `POSTGRES_USER` from `backend-frontend/.env` |
+| Password | `POSTGRES_PASSWORD` from the same file |
+| SSL | disable — the tunnel already encrypts it |
+
+**TablePlus** (fastest on macOS, also speaks Redis), **DBeaver** (free, no limits), or **pgAdmin 4**
+(the official one). Any will do.
+
+### d. Prisma Studio — the schema-aware option
+
+A desktop client shows raw tables; Studio shows your *model*, so relations are clickable and enums
+are dropdowns. Better for eyeballing a booking with its operator and tour together.
+
+```bash
+# with the tunnel from (b) open, on your laptop
+cd ~/devripon/demo.tripwheel/backend-frontend/backend
+
+DATABASE_URL="postgresql://island:YOUR_PASSWORD@127.0.0.1:5434/island_tours?schema=public" \
+  pnpm prisma studio        # opens http://localhost:5555
+```
+
+The inline `DATABASE_URL` wins: `prisma.config.ts` loads `dotenv`, which does not override variables
+that are already set, so your local `.env` cannot hijack the connection.
+
+> **Studio writes are real writes and bypass every business rule.** Editing `tier_key` without also
+> updating `tier_rank`, `commission_tier` and `deposit_pct` leaves a tour permanently mis-ranked, and
+> a confirmed booking with a null `commission_amount` is treated as data corruption. Use Studio to
+> **read**; make changes through the dashboard.
+
+### e. Quick queries, no GUI
+
+```bash
+cd /opt/demo-tripwheel/backend-frontend
+docker compose exec postgres psql -U island -d island_tours
+
+docker compose exec postgres psql -U island -d island_tours \
+  -c "SELECT status, count(*) FROM bookings GROUP BY status;"
+```
+
+`\dt` lists tables, `\d bookings` describes one, `\q` quits.
+
+### f. Redis
+
+The password lives in the compose `.env`, not your shell — load it first, or `redis-cli`
+authenticates with an empty string and every command returns `NOAUTH`.
+
+```bash
+cd /opt/demo-tripwheel/backend-frontend
+export $(grep '^REDIS_PASSWORD=' .env | xargs)
+
+docker compose exec redis redis-cli -a "$REDIS_PASSWORD" ping          # PONG
+docker compose exec redis redis-cli -a "$REDIS_PASSWORD" keys 'bull:*'
+```
+
+`bull:*` keys are the background job queues — nightly ranking, email, translations. Piling up and
+never draining means the worker side is stuck.
+
+### g. A browser GUI on a subdomain (convenient, riskier)
+
+If you want `db.demo.tripwheel.io` from any browser, run **pgweb** on the internal network with the
+proxy's basic auth in front. Understand the trade: a database that is currently unreachable becomes
+one stolen password away. The tunnel above is strictly safer.
+
+```yaml
+# backend-frontend/docker-compose.yml
+  pgweb:
+    image: sosedoff/pgweb:latest
+    restart: unless-stopped
+    environment:
+      PGWEB_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+    ports:
+      - '127.0.0.1:8081:8081'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - island-net
+```
+
+Add an `A` record for `db.demo` → the VPS, then whichever proxy you chose in §8:
+
+**Caddy** — `caddy hash-password` (prompts twice), then:
+
+```caddy
+db.demo.tripwheel.io {
+	basic_auth {
+		ripon $2a$14$PASTE_THE_HASH_HERE
+	}
+	reverse_proxy 127.0.0.1:8081
+}
+```
+
+`basic_auth` needs Caddy 2.8+ (it was `basicauth` before) — check `caddy version`.
+
+**nginx** — `sudo apt install -y apache2-utils && sudo htpasswd -c /etc/nginx/.htpasswd ripon`, then a
+new file in `sites-available`:
+
+```nginx
+server {
+    listen 80;
+    server_name db.demo.tripwheel.io;
+
+    auth_basic           "Restricted";
+    auth_basic_user_file /etc/nginx/.htpasswd;
+
+    location / {
+        proxy_pass http://127.0.0.1:8081;
+        include /etc/nginx/snippets/proxy-common.conf;
+    }
+}
+```
+
+Symlink it, `nginx -t`, reload, then add the host to your `certbot --nginx -d …` list.
+
+### h. Should the demo use Neon instead?
+
+For **production** the answer is no — that app is chatty enough with its database that same-machine
+latency beats a hosted SQL editor. For a **demo** the calculus genuinely shifts: nobody is measuring
+its p95, and Neon's free tier gives you a web SQL editor, a table browser and branchable databases
+with no tunnel at all.
+
+| | Docker Postgres (this runbook) | Neon |
+|---|---|---|
+| Cost | included in the VPS | free tier, then monthly |
+| Query latency | same machine, sub-millisecond | a network hop per query |
+| GUI | tunnel + client (§12b–c) | built into their dashboard |
+| Backups | the cron in §13 | automatic, point-in-time restore |
+| Setup change | none | must edit `docker-compose.yml` |
+
+**If you switch, there is one catch that will waste an afternoon.** `docker-compose.yml` sets
+`DATABASE_URL` in the backend service's `environment:` block, and that **overrides** anything in
+`backend/.env.production`. So you must do both:
+
+1. delete the `postgres` service, **and**
+2. delete the `DATABASE_URL` line from the backend service's `environment:`,
+
+then put the Neon connection string in `backend/.env.production`. Leave that line in place and compose
+will keep pointing the app at a Postgres container that no longer exists.
+
+Keep the Docker Postgres if you want the demo to behave like production. Take Neon if you would rather
+never think about backups or tunnels for a throwaway environment — that is a legitimate choice here in
+a way it is not for the live site.
+
+---
+
+## 13. Redeploying
 
 **Backend** — push to `main`, or run the workflow manually. By hand on the VPS:
 
@@ -710,7 +906,7 @@ day overwrites the first. Copy them off the server, and restore one before you r
 
 ---
 
-## 13. Troubleshooting
+## 14. Troubleshooting
 
 | Symptom | Cause | Fix |
 |---|---|---|
@@ -729,7 +925,7 @@ day overwrites the first. Copy them off the server, and restore one before you r
 
 ---
 
-## 14. Still to do
+## 15. Still to do
 
 - **`ONBOARDING.md` is stale.** Its product tour is good; its repo and deployment sections still
   describe the three-repo production workspace.
