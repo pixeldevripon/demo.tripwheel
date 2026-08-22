@@ -259,10 +259,9 @@ export async function seedBookingsAndPayments(): Promise<void> {
     for (const [bIdx, plan] of plans.entries()) {
       const depPool = plan.when === 'past' ? pastDeps : futureDeps;
       if (depPool.length === 0) continue;
-      const dep =
-        plan.when === 'past'
-          ? depPool[pastCursor++ % depPool.length]
-          : depPool[futureCursor++ % depPool.length];
+      // The departure is chosen AFTER `seats` is known (below) - the pool is
+      // unfiltered by capacity, and it can contain a narrow availability
+      // EXCEPTION departure (capacity 2) while a pax pattern asks for more.
       const traveler = pick(travelers, r());
       const [firstName, ...rest] = (traveler.name ?? 'Guest Traveler').split(
         ' ',
@@ -295,6 +294,28 @@ export async function seedBookingsAndPayments(): Promise<void> {
         });
       }
       const seats = lines.reduce((s, l) => s + l.quantity, 0);
+
+      // Pick a departure that can actually hold this party.
+      //
+      // `departures_booked_within_capacity` rejects bookedCount > capacity, and
+      // the pool is the 10 earliest departures with no capacity filter - so a
+      // round-robin pick could land on an availability EXCEPTION departure
+      // (capacity 2) while the pax pattern asked for 3-6 seats, and the
+      // increment below blew straight through the check. Scan forward from the
+      // cursor instead, keeping the round-robin spread, and skip this booking
+      // when nothing in the pool has room.
+      let dep: (typeof depPool)[number] | undefined;
+      for (let probe = 0; probe < depPool.length; probe++) {
+        const candidate =
+          plan.when === 'past'
+            ? depPool[pastCursor++ % depPool.length]
+            : depPool[futureCursor++ % depPool.length];
+        if (candidate.capacity - candidate.bookedCount >= seats) {
+          dep = candidate;
+          break;
+        }
+      }
+      if (!dep) continue;
 
       // Optional single add-on.
       const addOns: AddOnLine[] = [];
@@ -456,11 +477,16 @@ export async function seedBookingsAndPayments(): Promise<void> {
 
       // Seats consume departure capacity for live holds/confirmations/redemptions.
       if (plan.status === BookingStatus.ON_HOLD || isConfirmedLike) {
-        const newBooked = dep.bookedCount + seats;
+        // Clamped, even though the selection above already guarantees room:
+        // `newBooked` used to feed only the STATUS decision while the increment
+        // ran unguarded, so an overflow reached Postgres and aborted the whole
+        // seed. Keeping the ceiling here means a future change to the pool or
+        // the pax patterns degrades to a full departure instead of a crash.
+        const newBooked = Math.min(dep.bookedCount + seats, dep.capacity);
         await prisma.departure.update({
           where: { id: dep.id },
           data: {
-            bookedCount: { increment: seats },
+            bookedCount: newBooked,
             status:
               newBooked >= dep.capacity ? DepartureStatus.SOLD_OUT : undefined,
             soldOutAt: newBooked >= dep.capacity ? new Date() : undefined,

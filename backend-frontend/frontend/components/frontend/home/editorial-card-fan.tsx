@@ -3,8 +3,8 @@
 import { motion, useReducedMotion } from 'framer-motion';
 import Image from 'next/image';
 import { useRef, useState } from 'react';
-import { useClickOutside } from '../navbar/lib/use-click-outside';
 import { MotionLink } from '../motion-link';
+import { useClickOutside } from '../navbar/lib/use-click-outside';
 
 type CategoryKey = 'buggy' | 'snorkel' | 'catamaran';
 
@@ -140,7 +140,7 @@ export function EditorialCardFan({
                         </span>
                         {/* Mockup `.lb` */}
                         <span className='block px-3 py-2.5 lg:px-[13px] lg:py-[11px]'>
-                            <span className='block text-[13px] lg:text-[18px] font-medium leading-[1.6] text-it-white tracking-[-0.012em]'>
+                            <span className='block text-[13px] lg:text-[18px] font-medium leading-[1.6] text-it-ink tracking-[-0.012em]'>
                                 {title}
                             </span>
                             {priceFrom && (
@@ -225,3 +225,4 @@ export function EditorialCardFan({
         </div>
     );
 }
+
