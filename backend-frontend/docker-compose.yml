@@ -1,16 +1,23 @@
 # ──────────────────────────────────────────────────────────────────────────────
-# Island Tours - PRODUCTION stack (Hostinger VPS)
+# Island Tours DEMO - backend stack (Hostinger VPS)
 #
 #   postgres  - app database (internal only, persisted to a named volume)
 #   redis     - BullMQ broker (internal only, password-protected, persisted)
-#   backend   - NestJS API, bound to 127.0.0.1 so nginx terminates TLS in front
+#   backend   - NestJS API, bound to 127.0.0.1 so the reverse proxy terminates
+#               TLS in front of it (Caddy or nginx - either works, pick one)
 #
-# The frontend is NOT here - it is deployed separately on Vercel and talks to
-# this backend over https://api.<your-domain> (nginx -> 127.0.0.1:5050).
+# This is the ONLY thing that runs on the VPS. The public site and the dashboard
+# build on Vercel and reach this stack over https://api.demo.<your-domain>, which
+# the proxy forwards to 127.0.0.1:5150. There is no third app - the admin login
+# gate lives inside the dashboard.
 #
-# Compose reads ./.env automatically for the ${VARS} below. Backend app secrets
-# come from ./backend/.env.production (see env_file). Copy the *.example files
-# and fill them in before the first `docker compose up`.
+# Compose reads ./.env automatically for the ${VARS} below, including
+# COMPOSE_PROJECT_NAME - which is what keeps this stack's volumes separate from
+# production's when both run on one box. Backend app secrets come from
+# ./backend/.env.production (see env_file). Copy the *.example files and fill
+# them in before the first `docker compose up`.
+#
+# Full runbook: docs/operations/DEMO-DEPLOYMENT.md
 #
 #   docker compose up -d --build
 # ──────────────────────────────────────────────────────────────────────────────
@@ -74,28 +81,50 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       # Seed only on the boot where you explicitly ask for it (first deploy).
       RUN_SEED: ${RUN_SEED:-false}
-      # TEMPORARY, 2026-07-21 - diagnosing pg's "client.query() when the client
-      # is already executing a query" DeprecationWarning, which appears only in
-      # this container (the BullMQ workers do not run locally without Redis).
+      # Off by default. Upstream ran --trace-deprecation here from 2026-07-21 to
+      # chase a pg "client.query() while the client is already executing a query"
+      # DeprecationWarning: Node prints each one ONCE and WITHOUT a stack, so the
+      # bare line names no caller. Application Prisma code was ruled out
+      # (`Promise.all` on the pool, `$transaction([...])` batches, and
+      # `Promise.all` inside an interactive transaction all verified clean, since
+      # Prisma serializes operations on a transaction connection) - so the caller
+      # is a dependency.
       #
-      # Node prints each DeprecationWarning ONCE and WITHOUT a stack, so the bare
-      # line names no caller and cannot be traced after the fact. With this flag
-      # the same warning arrives with a full stack pointing at the code
-      # responsible. Application Prisma code is already ruled out: `Promise.all`
-      # on the pool, `$transaction([...])` batches, and even `Promise.all` inside
-      # an interactive transaction were all verified clean - Prisma serializes
-      # operations on a transaction connection - so the caller is a dependency.
+      # On the demo that flag is only log noise: it makes every deprecation in
+      # every dependency print a stack. To turn it back on for an investigation,
+      # set `NODE_OPTIONS=--trace-deprecation` in ./.env.
       #
-      # REMOVE once the culprit is identified: --trace-deprecation makes every
-      # deprecation in every dependency print a stack, which is noise in normal
-      # operation. To switch it off without editing this file, put an EMPTY
-      # `NODE_OPTIONS=` in ./.env - the default below uses `-` rather than `:-`
-      # precisely so an empty value counts as "set" and wins.
-      NODE_OPTIONS: ${NODE_OPTIONS---trace-deprecation}
-    # Port exposed to Coolify's Traefik proxy (or nginx if self-managed).
-    # Coolify's reverse proxy runs inside Docker so loopback binding is removed.
+      # `-` rather than `:-` on purpose, so an explicitly EMPTY value in ./.env
+      # still counts as "set" and wins over this default.
+      NODE_OPTIONS: ${NODE_OPTIONS-}
+    # Bound to LOOPBACK. The proxy (Caddy or nginx) is the only public entrance,
+    # and it reaches the API over 127.0.0.1 on the host.
+    #
+    # Keep the `127.0.0.1:` prefix on whatever you set in ./.env. A bare port
+    # binds 0.0.0.0, and Docker writes its own iptables rules, so UFW will NOT
+    # protect you - the API would be reachable from the internet with no TLS.
+    #
+    # The default is the DEMO port, so a missing or unset BACKEND_PORT fails
+    # closed on the demo's own port rather than open on production's 5050.
     ports:
-      - '${BACKEND_PORT:-5050}:5050'
+      - '${BACKEND_PORT:-127.0.0.1:5150}:5050'
+    healthcheck:
+      # Postgres and Redis are health-checked above; without this the API is not,
+      # so a container that boots and then wedges stays `Up` forever and is never
+      # restarted. `node -e` rather than curl: the runtime image is node:24-slim
+      # and has no curl, but it does have a global fetch.
+      test:
+        [
+          'CMD-SHELL',
+          'node -e "fetch(''http://127.0.0.1:5050/api/v1/health'').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      # Migrations (and optionally the seed) run in docker-entrypoint.sh before
+      # the server listens. Without a start period a slow migration looks like a
+      # failing container.
+      start_period: 60s
     depends_on:
       postgres:
         condition: service_healthy
