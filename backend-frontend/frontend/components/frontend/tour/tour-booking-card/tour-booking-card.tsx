@@ -49,7 +49,7 @@ function TourBookingCardLayout() {
     useBookingSelectionPersistence();
 
     return (
-        <div className='flex bg-it-surface flex-col gap-3.5'>
+        <div className='flex bg-it-surface rounded-[16px] flex-col gap-3.5'>
             {/* Main booking card — a viewport-capped flex column (mirrors the
                 tours filter modal): the price header and the CTA stay pinned,
                 and EVERYTHING the traveller fills in between them - date,
@@ -83,7 +83,7 @@ function TourBookingCardLayout() {
                 hairline - which is what Figma's layering was actually doing. */}
             <div
                 ref={cardRef}
-                className='flex scroll-mt-20 flex-col lg:max-h-[calc(100vh-7rem)]'>
+                className='flex scroll-mt-20  flex-col lg:max-h-[calc(100vh-7rem)]'>
                 {/* Price header — never scrolls */}
                 <div className='shrink-0'>
                     <PriceHeader />
@@ -261,3 +261,4 @@ export function TourBookingCard({
         </BookingStoreProvider>
     );
 }
+
