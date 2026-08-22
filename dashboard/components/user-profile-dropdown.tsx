@@ -70,17 +70,15 @@ export default function ProfileDropdown({
                     queryClient.clear();
                     // Land the session back on the door it ENTERED through
                     // (multi-hat accounts sign back in where they left off);
-                    // legacy surface-less sessions fall back to role. The
-                    // admin login is a separate app on another origin, so it
-                    // needs a full navigation, not router.push.
+                    // legacy surface-less sessions fall back to role.
+                    //
+                    // All three doors are in-app routes now that the admin gate
+                    // was merged into this dashboard, so every case is a plain
+                    // router.push. `admin` used to need a full navigation to
+                    // NEXT_PUBLIC_ADMIN_LOGIN_URL, back when it was a separate
+                    // deployment on another origin.
                     const door = doorForSession(loggedInUser?.role, surface);
-                    if (door === 'admin') {
-                        window.location.href =
-                            process.env.NEXT_PUBLIC_ADMIN_LOGIN_URL ||
-                            '/portal';
-                    } else {
-                        router.push(`/${door}`);
-                    }
+                    router.push(`/${door}`);
                 },
             },
         });

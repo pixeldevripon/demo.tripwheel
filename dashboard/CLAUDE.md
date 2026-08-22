@@ -18,12 +18,29 @@ change. This directory is `dashboard/`; the API and public site are `../backend-
 frontend}`.
 
 This app is the operator + admin CRM **and the admin login gate** — there is no separate admin
-application in this deployment. (`../tripwheel-app` is superseded and undeployed. The `admin` door is
-not built here yet: `app/(login)/` has `portal` and `staff` only, and
-`components/login/login-ui.tsx` still links outward via `NEXT_PUBLIC_ADMIN_LOGIN_URL`.)
+application in this deployment. `../tripwheel-app` is superseded and undeployed.
 
 It deploys to **Vercel** with Root Directory `dashboard`; the API deploys to the VPS. Details in
 `../docs/operations/DEMO-DEPLOYMENT.md`.
+
+---
+
+## The three login doors
+
+`app/(login)/` owns all of them: `/portal` (operators), `/staff`, and `/admin` (system
+administrators, merged in from `tripwheel-app`). Each has its own shell, its own `forgot` and
+`reset` routes and its own button style, so no two doors read as one surface. All three must stay in
+`proxy.ts`'s `UNGUARDED_PREFIXES` — guarding a login door is a redirect loop.
+
+**`/admin` deliberately does not reuse `AuthForm`.** The operator and staff doors render
+`WrongDoorNote`, which names the surface an account actually belongs to. That is helpful there and
+exactly what the admin door must never do: it would confirm which emails are real admin accounts.
+So `admin-login.tsx` answers every failure with one generic string, and additionally verifies the
+freshly-minted session really is `ADMIN` before handing over. Keeping that logic in its own
+component rather than as an `AuthForm` variant means a later edit to the shared form cannot silently
+reintroduce the hint.
+
+`NEXT_PUBLIC_ADMIN_LOGIN_URL` is retired — there is no other origin to point at.
 
 Coupling to respect — all silent, none fails to compile:
 
