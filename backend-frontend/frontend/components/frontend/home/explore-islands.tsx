@@ -74,7 +74,7 @@ export function ExploreIslands({
                                         <span className='font-medium text-[14.5px] md:text-[20px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
                                             {island.name}
                                         </span>
-                                        <span className='text-[12px] md:text-[13px] leading-[1.6] text-it-white/70 tabular-nums tracking-[-0.012em]'>
+                                        <span className='text-[12px] md:text-[13px] leading-[1.6] text-it-ink/70 tabular-nums tracking-[-0.012em]'>
                                             {island.tours} {dict.tours}
                                         </span>
                                     </div>
