@@ -7,35 +7,19 @@ The Tripwheel marketing site and its login door. Next.js 16 on **:3002**. Today 
 
 ---
 
-## Push remotes — per repo, not a shared convention
+## SUPERSEDED — this app is not deployed
 
-| Repo | Push to | Base |
-|---|---|---|
-| `tripwheel-app` (this one) | **`pixelvega`** | `main` |
-| `island-tour-development` | **`pixelvega`** | `prod` |
-| `tripwheel-x-islandtours-dashboard` | **`pixelvega`** | `main` |
-
-**Every change goes on its OWN BRANCH and lands as a PR. Never commit straight to
-the base branch.** Branch off the fetched base, push that branch to `pixelvega`,
-open the PR against the base — one branch per PR, no exceptions and no batching
-of unrelated work onto a shared branch.
-
-```bash
-git fetch pixelvega main
-git switch -c <branch> pixelvega/main
-# ... commit ...
-git push -u pixelvega <branch>
-gh pr create --base main --head <branch>
-```
-
-This repo also has an `origin` (devripon-tr/tripwheel.app) that is **not** the push target. Name the
-remote explicitly on every push — a bare `git push`, or assuming `origin`, sends work to the wrong
-GitHub org.
-
-All three repos push to `pixelvega`; only the BASE BRANCH differs (`prod` for
-`island-tour-development`, `main` for the other two). This table previously said the dashboard
-pushes to `origin` — that was wrong. The dashboard's `origin` (devripon-tr) was 103 commits behind
-as of 2026-08-02, so a PR against it spans the whole backlog rather than the change.
+> In the **demo** deployment (`demo.tripwheel`), the admin login gate lives inside `../dashboard`,
+> not here. Nothing builds, deploys, or references this directory: no Vercel project, no CI path
+> filter, no workflow. It is kept only so its history and its login UI are available while the gate
+> is merged into the dashboard.
+>
+> The section that used to sit here described a `pixelvega` push target and a three-repo workspace.
+> Neither exists in this checkout — one repo, `origin` → `pixeldevripon/demo.tripwheel`, single
+> `main` branch. **The root `CLAUDE.md` is authoritative.**
+>
+> Everything below is retained as reference for the merge, and describes how this app behaved as a
+> standalone deployment. Do not treat it as a description of how the demo works today.
 
 ---
 

@@ -72,64 +72,39 @@ one canonical flat URL `/{locale}/{destination}/{tour-slug}/`.
 
 ---
 
-## Repo layout — this is a three-repo product
+## Repo layout — one repo in this checkout
 
-This repo is **not** the whole system. Three sibling checkouts live under
-`tripwheel-x-islandtours/`, each with its own git remote and its own branch:
+> **This is the DEMO monorepo (`demo.tripwheel`), not the three-repo production workspace.** The
+> section that used to sit here described three sibling repos, four git remotes, a `pixelvega` push
+> target and a `prod` base branch. None of that exists in this checkout. **The root `CLAUDE.md` is
+> authoritative on layout, git and deployment** — read it before pushing anything.
 
-| Repo | What it is | Port |
-|---|---|---|
-| `island-tour-development` (this one) | `backend/` NestJS API + `frontend/` public site | 5050 · 3000 |
-| `tripwheel-x-islandtours-dashboard` | Operator + admin CRM. Standalone Next.js, shares no code with the public site | 3001 |
-| `tripwheel-app` | Tripwheel system-admin door. Currently only `app/(auth)` — login/forgot/reset | 3002 |
+Short version: one repo, `origin` → `pixeldevripon/demo.tripwheel`, single `main` branch, branch +
+PR for every change. This directory is `backend-frontend/` and holds `backend/` (the API) plus
+`frontend/` (the public site). The dashboard is `../dashboard`.
 
-### Push remotes — per repo, and NOT a shared convention
+**Only `backend/` owns a database.** The dashboard and the public site have no Prisma client and no
+`DATABASE_URL` — every read and write is an HTTP call to the API. This is rule #14 ("only one Prisma
+instance per process") expressed across directories.
 
-| Repo | Push to | Base |
-|---|---|---|
-| `island-tour-development` (this one) | **`pixelvega`** | `prod` |
-| `tripwheel-x-islandtours-dashboard` | **`pixelvega`** | `main` |
-| `tripwheel-app` | **`pixelvega`** | `main` |
+Cross-app coupling to respect when changing anything (all of it silent — none fails to compile):
 
-**Every change goes on its OWN BRANCH and lands as a PR. Never commit straight to
-the base branch.** Branch off the fetched base, push that branch to `pixelvega`,
-open the PR against the base — one branch per PR, no exceptions and no batching
-of unrelated work onto a shared branch.
-
-```bash
-git fetch pixelvega prod
-git switch -c <branch> pixelvega/prod
-# ... commit ...
-git push -u pixelvega <branch>
-gh pr create --base prod --head <branch>
-```
-
-**This repo has FOUR remotes** — `org` (tripwheel-io), `org-personal` (devripon-tr), `origin`
-(Deveripon) and `pixelvega` (pixeldevripon/island-tours). Only the last is the push target, and the
-base branch is `prod`, not `main`. Name the remote and the branch explicitly on every push: a bare
-`git push` sends work to whichever remote the branch happens to track, across four different GitHub
-accounts.
-
-`origin` is stale in the dashboard repo too (devripon-tr, 103 commits behind as of 2026-08-02) — a
-PR opened against it spans the whole backlog instead of your change.
-
-**Only `backend/` owns a database.** The dashboard and the public site have no Prisma client and
-no `DATABASE_URL` — every read and write is an HTTP call to `:5050`. This is rule #14 ("only one
-Prisma instance per process") expressed across repos.
-
-Cross-repo coupling to respect when changing anything:
-
-- **`lib/config/rbac.ts` in the dashboard mirrors `backend/src/config/roles.config.ts`.** Adding or
-  renaming a `Permission` means editing both repos or the dashboard silently mis-gates the UI.
-- **Backend `CORS_ORIGINS` must list `http://localhost:3001`.** Every dashboard API call runs in the
-  browser with credentials; omit the origin and all of them CORS-fail.
+- **`../dashboard/lib/config/rbac.ts` mirrors `backend/src/config/roles.config.ts`.** Adding or
+  renaming a `Permission` means editing both, or the dashboard silently mis-gates its UI.
+- **`lib/cache-tags.ts` must be byte-identical** in `frontend/` and `../dashboard/`. A drifted tag is
+  rejected as `unknown_tag` at runtime.
+- **Backend `CORS_ORIGINS` must list every browser origin** that calls the API — locally
+  `http://localhost:3000` and `http://localhost:3001`, in the demo both Vercel origins. Omit one and
+  all of its requests CORS-fail, sign-in included.
 - **The dashboard POSTs cache revalidations to the public site** (`REVALIDATE_TARGET_URL` →
-  `http://localhost:3000/api/revalidate`), authenticated with `INTERNAL_API_SECRET` — which must
-  match the backend's and must never be `NEXT_PUBLIC_`-prefixed.
+  `<site>/api/revalidate`), authenticated with `REVALIDATE_SECRET`. Server-only; never
+  `NEXT_PUBLIC_`-prefixed.
 - **The Better Auth session cookie is issued by the backend** and scoped to the shared parent domain
   (`COOKIE_DOMAIN`). No frontend ever runs `betterAuth()` itself (rule #12).
-- Ports are pinned, not incidental. 3000/3001 cannot be swapped — the revalidation target depends on
-  the split.
+- Local ports are pinned, not incidental: 3000 and 3001 cannot be swapped, because the revalidation
+  target depends on the split.
+
+---
 
 > The **Frontend dashboard RBAC pattern** and **translation form** sections below describe the
 > dashboard repo, not `frontend/` in this one. `frontend/` is the public site only: its routes are
