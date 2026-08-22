@@ -283,4 +283,17 @@ export class ConfirmPasswordChangeResponseDto {
       'The password is now live and every session (including this one) was revoked.',
   })
   changed!: boolean;
+
+  @ApiProperty({
+    enum: Role,
+    example: Role.ADMIN,
+    description:
+      "The account's role, so the caller can offer the right sign-in door. " +
+      'Every session was just revoked, so the client has no session left to ' +
+      'read this from; without it the confirmation screen can only guess, and ' +
+      'guessing sends an admin to the operator login. Safe to return: the ' +
+      'caller has already redeemed a single-use token bound to this user, so ' +
+      'it discloses nothing they did not just prove they held.',
+  })
+  role!: Role;
 }

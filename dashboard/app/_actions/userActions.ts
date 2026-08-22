@@ -61,8 +61,19 @@ export async function requestPasswordChangeAction(
  * Step 2: redeem the emailed token. Deliberately takes no session - the link
  * is usually opened on a phone that is not signed in; the single-use token is
  * the credential.
+ *
+ * Returns the account's role so the confirmation screen can send the user to
+ * their own sign-in door. Every session is revoked by this call, so there is no
+ * session left for the client to read the role from - and without it the screen
+ * can only guess, which sent admins to the operator login.
+ *
+ * `role` is optional in the return type on purpose: an older backend answers
+ * without it, and a missing role must degrade to the default door rather than
+ * break the screen that just successfully changed someone's password.
  */
-export async function confirmPasswordChangeAction(token: string): Promise<void> {
+export async function confirmPasswordChangeAction(
+    token: string,
+): Promise<{ role?: string }> {
     const res = await fetch(`${BACKEND_URL}/api/v1/users/me/password-change/confirm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -75,6 +86,9 @@ export async function confirmPasswordChangeAction(token: string): Promise<void> 
             status: res.status,
         });
     }
+
+    const body = (await safeJson(res)) as { role?: string } | null;
+    return { role: body?.role };
 }
 
 async function safeJson(res: Response) {

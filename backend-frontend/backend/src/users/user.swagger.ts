@@ -267,7 +267,9 @@ export function ApiConfirmPasswordChangeDocs() {
         'session; the token is single-use and expires in 1 hour. Every session ' +
         'is revoked on success, including the one that requested the change. ' +
         'Unknown, used and expired tokens all return the same 400 so the ' +
-        'endpoint cannot confirm a guessed token.',
+        'endpoint cannot confirm a guessed token. The success body carries the ' +
+        "account's role so the caller can link to the right sign-in door - " +
+        'there is no session left for it to read that from.',
     }),
     ApiResponse({
       status: 201,

@@ -13,6 +13,7 @@ import { useMutation } from '@tanstack/react-query';
 
 import { confirmPasswordChangeAction } from '@/app/_actions/userActions';
 import { Button } from '@/components/ui/button';
+import { doorForSession, type SessionDoor } from '@/lib/rbac-utils';
 
 /**
  * Landing page for the emailed password-change link.
@@ -24,13 +25,24 @@ import { Button } from '@/components/ui/button';
  */
 export function ConfirmPasswordChangeClient({ token }: { token?: string }) {
     const [done, setDone] = useState(false);
+    // Which sign-in door to offer afterwards. Derived from the role the confirm
+    // call returns, because this request revokes every session - there is none
+    // left to read a role from. `doorForSession` is the same helper sign-out
+    // uses, so the two paths can never send one account to different doors.
+    const [door, setDoor] = useState<SessionDoor>('portal');
 
     const mutation = useMutation({
         mutationFn: async () => {
             if (!token) throw new Error('This link is missing its token.');
-            await confirmPasswordChangeAction(token);
+            return confirmPasswordChangeAction(token);
         },
-        onSuccess: () => setDone(true),
+        onSuccess: result => {
+            // No surface to pass: the session that carried it is gone, so the
+            // door comes from the role alone. An unrecognised or absent role
+            // falls back to /portal rather than failing the screen.
+            setDoor(doorForSession(result?.role, null));
+            setDone(true);
+        },
     });
 
     if (!token) {
@@ -55,7 +67,10 @@ export function ConfirmPasswordChangeClient({ token }: { token?: string }) {
                 body='Your new password is live. Every session was signed out, including this browser, so sign in again with the new password.'
             >
                 <Button asChild size='sm'>
-                    <Link href='/login'>Go to sign in</Link>
+                    {/* The account's own door. `/login` used to be hardcoded
+                        here, and the proxy rewrites that to /portal - so an
+                        admin or staff member landed at the operator login. */}
+                    <Link href={`/${door}`}>Go to sign in</Link>
                 </Button>
             </Shell>
         );

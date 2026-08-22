@@ -484,7 +484,7 @@ export class UserService {
    */
   async confirmPasswordChange(
     dto: ConfirmPasswordChangeDto,
-  ): Promise<{ changed: boolean }> {
+  ): Promise<{ changed: boolean; role: Role }> {
     const pending = await this.prisma.passwordChangeRequest.findUnique({
       where: { tokenHash: hashToken(dto.token) },
       select: {
@@ -523,15 +523,19 @@ export class UserService {
     );
     // Mirrors `revokeSessionsOnPasswordReset` for the reset path.
     await ctx.internalAdapter.deleteSessions(pending.userId);
-    await this.prisma.user.update({
+    // `select` the role off the update we already make - the caller needs it to
+    // offer the right sign-in door, and every session was just revoked so the
+    // client has none left to read it from. No extra query.
+    const { role } = await this.prisma.user.update({
       where: { id: pending.userId },
       data: { hasPassword: true, passwordChangedAt: new Date() },
+      select: { role: true },
     });
 
     this.logger.log(
       `Password changed for user ${pending.userId} after email confirmation (all sessions revoked)`,
     );
-    return { changed: true };
+    return { changed: true, role };
   }
 
   async deleteUser(id: string, requestingUserId: string) {

@@ -763,10 +763,11 @@ describe('UserService', () => {
         newPasswordHash: 'hashed:new',
         expiresAt: new Date(Date.now() + 60_000),
       });
+      prisma.user.update.mockResolvedValue({ role: Role.ADMIN });
 
       const res = await service.confirmPasswordChange({ token: 'raw-token' });
 
-      expect(res).toEqual({ changed: true });
+      expect(res).toEqual({ changed: true, role: Role.ADMIN });
       const ctx = await auth.$context;
       expect(ctx.internalAdapter.updatePassword).toHaveBeenCalledWith(
         'user-1',
@@ -783,6 +784,28 @@ describe('UserService', () => {
       expect(prisma.passwordChangeRequest.deleteMany).toHaveBeenCalledWith({
         where: { id: 'pcr-1' },
       });
+    });
+
+    // Every session is revoked by the confirm, so the client has none left to
+    // read a role from. The response carries it instead - without that the
+    // confirmation screen can only guess a door, and guessing sent admins and
+    // staff to the operator login.
+    it('returns the role so the caller can offer the right sign-in door', async () => {
+      prisma.passwordChangeRequest.findUnique.mockResolvedValue({
+        id: 'pcr-2',
+        userId: 'user-2',
+        newPasswordHash: 'hashed:new',
+        expiresAt: new Date(Date.now() + 60_000),
+      });
+      prisma.user.update.mockResolvedValue({ role: Role.STAFF });
+
+      const res = await service.confirmPasswordChange({ token: 'raw-token' });
+
+      expect(res.role).toBe(Role.STAFF);
+      // Selected off the update that already happens - no extra query.
+      expect(prisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({ select: { role: true } }),
+      );
     });
 
     it('looks the token up by HASH, never by the raw value', async () => {
