@@ -1,19 +1,27 @@
 name: CI
 
-# Lint + build + unit tests for the backend on PRs and pushes (main =
-# integration, prod = release) that touch backend code. The frontend deploys
-# via Vercel's Git integration (with its own build checks), so it is
-# intentionally not covered here.
+# Lint + build + unit tests for the backend, on pushes and PRs against main
+# that touch backend code.
+#
+# MONOREPO NOTE: this file must live at the REPOSITORY ROOT (.github/workflows/).
+# It previously sat at backend-frontend/.github/workflows/, where GitHub never
+# looks - so nothing ran at all. Every path below is repo-relative as a result,
+# not backend-relative.
+#
+# The frontend and the dashboard deploy through Vercel's Git integration, which
+# runs its own `next build` as a required check on every push. They are
+# intentionally not built here too - that would double CI time for no new
+# signal.
 on:
   push:
-    branches: [main, prod]
+    branches: [main]
     paths:
-      - 'backend/**'
+      - 'backend-frontend/backend/**'
       - '.github/workflows/ci.yml'
   pull_request:
-    branches: [main, prod]
+    branches: [main]
     paths:
-      - 'backend/**'
+      - 'backend-frontend/backend/**'
       - '.github/workflows/ci.yml'
 
 concurrency:
@@ -26,11 +34,11 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: backend
+        working-directory: backend-frontend/backend
     env:
       # Prisma needs DATABASE_URL to generate the client even without a real DB.
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/island_tours
-      # Needed for crypto.util.ts which is imported in tests
+      # crypto.util.ts is imported by the specs and validates this at load.
       ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
     steps:
       - uses: actions/checkout@v4
@@ -43,7 +51,9 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-          cache-dependency-path: backend/pnpm-lock.yaml
+          # Repo-relative, unlike `working-directory` above: the cache action
+          # resolves this from the workspace root, not the job's working dir.
+          cache-dependency-path: backend-frontend/backend/pnpm-lock.yaml
 
       - run: pnpm install --frozen-lockfile
 

@@ -25,14 +25,29 @@ jobs:
       issues: read
       id-token: write
 
+    # Skip cleanly when the token is not configured, rather than failing every
+    # PR with a red check. This workflow had never run before - it lived at
+    # backend-frontend/.github/workflows/, where GitHub does not look - so
+    # moving it to the repo root switches it on for the first time, and this
+    # repo has no CLAUDE_CODE_OAUTH_TOKEN secret yet.
+    #
+    # Job-level `env` may read `secrets`, and a step-level `if` may read `env`.
+    # A job-level `if` may NOT read `secrets`, which is why the guard is shaped
+    # this way. Add the secret under Settings > Secrets and variables > Actions
+    # and reviews start running with no further change to this file.
+    env:
+      HAS_CLAUDE_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+
     steps:
       - name: Checkout repository
+        if: env.HAS_CLAUDE_TOKEN == 'true'
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
       - name: Run Claude Code Review
         id: claude-review
+        if: env.HAS_CLAUDE_TOKEN == 'true'
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
