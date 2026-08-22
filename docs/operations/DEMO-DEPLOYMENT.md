@@ -284,8 +284,7 @@ NODE_OPTIONS=
 cp backend/.env.production.example backend/.env.production
 nano backend/.env.production
 ```
-
-The demo-specific lines:
+ demo-specific lines:
 
 ```ini
 # ── URLs ─────────────────────────────────────────────────────
