@@ -689,28 +689,32 @@ tunnel you may already use for production, and the Postgres 17.4 running on your
 | VPS loopback port | `5432` | **`5433`** |
 | Your laptop's tunnel port | `5433` | **`5434`** |
 
-### a. Open a loopback port on the VPS (once)
+### a. The loopback port on the VPS
 
-Add a port mapping bound to `127.0.0.1`. Postgres stays invisible to the internet and behind the
-firewall; this is only what makes an SSH tunnel possible.
+**Already committed** — `backend-frontend/docker-compose.yml` publishes the `postgres` service on
+`127.0.0.1:5433`, so there is nothing to edit. Postgres stays invisible to the internet and behind
+the firewall; the mapping is only what makes an SSH tunnel possible.
 
 ```yaml
-# backend-frontend/docker-compose.yml -> postgres service
-  postgres:
-    image: postgres:16-alpine
-    restart: unless-stopped
+# backend-frontend/docker-compose.yml -> postgres service (already in the repo)
     ports:
-      # Loopback ONLY, and 5433 because production holds 5432 on this box.
-      # Never '5433:5432' without the 127.0.0.1 - that publishes it to the
-      # world, and Docker's iptables rules bypass UFW.
       - '127.0.0.1:5433:5432'
 ```
+
+It lives in the repo rather than in a hand edit on the server because the deploy workflow runs
+`git reset --hard <sha>` in `/opt/demo-tripwheel`. A local edit here is reverted by the next backend
+deploy, and the tunnel then fails with nothing in any log to explain it.
+
+Confirm it is up, after any deploy that recreated the container:
 
 ```bash
 cd /opt/demo-tripwheel/backend-frontend
 docker compose up -d postgres
 sudo ss -tlnp | grep 5433        # the line must start with 127.0.0.1
 ```
+
+If that line starts with anything else — `0.0.0.0` or `*` — stop and put the `127.0.0.1:` prefix
+back. A bare port binds every interface, and Docker's own iptables rules mean UFW will not save you.
 
 ### b. Tunnel it to your laptop
 
