@@ -194,10 +194,48 @@ services:
     networks:
       - island-net
 
+  # OPT-IN ONLY, same `tools` profile as pgadmin - see the note above. Redis
+  # publishes no port either, so the same reasoning applies: running the GUI
+  # inside the stack means it reaches redis:6379 over island-net and there is
+  # no tunnel between the two. You forward RedisInsight's web port instead:
+  #
+  #   docker compose --profile tools up -d redisinsight
+  #   ssh -N -L 5540:127.0.0.1:5540 vps      # then http://127.0.0.1:5540
+  #
+  # Worth having for the bull:* keys specifically. Those are the BullMQ queues -
+  # nightly ranking, email, translations, media upload - and `redis-cli keys`
+  # cannot show you whether a queue is draining or piling up. This can.
+  #
+  # Full walkthrough: docs/operations/DATABASE-GUI-ACCESS.md §6
+  redisinsight:
+    image: redis/redisinsight:latest
+    restart: unless-stopped
+    profiles: ['tools']
+    environment:
+      # Through the tunnel the browser's origin is 127.0.0.1:5540. RedisInsight
+      # checks the origin and rejects a mismatch, and the failure looks like the
+      # app being broken rather than a config problem. Name both spellings.
+      RITRUSTEDORIGINS: http://127.0.0.1:5540,http://localhost:5540
+    volumes:
+      # Without this you re-enter the connection on every restart. RedisInsight
+      # can also be pre-seeded from env vars or a JSON file (2.68+), but the
+      # exact contract was not verified, so the connection is added by hand once
+      # rather than shipping config that might silently do nothing.
+      - redisinsight-data:/data
+    # LOOPBACK ONLY, same rule as everything else here.
+    ports:
+      - '127.0.0.1:5540:5540'
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - island-net
+
 volumes:
   postgres-data:
   redis-data:
   pgadmin-data:
+  redisinsight-data:
 
 networks:
   island-net:

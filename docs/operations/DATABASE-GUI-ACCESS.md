@@ -356,22 +356,83 @@ change this.
 
 ---
 
-## 6. Redis, while you are here
+## 6. Redis — RedisInsight, the same way
 
-TablePlus speaks Redis as well. Tunnel it the same way — the demo's Redis has no published port
-either, so you would need to add one first, which is not currently committed. For the occasional
-look, do it on the VPS instead:
+Redis publishes no port either, so the reasoning from §5b applies unchanged: run the GUI **inside
+the stack**, where it reaches `redis:6379` over `island-net`, and forward its web port rather than
+the database's. A desktop client like TablePlus does speak Redis, but pointing one at the demo would
+mean publishing a loopback port on the `redis` service and running a second tunnel, for no benefit.
+
+The service is **already in `docker-compose.yml`**, behind the same profile:
+
+```yaml
+  redisinsight:
+    image: redis/redisinsight:latest
+    profiles: ['tools']          # a plain `docker compose up -d` ignores it
+    ports:
+      - '127.0.0.1:5540:5540'    # loopback only
+    networks:
+      - island-net
+```
+
+```bash
+ssh vps
+cd /opt/demo-tripwheel/backend-frontend
+docker compose --profile tools up -d redisinsight
+```
+
+```bash
+# from your laptop
+ssh -N -L 5540:127.0.0.1:5540 vps
+# then open http://127.0.0.1:5540
+```
+
+Add the database once: host **`redis`**, port `6379`, password `REDIS_PASSWORD` from
+`backend-frontend/.env`. The `redisinsight-data` volume keeps it, so this is a one-time step.
+
+> **Why the connection is not pre-registered the way pgAdmin's is.** RedisInsight has supported
+> pre-seeding connections from environment variables or a JSON file since 2.68, but the exact
+> variable names and file contract were not verified against this image — and config that is wrong
+> here does not error, it simply does nothing. One manual step beats a committed file that silently
+> fails. Worth revisiting.
+
+`RITRUSTEDORIGINS` is set in the compose file to `http://127.0.0.1:5540,http://localhost:5540`.
+RedisInsight checks the browser's origin and rejects a mismatch, and through a tunnel the origin is
+whichever spelling you typed — the failure looks like the app being broken rather than a config
+problem, so both are listed.
+
+Stop it when you are done:
+
+```bash
+docker compose --profile tools stop redisinsight
+```
+
+### What it is actually for
+
+The `bull:*` keys. Those are the background job queues — nightly ranking, email, translations, media
+upload — and the question you always have is whether a queue is **draining or piling up**.
+`redis-cli keys 'bull:*'` gives you a list, which answers that only if you remember what the list
+looked like last time. RedisInsight shows queue depth directly.
+
+### Without a GUI
+
+Still the fastest for a yes/no check. The password lives in the compose `.env`, not your shell —
+load it first, or `redis-cli` authenticates with an empty string and every command returns
+`NOAUTH`:
 
 ```bash
 cd /opt/demo-tripwheel/backend-frontend
 export $(grep '^REDIS_PASSWORD=' .env | xargs)
 
-docker compose exec redis redis-cli -a "$REDIS_PASSWORD" ping
+docker compose exec redis redis-cli -a "$REDIS_PASSWORD" ping          # PONG
 docker compose exec redis redis-cli -a "$REDIS_PASSWORD" keys 'bull:*'
+docker compose exec redis redis-cli -a "$REDIS_PASSWORD" info
 ```
 
-`bull:*` keys are the background job queues. Piling up and never draining means the worker side is
-stuck.
+> **"The app booted fine" does not mean Redis is connected.** `maxRetriesPerRequest: null` is set
+> deliberately because BullMQ requires it, so a Redis that is down makes the application retry
+> silently forever rather than crash. The only real check is whether `bull:*` keys appear after you
+> use a queue-backed feature.
 
 ---
 
@@ -461,6 +522,9 @@ tunnel costs one terminal and is strictly safer.
 | `http://127.0.0.1:8082` refuses the connection | The port-forward is not open, or pgAdmin is not started | `ssh -N -L 8082:127.0.0.1:8082 vps`, and check `docker compose ps` on the VPS |
 | pgAdmin runs but the server list is empty | `pgadmin-servers.json` did not mount | Confirm the bind mount path; a missing file mounts as an empty directory |
 | A `docker run` of pgAdmin on your Mac cannot see the tunnel | `127.0.0.1` is the container, and `ssh -L` binds loopback only, so `host.docker.internal` is refused | Run pgAdmin on the VPS instead. §5b |
+| RedisInsight loads but refuses to talk to itself | Origin mismatch — it checks the browser origin | `RITRUSTEDORIGINS` must list the spelling you typed. §6 |
+| RedisInsight cannot reach the database | Host entered as `127.0.0.1` | Inside the stack it is the service name, `redis`. §6 |
+| Every `redis-cli` command returns `NOAUTH` | The password was not loaded into the shell | `export $(grep '^REDIS_PASSWORD=' .env \| xargs)`. §6 |
 | Prisma Studio in Docker unreachable from the browser | Studio binds `127.0.0.1` inside the container and has no host flag | Run it natively on the Mac |
 | Studio opens against the wrong database | `DATABASE_URL` from `backend/.env` won | Pass `--url` explicitly (§5c) |
 | Tunnel dies after a while | Idle timeout or laptop sleep | Add the keepalive options in §4a |

@@ -2144,9 +2144,43 @@ docker compose exec redis redis-cli -a <span class="s1">"$REDIS_PASSWORD"</span>
     <p><code class="inl">maxRetriesPerRequest: null</code> is set deliberately because BullMQ requires it. If Redis is down the application <strong>will not crash</strong> — it retries silently forever. The only real check is whether <code class="inl">bull:*</code> keys appear after you use a queue-backed feature.</p>
   </div>
 
-  <h3>Reaching production Redis from a desktop GUI</h3>
+  <h3>Redis in a GUI — RedisInsight, in the stack</h3>
 
-  <p>Redis publishes no port either, and it is only on the internal Docker network — so an ordinary <code class="inl">ssh -L 6380:localhost:6379</code> reaches nothing, because the VPS's own localhost is not where Redis lives. Either exec in on the box as above, or add a loopback publish to the redis service the same way §17 does for Postgres. <strong>RedisInsight</strong> is the best free browser for BullMQ queues; TablePlus also speaks Redis.</p>
+  <p>The reasoning from §19 applies unchanged. Redis publishes no port and lives only on the internal network, so an ordinary <code class="inl">ssh -L 6380:localhost:6379</code> reaches nothing — the VPS's own localhost is not where Redis is. A desktop client would need a loopback publish on the <code class="inl">redis</code> service plus a second tunnel. Running the GUI <strong>inside the stack</strong> avoids both: it reaches <code class="inl">redis:6379</code> over <code class="inl">island-net</code>, and you forward its web port instead.</p>
+
+  <div class="filelabel">backend-frontend/docker-compose.yml — already committed</div>
+  <pre>  redisinsight:
+    image: redis/redisinsight:latest
+    profiles: [<span class="s1">'tools'</span>]          <span class="c1"># a plain `docker compose up -d` ignores it</span>
+    ports:
+      - <span class="s1">'127.0.0.1:5540:5540'</span>    <span class="c1"># loopback only</span>
+    networks:
+      - island-net</pre>
+
+  <pre>docker compose --profile tools up -d redisinsight     <span class="c1"># on the VPS</span>
+ssh -N -L 5540:127.0.0.1:5540 vps                     <span class="c1"># then http://127.0.0.1:5540</span></pre>
+
+  <p>Add the database once: host <strong><code class="inl">redis</code></strong>, port <code class="inl">6379</code>, password <code class="inl">REDIS_PASSWORD</code> from <code class="inl">backend-frontend/.env</code>. The <code class="inl">redisinsight-data</code> volume keeps it.</p>
+
+  <div class="grid g3" style="margin:22px 0">
+    <div class="card g">
+      <span class="num">WHAT IT IS FOR</span>
+      <h5>Queue depth, at a glance</h5>
+      <p><code class="inl">redis-cli keys 'bull:*'</code> gives a list, which tells you whether a queue is draining only if you remember what the list looked like last time. RedisInsight shows the depth directly.</p>
+    </div>
+    <div class="card r">
+      <span class="num">THE ORIGIN CHECK</span>
+      <h5><code class="inl">RITRUSTEDORIGINS</code></h5>
+      <p>RedisInsight rejects a browser origin it does not recognise, and through a tunnel the origin is whichever spelling you typed. Both <code class="inl">127.0.0.1:5540</code> and <code class="inl">localhost:5540</code> are listed in the compose file, because the failure looks like the app being broken rather than a config problem.</p>
+    </div>
+    <div class="card flat">
+      <span class="num">NOT PRE-REGISTERED</span>
+      <h5>Unlike pgAdmin</h5>
+      <p>RedisInsight has supported pre-seeding connections from env vars or a JSON file since 2.68, but the exact contract was not verified against this image — and config that is wrong here does not error, it does nothing. One manual step beats a committed file that silently fails.</p>
+    </div>
+  </div>
+
+  <p>Stop it when you are done: <code class="inl">docker compose --profile tools stop redisinsight</code>. Like pgAdmin it is behind the <code class="inl">tools</code> profile, so a deploy never starts it and it costs nothing until you ask.</p>
 </section>
 
 <!-- ================= 22 ================= -->
@@ -2769,6 +2803,8 @@ Sentry.init({
         <tr><td>Postgres, host loopback</td><td><code class="inl">5432</code></td><td><code class="inl">5433</code></td><td class="y"><code class="inl">127.0.0.1</code> — for SSH tunnels only</td></tr>
         <tr><td>Postgres, in-container</td><td><code class="inl">5432</code></td><td><code class="inl">5432</code></td><td>Private Docker network</td></tr>
         <tr><td>Redis</td><td>none published</td><td>none published</td><td>Private Docker network</td></tr>
+        <tr><td>pgAdmin <span class="pill">tools profile</span></td><td>—</td><td><code class="inl">8082</code></td><td class="y"><code class="inl">127.0.0.1</code> — opt-in, off by default</td></tr>
+        <tr><td>RedisInsight <span class="pill">tools profile</span></td><td>—</td><td><code class="inl">5540</code></td><td class="y"><code class="inl">127.0.0.1</code> — opt-in, off by default</td></tr>
         <tr><td>Public site <span class="scope prod">Prod</span></td><td><code class="inl">3000</code></td><td><code class="inl">3100</code></td><td>PM2; on the demo it is Vercel instead</td></tr>
         <tr><td>Dashboard <span class="scope prod">Prod</span></td><td><code class="inl">3001</code></td><td><code class="inl">3101</code></td><td>PM2; on the demo it is Vercel instead</td></tr>
         <tr><td>Marketing app <span class="scope prod">Prod</span></td><td><code class="inl">3002</code></td><td><code class="inl">3102</code></td><td>Does not exist on the demo</td></tr>
@@ -2864,6 +2900,8 @@ sudo ss -tlnp | grep -E <span class="s1">':(5050|5150|5432|5433|3000|3001)\b'</s
         <tr><td>A <code class="inl">docker run</code> of pgAdmin on your Mac cannot see the tunnel</td><td class="c"><code class="inl">ssh -L</code> binds loopback only; <code class="inl">host.docker.internal</code> is a non-loopback address, so the container is refused</td><td>Run pgAdmin on the VPS instead. §19</td></tr>
         <tr><td>Prisma Studio in Docker unreachable</td><td>Binds <code class="inl">127.0.0.1</code> inside the container, no host flag exists</td><td>Run it natively</td></tr>
         <tr><td>Redis: every command returns <code class="inl">NOAUTH</code></td><td>Password not loaded into the shell</td><td><code class="inl">export $(grep '^REDIS_PASSWORD=' .env | xargs)</code></td></tr>
+        <tr><td>RedisInsight loads but refuses to talk to itself</td><td>Origin mismatch — it checks the browser origin</td><td><code class="inl">RITRUSTEDORIGINS</code> must list the spelling you typed. §21</td></tr>
+        <tr><td>RedisInsight cannot reach the database</td><td>Host entered as <code class="inl">127.0.0.1</code></td><td>Inside the stack it is the service name, <code class="inl">redis</code>. §21</td></tr>
       </tbody>
     </table>
   </div>
@@ -2908,7 +2946,14 @@ ssh -G deploy@HOST | grep -i identityfile  <span class="c1"># which keys will ac
 
 <span class="c1"># ── Database GUIs ─────────────────────────────────────────────</span>
 pnpm prisma studio --url=<span class="s1">"postgresql://island:PW@127.0.0.1:5434/island_tours?schema=public"</span>
-<span class="c1"># TablePlus / pgAdmin: 127.0.0.1:5434, island_tours, SSL off</span>
+<span class="c1"># TablePlus: 127.0.0.1:5434, island_tours, SSL off</span>
+
+<span class="c1"># In-stack GUIs, opt-in. On the VPS:</span>
+docker compose --profile tools up -d pgadmin redisinsight
+docker compose --profile tools stop pgadmin redisinsight
+<span class="c1"># then, from your laptop:</span>
+ssh -N -L 8082:127.0.0.1:8082 vps      <span class="c1"># pgAdmin      http://127.0.0.1:8082</span>
+ssh -N -L 5540:127.0.0.1:5540 vps      <span class="c1"># RedisInsight http://127.0.0.1:5540</span>
 
 <span class="c1"># ── Proxy ─────────────────────────────────────────────────────</span>
 sudo caddy validate --config /etc/caddy/Caddyfile &amp;&amp; sudo systemctl reload caddy
