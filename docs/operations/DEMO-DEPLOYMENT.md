@@ -678,8 +678,12 @@ the token is set, so don't make it required until then.
 
 ## 12. Database access and a GUI
 
-Postgres publishes **no port** — `docker-compose.yml` says so in a comment — so nothing on the
-internet can reach it. You don't have to give that up to get a table browser.
+> Per-client walkthroughs for TablePlus, pgAdmin 4 and Prisma Studio, on the Mac and in a browser,
+> plus a troubleshooting table: **`DATABASE-GUI-ACCESS.md`**. This section is the short version.
+
+Postgres publishes one port and it is bound to the VPS **loopback**, so nothing on the internet can
+reach it and an SSH tunnel is the only way in. You don't have to give that up to get a table
+browser.
 
 The ports below are chosen to avoid three separate collisions: production's Postgres on the VPS, the
 tunnel you may already use for production, and the Postgres 17.4 running on your own machine.

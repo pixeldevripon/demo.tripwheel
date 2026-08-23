@@ -164,6 +164,7 @@ work.
 | Area | Path |
 |---|---|
 | **This deployment** | `docs/operations/DEMO-DEPLOYMENT.md` |
+| Database GUIs (TablePlus, pgAdmin 4, Prisma Studio) | `docs/operations/DATABASE-GUI-ACCESS.md` |
 | VPS runbook (Caddy or nginx) | `docs/operations/VPS-DEPLOYMENT-CADDY.md` |
 | Second instance on one VPS | `docs/operations/VPS-SECOND-INSTANCE.md` |
 | Day-2 ops (backups, Sentry, rate limits, scaling) | `docs/operations/VPS-OPERATIONS-GUIDE.md` |
