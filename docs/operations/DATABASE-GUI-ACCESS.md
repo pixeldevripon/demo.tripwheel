@@ -99,6 +99,22 @@ success. Close it with Ctrl+C when you are done.
 Reading it right to left: connect to the VPS, and on the far side reach `127.0.0.1:5433`, which is
 the port from §1. Offer it locally as `5434`.
 
+> **If that fails with `Permission denied (publickey)`, it is your key, not your password.** The VPS
+> sets `PasswordAuthentication no`, so a password cannot log you in even when you remember it — see
+> `VPS-DEPLOYMENT-CADDY.md` §3a. What the message means is that none of the keys your client offered
+> was accepted, and SSH only offers `~/.ssh/id_rsa`, `id_ecdsa` and `id_ed25519` by default. A key
+> saved under any other name — `laptop-to-vps`, say — is never sent. Name it:
+>
+> ```bash
+> ssh -N -L 5434:127.0.0.1:5433 -i ~/.ssh/laptop-to-vps deploy@YOUR_VPS_IP
+> ```
+>
+> **A `Host` block does not rescue you here.** It matches on the alias you type, not on the address
+> it resolves to. So a block like `Host vps` with the right `IdentityFile` is ignored the moment you
+> connect as `deploy@YOUR_VPS_IP` in full, and you silently fall back to the defaults. Either use
+> the alias — `ssh -N -L 5434:127.0.0.1:5433 vps` — or pass `-i`. Confirm what SSH will really use
+> with `ssh -G deploy@YOUR_VPS_IP | grep -i identityfile`, which lists the keys it intends to offer.
+
 To keep it alive through a laptop sleep or a flaky network, add keepalives and auto-restart:
 
 ```bash
@@ -113,11 +129,18 @@ Or put it in `~/.ssh/config` once and then just run `ssh -N demo-db`:
 Host demo-db
   HostName YOUR_VPS_IP
   User deploy
+  IdentityFile ~/.ssh/laptop-to-vps
+  IdentitiesOnly yes
   LocalForward 5434 127.0.0.1:5433
   ServerAliveInterval 30
   ServerAliveCountMax 3
   ExitOnForwardFailure yes
 ```
+
+`IdentityFile` is the line that matters — without it you are back to the default key names above.
+`IdentitiesOnly yes` stops SSH offering every other key first, which on a machine with several of
+them can exhaust the server's `MaxAuthTries` before your real key is ever reached. Having set this
+up, connect **by the alias** (`ssh -N demo-db`) and not by the address, or none of it applies.
 
 ### b. Let the client build the tunnel
 
@@ -322,6 +345,10 @@ tunnel costs one terminal and is strictly safer.
 
 | Symptom | Cause | Fix |
 |---|---|---|
+| `Permission denied (publickey)` | Your VPS key is not one of SSH's default names, so it was never offered | `-i ~/.ssh/<key>`, or connect by the `Host` alias. §4a |
+| `Permission denied (publickey)` and you have a `Host` block with the right key | You connected by address, not by the alias — the block never matched | Use the alias. Check with `ssh -G <target> \| grep -i identityfile` |
+| `Could not resolve hostname deploy:1.2.3.4` | A colon instead of `@` between user and host | `deploy@1.2.3.4` |
+| Asked for a password you don't have | You don't need one — the VPS is keys-only, and the password is for `sudo` alone | Fix the key (rows above), not the password |
 | `Connection refused` on 5434 | No tunnel running | Start §4a; it must stay open in its own terminal |
 | `Connection refused` and the tunnel *is* open | Loopback port missing on the VPS — usually a deploy recreated the container | §1, then `ss -tlnp \| grep 5433` |
 | Tunnel exits instantly with `bind: Address already in use` | Something already holds 5434, often a second tunnel | `lsof -nP -iTCP:5434 -sTCP:LISTEN` then kill it |
