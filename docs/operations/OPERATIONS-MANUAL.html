@@ -1,0 +1,2973 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Island Tours — Operations Manual</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;1,300;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   ISLAND TOURS — Operations Manual
+   Design system: "Blueprint Light"
+   Colour is information:
+     red    = fails SILENTLY (no error, wrong result)
+     amber  = a human decision or a manual step
+     blue   = automated / the machine does it
+     green  = a verification that proves something
+     violet = an artifact you produce (a file, a key, a record)
+   ============================================================ */
+:root{
+  --ink:#0A0F1F;
+  --ink-2:#16203A;
+  --slate:#4E5D7A;
+  --mute:#8493AC;
+  --faint:#AAB6C9;
+
+  --paper:#FFFFFF;
+  --canvas:#F1F4F9;
+  --panel:#F7F9FC;
+  --panel-2:#EDF1F8;
+  --line:#DEE5F0;
+  --line-2:#C9D4E4;
+
+  --signal:#2646F5;          /* automated */
+  --signal-ink:#1B32B0;
+  --signal-soft:#EAEEFF;
+  --human:#C77A0A;           /* manual step / decision */
+  --human-ink:#8A5405;
+  --human-soft:#FDF3E2;
+  --block:#D22F4C;           /* silent failure */
+  --block-soft:#FDEDF0;
+  --pass:#0B8F62;            /* verification */
+  --pass-soft:#E6F6EF;
+  --artifact:#5B4BD6;        /* file / secret / record */
+  --artifact-soft:#F0EDFE;
+
+  --sans:'Poppins',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+
+  --sheet-shadow:0 1px 2px rgba(16,32,64,.04), 0 12px 32px -18px rgba(16,32,64,.18);
+  --r:16px;
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px;-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--canvas);color:var(--ink-2);
+  font-family:var(--sans);font-weight:300;font-size:15.5px;line-height:1.72;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+}
+p{margin:0 0 1.05em}
+strong{font-weight:600;color:var(--ink)}
+em{font-style:italic;color:var(--slate)}
+a{color:var(--signal-ink);text-decoration:none;border-bottom:1px solid var(--line-2)}
+a:hover{border-bottom-color:var(--signal)}
+:focus-visible{outline:2px solid var(--signal);outline-offset:3px;border-radius:4px}
+
+#progress{position:fixed;top:0;left:0;height:2px;width:0;background:var(--signal);z-index:80}
+
+.shell{display:grid;grid-template-columns:290px minmax(0,1fr)}
+
+.rail{
+  position:sticky;top:0;height:100vh;overflow-y:auto;
+  background:var(--paper);border-right:1px solid var(--line);
+  padding:30px 22px 60px;scrollbar-width:thin;
+}
+.rail::-webkit-scrollbar{width:6px}
+.rail::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:6px}
+.brandmark{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.bm-name{font-weight:700;font-size:13.5px;letter-spacing:.16em;color:var(--ink)}
+.bm-sub{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;color:var(--mute);text-transform:uppercase;margin:0 0 26px}
+.rail-label{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin:22px 0 10px 8px}
+.nav a{
+  display:flex;gap:10px;align-items:baseline;padding:5px 10px;border-radius:8px;border:0;
+  color:var(--slate);font-size:12.9px;font-weight:400;line-height:1.4;
+  transition:background .15s,color .15s;
+}
+.nav a span.n{font-family:var(--mono);font-size:9.5px;color:var(--faint);flex:none;width:18px;padding-top:2px}
+.nav a:hover{background:var(--panel);color:var(--ink)}
+.nav a.on{background:var(--signal-soft);color:var(--signal-ink);font-weight:500}
+.nav a.on span.n{color:var(--signal)}
+.rail-foot{margin-top:28px;padding:14px;border-radius:12px;background:var(--panel);border:1px solid var(--line)}
+.rail-foot p{margin:0;font-size:11.5px;line-height:1.6;color:var(--mute)}
+
+main{position:relative;max-width:1010px;margin:0 auto;padding:0 44px 140px}
+main::before{
+  content:"";position:absolute;left:71px;top:32px;bottom:120px;width:1px;
+  background:linear-gradient(180deg,transparent,var(--line-2) 4%,var(--line-2) 96%,transparent);
+}
+.sheet{
+  position:relative;margin:0 0 22px 56px;background:var(--paper);
+  border:1px solid var(--line);border-radius:var(--r);
+  padding:38px 44px 40px;box-shadow:var(--sheet-shadow);
+}
+.stage{
+  position:absolute;left:-46px;top:38px;width:34px;height:34px;border-radius:50%;
+  background:var(--paper);border:1px solid var(--line-2);color:var(--slate);
+  font-family:var(--mono);font-size:11px;font-weight:500;
+  display:flex;align-items:center;justify-content:center;z-index:2;
+}
+.sheet.build .stage{background:var(--human-soft);border-color:#EBC98C;color:var(--human-ink)}
+.sheet.data  .stage{background:var(--artifact-soft);border-color:#DCD5FB;color:#3F32A8}
+.sheet.run   .stage{background:var(--signal-soft);border-color:#B9C4FF;color:var(--signal-ink)}
+.sheet.ref   .stage{background:var(--pass-soft);border-color:#BFE7D5;color:var(--pass)}
+
+.eyebrow{
+  font-family:var(--mono);font-size:9.5px;font-weight:500;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--signal);margin:0 0 9px;
+}
+.eyebrow.h{color:var(--human)}
+.eyebrow.a{color:var(--artifact)}
+.eyebrow.g{color:var(--pass)}
+h1{
+  font-size:clamp(34px,5.4vw,60px);line-height:1.02;font-weight:600;letter-spacing:-.03em;
+  color:var(--ink);margin:0 0 18px;
+}
+h1 .thin{font-weight:200;color:var(--slate);display:block}
+h2{font-size:clamp(23px,2.8vw,31px);line-height:1.16;font-weight:600;letter-spacing:-.022em;color:var(--ink);margin:0 0 20px}
+h2 .scope{vertical-align:middle;margin-left:10px}
+h3{font-size:17.5px;font-weight:600;letter-spacing:-.01em;color:var(--ink);margin:34px 0 12px}
+h4{font-size:13px;font-weight:600;letter-spacing:.01em;color:var(--ink);margin:22px 0 8px}
+.lead{font-size:17.5px;line-height:1.62;font-weight:300;color:var(--slate)}
+.lead strong{font-weight:500}
+.hr{height:1px;background:var(--line);margin:34px 0;border:0}
+
+/* scope markers: which deployment a section applies to */
+.scope{
+  display:inline-block;font-family:var(--mono);font-size:8.5px;letter-spacing:.14em;
+  text-transform:uppercase;padding:3px 8px;border-radius:5px;font-weight:500;
+  background:var(--panel-2);color:var(--slate);border:1px solid var(--line);white-space:nowrap;
+}
+.scope.demo{background:var(--signal-soft);color:var(--signal-ink);border-color:#C9D2FF}
+.scope.prod{background:var(--human-soft);color:var(--human-ink);border-color:#F0DCB4}
+.scope.both{background:var(--pass-soft);color:var(--pass);border-color:#BFE7D5}
+
+.callout{
+  border-radius:12px;padding:18px 22px;margin:24px 0;border:1px solid var(--line);
+  background:var(--panel);font-size:14.5px;
+}
+.callout .tag{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--mute);display:block;margin-bottom:7px;font-weight:500;
+}
+.callout p:last-child{margin-bottom:0}
+.callout.rule{background:var(--signal-soft);border-color:#C9D2FF}
+.callout.rule .tag{color:var(--signal-ink)}
+.callout.gov{background:var(--human-soft);border-color:#F0DCB4}
+.callout.gov .tag{color:var(--human-ink)}
+.callout.stop{background:var(--block-soft);border-color:#F6CBD3}
+.callout.stop .tag{color:var(--block)}
+.callout.ok{background:var(--pass-soft);border-color:#BFE7D5}
+.callout.ok .tag{color:var(--pass)}
+.principle{
+  font-size:17px;font-weight:400;color:var(--ink);line-height:1.5;
+  padding:18px 24px;border-left:3px solid var(--signal);background:var(--panel);
+  border-radius:0 12px 12px 0;margin:24px 0;
+}
+.principle.r{border-left-color:var(--block)}
+
+ul.clean,ol.clean{margin:0 0 1.1em;padding-left:0;list-style:none}
+ul.clean li{position:relative;padding-left:20px;margin-bottom:7px}
+ul.clean li::before{content:"";position:absolute;left:2px;top:.62em;width:5px;height:5px;border-radius:1px;background:var(--line-2)}
+ul.clean.tick li::before{
+  content:"";left:0;top:.5em;width:9px;height:5px;border:0;border-left:1.6px solid var(--pass);
+  border-bottom:1.6px solid var(--pass);background:none;transform:rotate(-45deg);border-radius:0;
+}
+ul.clean.cross li::before{
+  content:"×";left:1px;top:-.05em;width:auto;height:auto;background:none;border-radius:0;
+  color:var(--block);font-size:15px;font-weight:600;line-height:1.7;
+}
+ol.clean{counter-reset:c}
+ol.clean li{counter-increment:c;position:relative;padding-left:32px;margin-bottom:9px}
+ol.clean li::before{
+  content:counter(c,decimal-leading-zero);position:absolute;left:0;top:.15em;
+  font-family:var(--mono);font-size:10.5px;color:var(--signal);font-weight:500;
+}
+.cols2{columns:2;column-gap:38px}
+.cols2 li{break-inside:avoid}
+@media(max-width:760px){.cols2{columns:1}}
+
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.card{border:1px solid var(--line);border-radius:12px;padding:18px 20px;background:var(--paper)}
+.card .num{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;color:var(--faint);display:block;margin-bottom:8px}
+.card h5{margin:0 0 6px;font-size:14px;font-weight:600;color:var(--ink);letter-spacing:-.01em}
+.card p{margin:0;font-size:13px;line-height:1.62;color:var(--slate)}
+.card p+p{margin-top:8px}
+.card.flat{background:var(--panel)}
+.card.r{background:var(--block-soft);border-color:#F6CBD3}
+.card.r .num{color:var(--block)}
+.card.b{background:var(--signal-soft);border-color:#C9D2FF}
+.card.b .num{color:var(--signal)}
+.card.h{background:var(--human-soft);border-color:#F0DCB4}
+.card.h .num{color:var(--human-ink)}
+.card.g{background:var(--pass-soft);border-color:#BFE7D5}
+.card.g .num{color:var(--pass)}
+
+.split{display:grid;grid-template-columns:1fr auto 1fr;gap:0;align-items:stretch;margin:26px 0}
+.split .side{padding:22px 24px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+.split .side.loud{background:var(--pass-soft);border-color:#BFE7D5}
+.split .side.silent{background:var(--block-soft);border-color:#F6CBD3}
+.split .side h4{margin-top:0;font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-family:var(--mono);font-weight:500}
+.split .side.loud h4{color:var(--pass)}
+.split .side.silent h4{color:var(--block)}
+.split .side ul.clean li{font-size:13px;margin-bottom:5px}
+.split .side ul.clean li::before{background:currentColor;opacity:.35}
+.split .mid{width:44px;display:flex;align-items:center;justify-content:center;position:relative}
+.split .mid::before{content:"";position:absolute;top:14px;bottom:14px;width:1px;background:var(--line-2)}
+.split .mid span{position:relative;background:var(--canvas);font-family:var(--mono);font-size:9px;color:var(--mute);padding:6px 0;writing-mode:vertical-rl;letter-spacing:.14em}
+@media(max-width:760px){
+  .split{grid-template-columns:1fr}
+  .split .mid{width:auto;height:34px}
+  .split .mid::before{top:50%;left:14px;right:14px;bottom:auto;width:auto;height:1px}
+  .split .mid span{writing-mode:horizontal-tb;background:var(--paper);padding:0 10px}
+}
+
+.diagram{
+  background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  padding:30px 26px;margin:26px 0;position:relative;
+}
+.diagram.dotted{
+  background-image:radial-gradient(var(--line-2) .8px,transparent .8px);
+  background-size:16px 16px;background-color:var(--panel);
+}
+.dcap{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--mute);margin:0 0 20px;display:flex;align-items:center;gap:9px;
+}
+.dcap::before{content:"";width:14px;height:1px;background:var(--line-2)}
+.dfoot{font-size:12px;color:var(--mute);margin:18px 0 0;text-align:center;font-style:italic}
+
+.flow{display:flex;flex-direction:column;max-width:520px;margin:0 auto}
+.flow.wide{max-width:660px}
+.node{
+  position:relative;background:var(--paper);border:1px solid var(--line);border-left:3px solid var(--line-2);
+  border-radius:9px;padding:11px 15px;box-shadow:0 1px 2px rgba(16,32,64,.045);
+}
+.flow>.node{margin-bottom:30px}
+.flow>.node:last-child{margin-bottom:0}
+.flow>.node:not(:last-child)::after{
+  content:"";position:absolute;left:50%;bottom:-30px;width:1.5px;height:30px;
+  background:var(--line-2);transform:translateX(-50%);
+}
+.flow>.node:not(:last-child)::before{
+  content:"";position:absolute;left:50%;bottom:-19px;width:6px;height:6px;z-index:1;
+  border-right:1.5px solid var(--mute);border-bottom:1.5px solid var(--mute);
+  transform:translateX(-50%) rotate(45deg);
+}
+.node .k{
+  font-family:var(--mono);font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--mute);display:block;margin-bottom:2px;
+}
+.node .t{font-size:13.5px;font-weight:500;color:var(--ink);line-height:1.35;display:block}
+.node .d{font-size:12px;color:var(--slate);display:block;margin-top:3px;line-height:1.5}
+.node.auto{border-left-color:var(--signal)}   .node.auto .k{color:var(--signal)}
+.node.man{border-left-color:var(--human)}     .node.man .k{color:var(--human-ink)}
+.node.art{border-left-color:var(--artifact)}  .node.art .k{color:var(--artifact)}
+.node.risk{border-left-color:var(--block)}    .node.risk .k{color:var(--block)}
+.node.ok{border-left-color:var(--pass)}       .node.ok .k{color:var(--pass)}
+.node.env{border-left-color:var(--ink-2)}     .node.env .k{color:var(--ink-2)}
+.node.solid{background:var(--ink);border-color:var(--ink);border-left-color:var(--signal)}
+.node.solid .t{color:#fff}.node.solid .d{color:#B9C3D6}.node.solid .k{color:#8CA0FF}
+
+.chain{display:flex;flex-wrap:wrap;align-items:center;gap:9px;justify-content:center}
+.chain .chip{
+  background:var(--paper);border:1px solid var(--line);border-radius:7px;padding:7px 12px;
+  font-size:12.2px;font-weight:400;color:var(--ink-2);box-shadow:0 1px 1px rgba(16,32,64,.04);
+}
+.chain .chip.s{background:var(--signal-soft);border-color:#C9D2FF;color:var(--signal-ink);font-weight:500}
+.chain .chip.a{background:var(--artifact-soft);border-color:#DCD5FB;color:#3F32A8;font-weight:500}
+.chain .chip.h{background:var(--human-soft);border-color:#F0DCB4;color:var(--human-ink);font-weight:500}
+.chain .chip.g{background:var(--pass-soft);border-color:#BFE7D5;color:var(--pass);font-weight:500}
+.chain .chip.r{background:var(--block-soft);border-color:#F6CBD3;color:var(--block);font-weight:500}
+.chain .arw{color:var(--faint);font-size:12px;flex:none}
+
+.band{border:1px dashed var(--line-2);border-radius:12px;padding:22px 20px 20px;position:relative;margin:0 0 34px;background:rgba(255,255,255,.55)}
+.band:last-child{margin-bottom:0}
+.band+.band::before{
+  content:"";position:absolute;left:50%;top:-34px;height:34px;width:1.5px;background:var(--line-2);transform:translateX(-50%);
+}
+.band+.band::after{
+  content:"";position:absolute;left:50%;top:-13px;width:6px;height:6px;
+  border-right:1.5px solid var(--mute);border-bottom:1.5px solid var(--mute);
+  transform:translateX(-50%) rotate(45deg);
+}
+.band>.bl{
+  position:absolute;top:-9px;left:18px;background:var(--panel);padding:0 9px;
+  font-family:var(--mono);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);
+}
+.band .row{display:flex;gap:10px;flex-wrap:wrap}
+.band .row>.node{flex:1 1 150px}
+
+.svgwrap{overflow-x:auto;padding-bottom:6px}
+.svgwrap svg{display:block;min-width:720px;width:100%;height:auto}
+.svgwrap.big svg{min-width:940px}
+.legend{display:flex;flex-wrap:wrap;gap:16px;justify-content:center;margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}
+.legend span{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+.legend i{width:9px;height:9px;border-radius:2px;display:block}
+
+.tw{overflow-x:auto;margin:24px 0;border:1px solid var(--line);border-radius:12px;background:var(--paper)}
+table{width:100%;border-collapse:collapse;min-width:640px}
+th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+th{
+  font-family:var(--mono);font-size:9px;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--slate);font-weight:500;background:var(--panel-2);white-space:nowrap;
+}
+td{font-size:12.7px;line-height:1.6;color:var(--slate)}
+td:first-child{font-weight:500;color:var(--ink);font-size:13px}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:var(--panel)}
+table.tight td,table.tight th{padding:9px 12px}
+.y{color:var(--pass);font-weight:600}
+.n{color:var(--faint);font-weight:500}
+.c{color:var(--block);font-weight:600}
+.pill{
+  display:inline-block;font-family:var(--mono);font-size:9px;letter-spacing:.08em;
+  padding:2px 7px;border-radius:5px;background:var(--panel-2);color:var(--slate);white-space:nowrap;
+}
+.pill.b{background:var(--signal-soft);color:var(--signal-ink)}
+.pill.h{background:var(--human-soft);color:var(--human-ink)}
+.pill.r{background:var(--block-soft);color:var(--block)}
+.pill.g{background:var(--pass-soft);color:var(--pass)}
+.pill.a{background:var(--artifact-soft);color:#3F32A8}
+
+pre{
+  font-family:var(--mono);font-size:12px;line-height:1.75;background:var(--ink);color:#D8DEEC;
+  padding:22px 24px;border-radius:12px;overflow-x:auto;margin:22px 0;
+}
+pre .c1{color:#7E8CA8}
+pre .k1{color:#8CA0FF}
+pre .s1{color:#7ED3A8}
+pre .v1{color:#F0C078}
+pre .r1{color:#FF9AAE}
+pre b{font-weight:700;color:#fff}
+code.inl{
+  font-family:var(--mono);font-size:.86em;background:var(--panel-2);
+  padding:1px 6px;border-radius:5px;color:var(--signal-ink);
+  overflow-wrap:anywhere;
+}
+.card code.inl{word-break:break-all}
+.filelabel{
+  font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--mute);margin:22px 0 -14px;display:flex;align-items:center;gap:8px;
+}
+.filelabel::before{content:"";width:10px;height:1px;background:var(--line-2)}
+
+.statuses{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0}
+.st{font-family:var(--mono);font-size:10px;letter-spacing:.09em;padding:5px 10px;border-radius:6px;background:var(--panel-2);color:var(--slate);border:1px solid var(--line)}
+.st.b{background:var(--signal-soft);color:var(--signal-ink);border-color:#C9D2FF}
+.st.r{background:var(--block-soft);color:var(--block);border-color:#F6CBD3}
+.st.g{background:var(--pass-soft);color:var(--pass);border-color:#BFE7D5}
+.st.h{background:var(--human-soft);color:var(--human-ink);border-color:#F0DCB4}
+
+.endnote{margin:0 0 0 56px;padding:26px 44px;font-size:12px;color:var(--mute);display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.endnote span{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase}
+
+.hero{
+  position:relative;margin:0 0 22px 56px;padding:64px 48px 52px;overflow:hidden;
+  background:var(--paper);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sheet-shadow);
+}
+.hero-grid{
+  position:absolute;inset:0;opacity:.5;
+  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:34px 34px;
+  mask-image:radial-gradient(circle at 82% 12%,#000,transparent 62%);
+  -webkit-mask-image:radial-gradient(circle at 82% 12%,#000,transparent 62%);
+}
+.hero-inner{position:relative}
+.hero .tagline{max-width:62ch}
+.doc-meta{display:flex;flex-wrap:wrap;gap:0;margin-top:38px;border-top:1px solid var(--line)}
+.doc-meta div{padding:16px 26px 0 0;margin-right:26px;border-right:1px solid var(--line);flex:0 0 auto}
+.doc-meta div:last-child{border-right:0}
+.doc-meta dt{font-family:var(--mono);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin:0 0 4px}
+.doc-meta dd{margin:0;font-size:13px;font-weight:500;color:var(--ink)}
+.audience{display:flex;gap:12px;flex-wrap:wrap;margin-top:30px}
+.aud{flex:1 1 240px;padding:16px 18px;border-radius:12px;border:1px solid var(--line);background:var(--panel)}
+.aud.x{background:var(--block-soft);border-color:#F6CBD3}
+.aud.e{background:var(--signal-soft);border-color:#C9D2FF}
+.aud b{display:block;font-size:12.5px;font-weight:600;color:var(--ink);margin-bottom:3px}
+.aud span{font-size:12.5px;color:var(--slate);line-height:1.55}
+
+@media(max-width:1080px){
+  .shell{grid-template-columns:1fr}
+  .rail{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line);padding:22px 24px 26px}
+  .rail .nav{columns:2;column-gap:24px}
+  .rail-foot{display:none}
+  main{padding:0 22px 90px}
+  main::before{display:none}
+  .sheet,.hero,.endnote{margin-left:0}
+  .stage{position:static;margin-bottom:16px}
+}
+@media(max-width:640px){
+  body{font-size:15px}
+  .sheet{padding:28px 22px 30px;border-radius:13px}
+  .hero{padding:40px 22px 34px}
+  .g2,.g3,.g4{grid-template-columns:1fr}
+  .rail .nav{columns:1}
+  .doc-meta div{border-right:0;padding-right:0}
+  .diagram{padding:22px 14px}
+}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important}}
+@media print{
+  .rail,#progress{display:none}
+  .shell{display:block}
+  body{background:#fff;font-size:10.5pt}
+  main{max-width:none;padding:0}
+  main::before{display:none}
+  .sheet,.hero,.endnote{margin-left:0;box-shadow:none;break-inside:avoid;page-break-inside:avoid}
+  .sheet{border-color:#ccc}
+  h2{break-after:avoid}
+  .stage{position:static;margin-bottom:12px}
+  pre{background:#f4f6fa;color:#16203A;border:1px solid #ddd}
+  pre .c1{color:#6b7a94}pre .k1{color:#1B32B0}pre .s1{color:#0B8F62}pre .v1{color:#8A5405}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="shell">
+
+<aside class="rail">
+  <div class="brandmark"><div class="bm-name">ISLAND TOURS</div></div>
+  <p class="bm-sub">Operations Manual</p>
+
+  <p class="rail-label">Orientation</p>
+  <nav class="nav">
+    <a href="#s01"><span class="n">01</span>What You Are Running</a>
+    <a href="#s02"><span class="n">02</span>How a Mistake Announces Itself</a>
+    <a href="#s03"><span class="n">03</span>Demo and Production</a>
+    <a href="#s04"><span class="n">04</span>Caddy or nginx</a>
+  </nav>
+
+  <p class="rail-label">Standing it up</p>
+  <nav class="nav">
+    <a href="#s05"><span class="n">05</span>Domains and the Cookie</a>
+    <a href="#s06"><span class="n">06</span>DNS</a>
+    <a href="#s07"><span class="n">07</span>Preparing the VPS</a>
+    <a href="#s08"><span class="n">08</span>Code onto the Server</a>
+    <a href="#s09"><span class="n">09</span>Secrets</a>
+    <a href="#s10"><span class="n">10</span>The Compose Stack</a>
+    <a href="#s11"><span class="n">11</span>First Boot</a>
+    <a href="#s12"><span class="n">12</span>Caddy</a>
+    <a href="#s13"><span class="n">13</span>nginx</a>
+    <a href="#s14"><span class="n">14</span>Vercel</a>
+    <a href="#s15"><span class="n">15</span>GitHub Actions</a>
+    <a href="#s16"><span class="n">16</span>Smoke Test</a>
+  </nav>
+
+  <p class="rail-label">The database</p>
+  <nav class="nav">
+    <a href="#s17"><span class="n">17</span>The Access Model</a>
+    <a href="#s18"><span class="n">18</span>TablePlus</a>
+    <a href="#s19"><span class="n">19</span>pgAdmin 4</a>
+    <a href="#s20"><span class="n">20</span>Prisma Studio</a>
+    <a href="#s21"><span class="n">21</span>psql and Redis</a>
+    <a href="#s22"><span class="n">22</span>Postgres or Neon</a>
+  </nav>
+
+  <p class="rail-label">Two on one box</p>
+  <nav class="nav">
+    <a href="#s23"><span class="n">23</span>The Conflict Map</a>
+    <a href="#s24"><span class="n">24</span>Isolation and Sizing</a>
+  </nav>
+
+  <p class="rail-label">Day-2 operations</p>
+  <nav class="nav">
+    <a href="#s25"><span class="n">25</span>Redeploying</a>
+    <a href="#s26"><span class="n">26</span>Rotating Credentials</a>
+    <a href="#s27"><span class="n">27</span>Backups and Restore</a>
+    <a href="#s28"><span class="n">28</span>Logs and Monitoring</a>
+    <a href="#s29"><span class="n">29</span>Rate Limiting</a>
+    <a href="#s30"><span class="n">30</span>Scaling</a>
+  </nav>
+
+  <p class="rail-label">Reference</p>
+  <nav class="nav">
+    <a href="#s31"><span class="n">31</span>Env Reference</a>
+    <a href="#s32"><span class="n">32</span>Port Reference</a>
+    <a href="#s33"><span class="n">33</span>Troubleshooting</a>
+    <a href="#s34"><span class="n">34</span>Command Index</a>
+  </nav>
+
+  <div class="rail-foot">
+    <p><b>Reading paths.</b><br>First deploy: 01 – 16.<br>Just need a GUI: 01, 17 – 21.<br>It broke: 02, 33, 34.<br>Adding a second instance: 03, 23, 24.</p>
+  </div>
+</aside>
+
+<main>
+
+<header class="hero">
+  <div class="hero-grid" aria-hidden="true"></div>
+  <div class="hero-inner">
+    <p class="eyebrow">Operations&nbsp;&nbsp;·&nbsp;&nbsp;Island Tours on Hostinger + Vercel</p>
+    <h1>Operations Manual<span class="thin">Deploying and running the API, its data, and its two front ends</span></h1>
+    <p class="lead tagline">One document for the whole lifecycle: standing the stack up from an empty server, reaching the database from a laptop, running a demo beside production on the same box, and keeping all of it alive afterwards. Organised by <strong>how each mistake tells you about itself</strong> — because the ones that stay quiet are the ones that cost you.</p>
+
+    <div class="audience">
+      <div class="aud e">
+        <b>If you are deploying</b>
+        <span>Sections 01 – 16, in order. It is a dependency chain, not a menu: DNS before certificates, backend before proxy, proxy before front ends.</span>
+      </div>
+      <div class="aud x">
+        <b>If something is already wrong</b>
+        <span>Start at 02. It sorts every failure in this stack by whether it stops you loudly or lets you carry on believing it worked.</span>
+      </div>
+    </div>
+
+    <dl class="doc-meta">
+      <div><dt>Covers</dt><dd>Demo + production</dd></div>
+      <div><dt>Stack</dt><dd>NestJS 11 · Prisma 7 · PG 16 · Redis 7</dd></div>
+      <div><dt>Hosts</dt><dd>Hostinger VPS · Vercel</dd></div>
+      <div><dt>Consolidates</dt><dd>5 runbooks</dd></div>
+      <div><dt>Classification</dt><dd>Internal</dd></div>
+    </dl>
+  </div>
+</header>
+
+<!-- ================= 01 ================= -->
+<section class="sheet build" id="s01">
+  <span class="stage">01</span>
+  <p class="eyebrow h">Orientation</p>
+  <h2>What You Are Running <span class="scope both">Both</span></h2>
+
+  <p class="lead">Island Tours is a Caribbean tour marketplace operating as a reseller: operators list single-day tours, travellers book instantly, the platform earns commission. Technically it is <strong>one API that owns a database, and front ends that own nothing</strong>.</p>
+
+  <p>That sentence is the whole architecture, and almost every operational rule in this manual follows from it. There is exactly one Prisma client in the system. The two Next.js applications have no <code class="inl">DATABASE_URL</code> and cannot reach Postgres even if they wanted to — every read and write they perform is an HTTP call to the API. So there is one thing to back up, one thing to migrate, one thing to secure, and one place where data can be corrupted.</p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Component</th><th>Directory</th><th>Runs on</th><th>Owns data</th></tr></thead>
+      <tbody>
+        <tr><td>Backend API</td><td><code class="inl">backend-frontend/backend</code></td><td>VPS, in Docker</td><td class="y">Yes — the only one</td></tr>
+        <tr><td>Public traveller site</td><td><code class="inl">backend-frontend/frontend</code></td><td>Vercel</td><td class="n">No</td></tr>
+        <tr><td>Operator + admin dashboard</td><td><code class="inl">dashboard</code></td><td>Vercel</td><td class="n">No</td></tr>
+        <tr><td>Postgres 16</td><td>—</td><td>VPS, Docker, private network</td><td class="y">The volume <em>is</em> the product</td></tr>
+        <tr><td>Redis 7</td><td>—</td><td>VPS, Docker, private network</td><td>Queues only, transient</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout rule">
+    <span class="tag">Two apps, not three</span>
+    <p>There used to be a standalone <code class="inl">tripwheel-app</code> carrying the system-admin door. It was merged into the dashboard at <code class="inl">/admin</code> and deleted. Older runbooks describe a third Vercel project, a third PM2 entry and ports <code class="inl">3002</code>/<code class="inl">3102</code>. On the demo those have no counterpart — where this manual marks a section <span class="scope prod">Prod</span>, that three-app world is what it means.</p>
+  </div>
+
+  <h3>The shape of one request</h3>
+
+  <div class="diagram dotted">
+    <p class="dcap">Request path — everything public enters through one door</p>
+    <div class="svgwrap">
+      <svg viewBox="0 0 940 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A browser request reaching Vercel or the VPS proxy, then the API, then Postgres and Redis on a private Docker network">
+        <defs>
+          <marker id="a1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#8493AC"/></marker>
+          <style>
+            .nl{font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.09em;fill:#16203A;font-weight:500}
+            .ns{font-family:'Poppins',sans-serif;font-size:8.5px;fill:#8493AC}
+            .box{fill:#fff;stroke:#DEE5F0;stroke-width:1}
+            .ln{stroke:#C9D4E4;stroke-width:1.2;fill:none}
+            .zone{fill:none;stroke:#C9D4E4;stroke-width:1;stroke-dasharray:4 4}
+            .zl{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;fill:#8493AC}
+          </style>
+        </defs>
+
+        <rect class="zone" x="300" y="18" width="620" height="264" rx="12"/>
+        <text class="zl" x="316" y="38">HOSTINGER VPS</text>
+        <rect class="zone" x="470" y="60" width="434" height="200" rx="10"/>
+        <text class="zl" x="486" y="80">DOCKER · island-net · no public port</text>
+
+        <rect class="box" x="24" y="100" width="120" height="52" rx="8"/><rect x="24" y="100" width="3.5" height="52" rx="2" fill="#16203A"/>
+        <text class="nl" x="42" y="123">BROWSER</text><text class="ns" x="42" y="137">traveller / operator</text>
+
+        <rect class="box" x="24" y="196" width="120" height="52" rx="8"/><rect x="24" y="196" width="3.5" height="52" rx="2" fill="#2646F5"/>
+        <text class="nl" x="42" y="219">VERCEL</text><text class="ns" x="42" y="233">2 Next.js apps</text>
+
+        <rect class="box" x="316" y="100" width="126" height="52" rx="8"/><rect x="316" y="100" width="3.5" height="52" rx="2" fill="#C77A0A"/>
+        <text class="nl" x="334" y="123">PROXY</text><text class="ns" x="334" y="137">Caddy or nginx · 443</text>
+
+        <rect class="box" x="500" y="100" width="126" height="52" rx="8"/><rect x="500" y="100" width="3.5" height="52" rx="2" fill="#2646F5"/>
+        <text class="nl" x="518" y="123">API</text><text class="ns" x="518" y="137">127.0.0.1:5150</text>
+
+        <rect class="box" x="700" y="60" width="180" height="52" rx="8"/><rect x="700" y="60" width="3.5" height="52" rx="2" fill="#5B4BD6"/>
+        <text class="nl" x="718" y="83">POSTGRES</text><text class="ns" x="718" y="97">postgres:5432 · the volume</text>
+
+        <rect class="box" x="700" y="140" width="180" height="52" rx="8"/><rect x="700" y="140" width="3.5" height="52" rx="2" fill="#5B4BD6"/>
+        <text class="nl" x="718" y="163">REDIS</text><text class="ns" x="718" y="177">redis:6379 · BullMQ</text>
+
+        <rect class="box" x="500" y="196" width="126" height="52" rx="8"/><rect x="500" y="196" width="3.5" height="52" rx="2" fill="#0B8F62"/>
+        <text class="nl" x="518" y="219">WORKERS</text><text class="ns" x="518" y="233">nightly · email · media</text>
+
+        <path class="ln" marker-end="url(#a1)" d="M144 126 H314"/>
+        <path class="ln" marker-end="url(#a1)" d="M144 222 H314 L314 152"/>
+        <path class="ln" marker-end="url(#a1)" d="M442 126 H498"/>
+        <path class="ln" marker-end="url(#a1)" d="M626 118 L698 90"/>
+        <path class="ln" marker-end="url(#a1)" d="M626 134 L698 162"/>
+        <path class="ln" marker-end="url(#a1)" d="M563 152 V194"/>
+        <path class="ln" marker-end="url(#a1)" d="M626 216 L690 216 L690 180 L698 180"/>
+
+        <text class="ns" x="180" y="118">HTTPS</text>
+        <text class="ns" x="152" y="240">SSR + prerender, server-side</text>
+      </svg>
+    </div>
+    <div class="legend">
+      <span><i style="background:#16203A"></i>Client</span>
+      <span><i style="background:#C77A0A"></i>Public edge</span>
+      <span><i style="background:#2646F5"></i>Application</span>
+      <span><i style="background:#5B4BD6"></i>Data</span>
+      <span><i style="background:#0B8F62"></i>Background</span>
+    </div>
+    <p class="dfoot">Postgres and Redis publish nothing to the internet. The proxy is the only public entrance, and it forwards to a loopback port.</p>
+  </div>
+
+  <h3>What that buys you operationally</h3>
+  <ul class="clean tick cols2">
+    <li><strong>One backup target.</strong> The <code class="inl">postgres-data</code> volume is the entire persistent state.</li>
+    <li><strong>One migration path.</strong> The container entrypoint runs <code class="inl">prisma migrate deploy</code> before the server listens.</li>
+    <li><strong>One attack surface.</strong> Two ports open on the firewall, and the database on neither.</li>
+    <li><strong>Front ends are disposable.</strong> Vercel can rebuild them from git at any time; nothing is lost.</li>
+    <li><strong>Deploys are independent.</strong> Backend goes via GitHub Actions; front ends via Vercel's own git integration.</li>
+    <li><strong>Rollback is an image tag.</strong> The three most recent backend images are kept on the box.</li>
+  </ul>
+</section>
+
+<!-- ================= 02 ================= -->
+<section class="sheet build" id="s02">
+  <span class="stage">02</span>
+  <p class="eyebrow h">The organising idea</p>
+  <h2>How a Mistake Announces Itself <span class="scope both">Both</span></h2>
+
+  <p class="lead">Every failure in this stack falls into one of two classes, and the class matters far more than the severity. A loud failure stops you with a message. A silent failure lets you carry on believing it worked.</p>
+
+  <p>Ranking these problems by how bad they are is the wrong instinct — it puts "the container will not start" at the top, when that one is harmless because you cannot possibly ship it. The dangerous list is short, and every entry on it looks like success.</p>
+
+  <div class="split">
+    <div class="side loud">
+      <h4>Loud — the harmless ones</h4>
+      <p style="font-size:13px;margin-bottom:12px">A message, an exit code, a red run. You cannot deploy them by accident.</p>
+      <ul class="clean">
+        <li>Port already allocated on <code class="inl">docker compose up</code></li>
+        <li>Environment validation failed, naming every bad variable</li>
+        <li><code class="inl">caddy validate</code> rejecting a duplicate hostname</li>
+        <li><code class="inl">nginx -t</code> reporting a conflicting server name</li>
+        <li>PM2 refusing a duplicate app name</li>
+        <li>A build killed for running out of memory</li>
+        <li><code class="inl">Permission denied (publickey)</code></li>
+      </ul>
+    </div>
+    <div class="mid"><span>VS</span></div>
+    <div class="side silent">
+      <h4>Silent — the expensive ones</h4>
+      <p style="font-size:13px;margin-bottom:12px">Everything starts. Everything reports healthy. You find out from the data, later.</p>
+      <ul class="clean">
+        <li>Compose project name collides → the demo seeds over live bookings</li>
+        <li>Two instances share one Redis → the demo sends real customer email</li>
+        <li>Same-apex session cookies → intermittent logouts on both sites</li>
+        <li><code class="inl">REVALIDATE_SECRET</code> mismatch → the public site serves stale prices forever</li>
+        <li>Tunnel on the wrong port → you edit production thinking it is the demo</li>
+        <li><code class="inl">NEXT_PUBLIC_ENABLE_TRACKING</code> left on → test bookings in real ad data</li>
+        <li>A bare port instead of <code class="inl">127.0.0.1:</code> → the database is on the internet</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="principle r">The colour red in this document never means "serious". It means <strong>nothing will tell you</strong>. Those are the paragraphs to read twice.</div>
+
+  <h3>Why the silent list is silent</h3>
+
+  <p>Three structural reasons, and knowing them lets you predict the next one rather than memorising a list.</p>
+
+  <div class="grid g3" style="margin:22px 0">
+    <div class="card r">
+      <span class="num">CAUSE 01</span>
+      <h5>Both outcomes are valid states</h5>
+      <p>A Postgres volume is a Postgres volume. Compose cannot know that attaching to <em>that</em> one is a catastrophe and <em>this</em> one is correct. Nothing is malformed, so nothing errors.</p>
+    </div>
+    <div class="card r">
+      <span class="num">CAUSE 02</span>
+      <h5>The check happens somewhere else</h5>
+      <p>A revalidation secret is verified by the receiving app, which answers <code class="inl">401</code> into a log you are not reading. The sending side considers its job done.</p>
+    </div>
+    <div class="card r">
+      <span class="num">CAUSE 03</span>
+      <h5>Build-time values freeze</h5>
+      <p>Anything <code class="inl">NEXT_PUBLIC_*</code> is compiled into the bundle. Fixing the variable and restarting changes nothing at all — only a rebuild does — so the fix appears not to work.</p>
+    </div>
+  </div>
+
+  <h3>The three verifications that catch what nothing else does</h3>
+
+  <p>Most of the smoke test in §16 is confirming that loud things did not happen. These three are different: each one is the only way to detect a specific silent failure.</p>
+
+  <div class="diagram">
+    <p class="dcap">The checks that look redundant and are not</p>
+    <div class="flow wide">
+      <div class="node ok">
+        <span class="k">Verification 01 · catches a shared database volume</span>
+        <span class="t">Create a booking on the demo, then count bookings in production</span>
+        <span class="d">The count must be unchanged. If the two stacks share <code class="inl">postgres-data</code>, both containers are healthy, both sites work, and the demo is writing into live data.</span>
+      </div>
+      <div class="node ok">
+        <span class="k">Verification 02 · catches a cookie collision</span>
+        <span class="t">Sign into the demo, then reload production in the same browser</span>
+        <span class="d">You must still be signed in there. The cookie is named identically on every instance; only its <code class="inl">Domain</code> separates them, so a shared apex means each login quietly evicts the other.</span>
+      </div>
+      <div class="node ok">
+        <span class="k">Verification 03 · catches a publicly bound port</span>
+        <span class="t">From your laptop, curl the API's raw port on the VPS IP</span>
+        <span class="d">It must <em>time out</em>. A response means Docker bound <code class="inl">0.0.0.0</code>, and Docker writes iptables rules ahead of UFW, so the firewall you configured is not involved.</span>
+      </div>
+    </div>
+  </div>
+
+  <pre><span class="c1"># Verification 03 — the only correct outcome here is failure</span>
+curl --max-time 5 http://YOUR_VPS_IP:5150/api/v1/health
+<span class="c1"># expected: curl: (28) Operation timed out</span>
+<span class="r1"># a 200 here means the API is on the public internet with no TLS</span></pre>
+</section>
+
+<!-- ================= 03 ================= -->
+<section class="sheet build" id="s03">
+  <span class="stage">03</span>
+  <p class="eyebrow h">Orientation</p>
+  <h2>Demo and Production <span class="scope both">Both</span></h2>
+
+  <p class="lead">The same product is deployed twice, and on the same physical server. Everything in this manual that looks like fussiness about names, ports and apexes exists because of that one fact.</p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th></th><th>Production</th><th>Demo</th><th>Why they differ</th></tr></thead>
+      <tbody>
+        <tr><td>Repository</td><td>Three repos, one workspace</td><td>One repo, apps as directories</td><td>The demo was consolidated; the older runbooks predate it</td></tr>
+        <tr><td>Directory on the VPS</td><td><code class="inl">/opt/island-tours</code></td><td><code class="inl">/opt/demo-tripwheel</code></td><td>Separate git roots</td></tr>
+        <tr><td>Apex domain</td><td><code class="inl">tripwheel.app</code></td><td><code class="inl">tripwheel.io</code></td><td class="c">Cookie isolation — see §05</td></tr>
+        <tr><td>Backend host port</td><td><code class="inl">5050</code></td><td><code class="inl">5150</code></td><td>Loud collision otherwise</td></tr>
+        <tr><td>Postgres loopback</td><td><code class="inl">5432</code></td><td><code class="inl">5433</code></td><td>Loud collision otherwise</td></tr>
+        <tr><td>Compose project</td><td><code class="inl">island-tours</code></td><td><code class="inl">demo-tripwheel</code></td><td class="c">Silent — shared volume if wrong</td></tr>
+        <tr><td>Front ends</td><td>PM2 on the VPS, three apps</td><td>Vercel, two apps</td><td>The demo has no Node on the box at all</td></tr>
+        <tr><td>Backend image</td><td><code class="inl">island-tours-backend:&lt;sha&gt;</code></td><td><code class="inl">demo-tripwheel-backend:&lt;sha&gt;</code></td><td>The prune filter matches by name</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout stop">
+    <span class="tag">The image name is not cosmetic</span>
+    <p>Both deploy workflows reclaim disk by deleting all but the three newest images matching a reference filter. Give the two stacks the same image name and a demo deploy will happily delete <strong>production's rollback images</strong>. Change the name in <code class="inl">docker-compose.yml</code> and you must change the filter in <code class="inl">.github/workflows/deploy-backend.yml</code> to match.</p>
+  </div>
+
+  <h3>What the demo must never share</h3>
+
+  <p>Some of these are about data hygiene. Two of them — the encryption key and the tracking flag — are about not letting a lower-trust environment reach into a higher-trust one.</p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Setting</th><th>On the demo</th><th>What sharing it does</th></tr></thead>
+      <tbody>
+        <tr><td><code class="inl">ENCRYPTION_KEY</code></td><td>Freshly generated</td><td class="c">Decrypts stored Stripe keys and operator OAuth tokens. Sharing it lets the demo box read production payment credentials</td></tr>
+        <tr><td><code class="inl">NEXT_PUBLIC_ENABLE_TRACKING</code></td><td><code class="inl">false</code></td><td class="c">Demo builds are also <code class="inl">NODE_ENV=production</code>. This flag is the <em>only</em> thing keeping test bookings out of real Google Ads, GA4 and Meta data</td></tr>
+        <tr><td>Stripe keys</td><td>Test keys, set in Admin → Settings</td><td>Real charges against real cards</td></tr>
+        <tr><td>Cloudinary cloud</td><td>A separate cloud</td><td>Demo test uploads appear in the production media gallery</td></tr>
+        <tr><td>Resend key + <code class="inl">MAIL_FROM</code></td><td>Separate key, demo subdomain</td><td>Demo booking flows send <strong>real</strong> email to whatever address is typed in, looking like production</td></tr>
+        <tr><td><code class="inl">ADMIN_EMAIL</code></td><td>A demo inbox</td><td>It receives cancellation requests and review submissions</td></tr>
+        <tr><td><code class="inl">META_*</code>, <code class="inl">GOOGLE_ADS_*</code></td><td>Blank</td><td>Conversion pollution</td></tr>
+        <tr><td>Redis</td><td>Its own container</td><td class="c">See below — this one cannot be fixed by configuration</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout stop">
+    <span class="tag">The Redis conflict has no config-level fix</span>
+    <p><code class="inl">buildRedisConnection()</code> in <code class="inl">backend/src/common/utils/redis.util.ts</code> sets host, port and password — there is <strong>no <code class="inl">db</code> index and no BullMQ <code class="inl">prefix</code></strong>. Queue names are hardcoded constants shared by every instance: <code class="inl">platform-jobs</code>, <code class="inl">media-upload</code>, and the content-translation queue. Two instances pointed at one Redis therefore share a keyspace <em>and</em> a queue, and each one's workers will consume the other's jobs — the demo picking up a production job means a real confirmation email sent and a real conversion fired, processed against demo data.</p>
+    <p>The compose stack gives each instance its own <code class="inl">redis</code> container, so this is safe by default. It only bites if you point both at one shared Redis, most likely by reusing a single <code class="inl">UPSTASH_REDIS_URL</code> across both env files. Separating them properly would need a code change.</p>
+  </div>
+</section>
+
+<!-- ================= 04 ================= -->
+<section class="sheet build" id="s04">
+  <span class="stage">04</span>
+  <p class="eyebrow h">A decision, made once</p>
+  <h2>Caddy or nginx <span class="scope both">Both</span></h2>
+
+  <p class="lead">Either works. Only one hostname is proxied on the demo box, so neither choice is much work. But three nginx defaults are wrong for <em>this</em> API, and each one fails in a way that looks like an application bug.</p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th></th><th>Caddy</th><th>nginx</th></tr></thead>
+      <tbody>
+        <tr><td>Config for the demo</td><td>~6 lines</td><td>~25 lines across 2 files</td></tr>
+        <tr><td>TLS</td><td>Automatic, renews itself, nothing to schedule</td><td><code class="inl">certbot</code> issues; a systemd timer renews</td></tr>
+        <tr><td>Forwarded headers</td><td class="y">Default</td><td class="c">You must set them</td></tr>
+        <tr><td>Request buffering</td><td class="y">Streams by default</td><td class="c">You must turn it off</td></tr>
+        <tr><td>Body size limit</td><td class="y">None</td><td class="c">Defaults to 1 MB</td></tr>
+        <tr><td>If renewal breaks</td><td>Retries and logs</td><td>You find out when the certificate expires</td></tr>
+        <tr><td>Familiarity</td><td>Fewer people know it</td><td class="y">Almost everyone; more answers online</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>The three sharp edges, precisely</h3>
+
+  <div class="grid g3" style="margin:22px 0">
+    <div class="card r">
+      <span class="num">EDGE 01 · HEADERS</span>
+      <h5>Rate limiting collapses</h5>
+      <p>Without <code class="inl">X-Forwarded-For</code>, the backend's per-IP limiter counts every visitor as one client, so a single busy user throttles everybody. Better Auth also builds <code class="inl">http://</code> callback URLs.</p>
+      <p>The app trusts exactly one hop — <code class="inl">trust proxy 1</code> in <code class="inl">backend/src/main.ts</code>.</p>
+    </div>
+    <div class="card r">
+      <span class="num">EDGE 02 · BUFFERING</span>
+      <h5>Every Stripe webhook fails</h5>
+      <p>Signature verification reads the <em>raw</em> bytes — the backend bootstraps with <code class="inl">rawBody: true</code>. Buffering rewrites the body, so validation fails and payments silently never confirm.</p>
+    </div>
+    <div class="card r">
+      <span class="num">EDGE 03 · BODY SIZE</span>
+      <h5>Uploads die at 1 MB</h5>
+      <p>nginx answers <code class="inl">413</code> above its default, so media uploads fail at a threshold nothing in the application explains or logs.</p>
+    </div>
+  </div>
+
+  <div class="callout rule">
+    <span class="tag">How to choose</span>
+    <p>Caddy gets all three right with no configuration, which is why the runbooks lead with it. <strong>Choose nginx if</strong> you already run it on this box for something else — you cannot run both, they each want port 80 and whichever starts second fails — or you need an nginx-only feature, or you simply want config you can read at a glance. It is a perfectly good choice with three edges you now know about.</p>
+  </div>
+</section>
+
+<!-- ================= 05 ================= -->
+<section class="sheet build" id="s05">
+  <span class="stage">05</span>
+  <p class="eyebrow h">Standing it up · step 1</p>
+  <h2>Domains and the Cookie <span class="scope both">Both</span></h2>
+
+  <p class="lead">This is the decision that is most painful to change later and the one that fails least visibly. Get the shape of the hostnames right before you buy a certificate for any of them.</p>
+
+  <p><strong>The session cookie is named identically on every instance.</strong> <code class="inl">cookiePrefix</code> is not configured in <code class="inl">backend/src/auth/auth.instance.ts</code>, so every deployment uses Better Auth's default, <code class="inl">better-auth.session_token</code>. Only the cookie's <code class="inl">Domain</code> attribute separates them — and <code class="inl">Domain</code> matching includes subdomains at any depth.</p>
+
+  <h3>Rule 1 — the demo goes on a different apex</h3>
+
+  <div class="diagram dotted">
+    <p class="dcap">Two apexes cannot reach each other · one apex leaks in both directions</p>
+    <div class="svgwrap">
+      <svg viewBox="0 0 900 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Comparison of a separate apex domain versus a shared apex domain for session cookie scoping">
+        <defs>
+          <style>
+            .nl{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.06em;fill:#16203A;font-weight:500}
+            .ns{font-family:'Poppins',sans-serif;font-size:9px;fill:#8493AC}
+            .hd{font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em}
+            .box{fill:#fff;stroke:#DEE5F0;stroke-width:1}
+            .okz{fill:#E6F6EF;stroke:#BFE7D5;stroke-width:1}
+            .bdz{fill:#FDEDF0;stroke:#F6CBD3;stroke-width:1}
+          </style>
+        </defs>
+
+        <rect class="okz" x="10" y="14" width="420" height="220" rx="12"/>
+        <text class="hd" x="30" y="40" fill="#0B8F62">CORRECT · SEPARATE APEX</text>
+        <rect class="box" x="30" y="56" width="180" height="70" rx="8"/>
+        <text class="nl" x="46" y="80">.tripwheel.app</text>
+        <text class="ns" x="46" y="96">api · dashboard ·</text>
+        <text class="ns" x="46" y="110">islandtours</text>
+        <rect class="box" x="234" y="56" width="176" height="70" rx="8"/>
+        <text class="nl" x="250" y="80">.demo.tripwheel.io</text>
+        <text class="ns" x="250" y="96">api.demo · app.demo ·</text>
+        <text class="ns" x="250" y="110">dashboard.demo</text>
+        <path d="M214 91 H230" stroke="#0B8F62" stroke-width="1.4" stroke-dasharray="3 3"/>
+        <circle cx="222" cy="91" r="9" fill="#fff" stroke="#0B8F62" stroke-width="1.4"/>
+        <path d="M218 87 L226 95 M226 87 L218 95" stroke="#0B8F62" stroke-width="1.6"/>
+        <text class="ns" x="30" y="156">No shared domain suffix, so neither instance's</text>
+        <text class="ns" x="30" y="172">cookie can ever be sent to the other. One login</text>
+        <text class="ns" x="30" y="188">has no effect on the other session. Nothing</text>
+        <text class="ns" x="30" y="204">further is required.</text>
+
+        <rect class="bdz" x="464" y="14" width="426" height="220" rx="12"/>
+        <text class="hd" x="484" y="40" fill="#D22F4C">WRONG · SHARED APEX</text>
+        <rect class="box" x="484" y="56" width="180" height="70" rx="8"/>
+        <text class="nl" x="500" y="80">.tripwheel.app</text>
+        <text class="ns" x="500" y="96">production cookie</text>
+        <text class="ns" x="500" y="110">scoped to the apex</text>
+        <rect class="box" x="690" y="56" width="180" height="70" rx="8"/>
+        <text class="nl" x="706" y="80">demo.tripwheel.app</text>
+        <text class="ns" x="706" y="96">receives it too —</text>
+        <text class="ns" x="706" y="110">it is a subdomain</text>
+        <path d="M668 91 H686" stroke="#D22F4C" stroke-width="1.6" marker-end="url(#ax)"/>
+        <defs><marker id="ax" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#D22F4C"/></marker></defs>
+        <text class="ns" x="484" y="156">The browser sends two cookies with the same name.</text>
+        <text class="ns" x="484" y="172">The backend reads whichever the parser hands it</text>
+        <text class="ns" x="484" y="188">first. Symptoms: random logouts on both sites, the</text>
+        <text class="ns" x="484" y="204">demo rejecting a valid login, production sessions</text>
+        <text class="ns" x="484" y="220">dying when somebody opens the demo.</text>
+      </svg>
+    </div>
+  </div>
+
+  <p>If you ever genuinely need the demo under the production apex, make the prefix env-driven rather than working around it:</p>
+
+  <div class="filelabel">backend/src/auth/auth.instance.ts</div>
+  <pre><span class="k1">advanced</span>: {
+  <span class="k1">cookiePrefix</span>: process.env.<span class="v1">AUTH_COOKIE_PREFIX</span> ?? <span class="s1">'better-auth'</span>,
+  <span class="k1">crossSubDomainCookies</span>: { <span class="c1">/* unchanged */</span> },
+}</pre>
+
+  <p>…then set <code class="inl">AUTH_COOKIE_PREFIX=demo-auth</code> on the demo only. A separate apex avoids needing it at all.</p>
+
+  <h3>Rule 2 — make <code class="inl">demo</code> the parent label, not a child one</h3>
+
+  <p><code class="inl">COOKIE_DOMAIN</code> must be the smallest domain covering all your hosts. Where you put the word <code class="inl">demo</code> decides what that domain is:</p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Layout</th><th>Smallest covering domain</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr><td><code class="inl">api.demo.tripwheel.io</code>, <code class="inl">app.demo.…</code>, <code class="inl">dashboard.demo.…</code></td><td><code class="inl">.demo.tripwheel.io</code></td><td class="y">Scoped to the demo instance</td></tr>
+        <tr><td><code class="inl">demo.api.tripwheel.io</code>, <code class="inl">demo.app.…</code>, <code class="inl">demo.dashboard.…</code></td><td><code class="inl">.tripwheel.io</code></td><td class="c">Leaks to every subdomain of the company domain</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><code class="inl">tripwheel.io</code> is the company domain. A session cookie scoped to <code class="inl">.tripwheel.io</code> is sent to every unrelated service on it. <code class="inl">backend/.env.production.example</code> warns about exactly this: scope it to the smallest domain covering both the front end and back end hosts, <strong>not</strong> a broader shared apex.</p>
+
+  <h3>The hostnames</h3>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Host</th><th>Serves</th><th>Points at</th><th>Scope</th></tr></thead>
+      <tbody>
+        <tr><td><code class="inl">api.demo.tripwheel.io</code></td><td>Backend API</td><td>VPS → <code class="inl">127.0.0.1:5150</code></td><td><span class="scope demo">Demo</span></td></tr>
+        <tr><td><code class="inl">app.demo.tripwheel.io</code></td><td>Public site</td><td>Vercel</td><td><span class="scope demo">Demo</span></td></tr>
+        <tr><td><code class="inl">dashboard.demo.tripwheel.io</code></td><td>Dashboard + admin gate at <code class="inl">/admin</code></td><td>Vercel</td><td><span class="scope demo">Demo</span></td></tr>
+        <tr><td><code class="inl">api.tripwheel.app</code></td><td>Backend API</td><td>VPS → <code class="inl">127.0.0.1:5050</code></td><td><span class="scope prod">Prod</span></td></tr>
+        <tr><td><code class="inl">islandtours.tripwheel.app</code></td><td>Public site</td><td>VPS → <code class="inl">127.0.0.1:3000</code></td><td><span class="scope prod">Prod</span></td></tr>
+        <tr><td><code class="inl">dashboard.tripwheel.app</code></td><td>Dashboard, operators at <code class="inl">/portal</code></td><td>VPS → <code class="inl">127.0.0.1:3001</code></td><td><span class="scope prod">Prod</span></td></tr>
+        <tr><td><code class="inl">tripwheel.app</code> + <code class="inl">www</code></td><td>Marketing / admin door</td><td>VPS → <code class="inl">127.0.0.1:3002</code></td><td><span class="scope prod">Prod</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <pre><span class="c1"># demo</span>
+<span class="k1">COOKIE_DOMAIN</span>=<span class="v1">.demo.tripwheel.io</span>      <span class="c1"># leading dot required</span>
+
+<span class="c1"># production</span>
+<span class="k1">COOKIE_DOMAIN</span>=<span class="v1">.tripwheel.app</span></pre>
+
+  <div class="callout stop">
+    <span class="tag">Known inconsistency in the example files</span>
+    <p><code class="inl">frontend/.env.production.example</code> sets the public site to <code class="inl">www.tripwheel.app</code>, while <code class="inl">backend/.env.production.example</code> sets <code class="inl">ISLAND_TOURS_URL=https://islandtours.tripwheel.app</code>. Both cannot be the public site. This manual assumes <code class="inl">islandtours</code>; if you prefer <code class="inl">www</code>, swap it consistently everywhere in §31.</p>
+  </div>
+</section>
+
+<!-- ================= 06 ================= -->
+<section class="sheet build" id="s06">
+  <span class="stage">06</span>
+  <p class="eyebrow h">Standing it up · step 2</p>
+  <h2>DNS <span class="scope both">Both</span></h2>
+
+  <p class="lead">DNS comes first in the chain because no certificate can be issued for a name that does not resolve to the server. A missing record surfaces two steps later as a certificate failure, which reads like a proxy problem.</p>
+
+  <h3>Demo — three records, mixed types</h3>
+
+  <div class="tw">
+    <table class="tight">
+      <thead><tr><th>Type</th><th>Name</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td><code class="inl">A</code></td><td><code class="inl">api.demo</code></td><td>your VPS IP</td></tr>
+        <tr><td><code class="inl">CNAME</code></td><td><code class="inl">app.demo</code></td><td><code class="inl">cname.vercel-dns.com</code></td></tr>
+        <tr><td><code class="inl">CNAME</code></td><td><code class="inl">dashboard.demo</code></td><td><code class="inl">cname.vercel-dns.com</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Take the exact CNAME target from each Vercel project's <strong>Domains</strong> tab rather than assuming it — Vercel has changed it before. The CNAMEs can wait until §14; the <code class="inl">A</code> record must exist before §12.</p>
+
+  <h3>Production — five A records</h3>
+
+  <div class="tw">
+    <table class="tight">
+      <thead><tr><th>Type</th><th>Name</th><th>Value</th><th>TTL</th></tr></thead>
+      <tbody>
+        <tr><td><code class="inl">A</code></td><td><code class="inl">@</code></td><td>VPS IP</td><td>300</td></tr>
+        <tr><td><code class="inl">A</code></td><td><code class="inl">www</code></td><td>VPS IP</td><td>300</td></tr>
+        <tr><td><code class="inl">A</code></td><td><code class="inl">api</code></td><td>VPS IP</td><td>300</td></tr>
+        <tr><td><code class="inl">A</code></td><td><code class="inl">dashboard</code></td><td>VPS IP</td><td>300</td></tr>
+        <tr><td><code class="inl">A</code></td><td><code class="inl">islandtours</code></td><td>VPS IP</td><td>300</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Add matching <code class="inl">AAAA</code> records if the VPS has IPv6. Raise TTL to 3600 once everything works. Use explicit names rather than a wildcard, so the HTTP-01 challenge works without DNS-01 credentials.</p>
+
+  <pre><span class="c1"># verify before going further — every one must print the VPS IP</span>
+dig +short api.demo.tripwheel.io
+
+<span class="c1"># production, all at once</span>
+<span class="k1">for</span> h <span class="k1">in</span> @ www api dashboard islandtours; <span class="k1">do</span>
+  printf <span class="s1">"%-28s %s\n"</span> <span class="s1">"$h"</span> <span class="s1">"$(dig +short $h.tripwheel.app)"</span>
+<span class="k1">done</span></pre>
+
+  <div class="callout gov">
+    <span class="tag">Cloudflare</span>
+    <p>Keep the proxy <strong>off</strong> — grey cloud — for the API hostname. The orange cloud adds a second proxy hop and the backend trusts exactly one (<code class="inl">trust proxy 1</code>), so rate limiting would count Cloudflare's IP as every visitor. Left at <code class="inl">1</code> behind two hops, clients can also spoof <code class="inl">X-Forwarded-For</code> to evade the per-IP limit or poison a victim's bucket.</p>
+  </div>
+
+  <div class="callout stop">
+    <span class="tag">Email DNS — silent until you look</span>
+    <p>Add your domain in Resend and paste its <strong>DKIM / SPF / DMARC</strong> records into the same zone. Until it shows "verified", every booking confirmation, password reset and operator invite <em>silently fails to send</em>. Nothing in the application errors.</p>
+  </div>
+</section>
+
+<!-- ================= 07 ================= -->
+<section class="sheet build" id="s07">
+  <span class="stage">07</span>
+  <p class="eyebrow h">Standing it up · step 3</p>
+  <h2>Preparing the VPS <span class="scope both">Both</span></h2>
+
+  <p class="lead">Ubuntu 24.04. The demo needs 2 GB of RAM because the Next builds happen on Vercel; production needs at least 4 GB plus swap, and two instances on one box want 8 GB.</p>
+
+  <h3>a · A deploy user</h3>
+
+  <pre><span class="c1"># ssh root@YOUR_VPS_IP</span>
+apt update &amp;&amp; apt upgrade -y
+adduser deploy
+usermod -aG sudo deploy
+rsync --archive --chown=deploy:deploy ~/.ssh /home/deploy/</pre>
+
+  <p>Open a <strong>second terminal</strong> and confirm <code class="inl">ssh deploy@YOUR_VPS_IP</code> works <em>before</em> locking root out. If you skip this and the key copy failed, you have locked yourself out of your own server.</p>
+
+  <pre>sed -i <span class="s1">'s/^#\?PermitRootLogin.*/PermitRootLogin no/'</span> /etc/ssh/sshd_config
+sed -i <span class="s1">'s/^#\?PasswordAuthentication.*/PasswordAuthentication no/'</span> /etc/ssh/sshd_config
+systemctl restart ssh</pre>
+
+  <div class="callout rule">
+    <span class="tag">What this means later</span>
+    <p><code class="inl">PasswordAuthentication no</code> means the <code class="inl">deploy</code> password can never log you in over SSH. It exists for <code class="inl">sudo</code> and nothing else. If you forget it, you are not locked out — see §33. And <code class="inl">PermitRootLogin no</code> constrains sshd only; your host's browser console is not SSH, so root still works there.</p>
+  </div>
+
+  <h3>b · Firewall — three ports, and the database on none of them</h3>
+
+  <pre>ufw allow OpenSSH
+ufw allow 80/tcp
+ufw allow 443/tcp
+ufw --force enable</pre>
+
+  <h3>c · Swap</h3>
+
+  <p>Small, but it stops the Docker build being OOM-killed. Use 2 GB for the demo, 4 GB where Next builds run on the box.</p>
+
+  <pre>fallocate -l 2G /swapfile &amp;&amp; chmod 600 /swapfile
+mkswap /swapfile &amp;&amp; swapon /swapfile
+echo <span class="s1">'/swapfile none swap sw 0 0'</span> &gt;&gt; /etc/fstab</pre>
+
+  <h3>d · Docker</h3>
+
+  <pre>curl -fsSL https://get.docker.com | sh
+usermod -aG docker deploy
+<span class="c1"># log out and back in as deploy, then:</span>
+docker ps          <span class="c1"># must work without sudo</span></pre>
+
+  <h3>e · Node, pnpm, PM2 <span class="scope prod">Prod only</span></h3>
+
+  <p>The demo needs <strong>none of this</strong> — the API ships inside its image and the two Next apps build on Vercel. Install it only where front ends run on the box.</p>
+
+  <pre>curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install -y nodejs
+sudo corepack enable &amp;&amp; corepack prepare pnpm@10 --activate
+sudo npm install -g pm2</pre>
+
+  <h3>f · Log rotation, before the disk fills</h3>
+
+  <p>Docker's json-file driver keeps container logs forever by default. A full disk takes down Postgres in a way that reads like corruption.</p>
+
+  <div class="filelabel">/etc/docker/daemon.json</div>
+  <pre>{ <span class="k1">"log-driver"</span>: <span class="s1">"json-file"</span>, <span class="k1">"log-opts"</span>: { <span class="k1">"max-size"</span>: <span class="s1">"20m"</span>, <span class="k1">"max-file"</span>: <span class="s1">"5"</span> } }</pre>
+
+  <pre>sudo systemctl restart docker</pre>
+</section>
+
+<!-- ================= 08 ================= -->
+<section class="sheet build" id="s08">
+  <span class="stage">08</span>
+  <p class="eyebrow h">Standing it up · step 4</p>
+  <h2>Code onto the Server <span class="scope both">Both</span></h2>
+
+  <p class="lead">There are <strong>two SSH key pairs</strong> in this deployment, they point in opposite directions, and confusing them produces a <code class="inl">publickey</code> error that looks the same either way.</p>
+
+  <div class="diagram">
+    <p class="dcap">Two key pairs, two directions</p>
+    <div class="grid g2">
+      <div class="card b">
+        <span class="num">KEY PAIR 01 · GENERATED ON THE VPS</span>
+        <h5>VPS reads GitHub</h5>
+        <p>A <strong>deploy key</strong> on the repository, so the server can clone and pull a private repo. Public half goes to GitHub → repo → Settings → Deploy keys. Leave <em>Allow write access</em> unchecked — the VPS only ever reads.</p>
+      </div>
+      <div class="card h">
+        <span class="num">KEY PAIR 02 · GENERATED ON YOUR LAPTOP</span>
+        <h5>GitHub Actions writes to the VPS</h5>
+        <p>Public half appended to <code class="inl">deploy@</code>'s <code class="inl">authorized_keys</code>; <strong>private</strong> half pasted into the <code class="inl">VPS_SSH_KEY</code> repository secret. This is §15.</p>
+      </div>
+    </div>
+  </div>
+
+  <h3>Key pair 1 and the clone</h3>
+
+  <pre><span class="c1"># as deploy, on the VPS</span>
+ssh-keygen -t ed25519 -C <span class="s1">"demo-vps-readonly"</span> -f ~/.ssh/id_ed25519 -N <span class="s1">""</span>
+cat ~/.ssh/id_ed25519.pub        <span class="c1"># paste this into GitHub as a deploy key</span>
+
+ssh -T git@github.com            <span class="c1"># should greet you by name</span>
+
+sudo mkdir -p /opt/demo-tripwheel &amp;&amp; sudo chown deploy:deploy /opt/demo-tripwheel
+git clone -b main git@github.com:pixeldevripon/demo.tripwheel.git /opt/demo-tripwheel</pre>
+
+  <h3>The layout that the deploy workflow depends on</h3>
+
+  <p>One clone, not three. The git root and the compose directory are <strong>different folders</strong>, and that distinction is load-bearing:</p>
+
+  <pre>/opt/demo-tripwheel/            <span class="c1">&lt;- git root. This is VPS_APP_DIR.</span>
+├── .github/workflows/          <span class="c1">   GitHub reads these nowhere else</span>
+├── backend-frontend/           <span class="c1">&lt;- docker-compose.yml lives HERE</span>
+│   ├── backend/                <span class="c1">   the only thing the VPS runs</span>
+│   └── frontend/               <span class="c1">   built by Vercel, not here</span>
+└── dashboard/                  <span class="c1">   built by Vercel, not here</span></pre>
+
+  <div class="callout stop">
+    <span class="tag">Why the split matters</span>
+    <p>The deploy workflow runs <code class="inl">git reset --hard &lt;sha&gt;</code> in <code class="inl">VPS_APP_DIR</code> and then <code class="inl">cd</code>s into <code class="inl">backend-frontend/</code>. Point <code class="inl">VPS_APP_DIR</code> at the compose directory and the git step fails with <code class="inl">not a git repository</code>.</p>
+    <p>The same <code class="inl">git reset --hard</code> is why <strong>any hand edit to a tracked file on the server is temporary</strong>. It survives until the next backend deploy and then silently reverts. If you need a change on the box — a published port, a compose tweak — commit it to the repository instead.</p>
+  </div>
+
+  <h3>Production — three clones <span class="scope prod">Prod</span></h3>
+
+  <pre>sudo mkdir -p /srv/tripwheel &amp;&amp; sudo chown deploy:deploy /srv/tripwheel
+cd /srv/tripwheel
+
+git clone -b prod git@github.com:pixeldevripon/island-tours.git island-tour-development
+git clone -b main git@github.com:pixeldevripon/dashbaord-tripwheel-x-islandtours.git tripwheel-x-islandtours-dashboard
+git clone -b main git@github.com:pixeldevripon/tripwheel.app.git tripwheel-app</pre>
+
+  <p>The typo in <code class="inl">dashbaord-…</code> is the real repository name. Note that the branches differ: <code class="inl">prod</code> for the API workspace, <code class="inl">main</code> for the other two.</p>
+</section>
+
+<!-- ================= 09 ================= -->
+<section class="sheet build" id="s09">
+  <span class="stage">09</span>
+  <p class="eyebrow a">Standing it up · step 5</p>
+  <h2>Secrets <span class="scope both">Both</span></h2>
+
+  <p class="lead">Generate a complete fresh set per instance, once, and keep the output. Never copy production's values into a demo — most of all <code class="inl">ENCRYPTION_KEY</code>, which decrypts the Stripe keys and operator tokens held in the database.</p>
+
+  <pre>echo <span class="s1">"POSTGRES_PASSWORD=$(openssl rand -base64 24 | tr -d '/+=')"</span>
+echo <span class="s1">"REDIS_PASSWORD=$(openssl rand -base64 24 | tr -d '/+=')"</span>
+echo <span class="s1">"BETTER_AUTH_SECRET=$(openssl rand -base64 32)"</span>
+echo <span class="s1">"TRAVELER_SESSION_SECRET=$(openssl rand -base64 32)"</span>
+echo <span class="s1">"INTERNAL_API_SECRET=$(openssl rand -base64 32)"</span>
+echo <span class="s1">"REVALIDATE_SECRET=$(openssl rand -base64 32)"</span>
+echo <span class="s1">"ENCRYPTION_KEY=$(openssl rand -hex 32)"</span>
+echo <span class="s1">"ADMIN_PASSWORD=$(openssl rand -base64 18)"</span>
+<span class="c1"># production also wants:</span>
+echo <span class="s1">"SYSTEM_ADMIN_PASSWORD=$(openssl rand -base64 18)"</span></pre>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Secret</th><th>Job</th><th>If it is wrong</th></tr></thead>
+      <tbody>
+        <tr><td><code class="inl">INTERNAL_API_SECRET</code></td><td>Lets the Next servers skip the API's per-IP rate limit while rendering</td><td>Builds hit <code class="inl">429</code> mid-render; logged-in users get bounced</td></tr>
+        <tr><td><code class="inl">REVALIDATE_SECRET</code></td><td>Lets backend and dashboard clear the public site's page cache</td><td class="c">Public site serves stale prices. No error anywhere</td></tr>
+        <tr><td><code class="inl">ENCRYPTION_KEY</code></td><td>Encrypts Stripe keys and operator tokens in the database</td><td class="c">Rotating it makes every stored credential unreadable</td></tr>
+        <tr><td><code class="inl">BETTER_AUTH_SECRET</code></td><td>Signs staff, operator and admin sessions</td><td>Changing it logs everyone out</td></tr>
+        <tr><td><code class="inl">TRAVELER_SESSION_SECRET</code></td><td>Signs traveller booking-lookup tokens, deliberately separate</td><td>Booking-reference links stop working</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout rule">
+    <span class="tag">Matched pairs</span>
+    <p><code class="inl">INTERNAL_API_SECRET</code> and <code class="inl">REVALIDATE_SECRET</code> must match <strong>within</strong> an instance — the API and both of its front ends — and must differ between instances. Both are server-only and must <strong>never</strong> carry a <code class="inl">NEXT_PUBLIC_</code> prefix, which would publish them in the browser bundle.</p>
+  </div>
+
+  <p>The backend validates its environment at boot and prints exactly what is wrong. In production it <strong>hard-fails</strong> without <code class="inl">INTERNAL_API_SECRET</code>. Secrets under 32 characters are rejected, and anything containing <code class="inl">change-me</code> is rejected as a placeholder. This is one of the loud failures — you cannot ship a missing secret.</p>
+</section>
+
+<!-- ================= 10 ================= -->
+<section class="sheet build" id="s10">
+  <span class="stage">10</span>
+  <p class="eyebrow a">Standing it up · step 6</p>
+  <h2>The Compose Stack <span class="scope both">Both</span></h2>
+
+  <p class="lead">Two environment files, read at different moments, with one overriding the other. Knowing which file owns which variable is the whole of this section.</p>
+
+  <div class="diagram dotted">
+    <p class="dcap">Which file wins</p>
+    <div class="svgwrap">
+      <svg viewBox="0 0 880 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The root env file feeds compose interpolation which overrides the backend env_file for infrastructure variables">
+        <defs>
+          <marker id="a2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#8493AC"/></marker>
+          <marker id="a2r" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#D22F4C"/></marker>
+          <style>
+            .nl{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.06em;fill:#16203A;font-weight:500}
+            .ns{font-family:'Poppins',sans-serif;font-size:8.5px;fill:#8493AC}
+            .box{fill:#fff;stroke:#DEE5F0;stroke-width:1}
+            .ln{stroke:#C9D4E4;stroke-width:1.2;fill:none}
+          </style>
+        </defs>
+
+        <rect class="box" x="20" y="30" width="210" height="78" rx="8"/><rect x="20" y="30" width="3.5" height="78" rx="2" fill="#5B4BD6"/>
+        <text class="nl" x="38" y="54">backend-frontend/.env</text>
+        <text class="ns" x="38" y="70">POSTGRES_* · REDIS_PASSWORD</text>
+        <text class="ns" x="38" y="84">BACKEND_PORT · RUN_SEED</text>
+        <text class="ns" x="38" y="98">COMPOSE_PROJECT_NAME</text>
+
+        <rect class="box" x="20" y="146" width="210" height="70" rx="8"/><rect x="20" y="146" width="3.5" height="70" rx="2" fill="#5B4BD6"/>
+        <text class="nl" x="38" y="170">backend/.env.production</text>
+        <text class="ns" x="38" y="186">BETTER_AUTH_SECRET · CORS_ORIGINS</text>
+        <text class="ns" x="38" y="200">CLOUDINARY_* · RESEND · COOKIE_DOMAIN</text>
+
+        <rect class="box" x="330" y="76" width="190" height="96" rx="8"/><rect x="330" y="76" width="3.5" height="96" rx="2" fill="#2646F5"/>
+        <text class="nl" x="348" y="100">docker-compose.yml</text>
+        <text class="ns" x="348" y="118">${VAR} interpolation</text>
+        <text class="ns" x="348" y="134">+ environment: block</text>
+        <text class="ns" x="348" y="152">+ env_file:</text>
+
+        <rect class="box" x="620" y="76" width="230" height="96" rx="8"/><rect x="620" y="76" width="3.5" height="96" rx="2" fill="#0B8F62"/>
+        <text class="nl" x="638" y="100">backend container env</text>
+        <text class="ns" x="638" y="118">DATABASE_URL → postgres:5432</text>
+        <text class="ns" x="638" y="134">REDIS_HOST → redis</text>
+        <text class="ns" x="638" y="152">PORT → 5050 · NODE_ENV → production</text>
+
+        <path class="ln" marker-end="url(#a2)" d="M230 69 L326 100"/>
+        <path class="ln" marker-end="url(#a2)" d="M230 181 L326 148"/>
+        <path class="ln" marker-end="url(#a2)" d="M520 124 H616"/>
+
+        <path d="M430 176 L430 210 L700 210 L700 176" stroke="#D22F4C" stroke-width="1.3" fill="none" stroke-dasharray="4 3" marker-end="url(#a2r)"/>
+        <text class="ns" x="470" y="228" fill="#D22F4C">environment: OVERRIDES env_file: — a DATABASE_URL you set in .env.production is ignored</text>
+      </svg>
+    </div>
+  </div>
+
+  <h3>a · The compose env</h3>
+
+  <div class="filelabel">/opt/demo-tripwheel/backend-frontend/.env</div>
+  <pre><span class="k1">COMPOSE_PROJECT_NAME</span>=<span class="v1">demo-tripwheel</span>     <span class="c1"># keeps the demo off production's volumes</span>
+<span class="k1">BACKEND_PORT</span>=<span class="v1">127.0.0.1:5150</span>             <span class="c1"># production holds 5050</span>
+
+<span class="k1">POSTGRES_USER</span>=<span class="v1">island</span>
+<span class="k1">POSTGRES_PASSWORD</span>=<span class="v1">&lt;fresh&gt;</span>
+<span class="k1">POSTGRES_DB</span>=<span class="v1">island_tours</span>                <span class="c1"># same name is fine: different container, different volume</span>
+<span class="k1">REDIS_PASSWORD</span>=<span class="v1">&lt;fresh&gt;</span>
+
+<span class="k1">BACKEND_IMAGE_TAG</span>=<span class="v1">latest</span>
+<span class="k1">RUN_SEED</span>=<span class="v1">true</span>                          <span class="c1"># FIRST boot only, then false</span>
+<span class="k1">NODE_OPTIONS</span>=</pre>
+
+  <div class="grid g2" style="margin:24px 0">
+    <div class="card r">
+      <span class="num">SILENT · WORST CASE AVAILABLE</span>
+      <h5><code class="inl">COMPOSE_PROJECT_NAME</code></h5>
+      <p>Compose derives the project name from the directory, so today the two stacks' volumes are separate <em>by accident of naming</em>. If it ever collides — a renamed directory, a stray environment variable, a copy-pasted <code class="inl">.env</code> — the demo attaches to production's <code class="inl">postgres-data</code>, and its first <code class="inl">RUN_SEED=true</code> boot seeds over live bookings.</p>
+      <p>Both containers start perfectly while this happens.</p>
+    </div>
+    <div class="card r">
+      <span class="num">SILENT · PUBLIC DATABASE</span>
+      <h5>The <code class="inl">127.0.0.1:</code> prefix</h5>
+      <p>Compose publishes <code class="inl">${BACKEND_PORT:-127.0.0.1:5150}:5050</code>. The variable is <em>the whole host side</em>, prefix included. Set a bare <code class="inl">5150</code> and Docker binds <code class="inl">0.0.0.0</code> — and Docker writes its own iptables rules, so <strong>UFW will not protect you</strong>. The API is then reachable from the internet with no TLS.</p>
+    </div>
+  </div>
+
+  <pre><span class="c1"># prove the isolation BEFORE the first boot — this is the unrecoverable one</span>
+docker compose config --format json \
+  | python3 -c <span class="s1">'import json,sys; print(json.load(sys.stdin)["name"])'</span>
+<span class="c1"># must print: demo-tripwheel</span>
+
+docker volume ls | grep postgres-data      <span class="c1"># if production is on this box, expect TWO</span></pre>
+
+  <h3>b · The backend app env</h3>
+
+  <div class="filelabel">backend-frontend/backend/.env.production</div>
+  <pre><span class="c1"># ── URLs ─────────────────────────────────────────────────────</span>
+<span class="k1">BETTER_AUTH_URL</span>=<span class="v1">https://api.demo.tripwheel.io</span>
+<span class="k1">ISLAND_TOURS_URL</span>=<span class="v1">https://app.demo.tripwheel.io</span>
+<span class="k1">PORTAL_URL</span>=<span class="v1">https://dashboard.demo.tripwheel.io/portal</span>
+<span class="k1">FRONTEND_URL</span>=<span class="v1">https://app.demo.tripwheel.io</span>
+
+<span class="c1"># Comma-separated, NO SPACES. Miss one and that app's every request fails CORS.</span>
+<span class="k1">CORS_ORIGINS</span>=<span class="v1">https://app.demo.tripwheel.io,https://dashboard.demo.tripwheel.io</span>
+
+<span class="k1">COOKIE_DOMAIN</span>=<span class="v1">.demo.tripwheel.io</span>
+
+<span class="c1"># ── Secrets from §09 ─────────────────────────────────────────</span>
+<span class="k1">BETTER_AUTH_SECRET</span>=<span class="v1">&lt;paste&gt;</span>
+<span class="k1">TRAVELER_SESSION_SECRET</span>=<span class="v1">&lt;paste&gt;</span>
+<span class="k1">INTERNAL_API_SECRET</span>=<span class="v1">&lt;paste&gt;</span>
+<span class="k1">REVALIDATE_SECRET</span>=<span class="v1">&lt;paste&gt;</span>
+<span class="k1">ENCRYPTION_KEY</span>=<span class="v1">&lt;paste — the hex one&gt;</span>
+
+<span class="c1"># ── Admin account, created by the seed ───────────────────────</span>
+<span class="k1">ADMIN_EMAIL</span>=<span class="v1">admin@demo.tripwheel.io</span>
+<span class="k1">ADMIN_PASSWORD</span>=<span class="v1">&lt;paste, min 12 chars&gt;</span>
+
+<span class="c1"># ── Email — QUOTE the whole value ────────────────────────────</span>
+<span class="k1">RESEND_API_KEY</span>=<span class="v1">re_xxxxxxxxxxxx</span>
+<span class="k1">MAIL_FROM</span>=<span class="s1">"Island Tours Demo &lt;noreply@demo.tripwheel.io&gt;"</span>
+
+<span class="c1"># ── Cloudinary — a SEPARATE cloud from production ────────────</span>
+<span class="k1">CLOUDINARY_CLOUD_NAME</span>=<span class="v1">&lt;demo cloud&gt;</span>
+<span class="k1">CLOUDINARY_API_KEY</span>=<span class="v1">&lt;key&gt;</span>
+<span class="k1">CLOUDINARY_API_SECRET</span>=<span class="v1">&lt;secret&gt;</span>
+
+<span class="k1">FX_PROVIDER</span>=<span class="v1">ecb</span></pre>
+
+  <div class="callout stop">
+    <span class="tag">Fix the example file before you copy it</span>
+    <p><code class="inl">backend/.env.production.example</code> begins with a stray word <code class="inl">the</code> before the first comment. Compose parses that as a malformed environment line and refuses to start the container with <code class="inl">poorly formatted environment</code>. Delete those four characters from your copy.</p>
+  </div>
+
+  <p><strong>Deliberately absent</strong> from this file: <code class="inl">DATABASE_URL</code>, <code class="inl">REDIS_HOST</code>, <code class="inl">REDIS_PORT</code>, <code class="inl">REDIS_PASSWORD</code>, <code class="inl">NODE_ENV</code>, <code class="inl">PORT</code> and <code class="inl">RUN_SEED</code>. Compose builds those from the root <code class="inl">.env</code> and overrides anything you write here. Stripe keys are absent too — they live encrypted in the database, set from Admin → Settings after launch, and must be test keys on a demo.</p>
+</section>
+
+<!-- ================= 11 ================= -->
+<section class="sheet build" id="s11">
+  <span class="stage">11</span>
+  <p class="eyebrow g">Standing it up · step 7</p>
+  <h2>First Boot <span class="scope both">Both</span></h2>
+
+  <pre>cd /opt/demo-tripwheel/backend-frontend
+docker compose up -d --build       <span class="c1"># first build: 10–20 min</span>
+docker compose logs -f backend</pre>
+
+  <p>The entrypoint runs migrations before the server listens, so a healthy first boot prints these three lines in this order:</p>
+
+  <pre><span class="s1">[entrypoint] Applying database migrations (prisma migrate deploy)...</span>
+<span class="s1">[entrypoint] RUN_SEED=true -&gt; seeding database (prisma db seed)...</span>
+<span class="s1">[entrypoint] Starting server -&gt; node dist/src/main.js</span></pre>
+
+  <h3>Then turn the seed off — immediately</h3>
+
+  <pre>sed -i <span class="s1">'s/^RUN_SEED=true/RUN_SEED=false/'</span> .env
+docker compose up -d
+curl -s http://127.0.0.1:5150/api/v1/health</pre>
+
+  <p>Left at <code class="inl">true</code>, every redeploy re-seeds. On a demo that is not destructive but it will silently reset content you were part-way through showing someone. Optional demo content afterwards: <code class="inl">docker compose exec backend pnpm prisma:seed:demo</code>.</p>
+
+  <div class="callout gov">
+    <span class="tag">Health checks — what they do and do not prove</span>
+    <p>Compose health-checks all three services. The backend's check uses <code class="inl">node -e</code> with global <code class="inl">fetch</code> rather than curl, because the runtime image is <code class="inl">node:24-slim</code> and has no curl. Its <code class="inl">start_period: 60s</code> matters: migrations run before the server listens, and without it a slow migration looks like a failing container.</p>
+    <p>The endpoint itself is <strong>shallow</strong> — it returns <code class="inl">{ status, timestamp, uptime }</code> and does not check Postgres or Redis liveness. An uptime monitor pointed at it tells you the process is up, not that the database is reachable. Deepening it with <code class="inl">@nestjs/terminus</code> is a small future task.</p>
+  </div>
+</section>
+
+<!-- ================= 12 ================= -->
+<section class="sheet build" id="s12">
+  <span class="stage">12</span>
+  <p class="eyebrow h">Standing it up · step 8a</p>
+  <h2>Caddy <span class="scope both">Both</span></h2>
+
+  <p class="lead">No certbot, nothing to schedule. Caddy obtains and renews Let's Encrypt certificates itself and redirects HTTP to HTTPS. Do this section <strong>or</strong> §13, never both.</p>
+
+  <pre>sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
+curl -1sLf <span class="s1">'https://dl.cloudsmith.io/public/caddy/stable/gpg.key'</span> \
+  | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+curl -1sLf <span class="s1">'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt'</span> \
+  | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+sudo apt update &amp;&amp; sudo apt install -y caddy</pre>
+
+  <div class="filelabel">/etc/caddy/Caddyfile — demo, one hostname</div>
+  <pre>{
+	email admin@demo.tripwheel.io
+}
+
+api.demo.tripwheel.io {
+	encode zstd gzip
+
+	<span class="c1"># Recommended: keep the API schema off the public internet.</span>
+	<span class="c1"># Swagger is served in production too. Delete these 2 lines to leave it open.</span>
+	@docs path /api/docs*
+	respond @docs 404
+
+	reverse_proxy 127.0.0.1:5150
+
+	log {
+		output file /var/log/caddy/api.log
+	}
+}</pre>
+
+  <div class="filelabel">/etc/caddy/Caddyfile — production, five sites</div>
+  <pre>api.tripwheel.app {
+	encode zstd gzip
+	@docs path /api/docs*
+	respond @docs 404
+	reverse_proxy 127.0.0.1:5050
+	log { output file /var/log/caddy/api.log }
+}
+
+islandtours.tripwheel.app  { encode zstd gzip
+	reverse_proxy 127.0.0.1:3000 }
+dashboard.tripwheel.app    { encode zstd gzip
+	reverse_proxy 127.0.0.1:3001 }
+tripwheel.app              { encode zstd gzip
+	reverse_proxy 127.0.0.1:3002 }
+www.tripwheel.app          { redir https://tripwheel.app{uri} permanent }</pre>
+
+  <pre>sudo caddy fmt --overwrite /etc/caddy/Caddyfile
+sudo caddy validate --config /etc/caddy/Caddyfile
+sudo systemctl reload caddy
+sudo journalctl -u caddy -f          <span class="c1"># watch for "certificate obtained successfully"</span>
+
+curl -i https://api.demo.tripwheel.io/api/v1/health      <span class="c1"># expect 200</span></pre>
+
+  <div class="callout ok">
+    <span class="tag">Why this needs no tuning</span>
+    <p>The three things nginx needs explicit configuration for, Caddy already does: it forwards <code class="inl">X-Forwarded-For</code> and <code class="inl">X-Forwarded-Proto</code> by default, it <strong>streams</strong> request bodies rather than buffering them, and it has <strong>no</strong> request body size limit. You do not need <code class="inl">proxy_set_header</code>, <code class="inl">proxy_request_buffering off</code> or <code class="inl">client_max_body_size</code>.</p>
+  </div>
+
+  <p>Use <code class="inl">reload</code> rather than <code class="inl">restart</code>: a bad config on reload leaves the old one running and keeps every other site serving. One Caddy serves both instances — append the demo blocks to the same file, and a hostname already claimed by production fails <code class="inl">caddy validate</code> loudly rather than half-applying.</p>
+</section>
+
+<!-- ================= 13 ================= -->
+<section class="sheet build" id="s13">
+  <span class="stage">13</span>
+  <p class="eyebrow h">Standing it up · step 8b</p>
+  <h2>nginx <span class="scope both">Both</span></h2>
+
+  <p class="lead">The alternative. Everything else in this manual is unchanged — same Docker backend, same ports, same env files. Only the proxy differs, and the three directives that Caddy gives you free are called out explicitly below.</p>
+
+  <pre><span class="c1"># if Caddy is installed, disable it first — both want port 80</span>
+sudo systemctl disable --now caddy 2&gt;/dev/null || true
+sudo apt install -y nginx
+sudo systemctl enable --now nginx</pre>
+
+  <h3>File 1 — the shared proxy snippet</h3>
+
+  <p>Every site needs the same headers. Put them in one file rather than repeating them; a header missing from one site is the kind of bug you find weeks later.</p>
+
+  <div class="filelabel">/etc/nginx/snippets/proxy-common.conf</div>
+  <pre>proxy_http_version 1.1;
+
+<span class="c1"># EDGE 01. Forward real client info. Without these the backend's rate</span>
+<span class="c1"># limiter sees nginx's own address as every visitor, and Better Auth</span>
+<span class="c1"># builds http:// callback URLs. The app trusts exactly ONE proxy hop —</span>
+<span class="c1"># see `trust proxy 1` in backend/src/main.ts.</span>
+proxy_set_header Host              $host;
+proxy_set_header X-Real-IP         $remote_addr;
+proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+proxy_set_header X-Forwarded-Proto $scheme;
+
+proxy_read_timeout    60s;
+proxy_connect_timeout 10s;</pre>
+
+  <h3>File 2 — the API site</h3>
+
+  <div class="filelabel">/etc/nginx/sites-available/demo-api</div>
+  <pre>server {
+    listen 80;
+    listen [::]:80;
+    server_name api.demo.tripwheel.io;
+
+    <span class="c1"># EDGE 03. nginx defaults to 1 MB and answers 413 above it.</span>
+    <span class="c1"># Media uploads and multipart forms need room.</span>
+    client_max_body_size 15m;
+
+    <span class="c1"># Recommended: keep the API schema off the public internet.</span>
+    location ^~ /api/docs {
+        return 404;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:5150;
+        include /etc/nginx/snippets/proxy-common.conf;
+
+        <span class="c1"># EDGE 02. Stripe webhook signature verification reads the RAW</span>
+        <span class="c1"># request bytes (the backend bootstraps with rawBody: true).</span>
+        <span class="c1"># Buffering rewrites the body and every webhook fails validation.</span>
+        proxy_request_buffering off;
+    }
+}</pre>
+
+  <pre>sudo ln -sf /etc/nginx/sites-available/demo-api /etc/nginx/sites-enabled/demo-api
+sudo rm -f /etc/nginx/sites-enabled/default     <span class="c1"># the catch-all answers for any unmatched host</span>
+sudo nginx -t &amp;&amp; sudo systemctl reload nginx</pre>
+
+  <p>Always <code class="inl">nginx -t</code> first. A bad config on <code class="inl">reload</code> leaves the old one running; on <code class="inl">restart</code> it leaves you with nothing.</p>
+
+  <h3>TLS with certbot</h3>
+
+  <pre>sudo apt install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d api.demo.tripwheel.io \
+  --redirect --agree-tos -m admin@demo.tripwheel.io --no-eff-email
+
+systemctl list-timers | grep certbot     <span class="c1"># renewal timer installed by the package</span>
+sudo certbot renew --dry-run</pre>
+
+  <p>certbot rewrites the server block in place, adding the <code class="inl">listen 443 ssl</code> block, the certificate paths and an HTTP→HTTPS redirect. Your file will look different afterwards — that is expected.</p>
+
+  <h3>Compression</h3>
+
+  <p>nginx gzips only <code class="inl">text/html</code> by default, leaving every JSON response uncompressed.</p>
+
+  <div class="filelabel">/etc/nginx/conf.d/gzip.conf</div>
+  <pre>gzip on;
+gzip_vary on;
+gzip_proxied any;
+gzip_comp_level 5;
+gzip_min_length 256;
+gzip_types application/json application/javascript text/css text/plain text/xml;</pre>
+
+  <div class="callout stop">
+    <span class="tag">The one ongoing difference from Caddy</span>
+    <p>Renewal is a separate moving part that can break quietly, and you find out when the certificate expires. Add a certificate-expiry check to your uptime monitor — UptimeRobot and most others do it free.</p>
+  </div>
+</section>
+
+<!-- ================= 14 ================= -->
+<section class="sheet build" id="s14">
+  <span class="stage">14</span>
+  <p class="eyebrow h">Standing it up · step 9</p>
+  <h2>Vercel <span class="scope demo">Demo</span></h2>
+
+  <p class="lead">Two projects, both pointing at the same repository, differing only in Root Directory. That setting is what makes a monorepo work on Vercel and it cannot be set from a file in the repo.</p>
+
+  <p>For each: <strong>Add New → Project → import <code class="inl">pixeldevripon/demo.tripwheel</code></strong>, then:</p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Setting</th><th>Public site</th><th>Dashboard</th></tr></thead>
+      <tbody>
+        <tr><td>Project name</td><td><code class="inl">demo-island-tours</code></td><td><code class="inl">demo-island-dashboard</code></td></tr>
+        <tr><td><strong>Root Directory</strong></td><td><code class="inl">backend-frontend/frontend</code></td><td><code class="inl">dashboard</code></td></tr>
+        <tr><td>Framework preset</td><td>Next.js, auto-detected</td><td>Next.js, auto-detected</td></tr>
+        <tr><td>Production branch</td><td><code class="inl">main</code></td><td><code class="inl">main</code></td></tr>
+        <tr><td>Domain</td><td><code class="inl">app.demo.tripwheel.io</code></td><td><code class="inl">dashboard.demo.tripwheel.io</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Environment variables</h3>
+
+  <p>Settings → Environment Variables, scope <strong>Production</strong> (add Preview too if you want working preview deploys).</p>
+
+  <div class="filelabel">Public site</div>
+  <pre><span class="k1">NEXT_PUBLIC_BACKEND_URL</span>=<span class="v1">https://api.demo.tripwheel.io</span>
+<span class="k1">NEXT_PUBLIC_SITE_URL</span>=<span class="v1">https://app.demo.tripwheel.io</span>
+<span class="k1">INTERNAL_API_SECRET</span>=<span class="v1">&lt;same as the backend&gt;</span>
+<span class="k1">REVALIDATE_SECRET</span>=<span class="v1">&lt;same as the backend&gt;</span>
+<span class="k1">NEXT_PUBLIC_ENABLE_TRACKING</span>=<span class="v1">false</span></pre>
+
+  <div class="filelabel">Dashboard</div>
+  <pre><span class="k1">NEXT_PUBLIC_BACKEND_URL</span>=<span class="v1">https://api.demo.tripwheel.io</span>
+<span class="k1">INTERNAL_API_SECRET</span>=<span class="v1">&lt;same as the backend&gt;</span>
+<span class="k1">COOKIE_DOMAIN</span>=<span class="v1">.demo.tripwheel.io</span>
+<span class="k1">REVALIDATE_TARGET_URL</span>=<span class="v1">https://app.demo.tripwheel.io/api/revalidate</span>
+<span class="k1">REVALIDATE_SECRET</span>=<span class="v1">&lt;same as the public site&gt;</span>
+<span class="k1">NEXT_PUBLIC_FACING_APP_URL</span>=<span class="v1">https://app.demo.tripwheel.io</span></pre>
+
+  <div class="callout stop">
+    <span class="tag">Build-time, not runtime</span>
+    <p>These are compiled into the bundle. Changing one needs a <strong>redeploy</strong>, not a restart — and until you redeploy, the fix appears not to have worked. Do not set <code class="inl">NEXT_PUBLIC_ADMIN_LOGIN_URL</code>; it is retired, admin login is <code class="inl">/admin</code> on the dashboard itself.</p>
+  </div>
+
+  <h3>Skip builds that do not touch the app</h3>
+
+  <p>Without this, every backend-only push triggers two full Next builds. Settings → Git → Ignored Build Step → <em>Custom</em>:</p>
+
+  <pre><span class="c1"># Public site project</span>
+git diff --quiet HEAD^ HEAD -- backend-frontend/frontend
+
+<span class="c1"># Dashboard project</span>
+git diff --quiet HEAD^ HEAD -- dashboard</pre>
+
+  <p>Vercel <strong>skips</strong> the build when the command exits <code class="inl">0</code>, and builds when it exits non-zero.</p>
+
+  <div class="callout gov">
+    <span class="tag">Production instead runs these on the VPS <span class="scope prod">Prod</span></span>
+    <p>Three Next apps under PM2, each launched through the Next binary with an explicit <code class="inl">-p</code> rather than <code class="inl">pnpm start</code> — because the dashboard and marketing app hardcode their ports in <code class="inl">package.json</code>, so <code class="inl">pnpm start</code> in a second instance binds production's port. PM2 keys apps by name, so a demo instance needs distinct <code class="inl">demo-*</code> names in a separate ecosystem file, or <code class="inl">pm2 start</code> replaces the running production process instead of adding one. Build one app at a time; six concurrent Next builds is how you get an OOM kill with no useful error.</p>
+  </div>
+</section>
+
+<!-- ================= 15 ================= -->
+<section class="sheet run" id="s15">
+  <span class="stage">15</span>
+  <p class="eyebrow">Standing it up · step 10</p>
+  <h2>GitHub Actions <span class="scope demo">Demo</span></h2>
+
+  <p class="lead">The workflows already exist at <code class="inl">.github/workflows/</code> in the <strong>repository root</strong> — GitHub reads them nowhere else. They previously sat under <code class="inl">backend-frontend/</code> and consequently had never run once.</p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Workflow</th><th>Fires on</th><th>Does</th></tr></thead>
+      <tbody>
+        <tr><td><code class="inl">ci.yml</code></td><td>push/PR to <code class="inl">main</code> touching <code class="inl">backend-frontend/backend/**</code></td><td>backend lint · build · test</td></tr>
+        <tr><td><code class="inl">deploy-backend.yml</code></td><td>push to <code class="inl">main</code> touching backend code or <code class="inl">docker-compose.yml</code>; also manual</td><td>SSH to the VPS, rebuild the API, recreate the container</td></tr>
+        <tr><td><code class="inl">claude-code-review.yml</code></td><td>every PR</td><td>skips cleanly unless a token is set</td></tr>
+        <tr><td><code class="inl">claude.yml</code></td><td><code class="inl">@claude</code> mentions</td><td>on demand</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Front end deploys are Vercel's git integration, deliberately not duplicated here — Vercel already runs <code class="inl">next build</code> as a required check.</p>
+
+  <div class="diagram dotted">
+    <p class="dcap">What a backend deploy actually does</p>
+    <div class="flow wide">
+      <div class="node man"><span class="k">You</span><span class="t">Merge a PR touching <code class="inl">backend-frontend/backend/**</code></span></div>
+      <div class="node auto"><span class="k">Runner</span><span class="t">SSH to the VPS as <code class="inl">deploy</code></span><span class="d">Using <code class="inl">VPS_SSH_KEY</code>. Command timeout 30 min — a cold cache outruns the action's 10-minute default.</span></div>
+      <div class="node risk"><span class="k">On the box · destroys local edits</span><span class="t"><code class="inl">git fetch --all &amp;&amp; git reset --hard &lt;sha&gt;</code></span><span class="d">In <code class="inl">VPS_APP_DIR</code>, the git root. Any hand edit to a tracked file is reverted here, silently.</span></div>
+      <div class="node auto"><span class="k">Reclaim first, not after</span><span class="t">Delete all but the 3 newest <code class="inl">demo-tripwheel-backend:*</code> images</span><span class="d">Every deploy tags a new SHA, so those images are never <em>dangling</em> and a plain prune could never touch them. They accumulated until the disk filled mid-build.</span></div>
+      <div class="node auto"><span class="k">Build</span><span class="t"><code class="inl">docker compose build backend &amp;&amp; docker compose up -d</code></span><span class="d">Migrations run in the entrypoint before the server listens.</span></div>
+      <div class="node ok"><span class="k">Verify</span><span class="t"><code class="inl">docker compose ps</code></span><span class="d">A green run ends with this output.</span></div>
+    </div>
+  </div>
+
+  <div class="callout stop">
+    <span class="tag">A hard rule inside that script</span>
+    <p>The reclaim step touches <strong>images and build cache only</strong>. Never <code class="inl">docker system prune --volumes</code>, never <code class="inl">docker volume rm</code>, never <code class="inl">docker compose down -v</code>. On the production host <code class="inl">postgres-data</code> is the database and there is no other copy on the box.</p>
+  </div>
+
+  <h3>Repository secrets</h3>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Secret</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td><code class="inl">VPS_SSH_HOST</code></td><td>your VPS IP or hostname</td></tr>
+        <tr><td><code class="inl">VPS_SSH_USER</code></td><td><code class="inl">deploy</code></td></tr>
+        <tr><td><code class="inl">VPS_SSH_KEY</code></td><td>the <strong>private</strong> key — the whole file, <code class="inl">BEGIN</code>/<code class="inl">END</code> lines included</td></tr>
+        <tr><td><code class="inl">VPS_SSH_PORT</code></td><td>optional; omit for <code class="inl">22</code></td></tr>
+        <tr><td><code class="inl">VPS_APP_DIR</code></td><td><strong><code class="inl">/opt/demo-tripwheel</code></strong> — the git root, <em>not</em> the compose directory</td></tr>
+        <tr><td><code class="inl">CLAUDE_CODE_OAUTH_TOKEN</code></td><td>optional; without it code review skips instead of failing</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Install the key pair from §08 and confirm it works before wiring it into CI, so a later failure is unambiguous:</p>
+
+  <pre>ssh-copy-id -i ~/.ssh/demo_deploy.pub deploy@YOUR_VPS_IP
+ssh -i ~/.ssh/demo_deploy deploy@YOUR_VPS_IP <span class="s1">'echo ok &amp;&amp; cd /opt/demo-tripwheel &amp;&amp; git status -sb'</span></pre>
+
+  <h3>First deploy, and what usually goes wrong</h3>
+
+  <p>Trigger it by hand rather than waiting for a push: <strong>Actions → Deploy backend (VPS) → Run workflow → main</strong>.</p>
+
+  <div class="tw">
+    <table class="tight">
+      <thead><tr><th>Log line</th><th>Cause</th></tr></thead>
+      <tbody>
+        <tr><td><code class="inl">Error: missing server host</code></td><td><code class="inl">VPS_SSH_HOST</code> not set</td></tr>
+        <tr><td><code class="inl">Permission denied (publickey)</code></td><td><code class="inl">VPS_SSH_KEY</code> is the wrong half, truncated, or not in <code class="inl">authorized_keys</code></td></tr>
+        <tr><td><code class="inl">not a git repository</code></td><td><code class="inl">VPS_APP_DIR</code> points at <code class="inl">backend-frontend/</code> instead of the git root</td></tr>
+        <tr><td><code class="inl">Bind for 127.0.0.1:5150 failed</code></td><td>something already holds the port</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ================= 16 ================= -->
+<section class="sheet run" id="s16">
+  <span class="stage">16</span>
+  <p class="eyebrow g">Standing it up · step 11</p>
+  <h2>Smoke Test <span class="scope both">Both</span></h2>
+
+  <p class="lead">Most of this list confirms that loud things did not happen. The last three are the ones from §02 — each is the only way to detect a specific silent failure, and each looks redundant until it fires.</p>
+
+  <h3>Ordinary checks</h3>
+  <ul class="clean tick">
+    <li><code class="inl">https://api.demo.tripwheel.io/api/v1/health</code> returns <code class="inl">200</code></li>
+    <li><code class="inl">https://app.demo.tripwheel.io</code> loads and shows real tours, not an empty state</li>
+    <li><code class="inl">https://dashboard.demo.tripwheel.io/portal</code> shows the operator login</li>
+    <li><code class="inl">https://dashboard.demo.tripwheel.io/admin</code> shows the <strong>admin</strong> door</li>
+    <li>Sign in at <code class="inl">/admin</code> with <code class="inl">ADMIN_EMAIL</code> / <code class="inl">ADMIN_PASSWORD</code>, <strong>then reload</strong> — staying signed in is what proves <code class="inl">COOKIE_DOMAIN</code></li>
+    <li>Browser console on the dashboard: zero CORS errors → <code class="inl">CORS_ORIGINS</code> is right</li>
+    <li>Edit a tour price, save, reload the public tour page — the new price appearing proves <code class="inl">REVALIDATE_SECRET</code> and <code class="inl">REVALIDATE_TARGET_URL</code></li>
+    <li>Trigger a password reset — the email arriving proves Resend and your DNS records</li>
+  </ul>
+
+  <h3>The three that catch silence</h3>
+  <div class="grid g3" style="margin:20px 0">
+    <div class="card g">
+      <span class="num">CATCHES A PUBLIC PORT</span>
+      <h5>The API must be unreachable directly</h5>
+      <p><code class="inl">curl --max-time 5 http://YOUR_VPS_IP:5150/api/v1/health</code> from your laptop must <strong>time out</strong>.</p>
+    </div>
+    <div class="card g">
+      <span class="num">CATCHES A COOKIE COLLISION</span>
+      <h5>Production must survive a demo login</h5>
+      <p>Sign into the demo, then reload production in the same browser and confirm you are still signed in there.</p>
+    </div>
+    <div class="card g">
+      <span class="num">CATCHES A SHARED VOLUME</span>
+      <h5>A demo booking must not exist in production</h5>
+      <p>Create one on the demo, then confirm production's booking count is unchanged.</p>
+    </div>
+  </div>
+
+  <div class="callout stop">
+    <span class="tag">Two cross-app files that must stay in sync — neither fails to compile</span>
+    <p><code class="inl">lib/cache-tags.ts</code> must be <strong>byte-identical</strong> in <code class="inl">backend-frontend/frontend/</code> and <code class="inl">dashboard/</code>; a drifted tag is rejected as <code class="inl">unknown_tag</code> at runtime. And <code class="inl">dashboard/lib/config/rbac.ts</code> mirrors <code class="inl">backend/src/config/roles.config.ts</code> — add or rename a permission in one and the other must change too, or the dashboard silently mis-gates its UI. The backend change lands first. <code class="inl">diff</code> between the two files is the check.</p>
+  </div>
+</section>
+
+<!-- ================= 17 ================= -->
+<section class="sheet data" id="s17">
+  <span class="stage">17</span>
+  <p class="eyebrow a">The database</p>
+  <h2>The Access Model <span class="scope both">Both</span></h2>
+
+  <p class="lead">Postgres publishes exactly one port, bound to the VPS <strong>loopback</strong>. Nothing on the internet can reach it, and an SSH tunnel is the only way in. You do not have to give that up to get a table browser.</p>
+
+  <div class="filelabel">backend-frontend/docker-compose.yml → postgres service</div>
+  <pre>  postgres:
+    ports:
+      <span class="c1"># LOOPBACK ONLY. 5433 because production holds 5432 on this box.</span>
+      - <span class="s1">'127.0.0.1:5433:5432'</span></pre>
+
+  <h3>Three numbers, three machines</h3>
+
+  <p>This is the thing that confuses everyone once, and the confusion is reasonable: there are three different ports in the chain and each belongs to a different computer.</p>
+
+  <div class="diagram dotted">
+    <p class="dcap">One connection, three translations</p>
+    <div class="svgwrap">
+      <svg viewBox="0 0 920 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A GUI on the Mac connects to port 5434, tunnelled over SSH to the VPS loopback port 5433, which Docker forwards to container port 5432">
+        <defs>
+          <marker id="a3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#8493AC"/></marker>
+          <style>
+            .nl{font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.07em;fill:#16203A;font-weight:500}
+            .np{font-family:'JetBrains Mono',monospace;font-size:15px;letter-spacing:.04em;fill:#2646F5;font-weight:700}
+            .ns{font-family:'Poppins',sans-serif;font-size:8.5px;fill:#8493AC}
+            .box{fill:#fff;stroke:#DEE5F0;stroke-width:1}
+            .ln{stroke:#C9D4E4;stroke-width:1.3;fill:none}
+            .zone{fill:none;stroke:#C9D4E4;stroke-width:1;stroke-dasharray:4 4}
+            .zl{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;fill:#8493AC}
+          </style>
+        </defs>
+
+        <rect class="zone" x="12" y="40" width="270" height="220" rx="12"/>
+        <text class="zl" x="28" y="62">YOUR MAC</text>
+        <rect class="zone" x="330" y="40" width="578" height="220" rx="12"/>
+        <text class="zl" x="346" y="62">HOSTINGER VPS</text>
+        <rect class="zone" x="620" y="86" width="272" height="150" rx="10"/>
+        <text class="zl" x="636" y="106">DOCKER · island-net</text>
+
+        <rect class="box" x="34" y="86" width="220" height="56" rx="8"/><rect x="34" y="86" width="3.5" height="56" rx="2" fill="#5B4BD6"/>
+        <text class="nl" x="52" y="110">TablePlus · pgAdmin</text>
+        <text class="ns" x="52" y="126">Prisma Studio · psql</text>
+
+        <rect class="box" x="34" y="176" width="220" height="62" rx="8"/><rect x="34" y="176" width="3.5" height="62" rx="2" fill="#0B8F62"/>
+        <text class="ns" x="52" y="196">ssh opens a listener here</text>
+        <text class="np" x="52" y="220">127.0.0.1:5434</text>
+
+        <rect class="box" x="358" y="176" width="220" height="62" rx="8"/><rect x="358" y="176" width="3.5" height="62" rx="2" fill="#C77A0A"/>
+        <text class="ns" x="376" y="196">docker published, loopback only</text>
+        <text class="np" x="376" y="220" fill="#C77A0A">127.0.0.1:5433</text>
+
+        <rect class="box" x="648" y="126" width="216" height="62" rx="8"/><rect x="648" y="126" width="3.5" height="62" rx="2" fill="#5B4BD6"/>
+        <text class="ns" x="666" y="146">the container itself</text>
+        <text class="np" x="666" y="170" fill="#5B4BD6">postgres:5432</text>
+
+        <path class="ln" marker-end="url(#a3)" d="M144 142 V172"/>
+        <path class="ln" marker-end="url(#a3)" d="M254 207 H354"/>
+        <path class="ln" marker-end="url(#a3)" d="M578 200 L640 174"/>
+
+        <text class="ns" x="268" y="199" fill="#0B8F62">encrypted SSH</text>
+        <text class="ns" x="286" y="228">port 22</text>
+        <text class="ns" x="590" y="216">docker</text>
+
+        <rect x="34" y="272" width="858" height="30" rx="7" fill="#EAEEFF" stroke="#C9D2FF"/>
+        <text class="nl" x="52" y="292">ssh -N -L  5434 : 127.0.0.1 : 5433  vps          ← left number = your Mac  ·  right pair = resolved on the VPS</text>
+      </svg>
+    </div>
+    <div class="legend">
+      <span><i style="background:#0B8F62"></i>Your machine</span>
+      <span><i style="background:#C77A0A"></i>VPS host</span>
+      <span><i style="background:#5B4BD6"></i>Container</span>
+    </div>
+    <p class="dfoot">The SSH hop is the only part that crosses the internet, and it is the only part that is encrypted — which is why the client's SSL setting must be off.</p>
+  </div>
+
+  <h3>Why 5434 and not 5433 on the Mac</h3>
+
+  <p>Four different Postgres endpoints can be in play on one laptop. They are deliberately on different numbers so a misconfigured client fails to connect instead of quietly editing the wrong database.</p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th></th><th>VPS loopback</th><th>Your tunnel's local port</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Demo</strong></td><td><code class="inl">5433</code></td><td class="y"><strong><code class="inl">5434</code></strong></td></tr>
+        <tr><td>Production</td><td><code class="inl">5432</code></td><td><code class="inl">5433</code></td></tr>
+        <tr><td>Local dev compose</td><td>—</td><td><code class="inl">5432</code>, published directly, no tunnel</td></tr>
+        <tr><td>Postgres installed on your Mac</td><td>—</td><td><code class="inl">5432</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="principle r">The risk is not a crash. It is that <code class="inl">5433</code> meaning "production" in one terminal and "demo" in another connects your GUI to whichever you started last — with no error, and no visible difference until you change something.</div>
+
+  <p><strong>One number per environment, permanently. On your Mac, <code class="inl">5434</code> is always the demo.</strong></p>
+
+  <h3>The tunnel</h3>
+
+  <pre>ssh -N -L 5434:127.0.0.1:5433 deploy@YOUR_VPS_IP</pre>
+
+  <p><code class="inl">-N</code> means "no remote command, just forward". It prints nothing and does not return — <strong>that is success</strong>. Any output at all is a problem. Close it with Ctrl+C when you are done, and open a separate terminal tab for everything else.</p>
+
+  <div class="tw">
+    <table class="tight">
+      <thead><tr><th>Output</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><em>nothing, cursor sits there</em></td><td class="y">Working</td></tr>
+        <tr><td><code class="inl">bind: Address already in use</code></td><td>A tunnel is already on 5434</td></tr>
+        <tr><td><code class="inl">Permission denied (publickey)</code></td><td>Wrong key — see below</td></tr>
+        <tr><td><code class="inl">Could not resolve hostname deploy:1.2.3.4</code></td><td>A colon instead of <code class="inl">@</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout stop">
+    <span class="tag">If it fails with <code class="inl">Permission denied (publickey)</code>, it is your key, not your password</span>
+    <p>The VPS sets <code class="inl">PasswordAuthentication no</code>, so a password cannot log you in even when you remember it. What the message means is that none of the keys your client offered was accepted — and SSH only offers <code class="inl">~/.ssh/id_rsa</code>, <code class="inl">id_ecdsa</code> and <code class="inl">id_ed25519</code> by default. A key saved under any other name is never sent.</p>
+    <p><strong>A <code class="inl">Host</code> block does not rescue you.</strong> It matches on the alias you type, not the address it resolves to — so a block carrying the right <code class="inl">IdentityFile</code> is ignored the moment you connect as <code class="inl">deploy@1.2.3.4</code> in full. Either use the alias, or pass <code class="inl">-i ~/.ssh/&lt;key&gt;</code>. Confirm what SSH will really offer with <code class="inl">ssh -G &lt;target&gt; | grep -i identityfile</code>.</p>
+  </div>
+
+  <h3>Make it one word</h3>
+
+  <div class="filelabel">~/.ssh/config</div>
+  <pre>Host demo-db
+  HostName YOUR_VPS_IP
+  User deploy
+  <b>IdentityFile ~/.ssh/laptop-to-vps</b>
+  <b>IdentitiesOnly yes</b>
+  LocalForward 5434 127.0.0.1:5433
+  ServerAliveInterval 30
+  ServerAliveCountMax 3
+  ExitOnForwardFailure yes</pre>
+
+  <p>Then it is just <code class="inl">ssh -N demo-db</code>, or <code class="inl">ssh -fN demo-db</code> to background it and get your prompt back. <code class="inl">IdentityFile</code> is the line that matters; <code class="inl">IdentitiesOnly yes</code> stops SSH offering every other key first, which on a machine with several can exhaust the server's <code class="inl">MaxAuthTries</code> before the right one is reached. <code class="inl">ExitOnForwardFailure</code> makes a port clash refuse loudly instead of connecting with a dead forward.</p>
+
+  <h3>Credentials</h3>
+
+  <pre>ssh vps <span class="s1">'grep ^POSTGRES /opt/demo-tripwheel/backend-frontend/.env'</span></pre>
+
+  <div class="tw">
+    <table class="tight">
+      <thead><tr><th>Field</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td>Host</td><td><code class="inl">127.0.0.1</code></td></tr>
+        <tr><td>Port</td><td><code class="inl">5434</code> through the tunnel</td></tr>
+        <tr><td>Database</td><td><code class="inl">island_tours</code> — underscore, not a hyphen</td></tr>
+        <tr><td>User</td><td><code class="inl">POSTGRES_USER</code>, default <code class="inl">island</code></td></tr>
+        <tr><td>Password</td><td><code class="inl">POSTGRES_PASSWORD</code> from the same file</td></tr>
+        <tr><td>SSL</td><td><strong>disable</strong> — SSH already encrypts the whole channel</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>SSL is the second most common failure. The container has no certificate, so a client insisting on TLS is refused and the error names TLS rather than the real cause.</p>
+</section>
+
+<!-- ================= 18 ================= -->
+<section class="sheet data" id="s18">
+  <span class="stage">18</span>
+  <p class="eyebrow a">The database · client 1</p>
+  <h2>TablePlus <span class="scope both">Both</span></h2>
+
+  <p class="lead">Fastest of the three on macOS, and it speaks Redis too, so one application covers both services. There is no browser version.</p>
+
+  <h3>With a manual tunnel</h3>
+  <p>Keep <code class="inl">ssh -N demo-db</code> open, then: new connection → PostgreSQL → host <code class="inl">127.0.0.1</code>, port <strong><code class="inl">5434</code></strong>, user <code class="inl">island</code>, the password from §17, database <code class="inl">island_tours</code>, SSL <code class="inl">DISABLED</code>. Test, then Connect.</p>
+
+  <h3>With TablePlus's own tunnel</h3>
+  <p>In the same dialog turn on <strong>Over SSH</strong> and fill the SSH section: server <code class="inl">YOUR_VPS_IP</code>, port <code class="inl">22</code>, user <code class="inl">deploy</code>, your private key. Then set the database port to <strong><code class="inl">5433</code></strong>.</p>
+
+  <div class="callout stop">
+    <span class="tag">The port changes depending on who builds the tunnel</span>
+    <p>A client-managed tunnel passes your host and port to the forwarder as its <em>remote</em> bind address, so they are resolved <strong>on the VPS</strong>, not on your Mac. Enter <code class="inl">5434</code> there and it fails. This is the usual first-attempt failure with both TablePlus and pgAdmin.</p>
+  </div>
+
+  <div class="tw">
+    <table class="tight">
+      <thead><tr><th>Tunnel built by</th><th>Host and port you enter</th><th>Resolved from</th></tr></thead>
+      <tbody>
+        <tr><td>A terminal you leave open</td><td><code class="inl">127.0.0.1:5434</code></td><td>your Mac</td></tr>
+        <tr><td>The client itself</td><td><code class="inl">127.0.0.1:5433</code></td><td>the VPS</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ================= 19 ================= -->
+<section class="sheet data" id="s19">
+  <span class="stage">19</span>
+  <p class="eyebrow a">The database · client 2</p>
+  <h2>pgAdmin 4 <span class="scope both">Both</span></h2>
+
+  <p class="lead">pgAdmin has two modes, and which one you are in decides how much work everything else is. Choose deliberately, because "I want it in a browser" is a bigger commitment than it sounds.</p>
+
+  <div class="split">
+    <div class="side loud">
+      <h4>Desktop mode — what you get by default</h4>
+      <p style="font-size:13px;margin-bottom:10px">The same web application, rendered in an Electron window instead of a browser tab.</p>
+      <ul class="clean">
+        <li>Zero setup — install and open</li>
+        <li>No login account</li>
+        <li>No master password</li>
+        <li><code class="inl">DATA_DIR</code> defaults to <code class="inl">~/.pgadmin</code>, which works</li>
+      </ul>
+    </div>
+    <div class="mid"><span>VS</span></div>
+    <div class="side silent">
+      <h4>Server mode — what "in a browser" means</h4>
+      <p style="font-size:13px;margin-bottom:10px">A multi-user deployment mode. Everything it drags in is there to serve a team, not you.</p>
+      <ul class="clean">
+        <li>A pgAdmin login account you must create</li>
+        <li>A master password encrypting saved server passwords</li>
+        <li><code class="inl">DATA_DIR</code> defaults to <code class="inl">/var/lib/pgadmin</code>, absent on macOS</li>
+        <li>A config file, and a port that collides with the dev API</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout rule">
+    <span class="tag">The simple approach, stated plainly</span>
+    <p><strong>Use the desktop app.</strong> It is the identical UI — same React application, same server underneath — and it needs nothing configured. Reach for a real browser only when you actually need a browser: a shareable tab, an extension, or access from another device. That requirement is rarer than the instinct to have one.</p>
+  </div>
+
+  <h3>There is no shortcut into the desktop app's own server</h3>
+
+  <p>The obvious idea is to skip server mode entirely: the desktop app <em>is</em> a web server, so find its port and open that in Chrome. It does not work, and it is deliberate.</p>
+
+  <pre><span class="c1"># the desktop app's own listener, a fresh random port every launch</span>
+lsof -nP -iTCP -sTCP:LISTEN | grep -i python
+<span class="c1"># Python  16631  TCP 127.0.0.1:50906 (LISTEN)</span>
+
+curl -s -o /dev/null -w <span class="s1">'%{http_code}\n'</span> http://127.0.0.1:50906/
+<span class="r1"># 401</span></pre>
+
+  <p>Desktop mode guards its server with a per-launch token that only the Electron shell holds, so a browser gets <code class="inl">401 Unauthorized</code>. The port changes every time you start the app, and so does the token. That is why the browser route means running a <em>second</em> instance in server mode rather than borrowing the first.</p>
+
+  <h3>Connecting, in either mode</h3>
+  <p>Register → Server:</p>
+  <ul class="clean">
+    <li><strong>General</strong> tab: a name you will recognise, e.g. <code class="inl">demo.tripwheel</code>.</li>
+    <li><strong>Connection</strong> tab: host <code class="inl">127.0.0.1</code>, port <code class="inl">5434</code>, database <code class="inl">island_tours</code>, user <code class="inl">island</code>, password from §17. Leave SSL mode at <code class="inl">prefer</code> — it falls back cleanly, unlike <code class="inl">require</code>.</li>
+    <li>Leave the <strong>SSH Tunnel</strong> tab off and keep <code class="inl">ssh -N demo-db</code> open.</li>
+  </ul>
+
+  <p>To let pgAdmin build the tunnel instead: <strong>SSH Tunnel</strong> tab → <strong>Use SSH tunneling</strong>, tunnel host <code class="inl">YOUR_VPS_IP</code>, port <code class="inl">22</code>, username <code class="inl">deploy</code>, Authentication → <strong>Identity file</strong>, Keep alive <code class="inl">60</code>. Then change the Connection port to <strong><code class="inl">5433</code></strong>, because it is now resolved on the VPS. If the switch is greyed out, <code class="inl">SUPPORT_SSH_TUNNEL</code> is off in your config; it is on by default in both modes.</p>
+
+  <div class="callout stop">
+    <span class="tag">The Identity file field is where this fails, and the dialog will not tell you</span>
+    <p>pgAdmin's file picker hides dotfiles, so <code class="inl">~/.ssh</code> is not browsable and the field is easy to leave empty — and it does not expand <code class="inl">~</code> either. Type the absolute path: <code class="inl">/Users/devripon/.ssh/laptop-to-vps</code>. Left empty, pgAdmin falls back to password authentication, which a keys-only VPS refuses, and the dialog shows a generic failure.</p>
+    <p>What lands in <code class="inl">~/.pgadmin/pgadmin4.log</code> is <code class="inl">Could not establish session to SSH gateway</code>. That is the SSH leg failing <em>before</em> Postgres is reached — so nothing on the Connection tab is at fault and changing the port will not help. <strong>Read that log first.</strong></p>
+  </div>
+
+  <p>To prove the key itself is innocent, test with pgAdmin's own bundled paramiko rather than with <code class="inl">ssh</code>. Paramiko is what the tunnel actually runs on, and it is a different implementation with different defaults:</p>
+
+  <pre><span class="s1">"/Applications/pgAdmin 4.app/Contents/Frameworks/Python.framework/Versions/3.13/bin/python3.13"</span> - &lt;&lt;<span class="s1">'PY'</span>
+<span class="k1">import</span> paramiko
+k = paramiko.Ed25519Key.from_private_key_file(<span class="s1">'/Users/devripon/.ssh/laptop-to-vps'</span>)
+c = paramiko.SSHClient()
+c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+c.connect(<span class="s1">'YOUR_VPS_IP'</span>, 22, username=<span class="s1">'deploy'</span>, pkey=k, timeout=12,
+          allow_agent=False, look_for_keys=False)
+<span class="k1">print</span>(<span class="s1">'SSH AUTH OK'</span>)
+PY</pre>
+
+  <p><code class="inl">SSH AUTH OK</code> here with a failure in the dialog means the form is wrong, not the key. If you cannot make the form behave, the manual tunnel on <code class="inl">5434</code> costs one terminal and always works.</p>
+
+  <h3>In a browser — run pgAdmin on the VPS, in the compose stack</h3>
+
+  <p>This is the recommended browser route, and it is recommended because it <strong>deletes</strong> the hard part rather than working around it. pgAdmin running inside the stack sits on <code class="inl">island-net</code> alongside Postgres and reaches <code class="inl">postgres:5432</code> container to container. No tunnel between pgAdmin and the database means no <code class="inl">5433</code> versus <code class="inl">5434</code>, no Identity file field, no paramiko, and no SSH leg to debug. The only tunnel left forwards pgAdmin's own HTTP port to your laptop.</p>
+
+  <div class="diagram dotted">
+    <p class="dcap">Where the SSH hop moves to</p>
+    <div class="grid g2">
+      <div class="card r">
+        <span class="num">CLIENT ON YOUR MAC</span>
+        <h5>Two hops, both yours to configure</h5>
+        <p>SSH from the Mac to the VPS, then Docker's port forward to the container. The client has to be told about both, in different units, and the SSH leg is the one that fails opaquely.</p>
+      </div>
+      <div class="card g">
+        <span class="num">PGADMIN ON THE VPS</span>
+        <h5>One hop, and it is not a database hop</h5>
+        <p>SSH forwards pgAdmin's web port. pgAdmin to Postgres is a service name on a private network — nothing to configure, nothing to translate, nothing to get wrong.</p>
+      </div>
+    </div>
+  </div>
+
+  <p>The service is <strong>already in <code class="inl">docker-compose.yml</code></strong>, behind a profile:</p>
+
+  <div class="filelabel">backend-frontend/docker-compose.yml</div>
+  <pre>  pgadmin:
+    image: dpage/pgadmin4:latest
+    profiles: [<span class="s1">'tools'</span>]          <span class="c1"># a plain `docker compose up -d` ignores it</span>
+    ports:
+      - <span class="s1">'127.0.0.1:8082:80'</span>      <span class="c1"># loopback only, same rule as postgres</span>
+    networks:
+      - island-net</pre>
+
+  <div class="callout rule">
+    <span class="tag">Why the profile is what makes this safe to commit</span>
+    <p><code class="inl">deploy-backend.yml</code> runs a plain <code class="inl">docker compose up -d</code>, and compose skips profiled services entirely. So pgAdmin never starts itself on a deploy, never costs the demo box its ~200 MB, and is never left running unattended. Verified: <code class="inl">docker compose config --services</code> lists three services; adding <code class="inl">--profile tools</code> lists four.</p>
+  </div>
+
+  <h3>Using it</h3>
+
+  <p>Set a password once in <code class="inl">backend-frontend/.env</code> on the VPS — <code class="inl">PGADMIN_PASSWORD</code> has no default, so the container fails loudly rather than starting with a blank one:</p>
+
+  <pre>ssh vps
+cd /opt/demo-tripwheel/backend-frontend
+docker compose --profile tools up -d pgadmin</pre>
+
+  <p>Then from your laptop, forward pgAdmin's port rather than the database's:</p>
+
+  <pre>ssh -N -L 8082:127.0.0.1:8082 vps
+<span class="c1"># open http://127.0.0.1:8082</span></pre>
+
+  <p>The demo server is <strong>already registered</strong> — <code class="inl">pgadmin-servers.json</code> is mounted into the container and pre-fills it with <code class="inl">"Host": "postgres"</code>, the compose service name. There is nothing to type and no port to get wrong. You are asked for the database password on first connect; it is <code class="inl">POSTGRES_PASSWORD</code> from the same <code class="inl">.env</code>.</p>
+
+  <pre>docker compose --profile tools stop pgadmin     <span class="c1"># when you are done</span></pre>
+
+  <div class="grid g3" style="margin:22px 0">
+    <div class="card r">
+      <span class="num">THE SECURITY BOUNDARY</span>
+      <h5>The <code class="inl">127.0.0.1:</code> prefix</h5>
+      <p>A bare <code class="inl">'8082:80'</code> puts a pgAdmin login on the public internet, and Docker's iptables rules mean UFW will not stop it. pgAdmin is a large attack surface; loopback plus SSH is what makes running it acceptable at all.</p>
+    </div>
+    <div class="card flat">
+      <span class="num">STILL SERVER MODE</span>
+      <h5>But the container does the work</h5>
+      <p>There is a login account, created for you from the environment. None of the <code class="inl">setup-db</code>, <code class="inl">DATA_DIR</code> or bundled-Python work that a local server-mode install needs applies here.</p>
+    </div>
+    <div class="card flat">
+      <span class="num">STATE</span>
+      <h5><code class="inl">pgadmin-data</code></h5>
+      <p>Persists the registered server and your preferences. Without the volume you would redo both on every restart.</p>
+    </div>
+  </div>
+
+  <div class="callout stop">
+    <span class="tag">Do not put it on a subdomain</span>
+    <p><code class="inl">db.demo.tripwheel.io</code> behind basic auth is possible and is described in §22, but it converts a database reachable only with an SSH key into one that is a single stolen password away, from anywhere, with no second factor. The tunnel costs one terminal.</p>
+  </div>
+
+  <h3>The local routes, and why they are no longer worth it</h3>
+
+  <div class="grid g2" style="margin:22px 0">
+    <div class="card flat">
+      <span class="num">PGADMIN IN SERVER MODE ON YOUR MAC</span>
+      <h5>Works, but you build it yourself</h5>
+      <p>Either <code class="inl">pip install pgadmin4</code> — which on macOS first needs a Homebrew Python and a venv, because the system Python is 3.9 from the Xcode command line tools — or running the desktop app's bundled Python in server mode, which avoids the install but needs a <code class="inl">config_distro.py</code> overriding <code class="inl">DATA_DIR</code> (server mode defaults it to <code class="inl">/var/lib/pgadmin</code>, absent on a Mac), a launcher script, a <code class="inl">setup.py setup-db</code> run and a master password.</p>
+      <p>Both arrive where the compose service starts.</p>
+    </div>
+    <div class="card r">
+      <span class="num">A DOCKER RUN ON YOUR MAC</span>
+      <h5>Cannot work at all</h5>
+      <p>Inside the container <code class="inl">127.0.0.1</code> is the container, and <code class="inl">ssh -L</code> binds only <code class="inl">127.0.0.1</code> and <code class="inl">[::1]</code> on the host — so <code class="inl">host.docker.internal</code> is refused. Making it reachable means <code class="inl">ssh -L 0.0.0.0:5434:…</code>, publishing the demo database to your whole LAN.</p>
+      <p>Run pgAdmin on the VPS instead.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 20 ================= -->
+<section class="sheet data" id="s20">
+  <span class="stage">20</span>
+  <p class="eyebrow a">The database · client 3</p>
+  <h2>Prisma Studio <span class="scope both">Both</span></h2>
+
+  <p class="lead">The schema-aware option. A desktop client shows raw tables; Studio shows your <em>model</em>, so relations are clickable and enums are dropdowns — better for eyeballing a booking together with its tour and operator.</p>
+
+  <p>It is browser-only by nature; there is no desktop build. It starts a local server and opens a tab.</p>
+
+  <pre>cd backend-frontend/backend
+
+pnpm prisma studio --url=<span class="s1">"postgresql://island:PASSWORD@127.0.0.1:5434/island_tours?schema=public"</span>
+<span class="c1"># opens http://localhost:5555</span></pre>
+
+  <p><code class="inl">--url</code> overrides <code class="inl">prisma.config.ts</code>, whose datasource reads <code class="inl">DATABASE_URL</code>. Passing it explicitly is what stops your local <code class="inl">.env</code> pointing Studio at the dev database instead: the config calls <code class="inl">import 'dotenv/config'</code>, and dotenv does not overwrite variables that are already set, so an inline <code class="inl">DATABASE_URL=…</code> works too — but <code class="inl">--url</code> says what it means.</p>
+
+  <h3>The only flags that affect the network or the tab</h3>
+  <pre>pnpm prisma studio --port 5556        <span class="c1"># if 5555 is taken</span>
+pnpm prisma studio --browser none     <span class="c1"># start it, do not open a tab</span>
+pnpm prisma studio --config ./prisma.config.ts</pre>
+
+  <div class="callout stop">
+    <span class="tag">Studio cannot run in a container and be reached from your browser</span>
+    <p>Its HTTP server is started with no hostname argument, so it binds <code class="inl">127.0.0.1</code> inside whatever it is running in and no port publish will expose it. There is no <code class="inl">--host</code> or <code class="inl">--hostname</code> flag. <strong>Run it natively on your machine.</strong></p>
+    <p>The one exception is running it <em>on the VPS</em> inside the backend container and tunnelling 5555 itself: <code class="inl">docker compose exec backend npx prisma studio --port 5555 &amp;</code>, then <code class="inl">ssh -L 5555:localhost:5555 deploy@YOUR_VPS_IP</code>.</p>
+  </div>
+
+  <div class="callout stop">
+    <span class="tag">Studio writes are real writes and bypass every business rule</span>
+    <p>Editing <code class="inl">tier_key</code> without also updating <code class="inl">tier_rank</code>, <code class="inl">commission_tier</code> and <code class="inl">deposit_pct</code> leaves a tour permanently mis-ranked. A confirmed booking with a null <code class="inl">commission_amount</code> is data corruption and blocks conversion tracking. <strong>Use Studio to read. Make changes through the dashboard.</strong> The same applies to TablePlus and pgAdmin, which do not even have Studio's relation awareness.</p>
+  </div>
+
+  <h3>Against the local dev database</h3>
+  <p>No tunnel, different credentials — <code class="inl">docker-compose.dev.yml</code> publishes Postgres straight to your Mac on <code class="inl">5432</code> with <code class="inl">island</code>/<code class="inl">island</code>:</p>
+  <pre>docker compose -f docker-compose.dev.yml up -d
+cd backend &amp;&amp; pnpm prisma:studio      <span class="c1"># picks up DATABASE_URL from backend/.env</span></pre>
+
+  <div class="callout stop">
+    <span class="tag">Never run <code class="inl">docker-compose.dev.yml</code> on the VPS</span>
+    <p>It publishes <code class="inl">'5432:5432'</code> — bound to <strong>all interfaces</strong> — with the default credentials <code class="inl">island</code>/<code class="inl">island</code>. That is deliberate and fine on a laptop, and an open database on a public server. On the VPS pass no <code class="inl">-f</code> flag so compose uses <code class="inl">docker-compose.yml</code>.</p>
+  </div>
+</section>
+
+<!-- ================= 21 ================= -->
+<section class="sheet data" id="s21">
+  <span class="stage">21</span>
+  <p class="eyebrow a">The database</p>
+  <h2>psql and Redis <span class="scope both">Both</span></h2>
+
+  <p class="lead">Often faster than any GUI, and it needs no tunnel at all — you are already on the box.</p>
+
+  <h3>Postgres</h3>
+  <pre>cd /opt/demo-tripwheel/backend-frontend
+
+docker compose exec postgres psql -U island -d island_tours
+
+docker compose exec postgres psql -U island -d island_tours \
+  -c <span class="s1">"SELECT status, count(*) FROM bookings GROUP BY status;"</span></pre>
+
+  <p><code class="inl">\dt</code> lists tables, <code class="inl">\d bookings</code> describes one, <code class="inl">\x</code> toggles readable wide output, <code class="inl">\q</code> quits.</p>
+
+  <h3>Redis</h3>
+
+  <p>The password lives in the compose <code class="inl">.env</code>, not in your shell. Load it first, or <code class="inl">redis-cli</code> authenticates with an empty string and every command returns <code class="inl">NOAUTH</code>.</p>
+
+  <pre>cd /opt/demo-tripwheel/backend-frontend
+export $(grep <span class="s1">'^REDIS_PASSWORD='</span> .env | xargs)
+
+docker compose exec redis redis-cli -a <span class="s1">"$REDIS_PASSWORD"</span> ping          <span class="c1"># PONG</span>
+docker compose exec redis redis-cli -a <span class="s1">"$REDIS_PASSWORD"</span> keys <span class="s1">'bull:*'</span>
+docker compose exec redis redis-cli -a <span class="s1">"$REDIS_PASSWORD"</span> info</pre>
+
+  <p><code class="inl">bull:*</code> keys are the background job queues — nightly ranking, email, translations, media upload. Piling up and never draining means the worker side is stuck.</p>
+
+  <div class="callout gov">
+    <span class="tag">"The app booted fine" does not mean Redis is connected</span>
+    <p><code class="inl">maxRetriesPerRequest: null</code> is set deliberately because BullMQ requires it. If Redis is down the application <strong>will not crash</strong> — it retries silently forever. The only real check is whether <code class="inl">bull:*</code> keys appear after you use a queue-backed feature.</p>
+  </div>
+
+  <h3>Reaching production Redis from a desktop GUI</h3>
+
+  <p>Redis publishes no port either, and it is only on the internal Docker network — so an ordinary <code class="inl">ssh -L 6380:localhost:6379</code> reaches nothing, because the VPS's own localhost is not where Redis lives. Either exec in on the box as above, or add a loopback publish to the redis service the same way §17 does for Postgres. <strong>RedisInsight</strong> is the best free browser for BullMQ queues; TablePlus also speaks Redis.</p>
+</section>
+
+<!-- ================= 22 ================= -->
+<section class="sheet data" id="s22">
+  <span class="stage">22</span>
+  <p class="eyebrow a">The database</p>
+  <h2>Postgres or Neon <span class="scope both">Both</span></h2>
+
+  <p class="lead">Worth answering once rather than reopening every few months. The answer differs between production and the demo, and it differs for a real reason.</p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th></th><th>Docker Postgres, as deployed</th><th>Neon</th></tr></thead>
+      <tbody>
+        <tr><td>Cost</td><td>Included in the VPS</td><td>Free tier, then monthly</td></tr>
+        <tr><td>Query latency</td><td class="y">Same machine, sub-millisecond</td><td>A network hop per query</td></tr>
+        <tr><td>GUI</td><td>Tunnel plus a client — §17–20</td><td class="y">Built into their dashboard</td></tr>
+        <tr><td>Backups</td><td>The cron in §27, which you must test</td><td class="y">Automatic, point-in-time restore</td></tr>
+        <tr><td>Setup change</td><td class="y">None</td><td>Must edit <code class="inl">docker-compose.yml</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><strong>For production the answer is no.</strong> This application is unusually chatty with its database — a single tour page issues many small queries, and the nightly ranking job walks the whole catalogue — so same-machine latency is worth more than a hosted SQL editor. If backups are the thing you keep forgetting, solve that by testing the cron job, not by moving the database.</p>
+
+  <p><strong>For the demo the calculus genuinely shifts.</strong> Nobody is measuring its p95, and Neon's free tier gives a web SQL editor, a table browser and branchable databases with no tunnel at all. That is a legitimate choice here in a way it is not for the live site.</p>
+
+  <div class="callout stop">
+    <span class="tag">If you switch, there is one catch that will waste an afternoon</span>
+    <p><code class="inl">docker-compose.yml</code> sets <code class="inl">DATABASE_URL</code> in the backend service's <code class="inl">environment:</code> block, and that <strong>overrides</strong> anything in <code class="inl">backend/.env.production</code>. So you must do both: delete the <code class="inl">postgres</code> service, <strong>and</strong> delete the <code class="inl">DATABASE_URL</code> line from the backend service's <code class="inl">environment:</code>. Leave that line in place and compose keeps pointing the application at a container that no longer exists.</p>
+  </div>
+
+  <h3>The browser GUI on a subdomain — and why it is not set up</h3>
+
+  <p>You can have <code class="inl">db.demo.tripwheel.io</code> from any browser: run <strong>pgweb</strong> on the internal network with the proxy's basic auth in front.</p>
+
+  <pre>  pgweb:
+    image: sosedoff/pgweb:latest
+    restart: unless-stopped
+    environment:
+      PGWEB_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+    ports:
+      - <span class="s1">'127.0.0.1:8081:8081'</span>
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - island-net</pre>
+
+  <div class="filelabel">Caddy — caddy hash-password prompts twice and prints the hash</div>
+  <pre>db.demo.tripwheel.io {
+	basic_auth {
+		ripon $2a$14$PASTE_THE_HASH_HERE
+	}
+	reverse_proxy 127.0.0.1:8081
+}</pre>
+
+  <p><code class="inl">basic_auth</code> needs Caddy 2.8+ — it was <code class="inl">basicauth</code> before; check <code class="inl">caddy version</code>. On nginx it is <code class="inl">htpasswd</code> plus <code class="inl">auth_basic</code>, and the host appended to your <code class="inl">certbot --nginx -d …</code> list.</p>
+
+  <div class="callout stop">
+    <span class="tag">The trade you are making</span>
+    <p>Today the database is unreachable without an SSH key. With a browser GUI it becomes reachable by anyone holding one password, from anywhere, with no second factor — and the demo database holds real email addresses typed into booking flows. The tunnel costs one terminal and is strictly safer.</p>
+  </div>
+</section>
+
+<!-- ================= 23 ================= -->
+<section class="sheet build" id="s23">
+  <span class="stage">23</span>
+  <p class="eyebrow h">Two on one box</p>
+  <h2>The Conflict Map <span class="scope both">Both</span></h2>
+
+  <p class="lead">Every collision between two instances in one place, split the way §02 splits everything: by how it fails.</p>
+
+  <h3>Loud — you cannot ship these by accident</h3>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>What collides</th><th>How it fails</th><th>Fix</th></tr></thead>
+      <tbody>
+        <tr><td>Backend host port <code class="inl">5050</code></td><td><code class="inl">Bind for 127.0.0.1:5050 failed: port is already allocated</code></td><td><code class="inl">BACKEND_PORT=127.0.0.1:5150</code></td></tr>
+        <tr><td>Postgres loopback <code class="inl">5432</code></td><td>Same "port is already allocated"</td><td><code class="inl">'127.0.0.1:5433:5432'</code></td></tr>
+        <tr><td>Next.js ports <code class="inl">3000</code>–<code class="inl">3002</code></td><td><code class="inl">EADDRINUSE: address already in use :::3001</code></td><td>Explicit <code class="inl">-p 310x</code> in the PM2 args, never <code class="inl">pnpm start</code></td></tr>
+        <tr><td>Duplicate hostname in the proxy</td><td><code class="inl">caddy validate</code> rejects it; <code class="inl">nginx -t</code> reports a conflicting server name</td><td>Unique hostnames per instance</td></tr>
+        <tr><td>PM2 app name</td><td><code class="inl">pm2 start</code> refuses — already launched under that name</td><td>Distinct <code class="inl">demo-*</code> names, separate ecosystem file</td></tr>
+        <tr><td>Docker network address pool</td><td><code class="inl">could not find an available, non-overlapping IPv4 address pool</code></td><td><code class="inl">docker network prune</code>, or widen <code class="inl">default-address-pools</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Silent — nothing errors, both instances look healthy</h3>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>What collides</th><th>What actually happens</th><th>Fix</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Compose project name</strong></td><td class="c">The demo attaches to production's <code class="inl">postgres-data</code>. Its first <code class="inl">RUN_SEED=true</code> boot writes over live bookings</td><td><code class="inl">COMPOSE_PROJECT_NAME</code> set explicitly in <strong>both</strong> env files</td></tr>
+        <tr><td><strong>A shared Redis</strong></td><td class="c">Both instances' workers consume the same queues. The demo picks up a production job — a real confirmation email, a real conversion — and processes it against demo data</td><td>One Redis per instance</td></tr>
+        <tr><td><strong>The session cookie</strong></td><td class="c">Same-apex hosts receive two cookies both named <code class="inl">better-auth.session_token</code>; the backend reads whichever the parser hands it first</td><td>Different apex per instance — §05</td></tr>
+        <tr><td>Stripe webhook endpoint</td><td>Two instances on one Stripe account receive each other's events</td><td>Separate endpoint URL, test mode on the demo</td></tr>
+        <tr><td>Cloudinary cloud</td><td>Demo test uploads appear in the production media gallery</td><td>Separate cloud</td></tr>
+        <tr><td>Resend key / <code class="inl">MAIL_FROM</code></td><td>The demo sends real email that looks like production</td><td>Separate key and subdomain</td></tr>
+        <tr><td>Backup filename</td><td>The second <code class="inl">pg_dump</code> of the day overwrites the first</td><td>Prefix the filename per instance</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Step 0 — record what production is using</h3>
+
+  <p>Do this before anything else. Every later decision is "not that".</p>
+
+  <pre><span class="c1"># ports in use</span>
+sudo ss -tlnp | grep -E <span class="s1">':(5050|3000|3001|3002|5432|6379)\b'</span>
+
+<span class="c1"># compose project, volumes, networks</span>
+cd /opt/island-tours
+docker compose config --format json | python3 -c <span class="s1">'import json,sys; print(json.load(sys.stdin)["name"])'</span>
+docker volume ls
+docker network ls
+
+<span class="c1"># PM2 app names</span>
+pm2 list</pre>
+
+  <div class="callout stop">
+    <span class="tag">The step people skip</span>
+    <p>Before the first <code class="inl">docker compose up</code> on the second instance, print the resolved project name. If it says <code class="inl">island-tours</code>, <strong>stop</strong>. Do not boot. With <code class="inl">RUN_SEED=true</code> the entrypoint would seed over live bookings, and both containers would start perfectly and report healthy. This is the only unrecoverable step in the exercise.</p>
+  </div>
+</section>
+
+<!-- ================= 24 ================= -->
+<section class="sheet build" id="s24">
+  <span class="stage">24</span>
+  <p class="eyebrow h">Two on one box</p>
+  <h2>Isolation and Sizing <span class="scope both">Both</span></h2>
+
+  <h3>How Docker isolates the two stacks</h3>
+
+  <p>There is no <code class="inl">container_name</code> in <code class="inl">docker-compose.yml</code>, and the volumes and network are named relatively — <code class="inl">postgres-data</code>, <code class="inl">redis-data</code>, <code class="inl">island-net</code>. Compose prefixes all three with the <strong>project name</strong>, which defaults to the directory name:</p>
+
+  <div class="tw">
+    <table class="tight">
+      <thead><tr><th></th><th><code class="inl">/opt/island-tours</code></th><th><code class="inl">/opt/demo-tripwheel</code></th></tr></thead>
+      <tbody>
+        <tr><td>Volume</td><td><code class="inl">island-tours_postgres-data</code></td><td><code class="inl">demo-tripwheel_postgres-data</code></td></tr>
+        <tr><td>Network</td><td><code class="inl">island-tours_island-net</code></td><td><code class="inl">demo-tripwheel_island-net</code></td></tr>
+        <tr><td>Container</td><td><code class="inl">island-tours-backend-1</code></td><td><code class="inl">demo-tripwheel-backend-1</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>So the two databases are already separate, and the two Redis instances too. <strong>Pin the name explicitly anyway</strong> — one line in each <code class="inl">.env</code>. That isolation currently rests on nothing but the directory being named what you expect.</p>
+
+  <pre><span class="c1"># /opt/island-tours/.env</span>
+<span class="k1">COMPOSE_PROJECT_NAME</span>=<span class="v1">island-tours</span>
+
+<span class="c1"># /opt/demo-tripwheel/backend-frontend/.env</span>
+<span class="k1">COMPOSE_PROJECT_NAME</span>=<span class="v1">demo-tripwheel</span></pre>
+
+  <p>Adding the line to production's file changes nothing about the running stack until its next <code class="inl">docker compose up</code>, and the name it resolves to is identical — so the value is declared on both sides rather than inferred on both sides.</p>
+
+  <h3>Sizing — the real constraint</h3>
+
+  <p>Two full instances means <strong>2 Postgres + 2 Redis + 2 NestJS APIs</strong>, plus up to six Next.js servers if both run their front ends on the box. One stack wants 4 GB; two want <strong>8 GB</strong>, and the Next builds are the spike rather than steady state.</p>
+
+  <div class="grid g3" style="margin:20px 0">
+    <div class="card flat">
+      <span class="num">01</span>
+      <h5>Build one app at a time</h5>
+      <p>Never in parallel across instances. Six production builds racing for memory is how you get an OOM kill with no useful error.</p>
+    </div>
+    <div class="card flat">
+      <span class="num">02</span>
+      <h5>Ask whether the demo needs everything</h5>
+      <p>A demo that is just the public site plus the dashboard drops a third of the footprint and two hostnames. On this repo that is already the case — Vercel builds them.</p>
+    </div>
+    <div class="card flat">
+      <span class="num">03</span>
+      <h5>Lower <code class="inl">max_memory_restart</code> on the demo</h5>
+      <p>So that under memory pressure the demo restarts first and production stays up.</p>
+    </div>
+  </div>
+
+  <h3>Day-to-day, with two stacks this similar</h3>
+
+  <p>Every <code class="inl">docker compose</code> command acts on whichever project you are standing in, which is a real footgun.</p>
+
+  <pre><span class="c1"># always cd first. `docker compose down` in the wrong directory stops production.</span>
+cd /opt/demo-tripwheel/backend-frontend &amp;&amp; docker compose ps
+cd /opt/island-tours &amp;&amp; docker compose ps
+
+<span class="c1"># PM2 is name-scoped, so it is safer:</span>
+pm2 restart demo-public
+pm2 logs demo-dashboard --lines 100</pre>
+
+  <p>A habit worth forming: set the shell prompt, or use two clearly labelled terminal tabs. The single most likely accident here is a destructive command in the right shell and the wrong directory.</p>
+</section>
+
+<!-- ================= 25 ================= -->
+<section class="sheet run" id="s25">
+  <span class="stage">25</span>
+  <p class="eyebrow">Day-2 operations</p>
+  <h2>Redeploying <span class="scope both">Both</span></h2>
+
+  <h3>Backend</h3>
+  <p>Push to <code class="inl">main</code>, or run the workflow manually. By hand on the VPS:</p>
+  <pre>cd /opt/demo-tripwheel &amp;&amp; git pull
+cd backend-frontend &amp;&amp; docker compose up -d --build
+docker compose logs -f backend</pre>
+
+  <p>Migrations run automatically in the entrypoint — <code class="inl">prisma migrate deploy</code> is idempotent, so redeploying is just rebuild and up.</p>
+
+  <h3>Front ends</h3>
+  <p><span class="scope demo">Demo</span> Push to <code class="inl">main</code>; Vercel builds whichever app changed. Or Deployments → Redeploy.</p>
+  <p><span class="scope prod">Prod</span> Pull, install, build, restart the named PM2 app:</p>
+  <pre>cd /srv/tripwheel/island-tour-development/frontend
+git pull &amp;&amp; pnpm install --frozen-lockfile &amp;&amp; pnpm build
+pm2 restart island-public</pre>
+
+  <h3>Proxy config</h3>
+  <pre>sudo caddy validate --config /etc/caddy/Caddyfile &amp;&amp; sudo systemctl reload caddy
+<span class="c1"># nginx:</span>
+sudo nginx -t &amp;&amp; sudo systemctl reload nginx</pre>
+
+  <p>Reload, not restart — zero downtime, and a bad config leaves the old one running.</p>
+
+  <div class="callout stop">
+    <span class="tag">Two redeploy traps</span>
+    <p><strong>A <code class="inl">NEXT_PUBLIC_*</code> change does nothing until a rebuild.</strong> It is compiled into the bundle at build time, so restarting the process changes nothing and the fix looks broken.</p>
+    <p><strong>A hand edit on the VPS is reverted by the next backend deploy.</strong> <code class="inl">git reset --hard</code> runs before every build. Nothing logs it — the file simply goes back, and whatever depended on it stops working.</p>
+  </div>
+
+  <h3>Watch disk, not just memory</h3>
+
+  <p>Docker layers accumulate on every <code class="inl">--build</code>, and VPS disks are small. A full disk takes down Postgres in a way that reads like corruption.</p>
+
+  <pre>df -h
+docker system prune -af --filter <span class="s1">"until=168h"</span></pre>
+
+  <div class="callout stop">
+    <span class="tag">Not <code class="inl">--volumes</code>. Ever.</span>
+    <p>That flag deletes <code class="inl">postgres-data</code>. The reclaim step in the deploy workflow is deliberately scoped to images and build cache for the same reason.</p>
+  </div>
+</section>
+
+<!-- ================= 26 ================= -->
+<section class="sheet run" id="s26">
+  <span class="stage">26</span>
+  <p class="eyebrow">Day-2 operations</p>
+  <h2>Rotating Credentials <span class="scope both">Both</span></h2>
+
+  <p class="lead">The Postgres password is baked into the data volume the first time the container initialises. Changing the environment variable alone does <strong>not</strong> change an existing database's password.</p>
+
+  <h3>Postgres — password only, keep data</h3>
+
+  <pre><span class="c1"># 1. change it inside the running database</span>
+docker compose exec postgres psql -U island -d island_tours \
+  -c <span class="s1">"ALTER USER island WITH PASSWORD 'NEW_STRONG_PASSWORD';"</span>
+
+<span class="c1"># 2. update the compose .env so DATABASE_URL matches</span>
+<span class="c1">#    POSTGRES_PASSWORD=NEW_STRONG_PASSWORD</span>
+
+<span class="c1"># 3. recreate the backend so it picks up the new URL — the DB stays up</span>
+docker compose up -d --force-recreate backend</pre>
+
+  <h3>Postgres — full reset <span class="pill r">destroys data</span></h3>
+
+  <p>Only for a fresh or empty database.</p>
+
+  <pre>docker compose down
+<span class="c1"># edit .env: POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB</span>
+docker volume rm demo-tripwheel_postgres-data     <span class="c1"># confirm the name with `docker volume ls`</span>
+docker compose up -d --build
+<span class="c1"># first boot: RUN_SEED=true to recreate the admin, then back to false</span></pre>
+
+  <h3>Redis</h3>
+
+  <p>Redis reads its password from the launch command, so a change only needs a restart. The AOF data in <code class="inl">redis-data</code> is not password-encrypted, so nothing is lost.</p>
+
+  <pre><span class="c1"># edit .env: REDIS_PASSWORD=NEW_REDIS_PASSWORD</span>
+docker compose up -d --force-recreate redis backend</pre>
+
+  <div class="callout ok">
+    <span class="tag">Verify every rotation</span>
+    <p><code class="inl">docker compose logs -f backend</code>. The application runs <code class="inl">validateEnv()</code> on boot and fails loudly if something is missing or malformed — so a rotation that broke something will not start quietly.</p>
+  </div>
+
+  <div class="callout stop">
+    <span class="tag">The one secret you cannot rotate casually</span>
+    <p><code class="inl">ENCRYPTION_KEY</code> encrypts Stripe keys and operator OAuth tokens <em>at rest in the database</em>. Rotating it makes every stored credential unreadable — they must be re-entered through Admin → Settings afterwards. Plan it; do not do it to tidy up.</p>
+  </div>
+</section>
+
+<!-- ================= 27 ================= -->
+<section class="sheet run" id="s27">
+  <span class="stage">27</span>
+  <p class="eyebrow">Day-2 operations</p>
+  <h2>Backups and Restore <span class="scope both">Both</span></h2>
+
+  <p class="lead">There is no backup automation in the repository. You add it at the VPS level, on day one. All persistent state is the <code class="inl">postgres-data</code> volume.</p>
+
+  <h3>Manual dump</h3>
+
+  <pre>mkdir -p ~/backups
+cd /opt/demo-tripwheel/backend-frontend
+
+<span class="c1"># custom format — portable, restorable to any PG 16, and pg_restore can be selective</span>
+docker compose exec -T postgres pg_dump -U island -Fc island_tours \
+  &gt; ~/backups/demo_$(date +%F_%H%M).dump
+
+<span class="c1"># or plain SQL, gzipped</span>
+docker compose exec -T postgres pg_dump -U island island_tours \
+  | gzip &gt; ~/backups/demo_$(date +%F).sql.gz</pre>
+
+  <div class="callout stop">
+    <span class="tag">Prefix the filename per instance</span>
+    <p>If production also backs up to this box, the second <code class="inl">pg_dump</code> of the day overwrites the first — and you will not notice until you need the one that is gone.</p>
+  </div>
+
+  <h3>Restore</h3>
+
+  <pre>docker compose exec -T postgres pg_restore -U island -d island_tours \
+  --clean --if-exists /tmp/demo_2026-08-23.dump
+
+<span class="c1"># or pipe straight from the host</span>
+cat backup.dump | docker compose exec -T postgres pg_restore -U island -d island_tours --clean --if-exists</pre>
+
+  <h3>Automate it — the baseline</h3>
+
+  <div class="filelabel">/usr/local/bin/demo-backup.sh</div>
+  <pre>#!/bin/sh
+set -e
+cd /opt/demo-tripwheel/backend-frontend
+STAMP=$(date +%F_%H%M)
+mkdir -p /home/deploy/backups
+docker compose exec -T postgres pg_dump -U <span class="s1">"$POSTGRES_USER"</span> -Fc island_tours \
+  &gt; <span class="s1">"/home/deploy/backups/demo_${STAMP}.dump"</span>
+<span class="c1"># keep 14 days</span>
+find /home/deploy/backups -name <span class="s1">'demo_*.dump'</span> -mtime +14 -delete</pre>
+
+  <pre>chmod +x /usr/local/bin/demo-backup.sh
+crontab -e
+<span class="c1"># 03:15 daily</span>
+15 3 * * * POSTGRES_USER=island /usr/local/bin/demo-backup.sh &gt;&gt; /var/log/demo-backup.log 2&gt;&amp;1</pre>
+
+  <div class="principle r">A cron that writes dumps to the same disk as the database it is dumping protects you from <code class="inl">DROP TABLE</code> and nothing else. <strong>Copy them off the box</strong> — Hostinger snapshots, S3, Backblaze, R2 via <code class="inl">rclone</code> in the same script.</div>
+
+  <div class="callout gov">
+    <span class="tag">The highest-value hour in this manual</span>
+    <p><strong>Restore one backup into a scratch database before you rely on any of them.</strong> An untested backup is a hope, not a backup. Do it once, now, while nothing is wrong — the moment you actually need it is the worst possible time to discover the dump is empty or the format is unreadable.</p>
+  </div>
+
+  <h3>Redis</h3>
+
+  <p>The <code class="inl">redis-data</code> volume has AOF persistence (<code class="inl">--appendonly yes</code>), so queue state survives restarts. BullMQ data is transient by nature and usually needs no backup. If you want a snapshot anyway: <code class="inl">docker compose exec redis redis-cli -a "$REDIS_PASSWORD" BGSAVE</code>.</p>
+</section>
+
+<!-- ================= 28 ================= -->
+<section class="sheet run" id="s28">
+  <span class="stage">28</span>
+  <p class="eyebrow">Day-2 operations</p>
+  <h2>Logs and Monitoring <span class="scope both">Both</span></h2>
+
+  <p class="lead">What exists today is structured application logging to stdout, which Docker captures. There is no audit-log table and no error tracker installed. Both are additions, and this section says exactly what each would take.</p>
+
+  <h3>What you have now</h3>
+
+  <pre>docker compose logs -f backend                     <span class="c1"># live tail</span>
+docker compose logs --since 1h backend             <span class="c1"># last hour</span>
+docker compose logs backend | grep -i <span class="s1">"error"</span>       <span class="c1"># filter</span>
+docker compose logs backend &gt; backend_$(date +%F).log</pre>
+
+  <p>Every service uses <code class="inl">new Logger(&lt;Service&gt;.name)</code> and logs mutating admin actions, so today's stdout <em>is</em> the audit trail. Turn on rotation (§07f) or it fills the disk.</p>
+
+  <h3>Uptime monitoring — first, and free</h3>
+
+  <p>UptimeRobot's free tier hitting <code class="inl">/api/v1/health</code> every five minutes is enough. Add a second check on the public homepage: the API can be perfectly healthy while the storefront is in a crash loop. On nginx, add a certificate-expiry check too.</p>
+
+  <div class="callout gov">
+    <span class="tag">Remember what the health endpoint proves</span>
+    <p>It returns <code class="inl">{ status, timestamp, uptime }</code> and does <strong>not</strong> check Postgres or Redis. A green monitor means the process is up, not that the database is reachable.</p>
+  </div>
+
+  <h3>A log UI, without a code change</h3>
+
+  <div class="grid g3" style="margin:20px 0">
+    <div class="card flat">
+      <span class="num">SIMPLEST</span>
+      <h5>Dozzle</h5>
+      <p>One container pointed at the Docker socket gives a real-time log viewer in the browser. Best answer to "just let me see the logs".</p>
+    </div>
+    <div class="card flat">
+      <span class="num">SELF-HOSTED</span>
+      <h5>Grafana Loki + Promtail</h5>
+      <p>Ships container logs to Loki, searchable in Grafana. The right fit for a single VPS once you also want metrics.</p>
+    </div>
+    <div class="card flat">
+      <span class="num">HOSTED</span>
+      <h5>Better Stack · Axiom · Datadog</h5>
+      <p>Send stdout, get search and alerting with nothing to run.</p>
+    </div>
+  </div>
+
+  <h3>Sentry — before you need it</h3>
+
+  <p>Not installed: no <code class="inl">@sentry/*</code> dependency, no <code class="inl">SENTRY_DSN</code>. Self-hosting means no platform error dashboard, so when somebody reports "checkout didn't work" your only evidence is whatever scrolled past.</p>
+
+  <ol class="clean">
+    <li>Create a project at sentry.io and copy the <strong>DSN</strong>.</li>
+    <li><code class="inl">cd backend &amp;&amp; pnpm add @sentry/nestjs @sentry/profiling-node</code></li>
+    <li>Create <code class="inl">backend/src/instrument.ts</code> and import it <strong>first</strong> in <code class="inl">main.ts</code>, before anything else.</li>
+    <li>Add <code class="inl">SentryModule.forRoot()</code> to <code class="inl">AppModule.imports</code>, or call <code class="inl">Sentry.captureException</code> inside the existing <code class="inl">AllExceptionsFilter</code>.</li>
+    <li>Add <code class="inl">SENTRY_DSN</code> to <code class="inl">.env.production</code> <em>and</em> to the <code class="inl">OPTIONAL</code> map in <code class="inl">env.validate.ts</code>.</li>
+    <li><code class="inl">docker compose up -d --build backend</code>, trigger a test error, confirm it lands.</li>
+  </ol>
+
+  <div class="filelabel">backend/src/instrument.ts</div>
+  <pre><span class="k1">import</span> * <span class="k1">as</span> Sentry <span class="k1">from</span> <span class="s1">'@sentry/nestjs'</span>;
+Sentry.init({
+  dsn: process.env.<span class="v1">SENTRY_DSN</span>,
+  environment: process.env.<span class="v1">NODE_ENV</span>,
+  tracesSampleRate: <span class="v1">0.1</span>,        <span class="c1">// 10% perf traces</span>
+  enabled: process.env.<span class="v1">NODE_ENV</span> === <span class="s1">'production'</span>,
+});</pre>
+
+  <p>Check the current SDK shape against the docs before implementing — Sentry's API moves.</p>
+
+  <h3>OpenTelemetry — later, if at all</h3>
+
+  <p>Also not installed, and heavier than Sentry. <strong>Route A:</strong> setting <code class="inl">tracesSampleRate</code> above already gives you request traces, because the NestJS SDK uses OpenTelemetry underneath. Start there. <strong>Route B</strong> is the full vendor-neutral stack — <code class="inl">@opentelemetry/sdk-node</code> plus auto-instrumentations, which covers HTTP, Express, Prisma/pg and ioredis/BullMQ with no per-route code, exporting to Tempo, Jaeger or SigNoz in a container. Adopt it when you are debugging cross-service latency or want Prometheus metrics, not before.</p>
+
+  <h3>A real business audit trail</h3>
+
+  <p>A true "who changed what, when" record needs a code addition: an <code class="inl">audit_log</code> Prisma model (<code class="inl">actorId</code>, <code class="inl">action</code>, <code class="inl">entityType</code>, <code class="inl">entityId</code>, before/after JSON, <code class="inl">ip</code>, <code class="inl">createdAt</code>) written from a NestJS interceptor on mutating routes. That is the right approach for compliance and forensics, and it is a feature to build rather than configuration.</p>
+</section>
+
+<!-- ================= 29 ================= -->
+<section class="sheet run" id="s29">
+  <span class="stage">29</span>
+  <p class="eyebrow">Day-2 operations</p>
+  <h2>Rate Limiting <span class="scope both">Both</span></h2>
+
+  <p class="lead">Already built and active — <code class="inl">@nestjs/throttler</code> with a global guard registered in <code class="inl">backend/src/auth/auth.module.ts</code>, running <em>first</em> in the guard chain, before auth. You do not set it up; you tune it.</p>
+
+  <h3>Current limits, per client IP</h3>
+
+  <div class="tw">
+    <table class="tight">
+      <thead><tr><th>Name</th><th>Window</th><th>Limit</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td><code class="inl">short</code></td><td>1 s</td><td>60</td><td>Burst — sized for an authed dashboard page's parallel fan-out</td></tr>
+        <tr><td><code class="inl">medium</code></td><td>60 s</td><td>300</td><td>Sustained</td></tr>
+        <tr><td><code class="inl">long</code></td><td>1 h</td><td>3000</td><td>Hard cap</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Three things that make it work</h3>
+
+  <div class="grid g3" style="margin:20px 0">
+    <div class="card b">
+      <span class="num">BYPASS</span>
+      <h5>Trusted internal origin</h5>
+      <p><code class="inl">skipIf: isTrustedInternalOrigin</code> — the SSR and build servers send <code class="inl">x-internal-api-key</code> matching <code class="inl">INTERNAL_API_SECRET</code>, so prerender bursts are not throttled. Everyone else is limited.</p>
+      <p>That secret is <strong>required</strong> in production; the validator refuses to boot without it.</p>
+    </div>
+    <div class="card b">
+      <span class="num">REAL CLIENT IP</span>
+      <h5><code class="inl">trust proxy = 1</code></h5>
+      <p><code class="inl">main.ts</code> trusts exactly one hop, and the proxy forwards <code class="inl">X-Real-IP</code> / <code class="inl">X-Forwarded-For</code>, so the limiter sees the visitor rather than the proxy.</p>
+    </div>
+    <div class="card b">
+      <span class="num">SEPARATE LAYER</span>
+      <h5>Auth brute force</h5>
+      <p>Handled by Better Auth's own per-path limiter — <code class="inl">rateLimit.customRules</code>, 5/min on sign-in, forget and reset. <code class="inl">/api/auth/*</code> is <code class="inl">@SkipThrottle()</code>'d from the NestJS guard, so login limits are governed solely there, and the internal-key bypass does not touch it.</p>
+    </div>
+  </div>
+
+  <div class="callout stop">
+    <span class="tag">The tripwire in <code class="inl">trust proxy = 1</code></span>
+    <p>It assumes <strong>exactly one</strong> proxy hop. Put a CDN or load balancer in front of your proxy — Cloudflare's orange cloud, another LB — and it becomes two. Left at <code class="inl">1</code>, clients can spoof <code class="inl">X-Forwarded-For</code> to evade the per-IP limit or poison a victim's bucket. Bump it to <code class="inl">2</code> in <code class="inl">main.ts</code>, or use nginx <code class="inl">real_ip</code> with the CDN's header.</p>
+  </div>
+
+  <h3>Tuning</h3>
+  <ul class="clean">
+    <li><strong>Global:</strong> edit the <code class="inl">throttlers</code> array in <code class="inl">auth.module.ts</code>.</li>
+    <li><strong>Per route:</strong> <code class="inl">@Throttle({ short: { limit: 5, ttl: 60_000 } })</code> on a controller or route — use this to tighten register and reset-password.</li>
+    <li><strong>Skip:</strong> <code class="inl">@SkipThrottle()</code>, already on <code class="inl">/health</code> and Stripe webhooks.</li>
+  </ul>
+
+  <p>The default store keeps counters <strong>in memory</strong> — correct for one container. With multiple replicas each has its own counter, so the effective limit multiplies by the replica count. Sharing them means swapping in a Redis-backed throttler storage pointed at your existing Redis. That becomes relevant only alongside §30.</p>
+</section>
+
+<!-- ================= 30 ================= -->
+<section class="sheet run" id="s30">
+  <span class="stage">30</span>
+  <p class="eyebrow">Day-2 operations</p>
+  <h2>Scaling <span class="scope both">Both</span></h2>
+
+  <p class="lead">Honest framing: a single VPS does not auto-scale the way a cloud platform does. The realistic options, cheapest first.</p>
+
+  <div class="diagram">
+    <p class="dcap">Three tiers, in the order you should reach for them</p>
+    <div class="flow wide">
+      <div class="node ok">
+        <span class="k">Tier 1 · you are here</span>
+        <span class="t">Vertical — resize the VPS</span>
+        <span class="d">More vCPU and RAM in the Hostinger panel. Zero code change, one reboot. Do this first; one well-sized VPS carries this workload a long way.</span>
+      </div>
+      <div class="node man">
+        <span class="k">Tier 2 · manual, not automatic</span>
+        <span class="t">Horizontal on the same box</span>
+        <span class="d">Multiple backend containers behind the proxy. Requires moving rate-limit state to Redis, and making sure the nightly <code class="inl">@nestjs/schedule</code> jobs do not double-run — a Redis lock, or schedulers in exactly one instance.</span>
+      </div>
+      <div class="node auto">
+        <span class="k">Tier 3 · a platform change</span>
+        <span class="t">Real autoscaling</span>
+        <span class="d">Docker Swarm is closest to the current compose. k3s adds a Horizontal Pod Autoscaler and a large operational step up. Managed container hosts — Railway, Render, Fly.io, Cloud Run, ECS — give request-based autoscaling with almost no ops.</span>
+      </div>
+    </div>
+  </div>
+
+  <p>The application is already stateless — sessions are cookie and database backed via Better Auth, with no in-memory session store — so replicas are safe apart from the two points in Tier 2.</p>
+
+  <h3>Two things to do before buying a bigger server</h3>
+
+  <div class="grid g2" style="margin:20px 0">
+    <div class="card h">
+      <span class="num">FIRST</span>
+      <h5>Push image resizing to Cloudinary</h5>
+      <p>Next's image optimizer is the first thing to saturate CPU on a self-hosted storefront, and the images already live in Cloudinary — which resizes on delivery, free, at the edge. A custom loader emitting <code class="inl">.../w_800,q_auto,f_auto/...</code> URLs moves that work off your server entirely.</p>
+      <p>Only relevant where front ends run on the VPS. <span class="scope prod">Prod</span></p>
+    </div>
+    <div class="card h">
+      <span class="num">SECOND</span>
+      <h5>Split the front ends off before the backend</h5>
+      <p>If one box stops being enough, move the Next apps elsewhere and leave API + Postgres + Redis together. The apps are stateless and trivially relocatable; the database is neither. Only the proxy's <code class="inl">reverse_proxy</code> targets change — <code class="inl">CORS_ORIGINS</code> stays exactly as it is, because it lists public origins, not machines.</p>
+    </div>
+  </div>
+
+  <div class="callout gov">
+    <span class="tag">If you only ever do three things from this manual</span>
+    <p>Off-site backups you have actually restored once (§27), a working uptime monitor (§28), and the three silent-failure verifications (§16). Those turn "the site is down and I do not know why or for how long" into a solved problem. Everything else is optimisation.</p>
+  </div>
+</section>
+
+<!-- ================= 31 ================= -->
+<section class="sheet ref" id="s31">
+  <span class="stage">31</span>
+  <p class="eyebrow g">Reference</p>
+  <h2>Env Reference <span class="scope both">Both</span></h2>
+
+  <p class="lead">The cross-application couplings. None of these fail to compile, and most of them fail silently — this table is the list of things a <code class="inl">diff</code> would never catch.</p>
+
+  <h3>What must match what</h3>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Value</th><th>Backend</th><th>Public site</th><th>Dashboard</th></tr></thead>
+      <tbody>
+        <tr><td><code class="inl">INTERNAL_API_SECRET</code></td><td>same</td><td>same</td><td>same</td></tr>
+        <tr><td><code class="inl">REVALIDATE_SECRET</code></td><td>same</td><td>same (accepts a list, so you can rotate over two deploys)</td><td>same</td></tr>
+        <tr><td><code class="inl">COOKIE_DOMAIN</code></td><td><code class="inl">.demo.tripwheel.io</code></td><td>—</td><td>must be identical</td></tr>
+        <tr><td>Backend URL</td><td>—</td><td><code class="inl">NEXT_PUBLIC_BACKEND_URL</code></td><td><code class="inl">NEXT_PUBLIC_BACKEND_URL</code></td></tr>
+        <tr><td>Listed in <code class="inl">CORS_ORIGINS</code></td><td>—</td><td>required</td><td>required</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Single variables and what breaks</h3>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Variable</th><th>Set in</th><th>What breaks if wrong</th></tr></thead>
+      <tbody>
+        <tr><td><code class="inl">BETTER_AUTH_URL</code></td><td>backend</td><td>Auth links in emails point nowhere</td></tr>
+        <tr><td><code class="inl">ISLAND_TOURS_URL</code></td><td>backend</td><td>Traveller booking links go to the dashboard</td></tr>
+        <tr><td><code class="inl">PORTAL_URL</code></td><td>backend</td><td>Operator invite "set password" links 404</td></tr>
+        <tr><td><code class="inl">CORS_ORIGINS</code></td><td>backend</td><td>Every browser request from a missing origin fails — including sign-in. No spaces after commas</td></tr>
+        <tr><td><code class="inl">COOKIE_DOMAIN</code></td><td>backend + dashboard</td><td class="c">Infinite login redirect loop, not an error. Leading dot required</td></tr>
+        <tr><td><code class="inl">REVALIDATE_TARGET_URL</code></td><td>dashboard</td><td class="c">Public site serves stale prices, silently. Unset in production means permanent staleness</td></tr>
+        <tr><td><code class="inl">NEXT_PUBLIC_SITE_URL</code></td><td>public site</td><td>Canonical tags, sitemap and OG images point at localhost</td></tr>
+        <tr><td><code class="inl">NEXT_PUBLIC_FACING_APP_URL</code></td><td>dashboard</td><td>"View public site" link is inert</td></tr>
+        <tr><td><code class="inl">NEXT_PUBLIC_ENABLE_TRACKING</code></td><td>both front ends</td><td class="c">Left <code class="inl">true</code> on a demo, test bookings land in real Google Ads, GA4 and Meta data</td></tr>
+        <tr><td><code class="inl">MAIL_FROM</code></td><td>backend</td><td>Unquoted, compose refuses to start. On an unverified domain, no email arrives</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout gov">
+    <span class="tag">Present in the example files but read by nothing</span>
+    <p><code class="inl">NEXT_PUBLIC_OPEN_WEATHER_API_KEY</code> and <code class="inl">NEXT_PUBLIC_PORTAL_URL</code>. <code class="inl">NEXT_PUBLIC_ADMIN_LOGIN_URL</code> is read <strong>only</strong> by the dashboard despite appearing in the public site's example too, and on this repo it is retired entirely — the admin door is <code class="inl">/admin</code> on the dashboard.</p>
+  </div>
+
+  <h3>Where each variable actually lives</h3>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>File</th><th>Holds</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td><code class="inl">backend-frontend/.env</code></td><td><code class="inl">POSTGRES_*</code>, <code class="inl">REDIS_PASSWORD</code>, <code class="inl">BACKEND_PORT</code>, <code class="inl">BACKEND_IMAGE_TAG</code>, <code class="inl">RUN_SEED</code>, <code class="inl">COMPOSE_PROJECT_NAME</code></td><td>Source of truth for database and Redis passwords</td></tr>
+        <tr><td><code class="inl">backend/.env.production</code></td><td>App secrets only — auth, Cloudinary, Resend, encryption, CORS, cookie domain</td><td>Its <code class="inl">DATABASE_URL</code> would be ignored</td></tr>
+        <tr><td>Vercel project settings</td><td>Everything the two front ends need</td><td>Build-time; a change needs a redeploy</td></tr>
+        <tr><td>The database</td><td>Stripe keys, encrypted with <code class="inl">ENCRYPTION_KEY</code></td><td>Set from Admin → Settings, never a file</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ================= 32 ================= -->
+<section class="sheet ref" id="s32">
+  <span class="stage">32</span>
+  <p class="eyebrow g">Reference</p>
+  <h2>Port Reference <span class="scope both">Both</span></h2>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Service</th><th>Production</th><th>Demo</th><th>Bound to</th></tr></thead>
+      <tbody>
+        <tr><td>Backend API, host side</td><td><code class="inl">5050</code></td><td><code class="inl">5150</code></td><td class="y"><code class="inl">127.0.0.1</code> — the proxy is the only entrance</td></tr>
+        <tr><td>Backend API, in-container</td><td><code class="inl">5050</code></td><td><code class="inl">5050</code></td><td>Container port never changes</td></tr>
+        <tr><td>Postgres, host loopback</td><td><code class="inl">5432</code></td><td><code class="inl">5433</code></td><td class="y"><code class="inl">127.0.0.1</code> — for SSH tunnels only</td></tr>
+        <tr><td>Postgres, in-container</td><td><code class="inl">5432</code></td><td><code class="inl">5432</code></td><td>Private Docker network</td></tr>
+        <tr><td>Redis</td><td>none published</td><td>none published</td><td>Private Docker network</td></tr>
+        <tr><td>Public site <span class="scope prod">Prod</span></td><td><code class="inl">3000</code></td><td><code class="inl">3100</code></td><td>PM2; on the demo it is Vercel instead</td></tr>
+        <tr><td>Dashboard <span class="scope prod">Prod</span></td><td><code class="inl">3001</code></td><td><code class="inl">3101</code></td><td>PM2; on the demo it is Vercel instead</td></tr>
+        <tr><td>Marketing app <span class="scope prod">Prod</span></td><td><code class="inl">3002</code></td><td><code class="inl">3102</code></td><td>Does not exist on the demo</td></tr>
+        <tr><td>HTTP / HTTPS</td><td colspan="2"><code class="inl">80</code> / <code class="inl">443</code></td><td>The only two ports open in UFW besides SSH</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>On your laptop</h3>
+
+  <div class="tw">
+    <table class="tight">
+      <thead><tr><th>Port</th><th>What it is</th></tr></thead>
+      <tbody>
+        <tr><td><code class="inl">5432</code></td><td>Your own Postgres install, and the dev compose stack</td></tr>
+        <tr><td><code class="inl">5433</code></td><td>A tunnel to <strong>production</strong></td></tr>
+        <tr><td><code class="inl">5434</code></td><td class="y">A tunnel to the <strong>demo</strong> — always, permanently</td></tr>
+        <tr><td><code class="inl">5555</code></td><td>Prisma Studio</td></tr>
+        <tr><td><code class="inl">5050</code></td><td>Local backend dev, and pgAdmin's own default — they clash</td></tr>
+        <tr><td><code class="inl">3000</code> / <code class="inl">3001</code></td><td>Local public site / dashboard</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <pre><span class="c1"># what is listening right now</span>
+lsof -nP -iTCP:5432-5436 -sTCP:LISTEN        <span class="c1"># macOS</span>
+sudo ss -tlnp | grep -E <span class="s1">':(5050|5150|5432|5433|3000|3001)\b'</span>   <span class="c1"># the VPS</span></pre>
+</section>
+
+<!-- ================= 33 ================= -->
+<section class="sheet ref" id="s33">
+  <span class="stage">33</span>
+  <p class="eyebrow g">Reference</p>
+  <h2>Troubleshooting <span class="scope both">Both</span></h2>
+
+  <h3>Deployment and boot</h3>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr></thead>
+      <tbody>
+        <tr><td>Container exits, <code class="inl">Environment validation failed</code></td><td>A required var missing, too short, or still <code class="inl">change-me</code></td><td>The error names every offending variable</td></tr>
+        <tr><td><code class="inl">poorly formatted environment</code></td><td>The stray <code class="inl">the</code> atop <code class="inl">.env.production</code>, or an unquoted <code class="inl">MAIL_FROM</code></td><td>Delete the word; quote the value</td></tr>
+        <tr><td><code class="inl">Bind for 127.0.0.1:5150 failed</code></td><td>Something already holds the port</td><td><code class="inl">ss -tlnp | grep 5150</code></td></tr>
+        <tr><td><code class="inl">502 Bad Gateway</code></td><td>The app on that port is not running</td><td><code class="inl">docker compose ps</code> / <code class="inl">pm2 status</code>, then its logs</td></tr>
+        <tr><td><code class="inl">could not get certificate</code> / <code class="inl">Challenge failed</code></td><td>DNS not resolving yet, port 80 blocked, or Cloudflare orange cloud</td><td><code class="inl">dig +short</code>, <code class="inl">ufw status</code>, grey-cloud it</td></tr>
+        <tr><td>nginx will not start, <code class="inl">Address already in use</code></td><td>Caddy still holds port 80</td><td><code class="inl">sudo systemctl disable --now caddy</code></td></tr>
+        <tr><td>Build dies with <code class="inl">Killed</code></td><td>Out of memory</td><td>Swap on, build one at a time, <code class="inl">NODE_OPTIONS=--max-old-space-size=2048</code></td></tr>
+        <tr><td><code class="inl">not a git repository</code> in the deploy</td><td><code class="inl">VPS_APP_DIR</code> points at the compose directory</td><td>Point it at the git root — §15</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Silent — nothing errored, the result is wrong</h3>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr></thead>
+      <tbody>
+        <tr><td>Login works, next page says signed out</td><td class="c"><code class="inl">COOKIE_DOMAIN</code> mismatch, or missing its leading dot</td><td>Make both identical, redeploy the dashboard, clear cookies</td></tr>
+        <tr><td>Every dashboard request fails CORS</td><td>Origin missing from <code class="inl">CORS_ORIGINS</code>, or spaces after the commas</td><td>Add it, no spaces, <code class="inl">docker compose up -d</code></td></tr>
+        <tr><td>Public site shows stale prices</td><td class="c"><code class="inl">REVALIDATE_SECRET</code> mismatch or <code class="inl">REVALIDATE_TARGET_URL</code> unset</td><td>Align them; look for a <code class="inl">401</code> from <code class="inl">/api/revalidate</code></td></tr>
+        <tr><td>Changed a <code class="inl">NEXT_PUBLIC_*</code>, nothing happened</td><td>Baked in at build time</td><td>Redeploy, not restart</td></tr>
+        <tr><td>Stripe webhooks all fail signature verification</td><td>nginx only: <code class="inl">proxy_request_buffering off</code> missing</td><td>§13, file 2</td></tr>
+        <tr><td>Uploads fail at ~1 MB</td><td>nginx only: <code class="inl">client_max_body_size</code> at default</td><td>§13, file 2</td></tr>
+        <tr><td>Rate limiting throttles everyone at once</td><td>nginx only: <code class="inl">X-Forwarded-For</code> not set</td><td>§13, file 1</td></tr>
+        <tr><td>No emails arriving</td><td>Resend domain unverified, or <code class="inl">MAIL_FROM</code> on an unverified domain</td><td>Finish DKIM/SPF in DNS</td></tr>
+        <tr><td>A change you made on the VPS reverted</td><td class="c"><code class="inl">git reset --hard</code> in the deploy workflow</td><td>Commit it to the repository instead</td></tr>
+        <tr><td>Vercel build cannot find files</td><td>Root Directory wrong</td><td>§14</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>SSH and the tunnel</h3>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr></thead>
+      <tbody>
+        <tr><td><code class="inl">Permission denied (publickey)</code></td><td>Your VPS key is not one of SSH's default names, so it was never offered</td><td><code class="inl">-i ~/.ssh/&lt;key&gt;</code>, or connect by the <code class="inl">Host</code> alias</td></tr>
+        <tr><td>Same, and you <em>have</em> a <code class="inl">Host</code> block with the right key</td><td>You connected by address, so the block never matched</td><td>Use the alias. Check with <code class="inl">ssh -G &lt;target&gt; | grep -i identityfile</code></td></tr>
+        <tr><td><code class="inl">Could not resolve hostname deploy:1.2.3.4</code></td><td>A colon instead of <code class="inl">@</code></td><td><code class="inl">deploy@1.2.3.4</code></td></tr>
+        <tr><td>Asked for a password you do not have</td><td>You do not need one — the VPS is keys-only and the password is for <code class="inl">sudo</code> alone</td><td>Fix the key, not the password. Reset via the host's browser console: <code class="inl">passwd deploy</code> as root</td></tr>
+        <tr><td><code class="inl">ssh -N</code> prints nothing and does not return</td><td class="y">That is success</td><td>Leave it open; use a second tab</td></tr>
+        <tr><td><code class="inl">bind: Address already in use</code></td><td>A tunnel already holds that port</td><td><code class="inl">lsof -nP -iTCP:5434 -sTCP:LISTEN</code>, then stop it</td></tr>
+        <tr><td><code class="inl">Connection refused</code> on 5434, tunnel is open</td><td>Loopback port missing on the VPS — a deploy recreated the container</td><td><code class="inl">docker compose up -d postgres</code>, then <code class="inl">ss -tlnp | grep 5433</code></td></tr>
+        <tr><td>Connects, but the data is wrong</td><td class="c">Wrong database — local dev (5432) or production (5433)</td><td>The demo is <strong>5434</strong> on your Mac — §17</td></tr>
+        <tr><td>TLS errors / <code class="inl">no pg_hba.conf entry</code></td><td>SSL enabled in the client</td><td>Disable it, or set pgAdmin's mode to <code class="inl">prefer</code></td></tr>
+        <tr><td><code class="inl">database "island-tours" does not exist</code></td><td>Hyphen instead of underscore</td><td><code class="inl">island_tours</code></td></tr>
+        <tr><td><code class="inl">Could not establish session to SSH gateway</code> in <code class="inl">~/.pgadmin/pgadmin4.log</code></td><td>pgAdmin's SSH leg failed — almost always an empty <em>Identity file</em>, since the picker hides <code class="inl">~/.ssh</code>, so it fell back to password auth</td><td>Absolute path to the key, no <code class="inl">~</code>. §19</td></tr>
+        <tr><td><code class="inl">docker compose up -d pgadmin</code> says no such service</td><td>The profile was not named</td><td><code class="inl">docker compose --profile tools up -d pgadmin</code>. §19</td></tr>
+        <tr><td>The pgAdmin container exits immediately</td><td><code class="inl">PGADMIN_PASSWORD</code> unset in <code class="inl">backend-frontend/.env</code></td><td>Set it, then start the profile again. §19</td></tr>
+        <tr><td><code class="inl">http://127.0.0.1:8082</code> refuses the connection</td><td>The port-forward is not open, or pgAdmin was never started</td><td><code class="inl">ssh -N -L 8082:127.0.0.1:8082 vps</code>, and <code class="inl">docker compose ps</code> on the VPS</td></tr>
+        <tr><td>pgAdmin runs but its server list is empty</td><td><code class="inl">pgadmin-servers.json</code> did not mount</td><td>A missing bind-mount source mounts as an empty directory — check the path</td></tr>
+        <tr><td>Opening the desktop app's own port in Chrome gives <code class="inl">401</code></td><td>Desktop mode guards its server with a per-launch token only the Electron shell holds</td><td>Not a shortcut. Use the compose service. §19</td></tr>
+        <tr><td>A <code class="inl">docker run</code> of pgAdmin on your Mac cannot see the tunnel</td><td class="c"><code class="inl">ssh -L</code> binds loopback only; <code class="inl">host.docker.internal</code> is a non-loopback address, so the container is refused</td><td>Run pgAdmin on the VPS instead. §19</td></tr>
+        <tr><td>Prisma Studio in Docker unreachable</td><td>Binds <code class="inl">127.0.0.1</code> inside the container, no host flag exists</td><td>Run it natively</td></tr>
+        <tr><td>Redis: every command returns <code class="inl">NOAUTH</code></td><td>Password not loaded into the shell</td><td><code class="inl">export $(grep '^REDIS_PASSWORD=' .env | xargs)</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ================= 34 ================= -->
+<section class="sheet ref" id="s34">
+  <span class="stage">34</span>
+  <p class="eyebrow g">Reference</p>
+  <h2>Command Index <span class="scope both">Both</span></h2>
+
+  <pre><span class="c1"># ── Containers ────────────────────────────────────────────────</span>
+docker compose ps                          <span class="c1"># status + health</span>
+docker compose logs -f backend             <span class="c1"># live app logs = today's audit trail</span>
+docker compose logs --since 1h backend
+docker compose up -d --build backend       <span class="c1"># redeploy after git pull</span>
+docker compose restart redis backend       <span class="c1"># apply a REDIS_PASSWORD change</span>
+docker compose down                        <span class="c1"># stop, keep data</span>
+<span class="r1">docker compose down -v                     # stop AND DELETE the database. never on a real box</span>
+
+<span class="c1"># ── Prove which stack you are in ──────────────────────────────</span>
+docker compose config --format json | python3 -c <span class="s1">'import json,sys; print(json.load(sys.stdin)["name"])'</span>
+docker volume ls | grep postgres-data      <span class="c1"># two instances = two volumes</span>
+
+<span class="c1"># ── Postgres ──────────────────────────────────────────────────</span>
+docker compose exec postgres psql -U island -d island_tours
+docker compose exec -T postgres pg_dump -U island -Fc island_tours &gt; backup.dump
+docker compose exec postgres psql -U island -d island_tours \
+  -c <span class="s1">"ALTER USER island WITH PASSWORD 'NEW';"</span>       <span class="c1"># then edit .env + recreate backend</span>
+
+<span class="c1"># ── Redis ─────────────────────────────────────────────────────</span>
+export $(grep <span class="s1">'^REDIS_PASSWORD='</span> .env | xargs)
+docker compose exec redis redis-cli -a <span class="s1">"$REDIS_PASSWORD"</span> ping
+docker compose exec redis redis-cli -a <span class="s1">"$REDIS_PASSWORD"</span> --scan --pattern <span class="s1">'bull:*'</span>
+
+<span class="c1"># ── The tunnel, from your laptop ──────────────────────────────</span>
+ssh -N demo-db                             <span class="c1"># foreground, silent = working</span>
+ssh -fN demo-db                            <span class="c1"># background, prompt returns</span>
+lsof -nP -iTCP:5434 -sTCP:LISTEN           <span class="c1"># is it up?</span>
+pkill -f <span class="s1">'ssh -fN demo-db'</span>                  <span class="c1"># stop it</span>
+ssh -G deploy@HOST | grep -i identityfile  <span class="c1"># which keys will actually be offered</span>
+
+<span class="c1"># ── Database GUIs ─────────────────────────────────────────────</span>
+pnpm prisma studio --url=<span class="s1">"postgresql://island:PW@127.0.0.1:5434/island_tours?schema=public"</span>
+<span class="c1"># TablePlus / pgAdmin: 127.0.0.1:5434, island_tours, SSL off</span>
+
+<span class="c1"># ── Proxy ─────────────────────────────────────────────────────</span>
+sudo caddy validate --config /etc/caddy/Caddyfile &amp;&amp; sudo systemctl reload caddy
+sudo nginx -t &amp;&amp; sudo systemctl reload nginx
+sudo journalctl -u caddy -n 100
+
+<span class="c1"># ── Health of the box ─────────────────────────────────────────</span>
+df -h &amp;&amp; free -h
+sudo ss -tlnp | grep -E <span class="s1">':(5050|5150|5432|5433|80|443)\b'</span>
+docker system prune -af --filter <span class="s1">"until=168h"</span>    <span class="c1"># images + cache only, never --volumes</span></pre>
+
+  <div class="callout ok">
+    <span class="tag">Source documents consolidated here</span>
+    <p><code class="inl">DEMO-DEPLOYMENT.md</code> · <code class="inl">DATABASE-GUI-ACCESS.md</code> · <code class="inl">VPS-DEPLOYMENT-CADDY.md</code> · <code class="inl">VPS-SECOND-INSTANCE.md</code> · <code class="inl">VPS-OPERATIONS-GUIDE.md</code>. Where they disagreed on repository layout, remotes or deployment, the demo repository's own <code class="inl">CLAUDE.md</code> was treated as authoritative and the three-app production world is marked <span class="scope prod">Prod</span> throughout.</p>
+  </div>
+</section>
+
+<div class="endnote">
+  <span>Island Tours · Operations Manual · Internal</span>
+  <span>Demo: tripwheel.io · Production: tripwheel.app</span>
+</div>
+
+</main>
+</div>
+
+<script>
+(function(){
+  var bar = document.getElementById('progress');
+  var links = Array.prototype.slice.call(document.querySelectorAll('.nav a'));
+  var sections = links.map(function(a){ return document.querySelector(a.getAttribute('href')); }).filter(Boolean);
+
+  function onScroll(){
+    var h = document.documentElement;
+    var max = h.scrollHeight - h.clientHeight;
+    bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + '%';
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+
+  if ('IntersectionObserver' in window){
+    var current = null;
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if (e.isIntersecting){
+          if (current) current.classList.remove('on');
+          var link = document.querySelector('.nav a[href="#' + e.target.id + '"]');
+          if (link){ link.classList.add('on'); current = link;
+            if (window.innerWidth > 1080){
+              var rail = document.querySelector('.rail');
+              var top = link.offsetTop - rail.clientHeight / 2;
+              if (Math.abs(rail.scrollTop - top) > 120) rail.scrollTo({top: top, behavior: 'smooth'});
+            }
+          }
+        }
+      });
+    }, {rootMargin: '-15% 0px -70% 0px', threshold: 0});
+    sections.forEach(function(s){ io.observe(s); });
+  }
+})();
+</script>
+</body>
+</html>

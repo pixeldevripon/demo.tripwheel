@@ -150,9 +150,54 @@ services:
     networks:
       - island-net
 
+  # OPT-IN ONLY. `profiles:` means a plain `docker compose up -d` - which is what
+  # deploy-backend.yml runs - skips this service entirely. It never starts on a
+  # deploy, never costs the box its ~200MB, and is never left running unattended.
+  #
+  #   docker compose --profile tools up -d pgadmin
+  #   docker compose --profile tools stop pgadmin
+  #
+  # It sits on island-net, so it reaches postgres:5432 container to container.
+  # That is the whole point: no SSH tunnel between pgAdmin and the database, so
+  # none of the identity-file and port-translation problems of a laptop client.
+  # You tunnel pgAdmin's HTTP port instead:
+  #
+  #   ssh -N -L 8082:127.0.0.1:8082 vps      # then http://127.0.0.1:8082
+  #
+  # Full walkthrough: docs/operations/DATABASE-GUI-ACCESS.md §5b
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    restart: unless-stopped
+    profiles: ['tools']
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@demo.tripwheel.io}
+      # Empty default on purpose: no compose warning on every ordinary `up`, and
+      # the container fails loudly on the one command that actually needs it.
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-}
+      PGADMIN_LISTEN_PORT: '80'
+      # Skip the second prompt. Saved server passwords are then encrypted with
+      # the login password instead of a separate master one.
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+      # Pre-registers the demo database, so there is no host or port to type.
+      PGADMIN_SERVER_JSON_FILE: /pgadmin4/servers.json
+    volumes:
+      # Without this you re-register the server on every restart.
+      - pgadmin-data:/var/lib/pgadmin
+      - ./pgadmin-servers.json:/pgadmin4/servers.json:ro
+    # LOOPBACK ONLY, exactly as for postgres. A bare '8082:80' puts a pgAdmin
+    # login on the public internet, and Docker's iptables rules bypass UFW.
+    ports:
+      - '127.0.0.1:8082:80'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - island-net
+
 volumes:
   postgres-data:
   redis-data:
+  pgadmin-data:
 
 networks:
   island-net:

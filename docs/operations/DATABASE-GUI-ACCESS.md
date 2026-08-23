@@ -173,8 +173,9 @@ There is no browser version of TablePlus. For a browser, use §5b or §5c.
 
 ### b. pgAdmin 4 — Mac desktop *and* browser
 
-pgAdmin is a web application in both cases; the "desktop app" is that same web app wrapped in a
-runtime. So "in the browser" is not a different product, only a different way of starting it.
+pgAdmin is a web application in both cases; the "desktop app" is that same web app wrapped in an
+Electron shell. So "in the browser" is not a different product, only a different way of starting it
+— and the app you have already installed can serve it, with nothing else installed at all.
 
 **Desktop app.** Install it, then Register → Server:
 
@@ -190,31 +191,128 @@ it. Then go back to the *Connection* tab and change the port to **`5433`**.
 
 pgAdmin passes your host and port to the forwarder as its `remote_bind_address`, which is evaluated
 on the VPS — that is the whole reason the number changes. If the **Use SSH tunneling** switch is
-greyed out, `SUPPORT_SSH_TUNNEL` is off in your pgAdmin config; it defaults on in desktop mode.
+greyed out, `SUPPORT_SSH_TUNNEL` is off in your pgAdmin config; it is on by default in both modes.
 
-**In a browser, running pgAdmin natively.** Server mode serves the same UI over HTTP:
+> **The Identity file field is where this fails, and the dialog will not tell you.** pgAdmin's file
+> picker hides dotfiles, so `~/.ssh` is not browsable and the field is easy to leave empty; it does
+> not expand `~` either. Type the absolute path — `/Users/devripon/.ssh/laptop-to-vps`. Left empty,
+> pgAdmin falls back to password authentication, which a keys-only VPS refuses, and all you get is a
+> generic failure. What lands in `~/.pgadmin/pgadmin4.log` is:
+>
+> ```
+> ERROR pgadmin: Could not establish session to SSH gateway
+> sshtunnel.BaseSSHTunnelForwarderError: Could not establish session to SSH gateway
+> ```
+>
+> That is the SSH leg failing before Postgres is ever reached, so nothing on the *Connection* tab is
+> at fault and changing the port will not help. **Read that log first.**
+>
+> To prove the key itself is innocent, test with pgAdmin's own bundled paramiko rather than with
+> `ssh` — paramiko is what the tunnel actually runs on, and it is a different implementation with
+> different defaults:
+>
+> ```bash
+> "/Applications/pgAdmin 4.app/Contents/Frameworks/Python.framework/Versions/3.13/bin/python3.13" - <<'PY'
+> import paramiko
+> k = paramiko.Ed25519Key.from_private_key_file('/Users/devripon/.ssh/laptop-to-vps')
+> c = paramiko.SSHClient()
+> c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+> c.connect('YOUR_VPS_IP', 22, username='deploy', pkey=k, timeout=12,
+>           allow_agent=False, look_for_keys=False)
+> print('SSH AUTH OK')
+> PY
+> ```
+>
+> `SSH AUTH OK` here with a failure in the dialog means the form is wrong, not the key. If you cannot
+> make the form behave, the manual tunnel of §4a on port 5434 costs one terminal and always works.
 
-```bash
-pip install pgadmin4
-pgadmin4        # then open the URL it prints, usually http://127.0.0.1:5050
+**In a browser — run pgAdmin on the VPS, in the compose stack.** This is the recommended browser
+route, and it is recommended because it deletes the hardest part of the problem rather than working
+around it.
+
+pgAdmin running inside the stack sits on `island-net` alongside Postgres, so it reaches
+`postgres:5432` container to container. There is no tunnel between pgAdmin and the database, which
+means no `5433` versus `5434`, no *Identity file* field, no paramiko, and no SSH leg to debug. The
+only tunnel left is one forwarding pgAdmin's own HTTP port to your laptop, and nothing is published
+to the internet.
+
+The service is **already in `docker-compose.yml`**, behind a profile:
+
+```yaml
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    profiles: ['tools']          # a plain `docker compose up -d` ignores it
+    ports:
+      - '127.0.0.1:8082:80'      # loopback only, same rule as postgres
+    networks:
+      - island-net
 ```
 
-Connect exactly as above. Note the clash: pgAdmin's own default is `5050`, which is also the
-backend's local dev port. If you run both, start pgAdmin on another port by setting
-`DEFAULT_SERVER_PORT` in its config file.
+`profiles: ['tools']` is what makes this safe to commit. The deploy workflow runs a plain
+`docker compose up -d`, which skips profiled services entirely — so pgAdmin never starts itself,
+never costs the demo box its ~200 MB, and never becomes one more thing running unattended.
 
-**In a browser, running pgAdmin in Docker.** Works, with one trap:
+Set a password once, in `backend-frontend/.env` on the VPS:
 
-```bash
-docker run --rm -p 5050:80 \
-  -e PGADMIN_DEFAULT_EMAIL=you@example.com \
-  -e PGADMIN_DEFAULT_PASSWORD=choose-something \
-  dpage/pgadmin4
+```ini
+PGADMIN_PASSWORD=<something long>
 ```
 
-Inside that container `127.0.0.1` is **the container**, not your Mac, so the tunnel from §4a is
-invisible to it. Either use `host.docker.internal` as the host with port `5434`, or use pgAdmin's
-own SSH tunnel (§4b) with your key mounted into the container.
+Then start it only when you want it:
+
+```bash
+ssh vps
+cd /opt/demo-tripwheel/backend-frontend
+docker compose --profile tools up -d pgadmin
+```
+
+And from your laptop, forward pgAdmin's port rather than the database's:
+
+```bash
+ssh -N -L 8082:127.0.0.1:8082 vps
+# then open http://127.0.0.1:8082
+```
+
+Log in with `PGADMIN_DEFAULT_EMAIL` and the password you set. The demo server is **already
+registered** — `pgadmin-servers.json` is mounted into the container and pre-fills it, with
+`"Host": "postgres"`, the compose service name. There is nothing to fill in and no port to get
+wrong. You will be asked for the database password on first connect; it is `POSTGRES_PASSWORD` from
+the same `.env`.
+
+Stop it when you are done, so it is not running unattended:
+
+```bash
+docker compose --profile tools stop pgadmin
+```
+
+Three things worth understanding about this arrangement:
+
+- **The `127.0.0.1:` prefix is the security boundary**, exactly as it is for Postgres. A bare
+  `'8082:80'` puts a pgAdmin login on the public internet, and Docker's iptables rules mean UFW will
+  not stop it. pgAdmin is a large attack surface; keeping it on loopback behind SSH is what makes
+  running it acceptable at all.
+- **It is still server mode**, so there is a login account — but the container's environment creates
+  it for you. None of the `setup-db`, `DATA_DIR` or bundled-Python work that a local server-mode
+  install needs applies here.
+- **`pgadmin-data` persists its state.** Without that volume you would re-register the server and
+  redo every preference on each restart.
+
+> **Do not put it on a subdomain.** `db.demo.tripwheel.io` behind basic auth is possible and is
+> described in §9, but it converts a database reachable only with an SSH key into one that is a
+> single stolen password away, from anywhere, with no second factor. The tunnel costs one terminal.
+
+**In a browser, on your Mac instead.** Two local routes exist and neither is worth the work now that
+the compose service is there. `pip install pgadmin4` needs a Homebrew Python and a venv on macOS,
+because the system Python is 3.9 from the Xcode command line tools. Running pgAdmin's *desktop* app
+in server mode off its bundled Python avoids that install, but needs a `config_distro.py` overriding
+`DATA_DIR` — server mode defaults it to `/var/lib/pgadmin`, which does not exist on a Mac — plus a
+launcher script, a `setup.py setup-db` run and a master password. Both end up where the compose
+service starts.
+
+**A `docker run` on your Mac does not work at all.** Inside the container `127.0.0.1` is the
+container, and `ssh -L` binds only `127.0.0.1` and `[::1]` on the host, so `host.docker.internal`
+is refused. Making it reachable means `ssh -L 0.0.0.0:5434:…`, which publishes the demo database to
+your whole LAN. Run pgAdmin on the VPS instead — that is what the section above is.
 
 ### c. Prisma Studio — Mac, in a browser, always
 
@@ -357,7 +455,12 @@ tunnel costs one terminal and is strictly safer.
 | `password authentication failed for user "island"` | Credentials read from the repo, not from the VPS | §3 — the real values are in `backend-frontend/.env` on the server |
 | `database "island-tours" does not exist` | Hyphen instead of underscore | `island_tours` |
 | pgAdmin's **Use SSH tunneling** switch is greyed out | `SUPPORT_SSH_TUNNEL` off in its config | Use the manual tunnel (§4a) with port 5434 |
-| pgAdmin in Docker cannot see the tunnel | `127.0.0.1` is the container | `host.docker.internal:5434`, or §4b |
+| `Could not establish session to SSH gateway` in `~/.pgadmin/pgadmin4.log` | pgAdmin's SSH leg failed, almost always an empty *Identity file* — the picker hides `~/.ssh` — so it fell back to password auth | Absolute path to the key, no `~`. §5b |
+| `docker compose up -d pgadmin` says no such service | The profile was not named | `docker compose --profile tools up -d pgadmin`. §5b |
+| pgAdmin container exits immediately | `PGADMIN_PASSWORD` unset in `backend-frontend/.env` | Set it, then start the profile again. §5b |
+| `http://127.0.0.1:8082` refuses the connection | The port-forward is not open, or pgAdmin is not started | `ssh -N -L 8082:127.0.0.1:8082 vps`, and check `docker compose ps` on the VPS |
+| pgAdmin runs but the server list is empty | `pgadmin-servers.json` did not mount | Confirm the bind mount path; a missing file mounts as an empty directory |
+| A `docker run` of pgAdmin on your Mac cannot see the tunnel | `127.0.0.1` is the container, and `ssh -L` binds loopback only, so `host.docker.internal` is refused | Run pgAdmin on the VPS instead. §5b |
 | Prisma Studio in Docker unreachable from the browser | Studio binds `127.0.0.1` inside the container and has no host flag | Run it natively on the Mac |
 | Studio opens against the wrong database | `DATABASE_URL` from `backend/.env` won | Pass `--url` explicitly (§5c) |
 | Tunnel dies after a while | Idle timeout or laptop sleep | Add the keepalive options in §4a |

@@ -1,0 +1,18 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Demo (island_tours)",
+      "Group": "Servers",
+      "Comment": "Reached over the internal compose network. Host is the service name, not a tunnel: pgAdmin and Postgres are both on island-net, so there is no port translation and nothing to forward between them. The password prompted for on first connect is POSTGRES_PASSWORD from backend-frontend/.env.",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "island_tours",
+      "Username": "island",
+      "SSLMode": "prefer",
+      "ConnectionParameters": {
+        "sslmode": "prefer",
+        "connect_timeout": 10
+      }
+    }
+  }
+}
